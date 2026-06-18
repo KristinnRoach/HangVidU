@@ -49,7 +49,11 @@ Deferred/optional work belongs in
 ## 5. Public API URL
 
 - [ ] Set production to `https://hangvidu-data.kristinnroach.workers.dev`
-- [ ] Set local development to `https://localhost:8788`
+- [ ] Make default frontend development use the deployed production endpoint
+- [ ] Make the local-persistence workflow override the endpoint with
+  `https://localhost:8788`
+- [ ] Remove `.env.development.local` URL overrides so default environment
+  selection cannot silently target localhost
 - [ ] Add/test normalization, HTTP↔WS conversion, and path construction
 - [ ] Repoint every `src/storage` and `src/realtime` client
 - [ ] Ensure feature code does not read `VITE_HANGVIDU_API_URL` directly
@@ -67,7 +71,12 @@ Deferred/optional work belongs in
 
 ## 6. Tooling and tests
 
-- [ ] Collapse scripts to `dev:cf`, `deploy:cf`, and `test:cf`
+- [ ] Collapse Worker scripts to `dev:cf`, `deploy:cf`, and `test:cf`
+- [ ] Set `dev` to Vite-only against the deployed Worker
+- [ ] Set `dev:local` to run Vite and `dev:cf` together with persistent local
+  D1, R2, and Durable Object state
+- [ ] Rename the current tunnel-backed `dev` script unchanged to `dev:mobile`
+- [ ] Preserve the existing Wrangler HTTPS certificate flags in `dev:cf`
 - [ ] Update required CI and moved-file path references
 - [ ] Port all existing Worker tests
 - [ ] Run `pnpm ts`, `test:cf`, and Wrangler config validation/dry run

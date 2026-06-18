@@ -98,19 +98,39 @@ does not read the API environment variable directly.
 
 ## 6. Public API endpoint and environments
 
-Production uses the existing automatically provisioned Workers endpoint:
+Production and the default frontend development workflow use the existing
+automatically provisioned Workers endpoint:
 
 ```env
 VITE_HANGVIDU_API_URL=https://hangvidu-data.kristinnroach.workers.dev
 ```
 
-Local development uses:
+This lets `pnpm dev` run only Vite while exercising the deployed D1, R2, and
+Durable Object backend. It is the normal production-like UX workflow and writes
+to production backend state.
+
+The opt-in local-persistence workflow overrides the URL with:
 
 ```env
 VITE_HANGVIDU_API_URL=https://localhost:8788
 ```
 
-There are only two modes in this plan:
+`pnpm dev:local` starts Vite and the consolidated local Worker together with
+`concurrently`. The Worker uses HTTPS with the existing localhost certificate
+flags and persists local D1, R2, and Durable Object state. `pnpm dev:cf` remains
+available for running only that local Worker when backend-focused debugging
+needs separate process control.
+
+Rename the current tunnel-backed `dev` script unchanged to `dev:mobile`. Mobile
+tunnel performance is outside this migration; the workflow remains available
+without being part of normal desktop development.
+
+Environment selection must be explicit and deterministic: normal `pnpm dev`
+targets the deployed endpoint, while only `pnpm dev:local` overrides it with the
+localhost endpoint. Remove the current `.env.development.local` URL overrides
+so they cannot silently redirect the default workflow.
+
+Wrangler itself still has only two resource modes in this plan:
 
 - top-level Wrangler configuration = production;
 - local `wrangler dev` bindings/state = development.
@@ -185,8 +205,10 @@ active call. This is accepted for the current small friends-and-family user base
 5. Unify auth/CORS and preserve the core tests in §7.
 6. Add the shared URL helper, repoint every old client URL consumer, and remove
    the old URL variables.
-7. Collapse root scripts to `dev:cf`, `deploy:cf`, and `test:cf`; update CI/path
-   references required by moved files.
+7. Collapse Worker scripts to `dev:cf`, `deploy:cf`, and `test:cf`; make `dev`
+   Vite-only against the deployed Worker, make `dev:local` run Vite plus
+   `dev:cf`, and rename the existing tunnel-backed `dev` script unchanged to
+   `dev:mobile`. Update CI/path references required by moved files.
 8. Run verification and execute the production cutover in §11.
 
 ## 10. Verification gates
