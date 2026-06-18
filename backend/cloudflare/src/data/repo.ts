@@ -247,7 +247,7 @@ export async function insertMessage(
 }
 
 /** A single message with sender name + attachments (for post-insert broadcast). */
-export async function getMessage(
+async function getMessage(
   db: D1Database,
   messageId: string,
 ): Promise<MessageWithAttachments | null> {
