@@ -12,3 +12,7 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - workerd
+
+minimumReleaseAgeExclude:
+  - miniflare@4.20260617.0
+  - wrangler@4.102.0
