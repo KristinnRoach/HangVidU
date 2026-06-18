@@ -156,15 +156,27 @@ flags and persists local D1, R2, and Durable Object state. `pnpm dev:cf` remains
 available for running only that local Worker when backend-focused debugging
 needs separate process control.
 
-Rename the current tunnel-backed `dev` script unchanged to `dev:mobile`. Mobile
-tunnel performance is outside this migration; the workflow remains available
-without being part of normal desktop development.
+Rename the current tunnel-backed `dev` workflow to `dev:mobile` without changing
+its tunnel behavior, but explicitly inject the deployed
+`VITE_HANGVIDU_API_URL` into its Vite process.
 
 Environment selection must be explicit and deterministic. Set
 `VITE_HANGVIDU_API_URL` in the package scripts/process environment so it overrides
 gitignored Vite env files: normal `pnpm dev` targets the deployed endpoint, while
 the Vite process launched by `pnpm dev:local` explicitly uses localhost. The PR
 must not depend on editing or deleting `.env.development.local`.
+
+Apply the same rule to every Vite launch/build path:
+
+- `dev` and `dev:mobile` explicitly inject the deployed endpoint;
+- the Vite process inside `dev:local` explicitly injects the localhost endpoint;
+- `build` explicitly injects the deployed endpoint, which covers `deploy:fb`,
+  `deploy:fb:skip-tests`, `deploy:all`, and `deploy:all:skip-tests`;
+- `preview` and `preview:local` build through that script before launching
+  `vite preview`, so they cannot serve a bundle with an accidental local URL.
+
+Direct ad-hoc `vite` commands are outside this contract; documented package
+scripts are the supported entry points.
 
 Wrangler itself still has only two resource modes in this plan:
 
@@ -236,9 +248,9 @@ Keep v1/v2 and append:
 Do not also list `SignalingRoom` under `new_sqlite_classes`. The transfer is
 atomic and creates the v3 rollback boundary, but preserves one namespace so old
 and new clients can signal each other. Existing source bindings forward after
-the transfer. Freeze `hangvidu-signaling` during the compatibility window; if it
-must be redeployed, its binding must explicitly set `script_name: "hangvidu-data"`
-as documented in the runbook.
+the transfer. Freeze `hangvidu-signaling` during the compatibility window; do not
+redeploy it. An exceptional redeploy requires a separately reviewed recovery plan
+and is outside the approved runbook.
 
 ## 9. Implementation sequence
 
@@ -256,8 +268,9 @@ as documented in the runbook.
    the old URL variables.
 7. Collapse Worker scripts to `dev:cf`, `deploy:cf`, and `test:cf`; make `dev`
    Vite-only against the deployed Worker, make `dev:local` run Vite plus
-   `dev:cf`, and rename the existing tunnel-backed `dev` script unchanged to
-   `dev:mobile`. Update CI/path references required by moved files.
+   `dev:cf`, preserve the tunnel workflow as `dev:mobile`, and enforce the URL
+   contract from §6 across dev, preview, build, and deploy paths. Update only
+   required CI/path references.
 8. Run verification and hand the merged implementation to
    `BACKEND_CONSOLIDATION_RUNBOOK.md`.
 

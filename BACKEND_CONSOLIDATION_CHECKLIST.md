@@ -61,6 +61,10 @@ not implementation-PR completion gates.
 - [ ] Make default frontend scripts explicitly set the deployed production endpoint
 - [ ] Make the local-persistence Vite process explicitly set
   `https://localhost:8788`
+- [ ] Make `dev:mobile` explicitly set the deployed endpoint while preserving its tunnel
+- [ ] Make `build` explicitly set the deployed endpoint, covering all
+  `deploy:fb*` and `deploy:all*` scripts
+- [ ] Make `preview` and `preview:local` run that deterministic build before preview
 - [ ] Do not depend on editing gitignored `.env.development.local`; script/process
   values must take precedence
 - [ ] Add/test normalization, HTTP↔WS conversion, and path construction
@@ -74,9 +78,13 @@ not implementation-PR completion gates.
   - `src/realtime/signaling/do-room-signaling.ts`
   - `src/features/call/call-handshake-controller.ts`
   - declarations in `src/env.d.ts`
+  - `.env.development`
+  - `.env.example`
+  - `.env.production.example`
 - [ ] Update documentation/comment references, including the `VITE_DATA_URL`
   reference in `src/features/call/call-service.ts`
-- [ ] Verify `rg 'VITE_(DATA|FILES|SIGNALING)_URL' src` returns no matches
+- [ ] Verify `rg 'VITE_(DATA|FILES|SIGNALING)_URL' src .env.development
+  .env.example .env.production.example` returns no matches
 
 ## 6. Tooling and tests
 
@@ -84,7 +92,8 @@ not implementation-PR completion gates.
 - [ ] Set `dev` to Vite-only against the deployed Worker
 - [ ] Set `dev:local` to run Vite and `dev:cf` together with persistent local
   D1, R2, and Durable Object state
-- [ ] Rename the current tunnel-backed `dev` script unchanged to `dev:mobile`
+- [ ] Rename the current tunnel-backed `dev` workflow to `dev:mobile` without
+  changing tunnel behavior
 - [ ] Preserve the existing Wrangler HTTPS certificate flags in `dev:cf`
 - [ ] Update required CI and moved-file path references
 - [ ] Port all existing Worker tests

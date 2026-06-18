@@ -44,19 +44,13 @@ interruption.
 ## 4. Seven-day compatibility window
 
 - Keep `hangvidu-files` and `hangvidu-signaling` deployed for exactly seven days.
-- Freeze `hangvidu-signaling`: do not redeploy it during this window.
-- If an emergency requires redeployment, update its `SIGNALING_ROOM` binding to
-  reference the transferred class explicitly:
-
-```jsonc
-{
-  "name": "SIGNALING_ROOM",
-  "class_name": "SignalingRoom",
-  "script_name": "hangvidu-data"
-}
-```
-
-- Do not add another migration to the old signaling Worker.
+- Freeze `hangvidu-signaling`: do not redeploy or modify it during this window.
+  Its already-deployed binding forwards automatically after the transfer.
+- If the old signaling Worker develops an issue, do not attempt an ad-hoc
+  redeploy. Either forward-fix `hangvidu-data` or end the compatibility window
+  early after verifying updated clients. Any exceptional old-Worker redeploy
+  requires a separately reviewed recovery plan with an explicit cross-script
+  binding; it is not part of this runbook.
 
 ## 5. Retirement
 
