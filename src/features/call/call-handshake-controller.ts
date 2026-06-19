@@ -225,9 +225,14 @@ export class CallHandshakeController {
           console.error('Error entering room on callee accept:', err);
           this.exitActiveRoom();
         } finally {
-          svc.ackCallResponse(response.roomId).catch((err) =>
-            console.warn('[CallHandshake] Failed to acknowledge call response:', err),
-          );
+          svc
+            .ackCallResponse(response.roomId)
+            .catch((err) =>
+              console.warn(
+                '[CallHandshake] Failed to acknowledge call response:',
+                err,
+              ),
+            );
           this.setHandshakeState(null);
         }
       },
@@ -301,7 +306,8 @@ export class CallHandshakeController {
         if (autoExitOnEmpty) this.exitActiveRoom();
       },
     });
-    if (!room) throw this.p2p.error() ?? new Error('Room join returned no room');
+    if (!room)
+      throw this.p2p.error() ?? new Error('Room join returned no room');
 
     import.meta.env.DEV &&
       room &&
@@ -430,5 +436,6 @@ export class CallHandshakeController {
     this.setCalleeBusy(false);
     this.p2p.close();
     cleanupCallService();
+    this.lastBoundUID = undefined;
   }
 }
