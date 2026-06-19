@@ -114,9 +114,8 @@ backups/
 .playwright-mcp/
 .mcp.json
 
-# WIP experiment pages
-components-lab.html
-src/shared/media-next/
+# Archived/history docs
+docs/archive/
 
 # WIP docs
 docs/metrics/
