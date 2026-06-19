@@ -178,11 +178,13 @@ export class CallHandshakeController {
     this.setCalleeBusy(false);
     this.scheduleOutgoingCallTimeout(svc, nextOutgoingCall);
 
+    let responseReceived = false;
     this.unsubCalleeResponse?.();
     this.unsubCalleeResponse = svc.onCalleeResponse(
       calleeId,
       async (response) => {
         if (!response || response.roomId !== roomId) return;
+        responseReceived = true;
         this.clearOutgoingCallTracking();
         try {
           if (response.responseType === 'accepted') {
@@ -229,6 +231,7 @@ export class CallHandshakeController {
     const state = this._handshakeState;
     if (
       state &&
+      !responseReceived &&
       state.direction === 'outgoing' &&
       state.call.roomId === roomId
     ) {

@@ -202,9 +202,10 @@ describe('CallHandshakeController', () => {
 
   it('listens for a response before sending the invite', async () => {
     const send = deferred();
+    const join = deferred();
     mocks.sendOutgoingCallInvite.mockReturnValue(send.promise);
     const p2p = {
-      join: vi.fn(async () => ({ roomId: 'room-1', members: ['caller-id'] })),
+      join: vi.fn(() => join.promise),
       close: vi.fn(),
       state: vi.fn(() => 'idle'),
       room: vi.fn(),
@@ -224,16 +225,21 @@ describe('CallHandshakeController', () => {
     await flushPromises();
     expect(mocks.responseCallback).toBeTypeOf('function');
 
-    await mocks.responseCallback?.({
+    const response = mocks.responseCallback?.({
       roomId: 'room-1',
       responseType: 'accepted',
       by: 'callee-id',
       respondedAt: Date.now(),
     });
+    await flushPromises();
     expect(p2p.join).toHaveBeenCalled();
-    expect(mocks.ackCallResponse).toHaveBeenCalledWith('room-1');
 
     send.resolve();
     await start;
+    expect(mocks.sendIncomingCallPushNotification).not.toHaveBeenCalled();
+
+    join.resolve({ roomId: 'room-1', members: ['caller-id'] });
+    await response;
+    expect(mocks.ackCallResponse).toHaveBeenCalledWith('room-1');
   });
 });
