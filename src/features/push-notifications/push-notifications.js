@@ -86,7 +86,9 @@ export class PushNotifications {
     }
 
     this.permissionState = this.getPermissionState();
-    console.log('[Push Notifications] Initialized');
+    if (import.meta.env.DEV) {
+      console.log('[Push Notifications] Initialized');
+    }
     return true;
   }
 
@@ -221,7 +223,9 @@ export class PushNotifications {
       this.subscription = await this.ensureSubscription();
       this.isEnabled = true;
       this.notifyPermissionCallbacks('enabled');
-      console.info('[Push Notifications] Notifications enabled');
+      if (import.meta.env.DEV) {
+        console.info('[Push Notifications] Notifications enabled');
+      }
       return true;
     } catch (error) {
       console.error(
@@ -264,7 +268,9 @@ export class PushNotifications {
       this.isEnabled = false;
       this.activeNotifications.clear();
       this.notifyPermissionCallbacks('disabled');
-      console.log('[Push Notifications] Notifications disabled');
+      if (import.meta.env.DEV) {
+        console.log('[Push Notifications] Notifications disabled');
+      }
     }
     return success;
   }
@@ -284,7 +290,9 @@ export class PushNotifications {
     const { targetUserId, ...notificationData } = callData || {};
 
     if (!this.options.enableCallNotifications) {
-      console.log('[Push Notifications] Call notifications disabled');
+      if (import.meta.env.DEV) {
+        console.log('[Push Notifications] Call notifications disabled');
+      }
       return {
         ok: false,
         status: null,
@@ -355,9 +363,11 @@ export class PushNotifications {
     const { targetUserId, ...notificationData } = callData || {};
 
     if (!this.options.enableCallNotifications) {
-      console.log(
-        '[Push Notifications] Call notifications disabled (missed call masked)',
-      );
+      if (import.meta.env.DEV) {
+        console.log(
+          '[Push Notifications] Call notifications disabled (missed call masked)',
+        );
+      }
       return {
         ok: false,
         status: null,
@@ -516,7 +526,9 @@ export class PushNotifications {
 
   updateOptions(newOptions) {
     this.options = { ...this.options, ...newOptions };
-    console.log('[Push Notifications] Options updated:', this.options);
+    if (import.meta.env.DEV) {
+      console.log('[Push Notifications] Options updated:', this.options);
+    }
   }
 
   onPermissionChange(callback) {

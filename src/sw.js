@@ -72,10 +72,12 @@ self.addEventListener('message', (event) => {
     default:
       // Ignore valid Workbox messages or other known internal messages
       if (type !== undefined) {
-        console.log('[SW] Unknown message type:', type);
+        if (import.meta.env.DEV) console.log('[SW] Unknown message type:', type);
       } else {
         // Log full data for debugging undefined types (often benign)
-        console.debug('[SW] Message received without type:', event.data);
+        if (import.meta.env.DEV) {
+          console.debug('[SW] Message received without type:', event.data);
+        }
       }
   }
 });
@@ -85,14 +87,16 @@ self.addEventListener('message', (event) => {
 // ============================================================================
 
 self.addEventListener('install', () => {
-  console.log('[SW] Service worker installing...');
+  if (import.meta.env.DEV) console.log('[SW] Service worker installing...');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Service worker activated');
+  if (import.meta.env.DEV) console.log('[SW] Service worker activated');
   // Take control of all clients immediately
   event.waitUntil(self.clients.claim());
 });
 
-console.log('[SW] HangVidU Service Worker with Web Push support loaded');
+if (import.meta.env.DEV) {
+  console.log('[SW] HangVidU Service Worker with Web Push support loaded');
+}

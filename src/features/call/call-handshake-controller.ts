@@ -125,7 +125,9 @@ export class CallHandshakeController {
         return;
       }
       this.setHandshakeState({ direction: 'incoming', call });
-      console.debug('Received incoming call invite:', { call });
+      if (import.meta.env.DEV) {
+        console.debug('Received incoming call invite:', { call });
+      }
     });
   }
 
@@ -220,9 +222,11 @@ export class CallHandshakeController {
       },
     );
 
-    console.debug('Initiated outgoing call invite, command details:', {
-      details,
-    });
+    if (import.meta.env.DEV) {
+      console.debug('Initiated outgoing call invite, command details:', {
+        details,
+      });
+    }
   }
 
   /**

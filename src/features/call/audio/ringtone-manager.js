@@ -163,7 +163,9 @@ class RingtoneManager {
         const success = await this.currentPlayer.play();
 
         if (success) {
-          console.log(`[Ringtone] Playing ${type} ringtone`);
+          if (import.meta.env.DEV) {
+            console.log(`[Ringtone] Playing ${type} ringtone`);
+          }
           return true;
         }
 
@@ -191,7 +193,9 @@ class RingtoneManager {
     this._restoreAudioSession();
 
     if (this.currentPlayer) {
-      console.log(`[Ringtone] Stopping ${this.currentType} ringtone`);
+      if (import.meta.env.DEV) {
+        console.log(`[Ringtone] Stopping ${this.currentType} ringtone`);
+      }
       this.currentPlayer.stop();
       this.currentPlayer.dispose();
       this.currentPlayer = null;

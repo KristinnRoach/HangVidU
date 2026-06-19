@@ -96,9 +96,11 @@ else {
     // Note: ReCaptchaEnterpriseProvider automatically works in invisible mode
     // It will show a challenge only when needed (based on risk analysis)
     appCheckProvider = new ReCaptchaEnterpriseProvider(recaptchaSiteKey);
-    console.info(
-      '[Firebase App Check: PROD] Initializing with ReCAPTCHA Enterprise (invisible mode).',
-    );
+    if (import.meta.env.DEV) {
+      console.info(
+        '[Firebase App Check: PROD] Initializing with ReCAPTCHA Enterprise (invisible mode).',
+      );
+    }
   } else {
     console.error(
       '[Firebase App Check: PROD] VITE_RECAPTCHA_ENTERPRISE_SITE_KEY is missing or empty. App Check will NOT be initialized, leaving Firebase services unprotected!',

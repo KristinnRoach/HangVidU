@@ -51,7 +51,9 @@ class CallIndicators {
    * @param {string} callerName - Name of caller to display in title
    */
   startCallIndicators(callerName) {
-    console.log(`[CallIndicators] Starting call indicators for: ${callerName}`);
+    if (import.meta.env.DEV) {
+      console.log(`[CallIndicators] Starting call indicators for: ${callerName}`);
+    }
 
     // Always start title flashing (even if visible, for consistency)
     this.startTitleFlashing(callerName);
@@ -71,7 +73,7 @@ class CallIndicators {
    * Stop all visual indicators
    */
   stopCallIndicators() {
-    console.log('[CallIndicators] Stopping call indicators');
+    if (import.meta.env.DEV) console.log('[CallIndicators] Stopping call indicators');
 
     this.stopTitleFlashing();
     this.restoreFavicon();
@@ -124,7 +126,9 @@ class CallIndicators {
     const link = document.querySelector("link[rel~='icon']");
     if (link) {
       link.href = iconPath;
-      console.log(`[CallIndicators] Favicon changed to: ${iconPath}`);
+      if (import.meta.env.DEV) {
+        console.log(`[CallIndicators] Favicon changed to: ${iconPath}`);
+      }
     }
   }
 
@@ -144,7 +148,9 @@ class CallIndicators {
       navigator
         .setAppBadge(count)
         .then(() => {
-          console.log(`[CallIndicators] Badge set to: ${count}`);
+          if (import.meta.env.DEV) {
+            console.log(`[CallIndicators] Badge set to: ${count}`);
+          }
         })
         .catch((err) => {
           console.warn('[CallIndicators] Badge not supported:', err);
@@ -160,7 +166,7 @@ class CallIndicators {
       navigator
         .clearAppBadge()
         .then(() => {
-          console.log('[CallIndicators] Badge cleared');
+          if (import.meta.env.DEV) console.log('[CallIndicators] Badge cleared');
         })
         .catch((err) => {
           console.warn('[CallIndicators] Badge clear failed:', err);
@@ -179,13 +185,15 @@ class CallIndicators {
 
     try {
       this.wakeLock = await navigator.wakeLock.request('screen');
-      console.log('[CallIndicators] Wake lock active');
+      if (import.meta.env.DEV) console.log('[CallIndicators] Wake lock active');
 
       // Re-request wake lock if it's released (e.g., tab visibility change)
       this.wakeLock.addEventListener(
         'release',
         () => {
-          console.log('[CallIndicators] Wake lock released');
+          if (import.meta.env.DEV) {
+            console.log('[CallIndicators] Wake lock released');
+          }
           this.wakeLock = null;
         },
         { once: true },
@@ -206,7 +214,9 @@ class CallIndicators {
       lock
         .release()
         .then(() => {
-          console.log('[CallIndicators] Wake lock released manually');
+          if (import.meta.env.DEV) {
+            console.log('[CallIndicators] Wake lock released manually');
+          }
         })
         .catch((err) => {
           console.warn('[CallIndicators] Wake lock release failed:', err);

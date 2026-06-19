@@ -46,7 +46,9 @@ async function checkForUpdates() {
     // The standard API to check for service worker updates
     // This causes the browser to re-fetch the service worker script and compare it
     await registration.update();
-    console.debug('[PWA] Service worker update check completed');
+    if (import.meta.env.DEV) {
+      console.debug('[PWA] Service worker update check completed');
+    }
   } catch (error) {
     console.debug('[PWA] Update check error:', error);
   }
@@ -139,7 +141,9 @@ function visibilityChangeCheck() {
     { signal: visibilityAbortController.signal },
   );
 
-  console.debug('[PWA] Visibility change listener enabled');
+  if (import.meta.env.DEV) {
+    console.debug('[PWA] Visibility change listener enabled');
+  }
 }
 
 /**
@@ -159,9 +163,11 @@ function startPeriodicUpdateChecks() {
     });
   }, UPDATE_CHECK_INTERVAL);
 
-  console.info(
-    `[PWA] Started periodic update checks (every ${UPDATE_CHECK_INTERVAL / 1000 / 60} minutes)`,
-  );
+  if (import.meta.env.DEV) {
+    console.info(
+      `[PWA] Started periodic update checks (every ${UPDATE_CHECK_INTERVAL / 1000 / 60} minutes)`,
+    );
+  }
 }
 
 /**
