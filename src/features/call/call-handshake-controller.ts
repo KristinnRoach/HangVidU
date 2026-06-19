@@ -53,6 +53,7 @@ export class CallHandshakeController {
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private unsubCalleeResponse: (() => void) | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
+  private lastBoundUID: string | undefined;
 
   constructor({
     p2p,
@@ -96,13 +97,21 @@ export class CallHandshakeController {
     // (incl. p2p.close) stays in cleanup(), used on logout/unmount.
     // initCallService() below swaps the service when the uid changes, so the
     // dropped cleanupCallService() is covered.
-    // ponytail: account switch (uid→uid' without a null in between) won't end
-    // the old call here, but Firebase routes account changes through logout
-    // (uid→null→uid'), so that transition doesn't occur in practice.
+    const localUID = getLoggedInUserId();
+
+    // Direct account switch (uid → different uid without a logout in between):
+    // tear down the previous user's call. Firebase normally routes account
+    // changes through logout (uid→null→uid'), but guard by construction here
+    // rather than relying on that. A plain login (undefined→uid) or re-init for
+    // the same uid is NOT a switch and must not tear down an active call.
+    if (this.lastBoundUID && localUID && this.lastBoundUID !== localUID) {
+      this.cleanup();
+    }
+    this.lastBoundUID = localUID ?? undefined;
+
     this.unsubscribeIncomingCall?.();
     this.unsubscribeIncomingCall = undefined;
 
-    const localUID = getLoggedInUserId();
     if (!localUID) return;
 
     const callService = initCallService({
