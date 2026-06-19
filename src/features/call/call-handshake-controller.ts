@@ -89,7 +89,18 @@ export class CallHandshakeController {
    * on a logged-in user, but we re-read the uid defensively.
    */
   init(): void {
-    this.cleanup();
+    // Re-bind ONLY the incoming-call listener for the current user. This runs on
+    // every auth-user change (including login), so it must NOT tear down an
+    // active call — p2p.close() here black-screens a live call when it races an
+    // in-flight join ("answered just after logging in"). Full teardown
+    // (incl. p2p.close) stays in cleanup(), used on logout/unmount.
+    // initCallService() below swaps the service when the uid changes, so the
+    // dropped cleanupCallService() is covered.
+    // ponytail: account switch (uid→uid' without a null in between) won't end
+    // the old call here, but Firebase routes account changes through logout
+    // (uid→null→uid'), so that transition doesn't occur in practice.
+    this.unsubscribeIncomingCall?.();
+    this.unsubscribeIncomingCall = undefined;
 
     const localUID = getLoggedInUserId();
     if (!localUID) return;
