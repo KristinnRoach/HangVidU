@@ -113,4 +113,48 @@ describe('files client', () => {
       'unauthorized',
     );
   });
+
+  it('reports a 401 on upload to the auth-failure helper', async () => {
+    const fetchMock = vi.fn(async () => new Response('unauthorized', { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createFilesClient({
+      ...options,
+      baseUrl: 'https://files.example.com',
+    });
+
+    await expect(
+      client.uploadImage('conversation-1', new File(['x'], 'x.png', { type: 'image/png' })),
+    ).rejects.toThrow('image upload failed: 401 unauthorized');
+
+    expect(mocks.reportApiAuthFailure).toHaveBeenCalledWith(
+      'files upload conversation-1',
+      401,
+      'unauthorized',
+    );
+  });
+
+  it('reports a 401 on delete to the auth-failure helper', async () => {
+    const fetchMock = vi.fn(async () => new Response('unauthorized', { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createFilesClient({
+      ...options,
+      baseUrl: 'https://files.example.com',
+    });
+
+    await expect(
+      client.deleteFile('conversation-1', {
+        provider: 'r2',
+        bucket: 'hangvidu-files',
+        key: 'conversation-files/conversation-1/object-1',
+      }),
+    ).rejects.toThrow('file delete failed: 401 unauthorized');
+
+    expect(mocks.reportApiAuthFailure).toHaveBeenCalledWith(
+      'files delete conversation-1',
+      401,
+      'unauthorized',
+    );
+  });
 });
