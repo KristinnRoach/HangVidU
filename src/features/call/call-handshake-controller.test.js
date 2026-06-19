@@ -200,6 +200,7 @@ describe('CallHandshakeController', () => {
 
     expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
     expect(p2p.close).toHaveBeenCalled();
+    expect(p2p.error).toHaveBeenCalledTimes(1);
   });
 
   it('listens for a response before sending the invite', async () => {
