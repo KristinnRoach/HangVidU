@@ -178,6 +178,10 @@ export class CallService {
     });
   }
 
+  ackCallResponse(roomId: string): Promise<void> {
+    return this.post('/calls/response/ack', { conversationId: roomId });
+  }
+
   /** No stored invite to clear in the mailbox model; cancel is explicit. */
   clearIncomingCallInvite(): Promise<void> {
     return Promise.resolve();

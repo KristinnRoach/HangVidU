@@ -174,29 +174,17 @@ export class CallHandshakeController {
       audioOnly,
     };
 
-    try {
-      await svc.sendOutgoingCallInvite({
-        roomId,
-        calleeId,
-        callerName,
-        audioOnly,
-      });
-    } catch (err) {
-      console.error('Error sending outgoing call invite:', err);
-      this.alertCallStartFailed();
-      return;
-    }
-
     this.setHandshakeState({ direction: 'outgoing', call: nextOutgoingCall });
     this.setCalleeBusy(false);
     this.scheduleOutgoingCallTimeout(svc, nextOutgoingCall);
-    sendIncomingCallPushNotification(nextOutgoingCall);
 
+    let responseReceived = false;
     this.unsubCalleeResponse?.();
     this.unsubCalleeResponse = svc.onCalleeResponse(
       calleeId,
       async (response) => {
         if (!response || response.roomId !== roomId) return;
+        responseReceived = true;
         this.clearOutgoingCallTracking();
         try {
           if (response.responseType === 'accepted') {
@@ -217,11 +205,38 @@ export class CallHandshakeController {
           console.error('Error entering room on callee accept:', err);
           this.exitActiveRoom();
         } finally {
+          svc.ackCallResponse(response.roomId).catch((err) =>
+            console.warn('[CallHandshake] Failed to acknowledge call response:', err),
+          );
           this.setHandshakeState(null);
         }
       },
     );
 
+    try {
+      await svc.sendOutgoingCallInvite({
+        roomId,
+        calleeId,
+        callerName,
+        audioOnly,
+      });
+    } catch (err) {
+      this.clearOutgoingCallTracking();
+      this.setHandshakeState(null);
+      console.error('Error sending outgoing call invite:', err);
+      this.alertCallStartFailed();
+      return;
+    }
+
+    const state = this._handshakeState;
+    if (
+      state &&
+      !responseReceived &&
+      state.direction === 'outgoing' &&
+      state.call.roomId === roomId
+    ) {
+      sendIncomingCallPushNotification(nextOutgoingCall);
+    }
     if (import.meta.env.DEV) {
       console.debug('Initiated outgoing call invite, command details:', {
         details,

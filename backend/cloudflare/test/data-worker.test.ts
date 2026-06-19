@@ -434,3 +434,47 @@ describe('call invite retention', () => {
     }
   });
 });
+
+describe('call response retention', () => {
+  it('replays an accepted response until the caller acknowledges it', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    expect((await jsonPost('/calls/response', calleeToken, {
+      conversationId: convoId,
+      callerId,
+      responseType: 'accepted',
+      expiresAt: Date.now() + 30_000,
+    })).status).toBe(200);
+
+    const mailbox = await connectMailbox(callerToken);
+    try {
+      expect(await mailbox.next()).toEqual({
+        t: 'response',
+        response: {
+          roomId: convoId,
+          responseType: 'accepted',
+          by: calleeId,
+          respondedAt: expect.any(Number),
+          expiresAt: expect.any(Number),
+        },
+      });
+    } finally {
+      mailbox.close();
+    }
+
+    expect((await jsonPost('/calls/response/ack', callerToken, {
+      conversationId: convoId,
+    })).status).toBe(200);
+
+    const reconnected = await connectMailbox(callerToken);
+    try {
+      expect(await nextOrNoMessage(reconnected)).toBe(NO_MESSAGE);
+    } finally {
+      reconnected.close();
+    }
+  });
+});

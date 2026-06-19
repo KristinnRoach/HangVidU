@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   incomingCallback: undefined,
+  responseCallback: undefined,
   initCallService: vi.fn(),
   getCallService: vi.fn(),
   cleanupCallService: vi.fn(),
@@ -10,6 +11,12 @@ const mocks = vi.hoisted(() => ({
     return vi.fn();
   }),
   respondToIncomingCallInvite: vi.fn(),
+  sendOutgoingCallInvite: vi.fn(),
+  onCalleeResponse: vi.fn((_calleeId, callback) => {
+    mocks.responseCallback = callback;
+    return vi.fn();
+  }),
+  ackCallResponse: vi.fn(),
   getLoggedInUserId: vi.fn(() => 'callee-id'),
   getLoggedInUserToken: vi.fn(async () => 'token'),
   getUser: vi.fn(() => ({ userName: 'Callee' })),
@@ -62,13 +69,20 @@ describe('CallHandshakeController', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.incomingCallback = undefined;
+    mocks.responseCallback = undefined;
     const service = {
       onIncomingCall: mocks.onIncomingCall,
       respondToIncomingCallInvite: mocks.respondToIncomingCallInvite,
+      sendOutgoingCallInvite: mocks.sendOutgoingCallInvite,
+      onCalleeResponse: mocks.onCalleeResponse,
+      ackCallResponse: mocks.ackCallResponse,
     };
     mocks.initCallService.mockReturnValue(service);
     mocks.getCallService.mockReturnValue(service);
     mocks.respondToIncomingCallInvite.mockResolvedValue(undefined);
+    mocks.sendOutgoingCallInvite.mockResolvedValue(undefined);
+    mocks.ackCallResponse.mockResolvedValue(undefined);
+    mocks.resolveDirectConversationId.mockResolvedValue('room-1');
   });
 
   it("dismisses a matching incoming call when another device handles it", () => {
@@ -184,5 +198,48 @@ describe('CallHandshakeController', () => {
 
     expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
     expect(p2p.close).toHaveBeenCalled();
+  });
+
+  it('listens for a response before sending the invite', async () => {
+    const send = deferred();
+    const join = deferred();
+    mocks.sendOutgoingCallInvite.mockReturnValue(send.promise);
+    const p2p = {
+      join: vi.fn(() => join.promise),
+      close: vi.fn(),
+      state: vi.fn(() => 'idle'),
+      room: vi.fn(),
+    };
+    const controller = new CallHandshakeController({
+      p2p,
+      createSignaling: vi.fn(),
+      onStateChange: vi.fn(),
+      onCalleeBusy: vi.fn(),
+    });
+
+    const start = controller.sendOutgoingCallInvite({
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: false,
+    });
+    await flushPromises();
+    expect(mocks.responseCallback).toBeTypeOf('function');
+
+    const response = mocks.responseCallback?.({
+      roomId: 'room-1',
+      responseType: 'accepted',
+      by: 'callee-id',
+      respondedAt: Date.now(),
+    });
+    await flushPromises();
+    expect(p2p.join).toHaveBeenCalled();
+
+    send.resolve();
+    await start;
+    expect(mocks.sendIncomingCallPushNotification).not.toHaveBeenCalled();
+
+    join.resolve({ roomId: 'room-1', members: ['caller-id'] });
+    await response;
+    expect(mocks.ackCallResponse).toHaveBeenCalledWith('room-1');
   });
 });

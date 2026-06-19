@@ -39,8 +39,14 @@ export async function resolveDirectConversationId(
   const cacheKey = `${myUserId}:${otherUserId}`;
   const cached = directConversationIds.get(cacheKey);
   if (cached) return cached;
-  const conversationId =
-    await getConversationsClient().resolveDirect(otherUserId);
+  let conversationId: string;
+  try {
+    conversationId = await getConversationsClient().resolveDirect(otherUserId);
+  } catch (error) {
+    if (!(error instanceof DOMException) || error.name !== 'TimeoutError') throw error;
+    // ponytail: resolve-direct is idempotent; one retry covers a cold Worker.
+    conversationId = await getConversationsClient().resolveDirect(otherUserId);
+  }
   directConversationIds.set(cacheKey, conversationId);
   return conversationId;
 }
