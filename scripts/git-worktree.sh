@@ -1,6 +1,7 @@
 #!/bin/sh
 
 set -eu
+umask 077
 
 branch_name="${1:-}"
 
@@ -28,20 +29,32 @@ main_worktree="$(
 )"
 
 if [ -z "$main_worktree" ] || [ ! -d "$main_worktree" ]; then
-  echo "Warning: could not find main/master worktree, skipping env linking" >&2
+  echo "Warning: could not find main/master worktree; skipping local files" >&2
   exit 0
 fi
 
-for name in .env .env.development; do
-  source_path="$main_worktree/$name"
-  target_path="$worktree_path/$name"
+for relative_path in \
+  .env \
+  .env.production \
+  .env.development \
+  .env.development.local \
+  .env.r2.local \
+  functions/.env \
+  workers/data/.dev.vars \
+  workers/files/.dev.vars \
+  workers/signaling/.dev.vars
+do
+  source_path="$main_worktree/$relative_path"
+  target_path="$worktree_path/$relative_path"
 
-  if [ -L "$target_path" ] && [ ! -e "$target_path" ]; then
-    rm -f "$target_path"
-  fi
-
-  if [ -f "$source_path" ] && [ ! -e "$target_path" ] && [ ! -L "$target_path" ]; then
-    ln -s "$source_path" "$target_path"
-    echo "linked $name"
+  if [ -f "$source_path" ] && [ ! -e "$target_path" ]; then
+    mkdir -p "$(dirname "$target_path")"
+    cp "$source_path" "$target_path"
+    echo "copied $relative_path"
   fi
 done
+
+if [ -d "$main_worktree/.certs" ] && [ ! -e "$worktree_path/.certs" ]; then
+  cp -R "$main_worktree/.certs" "$worktree_path/.certs"
+  echo "copied .certs/"
+fi
