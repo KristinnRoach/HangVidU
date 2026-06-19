@@ -53,6 +53,7 @@ export class CallHandshakeController {
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private unsubCalleeResponse: (() => void) | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
+  private lastBoundUID: string | undefined;
 
   constructor({
     p2p,
@@ -89,9 +90,19 @@ export class CallHandshakeController {
    * on a logged-in user, but we re-read the uid defensively.
    */
   init(): void {
-    this.cleanup();
-
+    // Runs on every auth change incl. login, so it must not tear down an active
+    // call (p2p.close here black-screens a call that's mid-join). Only a switch
+    // to a *different* user does full teardown; full cleanup() is otherwise
+    // reserved for logout/unmount.
     const localUID = getLoggedInUserId();
+    if (this.lastBoundUID && localUID && this.lastBoundUID !== localUID) {
+      this.cleanup();
+    }
+    this.lastBoundUID = localUID ?? undefined;
+
+    this.unsubscribeIncomingCall?.();
+    this.unsubscribeIncomingCall = undefined;
+
     if (!localUID) return;
 
     const callService = initCallService({
@@ -205,9 +216,14 @@ export class CallHandshakeController {
           console.error('Error entering room on callee accept:', err);
           this.exitActiveRoom();
         } finally {
-          svc.ackCallResponse(response.roomId).catch((err) =>
-            console.warn('[CallHandshake] Failed to acknowledge call response:', err),
-          );
+          svc
+            .ackCallResponse(response.roomId)
+            .catch((err) =>
+              console.warn(
+                '[CallHandshake] Failed to acknowledge call response:',
+                err,
+              ),
+            );
           this.setHandshakeState(null);
         }
       },
@@ -281,7 +297,8 @@ export class CallHandshakeController {
         if (autoExitOnEmpty) this.exitActiveRoom();
       },
     });
-    if (!room) throw this.p2p.error() ?? new Error('Room join returned no room');
+    if (!room)
+      throw this.p2p.error() ?? new Error('Room join returned no room');
 
     import.meta.env.DEV &&
       room &&
@@ -410,5 +427,6 @@ export class CallHandshakeController {
     this.setCalleeBusy(false);
     this.p2p.close();
     cleanupCallService();
+    this.lastBoundUID = undefined;
   }
 }
