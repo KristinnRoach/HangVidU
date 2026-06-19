@@ -174,23 +174,9 @@ export class CallHandshakeController {
       audioOnly,
     };
 
-    try {
-      await svc.sendOutgoingCallInvite({
-        roomId,
-        calleeId,
-        callerName,
-        audioOnly,
-      });
-    } catch (err) {
-      console.error('Error sending outgoing call invite:', err);
-      this.alertCallStartFailed();
-      return;
-    }
-
     this.setHandshakeState({ direction: 'outgoing', call: nextOutgoingCall });
     this.setCalleeBusy(false);
     this.scheduleOutgoingCallTimeout(svc, nextOutgoingCall);
-    sendIncomingCallPushNotification(nextOutgoingCall);
 
     this.unsubCalleeResponse?.();
     this.unsubCalleeResponse = svc.onCalleeResponse(
@@ -217,10 +203,30 @@ export class CallHandshakeController {
           console.error('Error entering room on callee accept:', err);
           this.exitActiveRoom();
         } finally {
+          svc.ackCallResponse(response.roomId).catch((err) =>
+            console.warn('[CallHandshake] Failed to acknowledge call response:', err),
+          );
           this.setHandshakeState(null);
         }
       },
     );
+
+    try {
+      await svc.sendOutgoingCallInvite({
+        roomId,
+        calleeId,
+        callerName,
+        audioOnly,
+      });
+    } catch (err) {
+      this.clearOutgoingCallTracking();
+      this.setHandshakeState(null);
+      console.error('Error sending outgoing call invite:', err);
+      this.alertCallStartFailed();
+      return;
+    }
+
+    sendIncomingCallPushNotification(nextOutgoingCall);
 
     if (import.meta.env.DEV) {
       console.debug('Initiated outgoing call invite, command details:', {

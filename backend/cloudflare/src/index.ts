@@ -12,7 +12,7 @@ const SIGNALING_PATH = /^\/rooms\/[^/]+\/signal$/;
 const DATA_PATHS = [
   /^\/health$/,
   /^\/me$/,
-  /^\/calls\/(?:invite|response|cancel)$/,
+  /^\/calls\/(?:invite|response(?:\/ack)?|cancel)$/,
   /^\/users\/me\/mailbox\/ws$/,
   /^\/conversations$/,
   /^\/conversations\/resolve-direct$/,

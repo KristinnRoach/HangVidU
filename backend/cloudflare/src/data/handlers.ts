@@ -176,6 +176,16 @@ export async function handleDataRequest(
       return json({ ok: true }, 200, cors);
     }
 
+    if (request.method === 'POST' && url.pathname === '/calls/response/ack') {
+      const conversationId = str((await readJson(request))?.conversationId);
+      if (!conversationId) return json({ error: 'conversationId required' }, 400, cors);
+      if (!(await isMember(env.DB, conversationId, callerId))) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+      await env.USER_MAILBOX.getByName(callerId).clearPendingResponse(conversationId);
+      return json({ ok: true }, 200, cors);
+    }
+
     if (request.method === 'POST' && url.pathname === '/calls/cancel') {
       const body = await readJson(request);
       const conversationId = str(body?.conversationId);

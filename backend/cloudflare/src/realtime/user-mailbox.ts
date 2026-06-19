@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import type {
   MailboxEnvelope,
   MailboxInvite,
+  MailboxResponse,
 } from '../../../../shared/call-mailbox/protocol';
 
 // One stored key per pending invite, keyed by roomId (= conversationId). Using a
@@ -10,6 +11,8 @@ import type {
 // and makes a re-invite to the same room a natural overwrite.
 const PENDING_INVITE_PREFIX = 'invite:';
 const inviteKey = (roomId: string): string => PENDING_INVITE_PREFIX + roomId;
+const PENDING_RESPONSE_PREFIX = 'response:';
+const responseKey = (roomId: string): string => PENDING_RESPONSE_PREFIX + roomId;
 
 /**
  * One instance per userId (keyed via getByName). Broadcast-only fan-out across
@@ -21,7 +24,7 @@ const inviteKey = (roomId: string): string => PENDING_INVITE_PREFIX + roomId;
  * opening, refreshing, or reconnecting the app while a caller is still ringing
  * resurfaces every incoming-call dialog. This is not a queue/history model: a new
  * invite for a room replaces that room's pending invite, and cancel/response
- * clear the matching one. Responses are not retained (transient live delivery).
+ * clear the matching one. Accepted responses are retained until acknowledged.
  *
  * ## RPC contract (worker → DO)
  * The worker calls `deliver(envelope)` after authorizing the sender. The DO fans
@@ -46,6 +49,9 @@ export class UserMailbox extends DurableObject<Env> {
         } satisfies MailboxEnvelope),
       );
     }
+    for (const response of await this.getFreshPendingResponses()) {
+      server.send(JSON.stringify({ t: 'response', response } satisfies MailboxEnvelope));
+    }
 
     // Echo the auth subprotocol; browsers abort the handshake if the server
     // does not confirm one of the offered subprotocols.
@@ -69,6 +75,8 @@ export class UserMailbox extends DurableObject<Env> {
   async deliver(envelope: MailboxEnvelope): Promise<void> {
     if (envelope.t === 'invite') {
       await this.storePendingInvite(envelope.invite);
+    } else if (envelope.t === 'response' && envelope.response.responseType === 'accepted') {
+      await this.ctx.storage.put(responseKey(envelope.response.roomId), envelope.response);
     } else if (envelope.t === 'cancel' || envelope.t === 'handled') {
       await this.clearPendingInvite(envelope.roomId);
     }
@@ -85,6 +93,10 @@ export class UserMailbox extends DurableObject<Env> {
 
   async clearPendingInvite(roomId: string): Promise<void> {
     await this.ctx.storage.delete(inviteKey(roomId));
+  }
+
+  async clearPendingResponse(roomId: string): Promise<void> {
+    await this.ctx.storage.delete(responseKey(roomId));
   }
 
   private async storePendingInvite(invite: MailboxInvite): Promise<void> {
@@ -110,6 +122,21 @@ export class UserMailbox extends DurableObject<Env> {
       } else {
         fresh.push(invite);
       }
+    }
+    if (expiredKeys.length) await this.ctx.storage.delete(expiredKeys);
+    return fresh;
+  }
+
+  private async getFreshPendingResponses(): Promise<MailboxResponse[]> {
+    const stored = await this.ctx.storage.list<MailboxResponse>({
+      prefix: PENDING_RESPONSE_PREFIX,
+    });
+    const now = Date.now();
+    const fresh: MailboxResponse[] = [];
+    const expiredKeys: string[] = [];
+    for (const [key, response] of stored) {
+      if (response.expiresAt != null && response.expiresAt <= now) expiredKeys.push(key);
+      else fresh.push(response);
     }
     if (expiredKeys.length) await this.ctx.storage.delete(expiredKeys);
     return fresh;
