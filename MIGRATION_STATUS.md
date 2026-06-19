@@ -2,20 +2,27 @@
 
 > Migration from Firebase-coupled code to backend-agnostic interfaces with
 > Cloudflare implementations (D1 / R2 / Durable Objects), keyed by an opaque
-> `conversationId`. Last updated: 2026-06-17.
+> `conversationId`. Last updated: 2026-06-19.
+
+> Server side is now a **single Cloudflare Worker** at `backend/cloudflare/`
+> (deployed script name `hangvidu-data`), organized by capability folder
+> `data/ files/ realtime/`. The former three-worker split (`workers/data`,
+> `workers/files`, `workers/signaling`) was consolidated and deployed in PR #556;
+> table rows below name the folder, not a separate worker.
 
 ## Where we are
 
 | Concern | Backend | Status |
 | --- | --- | --- |
-| WebRTC room signaling | Durable Object (`workers/signaling`) | ✅ Live, default (`VITE_SIGNALING_BACKEND=do`) |
-| Image files | R2 (`workers/files`) | ✅ Live — authz reads D1 membership (PR #536) |
-| Conversation registry | D1 (`workers/data`) | ✅ Live (PR #534) — users, conversations, members; opaque UUID ids |
+| WebRTC room signaling | Durable Object (`realtime/`) | ✅ Live, default (`VITE_SIGNALING_BACKEND=do`) |
+| Image files | R2 (`files/`) | ✅ Live — authz reads D1 membership (PR #536) |
+| Conversation registry | D1 (`data/`) | ✅ Live (PR #534) — users, conversations, members; opaque UUID ids |
 | Call room handle | Opaque `conversationId` from registry | ✅ Live (PR #535) — fallback to one-off UUID if registry unreachable |
-| Messages | D1 (`workers/data`) | ✅ Live (PR #536) — D1 persistence + `ConversationChannel` DO live push. Legacy RTDB message path + derived-`a_b` id plumbing removed from the client (PR #551); only RTDB rules/data deletion remains (see Deferred below) |
+| Messages | D1 (`data/`) | ✅ Live (PR #536) — D1 persistence + `ConversationChannel` DO live push. Legacy RTDB message path + derived-`a_b` id plumbing removed from the client (PR #551); only RTDB rules/data deletion remains (see Deferred below) |
 | Live message push | Durable Object (`ConversationChannel`) | ✅ Live (PR #536) |
+| Call-invite mailbox | Durable Object (`UserMailbox`, `realtime/mailbox-channel.ts`) | ✅ Live (PR #553) — replaced the RTDB `users/{uid}/calls/*` mailbox; `call-rtdb-adapter.ts` + `room-access-rtdb-adapter.ts` are now dead code |
+| Conversation metadata | Firebase RTDB | ⬜ To migrate (Slice C) — `d1.ts` adapter built but not wired; `messaging-runtime.ts` still uses `createRTDBConversationRepository` |
 | Contacts, user profiles | Firebase RTDB | ⬜ To migrate (later, lowest priority) |
-| Call-invite mailbox | Firebase RTDB | ⬜ To migrate (Durable Object) |
 | Auth | Firebase Auth | Stays for now (workers verify ID tokens via a swappable `auth.ts` seam) |
 
 The shared mechanism every consumer needs — "open conversation → resolve-or-create
@@ -45,7 +52,7 @@ carries `remoteParticipantIds`. (Live message push already shipped in #536 via t
 The conversation/realtime spine (messages, files, calls, signaling) is the core.
 Three slices take it fully off RTDB; each is independently shippable and is gated
 on a backend-agnostic port so the RTDB adapter can be deleted, not just bypassed.
-Do them in this order — cheapest and lowest-risk first.
+Slice B has shipped (#553); Slices A and C remain. Do them cheapest-first.
 
 ### Slice A — Delete the legacy RTDB signaling fallback (pure deletion)
 DO signaling is the proven default. Remove `firebase-room-signaling.js`, the
@@ -53,13 +60,14 @@ DO signaling is the proven default. Remove `firebase-room-signaling.js`, the
 `env.d.ts` flag, and `reference-examples/SimpleRoomExample.tsx` if it only demoed
 the RTDB path. No new code; removes one RTDB consumer and one config fork.
 
-### Slice B — Call-invite mailbox → Durable Object (last realtime RTDB dep)
-Call invites are ephemeral coordination still on RTDB (`call-rtdb-adapter.ts`,
-`room-access-rtdb-adapter.ts`, consumed by `call-service.ts`). Define a
-`CallInviteMailbox` port in `src/realtime/`, implement it on a DO mailbox (reuse
-the signaling transport + protocol envelope), keyed by the opaque `conversationId`.
-After A+B the entire realtime layer is RTDB-free. Media-playback-sync later reuses
-this same pattern.
+### Slice B — Call-invite mailbox → Durable Object ✅ SHIPPED (PR #553)
+Call invites now ride the per-user `UserMailbox` DO via
+`src/realtime/mailbox-channel.ts`, consumed by `call-service.ts`; roomId is the
+opaque `conversationId`. The old RTDB `users/{uid}/calls/*` mailbox is gone.
+Residual dead code to delete: `src/features/call/model/call-rtdb-adapter.ts` and
+`room-access-rtdb-adapter.ts` (plus their tests) — no non-test importers remain.
+After Slice A this leaves only Slice C; media-playback-sync later reuses the same
+mailbox pattern.
 
 ### Slice C — Conversation metadata → D1 (last persistence RTDB dep in the spine)
 `createRTDBConversationRepository` (`ConversationNode`) is the only RTDB code left
@@ -85,13 +93,14 @@ RTDB. RTDB then remains only for the peripheral, explicitly-deferred concerns be
   backfilled (decision #2).
 
 ## Cleanup
+- Delete dead RTDB call adapters: `src/features/call/model/call-rtdb-adapter.ts`
+  and `room-access-rtdb-adapter.ts` (+ tests) — superseded by the DO mailbox (#553).
 - Archive/delete branches: `D1-R2-migration`, `codex/d1-conversation-core` (merged),
   plus stale `codex/*` experiment branches.
 - Update `docs/WIP_Architecture/D1_R2_MIGRATION.md` to reflect what actually shipped
   (registry-first path, calls as first consumer) or fold it into a fresh doc.
-- `workers/signaling` stale pnpm config (see `workers/signaling/TODO.md`).
-- Eventually: generate worker `ALLOWED_ORIGINS` from `config/origins.json` instead
-  of hand-syncing three wrangler.jsonc files.
+- Post-cutover: retire the old `hangvidu-files` + `hangvidu-signaling` Workers after
+  the seven-day window (see `BACKEND_CONSOLIDATION_RUNBOOK.md`).
 
 ### Future: eager DM creation on connect-accept (contacts→D1 slice)
 Move DM creation from lazy (on first open) to eager (when a connect request is
