@@ -226,8 +226,14 @@ export class CallHandshakeController {
       return;
     }
 
-    sendIncomingCallPushNotification(nextOutgoingCall);
-
+    const state = this._handshakeState;
+    if (
+      state &&
+      state.direction === 'outgoing' &&
+      state.call.roomId === roomId
+    ) {
+      sendIncomingCallPushNotification(nextOutgoingCall);
+    }
     if (import.meta.env.DEV) {
       console.debug('Initiated outgoing call invite, command details:', {
         details,
