@@ -8,7 +8,7 @@ const UPDATE_CHECK_INTERVAL = 20 * 60 * 1000;
 
 let updateCheckIntervalId = null;
 let visibilityAbortController = null;
-let pendingUpdateSW = null;
+let controllerChangeAbortController = null;
 
 /**
  * Dynamically imports the PWA register module.
@@ -55,16 +55,10 @@ async function checkForUpdates() {
 }
 
 /**
- * Attempts to auto-update. If a call is active, defers until call ends.
+ * Attempts to auto-update immediately.
  * @param {Function} updateSW - The updateSW function from registerSW
  */
 async function attemptAutoUpdate(updateSW) {
-  // TODO: re-enable call check once the state is properly implemented
-  // if (CallController.isInCall()) {
-  //   deferUpdate(updateSW);
-  //   return;
-  // }
-
   try {
     showInfoToast('Updating...', { duration: 2000 });
     await updateSW(true);
@@ -75,29 +69,20 @@ async function attemptAutoUpdate(updateSW) {
 }
 
 /**
- * Defers update until the current call ends.
- * Idempotent — safe to call multiple times while deferred.
- * @param {Function} updateSW - The updateSW function from registerSW
+ * Reloads as soon as an updated service worker takes control.
  */
-function deferUpdate(updateSW) {
-  if (pendingUpdateSW) {
-    pendingUpdateSW = updateSW;
-    return;
-  }
-
-  pendingUpdateSW = updateSW;
-  showInfoToast('Update available — will apply after your call', {
-    duration: 4000,
-  });
-
-  // TODO: re-enable call check once the state is properly implemented
-  // const onCallEnd = () => {
-  //   CallController.off('evt:call:session:cleanup', onCallEnd);
-  //   const sw = pendingUpdateSW;
-  //   pendingUpdateSW = null;
-  //   if (sw) attemptAutoUpdate(sw);
-  // };
-  // CallController.on('evt:call:session:cleanup', onCallEnd);
+function reloadOnControllerChange() {
+  if (!('serviceWorker' in navigator)) return;
+  controllerChangeAbortController = new AbortController();
+  navigator.serviceWorker.addEventListener(
+    'controllerchange',
+    () => {
+      // TODO: Once app updates are stable, defer while p2p.state() !== 'idle'
+      // and later let the user choose when to reload.
+      window.location.reload();
+    },
+    { once: true, signal: controllerChangeAbortController.signal },
+  );
 }
 
 /**
@@ -184,6 +169,11 @@ export function stopUpdateChecks() {
     visibilityAbortController = null;
   }
 
+  if (controllerChangeAbortController !== null) {
+    controllerChangeAbortController.abort();
+    controllerChangeAbortController = null;
+  }
+
   if (updateCheckIntervalId === null && visibilityAbortController === null) {
     console.info('[PWA] Stopped automatic update checks');
   }
@@ -191,7 +181,7 @@ export function stopUpdateChecks() {
 
 /**
  * Sets up PWA update handling with auto-update.
- * Auto-applies updates unless the user is in a call, in which case it defers.
+ * Auto-applies updates immediately.
  * Enables startup, visibility, and periodic checks so updates are detected reliably.
  */
 export async function setupUpdateHandler() {
@@ -220,6 +210,7 @@ export async function setupUpdateHandler() {
     });
 
     // Set up all update check mechanisms
+    reloadOnControllerChange();
     await startupUpdateCheck(updateSW);
     await checkForUpdates();
     visibilityChangeCheck();
