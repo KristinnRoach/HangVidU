@@ -1,10 +1,15 @@
 confirmModulesPurge: false
 
+packages:
+  - backend/cloudflare
+
 allowBuilds:
-  '@firebase/util': set this to true or false
-  esbuild: set this to true or false
-  protobufjs: set this to true or false
-  unrs-resolver: set this to true or false
+  '@firebase/util': true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
+  workerd: true
 
 onlyBuiltDependencies:
   - esbuild
@@ -28,3 +33,5 @@ overrides:
 # First-party scope — our own packages, exempt from the release-age cooldown.
 minimumReleaseAgeExclude:
   - '@kidlib/*'
+  - miniflare@4.20260617.0
+  - wrangler@4.102.0

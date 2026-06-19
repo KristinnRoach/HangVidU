@@ -1,0 +1,24 @@
+{
+  "name": "hangvidu-cloudflare",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Consolidated Cloudflare Worker for HangVidU data, files, and realtime coordination.",
+  "scripts": {
+    "predev": "pnpm migrate:local",
+    "dev": "wrangler dev --env-file .dev.vars.example --var APP_ENV:development --port 8788 --persist-to .wrangler/state --local-protocol https --https-cert-path ../../.certs/localhost.pem --https-key-path ../../.certs/localhost-key.pem",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --run",
+    "migrate:local": "wrangler d1 migrations apply hangvidu-data --local --persist-to .wrangler/state",
+    "migrate:remote": "wrangler d1 migrations apply hangvidu-data --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.16.11",
+    "@cloudflare/workers-types": "^4.20260601.0",
+    "typescript": "^6.0.3",
+    "vite": "7.3.5",
+    "vitest": "^4.1.2",
+    "wrangler": "^4.102.0"
+  }
+}

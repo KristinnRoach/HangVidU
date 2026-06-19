@@ -1,7 +1,7 @@
 /**
  * Call-mailbox wire protocol — single source of truth shared by the client
  * transport (`src/realtime/mailbox-channel.ts`) and the Durable Object
- * (`workers/data/src/user-mailbox.ts`).
+ * (`backend/cloudflare/src/realtime/user-mailbox.ts`).
  *
  * Transport-agnostic and side-agnostic: no D1, Firebase, DOM, or Workers types.
  * The mailbox is per-user and broadcast-only within that user's connections: the

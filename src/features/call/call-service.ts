@@ -4,6 +4,7 @@ import {
 } from '../../realtime/mailbox-channel';
 import type { CallInvite, CallResponse } from './model/call-schema';
 import { CALLING_TTL_MS } from '../../../shared/constants';
+import { reportApiAuthFailure } from '../../infra/api-auth-failure.js';
 
 export type IncomingCallEvent =
   | { type: 'invite'; invite: CallInvite }
@@ -12,7 +13,7 @@ export type IncomingCallEvent =
 
 interface CallServiceOptions {
   localUID: string;
-  /** Data worker base URL (VITE_DATA_URL). */
+  /** Consolidated HangVidU API base URL. */
   baseUrl: string;
   /** Fresh Firebase ID token provider, or null when logged out. */
   getToken: () => Promise<string | null>;
@@ -83,6 +84,11 @@ export class CallService {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
+      if (res.status === 401) {
+        const detail = await res.text().catch(() => '');
+        reportApiAuthFailure(`call ${path}`, res.status, detail);
+        throw new Error(`[CallService] ${path} failed: ${res.status} ${detail}`);
+      }
       throw new Error(`[CallService] ${path} failed: ${res.status}`);
     }
   }

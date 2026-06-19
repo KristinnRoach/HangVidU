@@ -12,17 +12,11 @@ import {
   type D1MessageClient,
 } from '../features/messaging-next/adapters/d1';
 import type { MessageRepository } from '../features/messaging-next/interfaces.js';
-
-function dataBaseUrl(): string {
-  return (
-    (import.meta.env.VITE_DATA_URL as string | undefined) ??
-    'http://localhost:8788'
-  );
-}
+import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 
 export function createD1MessageRepositoryFromEnv(): MessageRepository {
   const http = getConversationsClient();
-  const baseUrl = dataBaseUrl();
+  const baseUrl = getHangViduApiBaseUrl();
 
   const client: D1MessageClient = {
     loadMessages: (conversationId) => http.loadMessages(conversationId),

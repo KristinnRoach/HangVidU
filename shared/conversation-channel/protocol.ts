@@ -1,6 +1,6 @@
 /**
  * Conversation-channel wire protocol — single source of truth shared by the
- * client transport (`src/realtime/`) and the Durable Object (`workers/data/`).
+ * client transport (`src/realtime/`) and the consolidated Cloudflare Worker.
  *
  * Transport-agnostic and side-agnostic: no D1, Firebase, DOM, or Workers types.
  * The channel is broadcast-only: the worker authenticates + membership-guards

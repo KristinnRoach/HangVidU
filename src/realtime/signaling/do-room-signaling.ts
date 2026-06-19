@@ -12,6 +12,7 @@ import {
   type SignalingSocket,
 } from '../signaling-socket';
 import type { RelayChannel, ServerMessage } from '../protocol';
+import { buildHangViduWebSocketUrl } from '../../infra/hangvidu-api-url';
 
 /**
  * Durable Object `P2PRoomSignaling` — drop-in replacement for
@@ -34,10 +35,9 @@ interface RelaySubscription {
 }
 
 function signalingUrl(roomId: string): string {
-  const base = (import.meta.env.VITE_SIGNALING_URL ?? 'ws://localhost:8787')
-    .trim()
-    .replace(/\/$/, '');
-  return `${base}/rooms/${encodeURIComponent(roomId)}/signal`;
+  return buildHangViduWebSocketUrl(
+    `/rooms/${encodeURIComponent(roomId)}/signal`,
+  );
 }
 
 export function createDoRoomSignaling({

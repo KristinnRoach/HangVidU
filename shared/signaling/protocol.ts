@@ -1,6 +1,6 @@
 /**
  * Signaling wire protocol — single source of truth shared by the client
- * transport (`src/realtime/`) and the Durable Object worker (`workers/signaling/`).
+ * transport (`src/realtime/`) and the consolidated Cloudflare Worker.
  *
  * Transport-agnostic and side-agnostic: no RTDB, Firebase, DOM, or Workers types.
  * The Durable Object is a dumb relay — it understands `join`/`leave`/`relay`

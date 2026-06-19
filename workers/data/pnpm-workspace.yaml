@@ -1,9 +1,0 @@
-# Supply-chain hygiene: only these deps may run install/build scripts.
-# pnpm 11 renamed `onlyBuiltDependencies` → `allowBuilds` (true/false per pkg).
-allowBuilds:
-  esbuild: true
-  workerd: true
-  sharp: true
-minimumReleaseAgeExclude:
-  - miniflare@4.20260617.0
-  - wrangler@4.102.0

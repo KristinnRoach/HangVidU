@@ -115,15 +115,18 @@ packages:
   - backend/cloudflare
 ```
 
-Replace all four placeholder `allowBuilds` values with `true`, matching the
-existing `onlyBuiltDependencies` intent:
+Replace all four existing placeholder `allowBuilds` values with `true`, matching
+the existing `onlyBuiltDependencies` intent. Also allow the `sharp` and
+`workerd` install scripts required by the consolidated Cloudflare toolchain:
 
 ```yaml
 allowBuilds:
   '@firebase/util': true
   esbuild: true
   protobufjs: true
+  sharp: true
   unrs-resolver: true
+  workerd: true
 ```
 
 The package provides `dev`, `deploy`, `typecheck`, `test`, `migrate:local`, and

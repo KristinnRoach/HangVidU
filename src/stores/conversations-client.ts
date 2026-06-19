@@ -7,16 +7,14 @@ import {
   createConversationsClient,
   type ConversationsClient,
 } from '../storage/conversations/data-client';
+import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 
 let client: ConversationsClient | null = null;
 
 export function getConversationsClient(): ConversationsClient {
   if (client) return client;
-  const baseUrl =
-    (import.meta.env.VITE_DATA_URL as string | undefined) ??
-    'http://localhost:8788';
   client = createConversationsClient({
-    baseUrl,
+    baseUrl: getHangViduApiBaseUrl(),
     getToken: getLoggedInUserToken,
   });
   return client;

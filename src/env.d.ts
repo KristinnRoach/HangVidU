@@ -22,15 +22,11 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_PWA: string;
   readonly VITE_SENTRY_DSN: string;
 
-  // Realtime signaling (Cloudflare Durable Object worker)
-  readonly VITE_SIGNALING_URL: string;
+  // Consolidated HangVidU-owned Cloudflare API
+  readonly VITE_HANGVIDU_API_URL: string;
+
+  // Realtime signaling implementation
   readonly VITE_SIGNALING_BACKEND: 'do' | 'rtdb';
-
-  // R2-backed file storage worker
-  readonly VITE_FILES_URL: string;
-
-  // D1-backed message persistence worker
-  readonly VITE_DATA_URL: string;
 }
 
 interface ImportMeta {

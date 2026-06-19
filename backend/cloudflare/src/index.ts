@@ -1,0 +1,37 @@
+import { handleDataRequest } from './data/handlers';
+import { handleFilesRequest } from './files/handlers';
+import { handleSignalingRequest } from './realtime/signaling-handler';
+import type { WorkerEnv } from './types';
+
+export { ConversationChannel } from './realtime/conversation-channel';
+export { SignalingRoom } from './realtime/signaling-room';
+export { UserMailbox } from './realtime/user-mailbox';
+
+const FILES_PATH = /^\/conversations\/[^/]+\/files\/(?:images|object)$/;
+const SIGNALING_PATH = /^\/rooms\/[^/]+\/signal$/;
+const DATA_PATHS = [
+  /^\/health$/,
+  /^\/me$/,
+  /^\/calls\/(?:invite|response|cancel)$/,
+  /^\/users\/me\/mailbox\/ws$/,
+  /^\/conversations$/,
+  /^\/conversations\/resolve-direct$/,
+  /^\/conversations\/[^/]+\/(?:messages|ws)$/,
+  /^\/conversations\/[^/]+$/,
+];
+
+export default {
+  async fetch(request: Request, env: WorkerEnv): Promise<Response> {
+    const { pathname } = new URL(request.url);
+    if (FILES_PATH.test(pathname)) {
+      return handleFilesRequest(request, env);
+    }
+    if (SIGNALING_PATH.test(pathname)) {
+      return handleSignalingRequest(request, env);
+    }
+    if (DATA_PATHS.some((pattern) => pattern.test(pathname))) {
+      return handleDataRequest(request, env);
+    }
+    return new Response('Not found', { status: 404 });
+  },
+} satisfies ExportedHandler<WorkerEnv>;
