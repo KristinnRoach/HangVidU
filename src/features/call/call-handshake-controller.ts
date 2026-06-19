@@ -281,6 +281,7 @@ export class CallHandshakeController {
         if (autoExitOnEmpty) this.exitActiveRoom();
       },
     });
+    if (!room) throw this.p2p.error() ?? new Error('Room join returned no room');
 
     import.meta.env.DEV &&
       room &&
