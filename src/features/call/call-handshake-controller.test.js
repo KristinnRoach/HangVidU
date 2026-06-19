@@ -168,10 +168,12 @@ describe('CallHandshakeController', () => {
   });
 
   it('does not notify accepted when joining the room fails', async () => {
+    const joinError = new Error('camera blocked');
     const p2p = {
-      join: vi.fn(() => Promise.reject(new Error('camera blocked'))),
+      join: vi.fn(() => Promise.resolve(undefined)),
       close: vi.fn(),
       state: vi.fn(() => 'idle'),
+      error: vi.fn(() => joinError),
       room: vi.fn(),
     };
     const controller = new CallHandshakeController({
