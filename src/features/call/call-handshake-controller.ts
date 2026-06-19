@@ -258,7 +258,7 @@ export class CallHandshakeController {
       memberCapacity,
       dataChannel: true,
       onAlone: (detail) => {
-        console.debug('Room is alone:', { detail });
+        if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
         if (autoExitOnEmpty) this.exitActiveRoom();
       },
     });
