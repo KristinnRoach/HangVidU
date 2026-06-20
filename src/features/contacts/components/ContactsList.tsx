@@ -18,7 +18,6 @@ export default function ContactsList() {
                 <ContactEntry
                   id={row.id}
                   name={row.name}
-                  conversationId={row.conversationId}
                   hasUnread={row.hasUnread}
                 />
               )}

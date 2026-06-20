@@ -8,7 +8,6 @@ import { createMessagingRuntime } from '../messaging-next/messaging-runtime.js';
 type ContactRow = {
   id: string;
   name: string | null;
-  conversationId: string | null;
   hasUnread: boolean;
 };
 
@@ -64,7 +63,6 @@ export function useContacts() {
           return {
             id: c.contactId ?? '',
             name: c.contactNickName ?? null,
-            conversationId,
             hasUnread,
             _sortKey: sortKey,
             _name: (c?.contactNickName || '').toLowerCase(),

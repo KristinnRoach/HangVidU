@@ -62,7 +62,6 @@ describe('ContactsRTDBAdapter', () => {
     expect(result).toEqual({
       contactId: 'u1',
       contactNickName: 'Alice',
-      conversationId: null,
       roomId: 'room-2',
       savedAt: 10,
       lastInteractionAt: 30,
@@ -103,7 +102,6 @@ describe('ContactsRTDBAdapter', () => {
     await expect(adapter.get('u1')).resolves.toEqual({
       contactId: 'u1',
       contactNickName: '',
-      conversationId: undefined,
       roomId: 'room-1',
       savedAt: 10,
       lastInteractionAt: 20,
@@ -151,8 +149,7 @@ describe('ContactsRTDBAdapter', () => {
       {
         contactId: 'u1',
         contactNickName: 'Alice',
-        conversationId: undefined,
-        roomId: 'room-1',
+          roomId: 'room-1',
         savedAt: 10,
         lastInteractionAt: 20,
       },
@@ -189,8 +186,7 @@ describe('ContactsRTDBAdapter', () => {
       {
         contactId: 'u1',
         contactNickName: 'Alice',
-        conversationId: null,
-        roomId: 'room-2',
+          roomId: 'room-2',
         savedAt: 10,
         lastInteractionAt: 30,
       },
@@ -198,7 +194,6 @@ describe('ContactsRTDBAdapter', () => {
     expect(result).toEqual({
       contactId: 'u1',
       contactNickName: 'Alice',
-      conversationId: null,
       roomId: 'room-2',
       savedAt: 10,
       lastInteractionAt: 30,
@@ -232,7 +227,6 @@ describe('ContactsRTDBAdapter', () => {
     expect(result).toEqual({
       contactId: 'u1',
       contactNickName: 'Alice',
-      conversationId: null,
       roomId: 'room-2',
       savedAt: 10,
       lastInteractionAt: 30,

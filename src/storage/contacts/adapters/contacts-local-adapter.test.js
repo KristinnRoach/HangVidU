@@ -38,7 +38,6 @@ describe('ContactsLocalAdapter', () => {
     expect(result).toEqual({
       contactId: 'u1',
       contactNickName: 'Alice',
-      conversationId: null,
       roomId: 'room-1',
       savedAt: 10,
       lastInteractionAt: 30,
@@ -81,7 +80,6 @@ describe('ContactsLocalAdapter', () => {
     await expect(legacyAdapter.get('u2')).resolves.toEqual({
       contactId: 'u2',
       contactNickName: '',
-      conversationId: undefined,
       roomId: 'room-2',
       savedAt: 11,
       lastInteractionAt: 22,
