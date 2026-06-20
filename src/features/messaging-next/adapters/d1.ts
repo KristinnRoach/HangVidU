@@ -13,7 +13,12 @@
 // Scope (decision 2026-06-15 #5): text + file messages with live push. The
 // reaction/read methods are inert (deferred to the fast-follow).
 
-import type { IncomingMessage, MessageRepository, ReactionMap } from '../interfaces.js';
+import type {
+  ConversationActivity,
+  IncomingMessage,
+  MessageRepository,
+  ReactionMap,
+} from '../interfaces.js';
 import type { ConversationId, MessageEnvelope, UserId } from '../types.js';
 import type { WireMessage } from '../../../realtime/conversation-protocol';
 
@@ -50,6 +55,38 @@ export interface D1MessageClient {
 
 const noop = () => {};
 const EMPTY_REACTIONS: ReactionMap = {};
+
+// ── Per-device read state ──────────────────────────────────────────────────
+// lastReadAt lives in localStorage keyed by conversation. ponytail: per-device,
+// not synced across devices — the contract (markConversationRead / lastReadAt)
+// is identical to a server-backed version, so swapping to D1 later is internal
+// to this adapter, no UI or interface change.
+const readKey = (conversationId: string) => `hangvidu:lastRead:${conversationId}`;
+
+function getLastReadAt(conversationId: string): number {
+  try {
+    return Number(localStorage.getItem(readKey(conversationId))) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setLastReadAt(conversationId: string, at: number): void {
+  try {
+    localStorage.setItem(readKey(conversationId), String(at));
+  } catch {
+    // localStorage unavailable (SSR/private mode): read state is best-effort.
+  }
+}
+
+// In-process activity subscribers, so markConversationRead re-emits the cleared
+// lastReadAt to the contacts list live on the same device without a reload.
+interface ActivitySub {
+  userId: UserId;
+  state: ConversationActivity;
+  emit: () => void;
+}
+const activitySubs = new Map<string, Set<ActivitySub>>();
 
 // Cap the in-memory live window so long-lived sessions don't grow unbounded.
 // Matches the rtdb adapter's RECENT_MESSAGES_WINDOW.
@@ -177,15 +214,62 @@ export function createD1MessageRepository(
       return { id: stored.id, sentAt: stored.sentAt };
     },
 
-    // Read receipts are deferred (decision #5); marking is a no-op for now.
-    markConversationRead() {},
+    markConversationRead(conversationId, _userId) {
+      const subs = activitySubs.get(conversationId);
+      // Clamp past the newest known message so clock skew can't leave a stale
+      // badge: a read always wins over a message we've already seen.
+      let readAt = Date.now();
+      if (subs) for (const s of subs) readAt = Math.max(readAt, s.state.latestSentAt);
+      setLastReadAt(conversationId, readAt);
+      if (subs)
+        for (const s of subs) {
+          s.state.lastReadAt = readAt;
+          s.emit();
+        }
+    },
 
-    // Activity / unread badges are deferred (decision #5). The contacts list
-    // watches this for every contact; doing real work here would resolve+load
-    // per contact. Emit one zero snapshot to satisfy the contract, no network.
-    watchConversationActivity(_conversationId, _userId, onChange) {
-      onChange({ latestSentAt: 0, latestSenderId: null, lastReadAt: 0 });
-      return noop;
+    // Derive activity from the live conversation channel: initial snapshot seeds
+    // latest*, each broadcast advances it. lastReadAt comes from localStorage and
+    // is updated in-process by markConversationRead. ponytail: one WS + one
+    // loadMessages per watched conversation — fine for a small contact list;
+    // upgrade path is a single per-user activity stream if lists grow large.
+    watchConversationActivity(conversationId, userId, onChange, onError) {
+      const state: ConversationActivity = {
+        latestSentAt: 0,
+        latestSenderId: null,
+        lastReadAt: getLastReadAt(conversationId),
+      };
+      const sub: ActivitySub = {
+        userId,
+        state,
+        emit: () => onChange({ ...state }),
+      };
+      let subs = activitySubs.get(conversationId);
+      if (!subs) activitySubs.set(conversationId, (subs = new Set()));
+      subs.add(sub);
+
+      const advance = (m: WireMessage) => {
+        if (m.sentAt <= state.latestSentAt) return;
+        state.latestSentAt = m.sentAt;
+        state.latestSenderId = m.senderId as UserId;
+        sub.emit();
+      };
+
+      const off = client.subscribe(conversationId, advance);
+
+      sub.emit(); // satisfy the contract: emit current state immediately.
+      void client
+        .loadMessages(conversationId)
+        .then((rows) => {
+          for (const m of rows) advance(m); // advance() keeps only the newest.
+        })
+        .catch((error) => onError?.(error));
+
+      return () => {
+        off();
+        subs?.delete(sub);
+        if (subs && subs.size === 0) activitySubs.delete(conversationId);
+      };
     },
 
     // Reactions are deferred (decision #5).
