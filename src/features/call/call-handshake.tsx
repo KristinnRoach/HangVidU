@@ -75,6 +75,34 @@ export function CallHandshakeProvider(props: ParentProps) {
     declineIncoming: controller.declineIncoming,
   };
 
+  // Auto-answer when the app was opened from a push notification's explicit
+  // "Accept" action (SW appends ?accept=1). No-ops on a plain body click or if
+  // no matching invite arrives, falling back to the in-app dialog (one tap).
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const hasAcceptMarker = params.get('accept') === '1';
+    let wantAcceptRoomId = hasAcceptMarker ? params.get('room') : null;
+    if (hasAcceptMarker) {
+      // Strip the marker so a reload/back doesn't re-trigger the accept.
+      params.delete('accept');
+      const query = params.toString();
+      window.history.replaceState(
+        null,
+        '',
+        query
+          ? `${window.location.pathname}?${query}`
+          : window.location.pathname,
+      );
+    }
+    createEffect(() => {
+      const call = incomingCall();
+      if (wantAcceptRoomId && call?.roomId === wantAcceptRoomId) {
+        wantAcceptRoomId = null;
+        controller.acceptIncoming();
+      }
+    });
+  }
+
   // Re-attach the incoming-call listener whenever the logged-in user changes.
   // A one-shot init at mount missed the common case where login completes
   // AFTER mount (the listener never attached → no incoming-call dialog until a

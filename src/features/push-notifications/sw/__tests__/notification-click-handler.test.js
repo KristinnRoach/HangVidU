@@ -19,6 +19,15 @@ describe('notification click routing', () => {
     ).toBe('/?room=room-123');
   });
 
+  it('marks the incoming-call path for auto-accept on the explicit accept action', () => {
+    expect(
+      getNotificationNavigationPath(
+        { type: 'incoming_call', roomId: 'room-123' },
+        'accept',
+      ),
+    ).toBe('/?room=room-123&accept=1');
+  });
+
   it('routes missed calls explicitly to caller contact first, then room fallback', () => {
     expect(
       getNotificationNavigationPath({

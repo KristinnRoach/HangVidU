@@ -7,7 +7,11 @@ export function getNotificationNavigationPath(data, action) {
   const { type, roomId, senderId, callerId, conversationId } = data || {};
 
   if (isIncomingCallType(type)) {
-    return roomId ? `/?room=${encodeURIComponent(roomId)}` : '/';
+    if (!roomId) return '/';
+    const path = `/?room=${encodeURIComponent(roomId)}`;
+    // The explicit "Accept" notification action (where supported) auto-answers;
+    // a plain body click just opens the in-app incoming-call dialog.
+    return action === 'accept' ? `${path}&accept=1` : path;
   }
 
   if (type === 'missed_call') {
