@@ -90,18 +90,8 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
     vi.clearAllMocks();
     mocks.subscriptions.clear();
     mocks.contacts = [
-      {
-        id: 'contact-1',
-        name: 'Alice',
-        conversationId: 'conv-1',
-        unreadCount: 0,
-      },
-      {
-        id: 'contact-2',
-        name: 'Bob',
-        conversationId: 'conv-2',
-        unreadCount: 0,
-      },
+      { id: 'contact-1', name: 'Alice', hasUnread: false },
+      { id: 'contact-2', name: 'Bob', hasUnread: false },
     ];
     mocks.isLoading = false;
   });
@@ -128,40 +118,6 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
 
     expect(container.querySelector('[role="status"]')).not.toBeNull();
     expect(container.textContent).not.toContain('contact.none');
-
-    unmount();
-  });
-
-  // TODO(SOLIDJS_POC): DOM update for Show/badge doesn't propagate in jsdom
-  // within the same microtask. Store update IS captured (see
-  // `expect(contacts[0].unreadCount).toBe(3)`). Likely a test-environment
-  // interaction with Solid's scheduler — not a regression in production code.
-  it.skip('reflects unread count via the messaging event bridge', async () => {
-    const ContactsListModule = await import('./ContactsList.tsx');
-
-    const { container, unmount } = render(() => <ContactsListModule.default />);
-
-    expect(mocks.dispatchCommand).toHaveBeenCalledWith(
-      'cmd:messaging:conversation:unread-count-listen',
-      { conversationId: 'conv-1' },
-    );
-
-    const { contacts } = await import('./ContactsList.tsx');
-
-    const unreadHandler = mocks.subscriptions.get(
-      'evt:messaging:conversation:unread-count-changed',
-    );
-    unreadHandler?.({ conversationId: 'conv-1', unreadCount: 3 });
-
-    // Solid flushes reactive updates asynchronously; wait a microtask.
-    await Promise.resolve();
-    await Promise.resolve();
-
-    // Sanity: the store recorded the update.
-    expect(contacts[0].unreadCount).toBe(3);
-
-    const badge = container.querySelector('.unread-badge');
-    expect(badge?.textContent).toBe('3');
 
     unmount();
   });

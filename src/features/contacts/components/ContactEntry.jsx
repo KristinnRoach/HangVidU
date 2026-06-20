@@ -21,7 +21,6 @@ function shortName(name) {
  * Props (reactive; read via `props.x` not destructuring to preserve reactivity):
  *   id: string
  *   name: string|null
- *   conversationId: string|null
  *   hasUnread: boolean
  */
 export default function ContactEntry(props) {

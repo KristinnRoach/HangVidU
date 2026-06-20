@@ -7,7 +7,6 @@ import { z } from 'zod';
  * @property {string} contactId
  * @property {string} contactNickName
  * @property {string|null} roomId
- * @property {string|null|undefined} [conversationId]
  * @property {number} savedAt
  * @property {number} lastInteractionAt
  */
@@ -17,7 +16,6 @@ import { z } from 'zod';
  * @typedef {Object} ContactPatch
  * @property {string} [contactNickName]
  * @property {string|null} [roomId]
- * @property {string|null} [conversationId]
  * @property {number} [savedAt]
  * @property {number} [lastInteractionAt]
  */
@@ -52,20 +50,6 @@ export const ContactRoomIdSchema = z.preprocess((value) => {
   return normalized || null;
 }, z.string().min(1).nullable());
 
-/** @type {import('zod').ZodType<string|null>} */
-export const ContactConversationIdSchema = z.preprocess((value) => {
-  if (value == null) {
-    return null;
-  }
-
-  if (typeof value !== 'string') {
-    return value;
-  }
-
-  const normalized = value.trim();
-  return normalized || null;
-}, z.string().min(1).nullable());
-
 /** @type {import('zod').ZodType<number>} */
 export const ContactTimestampSchema = z
   .number()
@@ -77,7 +61,6 @@ export const ContactRecordSchema = z.object({
   contactId: ContactIdSchema,
   contactNickName: ContactNickNameSchema,
   roomId: ContactRoomIdSchema,
-  conversationId: ContactConversationIdSchema.optional(),
   savedAt: ContactTimestampSchema,
   lastInteractionAt: ContactTimestampSchema,
 });
@@ -87,7 +70,6 @@ export const ContactPatchSchema = z
   .object({
     contactNickName: ContactNickNameSchema.optional(),
     roomId: ContactRoomIdSchema.optional(),
-    conversationId: ContactConversationIdSchema.optional(),
     savedAt: ContactTimestampSchema.optional(),
     lastInteractionAt: ContactTimestampSchema.optional(),
   })

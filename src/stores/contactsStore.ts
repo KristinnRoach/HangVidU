@@ -81,14 +81,12 @@ export async function saveContact(
     const existing = await repo.get(contactId);
     const now = Date.now();
     // Opaque conversation ids are minted lazily by the registry on first open
-    // (resolveDirectConversationId); contacts no longer carry a derived id.
-    const conversationId = existing?.conversationId ?? null;
+    // (resolveDirectConversationId); contacts do not carry a conversation id.
 
     const contact = await repo.put({
       contactId,
       contactNickName,
       roomId,
-      conversationId,
       savedAt: existing?.savedAt ?? now,
       lastInteractionAt: existing?.lastInteractionAt ?? now,
     });
