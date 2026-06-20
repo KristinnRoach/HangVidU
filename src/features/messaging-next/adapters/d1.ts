@@ -82,6 +82,8 @@ function setLastReadAt(conversationId: string, at: number): void {
 // In-process activity subscribers, so markConversationRead re-emits the cleared
 // lastReadAt to the contacts list live on the same device without a reload.
 interface ActivitySub {
+  // Unused by the per-device impl; the #563 server-backed version keys read
+  // state by (conversation, user). Kept for parity with the in-memory adapter.
   userId: UserId;
   state: ConversationActivity;
   emit: () => void;
