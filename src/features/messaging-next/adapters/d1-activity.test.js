@@ -68,10 +68,9 @@ describe('d1 adapter watchConversationActivity', () => {
     repo.markConversationRead('c1', 'me');
 
     const last = seen.at(-1);
-    // lastReadAt clamps past the newest message so the unread test fails.
+    // lastReadAt is never earlier than the newest message, so the unread
+    // test (latestSentAt > lastReadAt) is false: badge cleared.
     expect(last.lastReadAt).toBeGreaterThanOrEqual(500);
-    expect(last.lastReadAt > last.latestSentAt || last.latestSentAt === 0).toBe(
-      true,
-    );
+    expect(last.lastReadAt).toBeGreaterThanOrEqual(last.latestSentAt);
   });
 });

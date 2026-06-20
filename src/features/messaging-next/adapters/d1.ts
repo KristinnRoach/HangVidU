@@ -214,6 +214,8 @@ export function createD1MessageRepository(
       return { id: stored.id, sentAt: stored.sentAt };
     },
 
+    // _userId is unused: per-device read state is keyed by conversation only,
+    // not scoped per user. A server-backed version would use it (see #563).
     markConversationRead(conversationId, _userId) {
       const subs = activitySubs.get(conversationId);
       // Clamp past the newest known message so clock skew can't leave a stale
