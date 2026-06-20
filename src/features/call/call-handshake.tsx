@@ -80,9 +80,9 @@ export function CallHandshakeProvider(props: ParentProps) {
   // no matching invite arrives, falling back to the in-app dialog (one tap).
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
-    let wantAcceptRoomId =
-      params.get('accept') === '1' ? params.get('room') : null;
-    if (wantAcceptRoomId) {
+    const hasAcceptMarker = params.get('accept') === '1';
+    let wantAcceptRoomId = hasAcceptMarker ? params.get('room') : null;
+    if (hasAcceptMarker) {
       // Strip the marker so a reload/back doesn't re-trigger the accept.
       params.delete('accept');
       const query = params.toString();
