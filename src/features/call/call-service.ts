@@ -168,16 +168,8 @@ export class CallService {
     });
   }
 
-  timeoutOutgoingCall(args: {
-    recipientUID: string;
-    roomId: string;
-  }): Promise<void> {
-    return this.cancelOutgoingCall(args);
-  }
-
   /** Responses addressed to this user (the caller); filters expired/stale. */
   onCalleeResponse(
-    _calleeId: string,
     callback: (response: CallResponse | null) => void,
   ): () => void {
     return this.subscribe((envelope) => {
@@ -189,11 +181,6 @@ export class CallService {
 
   ackCallResponse(roomId: string): Promise<void> {
     return this.post('/calls/response/ack', { conversationId: roomId });
-  }
-
-  /** No stored invite to clear in the mailbox model; cancel is explicit. */
-  clearIncomingCallInvite(): Promise<void> {
-    return Promise.resolve();
   }
 
   cleanup(): void {

@@ -75,7 +75,7 @@ export function createFilesClient({
       file: File,
     ): Promise<R2StorageDescriptor> {
       const response = await fetch(
-        `${conversationFilesUrl(conversationId)}/images`, // ! TODO: Change endpoint from "images" since this is for all files!
+        conversationFilesUrl(conversationId),
         {
           method: 'POST',
           headers: {

@@ -134,6 +134,11 @@ describe('files client', () => {
       ),
     ).rejects.toThrow('file upload failed: 401 unauthorized');
 
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://files.example.com/conversations/conversation-1/files',
+      expect.objectContaining({ method: 'POST' }),
+    );
+
     expect(mocks.reportApiAuthFailure).toHaveBeenCalledWith(
       'files upload conversation-1',
       401,
