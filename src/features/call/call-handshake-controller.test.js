@@ -12,7 +12,8 @@ const mocks = vi.hoisted(() => ({
   }),
   respondToIncomingCallInvite: vi.fn(),
   sendOutgoingCallInvite: vi.fn(),
-  onCalleeResponse: vi.fn((_calleeId, callback) => {
+  cancelOutgoingCall: vi.fn(),
+  onCalleeResponse: vi.fn((callback) => {
     mocks.responseCallback = callback;
     return vi.fn();
   }),
@@ -74,6 +75,7 @@ describe('CallHandshakeController', () => {
       onIncomingCall: mocks.onIncomingCall,
       respondToIncomingCallInvite: mocks.respondToIncomingCallInvite,
       sendOutgoingCallInvite: mocks.sendOutgoingCallInvite,
+      cancelOutgoingCall: mocks.cancelOutgoingCall,
       onCalleeResponse: mocks.onCalleeResponse,
       ackCallResponse: mocks.ackCallResponse,
     };

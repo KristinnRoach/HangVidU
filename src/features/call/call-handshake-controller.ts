@@ -191,43 +191,40 @@ export class CallHandshakeController {
 
     let responseReceived = false;
     this.unsubCalleeResponse?.();
-    this.unsubCalleeResponse = svc.onCalleeResponse(
-      calleeId,
-      async (response) => {
-        if (!response || response.roomId !== roomId) return;
-        responseReceived = true;
-        this.clearOutgoingCallTracking();
-        try {
-          if (response.responseType === 'accepted') {
-            await this.enterRoom(
-              response.roomId,
-              localUID,
-              nextOutgoingCall.audioOnly,
-            );
-          } else if (response.responseType === 'busy') {
-            this.setCalleeBusy(true);
-            this.clearCalleeBusyResetTimeout();
-            this.calleeBusyResetTimeoutId = setTimeout(() => {
-              this.calleeBusyResetTimeoutId = undefined;
-              this.setCalleeBusy(false);
-            }, 2_500);
-          }
-        } catch (err) {
-          console.error('Error entering room on callee accept:', err);
-          this.exitActiveRoom();
-        } finally {
-          svc
-            .ackCallResponse(response.roomId)
-            .catch((err) =>
-              console.warn(
-                '[CallHandshake] Failed to acknowledge call response:',
-                err,
-              ),
-            );
-          this.setHandshakeState(null);
+    this.unsubCalleeResponse = svc.onCalleeResponse(async (response) => {
+      if (!response || response.roomId !== roomId) return;
+      responseReceived = true;
+      this.clearOutgoingCallTracking();
+      try {
+        if (response.responseType === 'accepted') {
+          await this.enterRoom(
+            response.roomId,
+            localUID,
+            nextOutgoingCall.audioOnly,
+          );
+        } else if (response.responseType === 'busy') {
+          this.setCalleeBusy(true);
+          this.clearCalleeBusyResetTimeout();
+          this.calleeBusyResetTimeoutId = setTimeout(() => {
+            this.calleeBusyResetTimeoutId = undefined;
+            this.setCalleeBusy(false);
+          }, 2_500);
         }
-      },
-    );
+      } catch (err) {
+        console.error('Error entering room on callee accept:', err);
+        this.exitActiveRoom();
+      } finally {
+        svc
+          .ackCallResponse(response.roomId)
+          .catch((err) =>
+            console.warn(
+              '[CallHandshake] Failed to acknowledge call response:',
+              err,
+            ),
+          );
+        this.setHandshakeState(null);
+      }
+    });
 
     try {
       await svc.sendOutgoingCallInvite({
@@ -325,7 +322,7 @@ export class CallHandshakeController {
       this.setHandshakeState(null);
       this.clearOutgoingCallTracking();
       callService
-        .timeoutOutgoingCall({
+        .cancelOutgoingCall({
           recipientUID: call.calleeId,
           roomId: call.roomId,
         })

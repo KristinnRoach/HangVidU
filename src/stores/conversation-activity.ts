@@ -23,7 +23,7 @@ import {
 } from '../realtime/user-mailbox';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 
-export interface ParticipantActivity {
+interface ParticipantActivity {
   conversationId: string;
   latestSentAt: number;
   latestSenderId: string | null;
@@ -36,13 +36,11 @@ const [readVersion, setReadVersion] = createSignal(0);
 
 /** Reactive: participant uid -> latest activity. Read in useContacts. */
 export const conversationActivity = activity;
-/** Reactive tick: bumped on markConversationRead so unread re-derives. */
-export const readStateVersion = readVersion;
-
 // ── per-device read state ────────────────────────────────────────────────────
 const readKey = (conversationId: string) => `hangvidu:lastRead:${conversationId}`;
 
 export function getLastReadAt(conversationId: string): number {
+  readVersion();
   try {
     return Number(localStorage.getItem(readKey(conversationId))) || 0;
   } catch {

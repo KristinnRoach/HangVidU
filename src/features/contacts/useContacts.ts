@@ -5,7 +5,6 @@ import { getContactsStore } from '../../stores/contactsStore.js';
 import {
   conversationActivity,
   getLastReadAt,
-  readStateVersion,
   startConversationActivity,
 } from '../../stores/conversation-activity';
 
@@ -25,7 +24,6 @@ export function useContacts() {
     createEffect(() => {
       const me = getLoggedInUserId();
       const activity = conversationActivity(); // reactive: participant uid -> activity
-      readStateVersion(); // re-run when a conversation is marked read
 
       const rows: ContactRow[] = Object.values(contactsState.byId)
         .map((c: any) => {
