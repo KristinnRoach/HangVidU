@@ -2,7 +2,7 @@
 
 > Migration from Firebase-coupled code to backend-agnostic interfaces with
 > Cloudflare implementations (D1 / R2 / Durable Objects), keyed by an opaque
-> `conversationId`. Last updated: 2026-06-19.
+> `conversationId`. Last updated: 2026-06-21.
 
 > Server side is now a **single Cloudflare Worker** at `backend/cloudflare/`
 > (deployed script name `hangvidu-data`), organized by capability folder
@@ -15,13 +15,13 @@
 | Concern | Backend | Status |
 | --- | --- | --- |
 | WebRTC room signaling | Durable Object (`realtime/`) | ✅ Live, default (`VITE_SIGNALING_BACKEND=do`) |
-| Image files | R2 (`files/`) | ✅ Live — authz reads D1 membership (PR #536) |
+| Attachments | R2 (`files/`) | ✅ Live — authz reads D1 membership (PR #536) |
 | Conversation registry | D1 (`data/`) | ✅ Live (PR #534) — users, conversations, members; opaque UUID ids |
 | Call room handle | Opaque `conversationId` from registry | ✅ Live (PR #535) — fallback to one-off UUID if registry unreachable |
 | Messages | D1 (`data/`) | ✅ Live (PR #536) — D1 persistence + `ConversationChannel` DO live push. Legacy RTDB message path + derived-`a_b` id plumbing removed from the client (PR #551); only RTDB rules/data deletion remains (see Deferred below) |
 | Live message push | Durable Object (`ConversationChannel`) | ✅ Live (PR #536) |
-| Call-invite mailbox | Durable Object (`UserMailbox`, `realtime/mailbox-channel.ts`) | ✅ Live (PR #553) — replaced the RTDB `users/{uid}/calls/*` mailbox; `call-rtdb-adapter.ts` + `room-access-rtdb-adapter.ts` are now dead code |
-| Conversation metadata | Firebase RTDB | ⬜ To migrate (Slice C) — `d1.ts` adapter built but not wired; `messaging-runtime.ts` still uses `createRTDBConversationRepository` |
+| Per-user mailbox | Durable Object (`UserMailbox`, `realtime/mailbox-channel.ts`) | ✅ Live (PRs #553, #565) — carries call events and conversation activity; replaced the RTDB `users/{uid}/calls/*` mailbox |
+| Conversation metadata | Firebase RTDB | ⬜ To migrate (Slice C) — `messaging-runtime.ts` still uses `createRTDBConversationRepository` |
 | Contacts, user profiles | Firebase RTDB | ⬜ To migrate (later, lowest priority) |
 | Auth | Firebase Auth | Stays for now (workers verify ID tokens via a swappable `auth.ts` seam) |
 
@@ -31,11 +31,12 @@ opaque id" — exists and is exercised by calls (`src/stores/conversations-clien
 ## Remaining steps (in order)
 
 ### 1. Messages + files on opaque ids ✅ SHIPPED (PR #536)
-Messages, attachments and reactions are on D1 (migration `0002`); `workers/files`
-authz reads the D1 registry; R2 keys are `{conversationId}/{fileId}`; live push runs
-through the `ConversationChannel` DO. Started clean — old derived-`a_b` history was
-not backfilled (decision #2). Code default is `d1`; the dormant RTDB message path
-and derived-id plumbing were retired in PR #551 (see step 2).
+Messages, attachments and reactions are on D1 (migration `0002`); `files/`
+authz reads the D1 registry; R2 keys are
+`conversation-files/{conversationId}/{objectId}`; live push runs through the
+`ConversationChannel` DO. Started clean — old derived-`a_b` history was not
+backfilled (decision #2). Code default is `d1`; the dormant RTDB message path and
+derived-id plumbing were retired in PR #551 (see step 2).
 
 ### 2. Retire derived-id plumbing ✅ SHIPPED (PR #551)
 Forward `a_b` derivation is gone: the message backend is d1-only, `saveContact`
@@ -71,9 +72,10 @@ mailbox pattern.
 
 ### Slice C — Conversation metadata → D1 (last persistence RTDB dep in the spine)
 `createRTDBConversationRepository` (`ConversationNode`) is the only RTDB code left
-behind the messaging `conversationRepository` port. Add a D1 adapter in
-`workers/data` + a client adapter, swap it in `messaging-runtime.ts`, delete
-`adapters/rtdb.ts`. Fold in the two items that were waiting on this migration:
+behind the messaging `conversationRepository` port. Add a D1-backed client adapter
+using the existing `backend/cloudflare/src/data` endpoints, swap it in
+`messaging-runtime.ts`, and delete `adapters/rtdb.ts`. Fold in the two items that
+were waiting on this migration:
 the `group:`-prefix conversation-id rework (`schema.ts`) and rendering the
 conversation list from `conversation_members` (ContactsList → ConversationList)
 instead of ID-splitting.
