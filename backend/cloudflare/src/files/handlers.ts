@@ -5,12 +5,14 @@ import type { WorkerEnv } from '../types';
 import type { FileObjectStore } from './file-object-store';
 import { R2FileObjectStore } from './r2-file-object-store';
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const AUTHORIZATION_CACHE_TTL_MS = 30 * 1000;
 const AUTHORIZATION_CACHE_MAX_ENTRIES = 500;
 const CONVERSATION_FILE_PREFIX = 'conversation-files';
-const IMAGE_UPLOAD_PATH = /^\/conversations\/([^/]+)\/files\/images$/;
 const FILE_OBJECT_PATH = /^\/conversations\/([^/]+)\/files\/object$/;
+const IMAGE_UPLOAD_PATH = /^\/conversations\/([^/]+)\/files\/images$/;
+// TODO: Wire client uploads to this path, then remove IMAGE_UPLOAD_PATH.
+const FILE_UPLOAD_PATH = /^\/conversations\/([^/]+)\/files$/;
 
 const authorizationCache = new Map<string, number>();
 
@@ -180,7 +182,7 @@ async function authorizeConversation(
 
 async function readCappedBody(request: Request): Promise<ArrayBuffer | null> {
   const contentLength = Number(request.headers.get('Content-Length') ?? '0');
-  if (Number.isFinite(contentLength) && contentLength > MAX_IMAGE_BYTES) {
+  if (Number.isFinite(contentLength) && contentLength > MAX_FILE_BYTES) {
     return null;
   }
 
@@ -195,7 +197,7 @@ async function readCappedBody(request: Request): Promise<ArrayBuffer | null> {
     if (done) break;
 
     totalBytes += value.byteLength;
-    if (totalBytes > MAX_IMAGE_BYTES) {
+    if (totalBytes > MAX_FILE_BYTES) {
       await reader.cancel();
       return null;
     }
@@ -271,10 +273,7 @@ async function handleDownload(
   if (!object) return response(request, env, 'Not found', { status: 404 });
 
   const headers = new Headers();
-  headers.set(
-    'Content-Type',
-    object.contentType ?? 'application/octet-stream',
-  );
+  headers.set('Content-Type', object.contentType ?? 'application/octet-stream');
   headers.set('Content-Length', String(object.size));
   headers.set('ETag', object.etag);
   // Defense-in-depth for user-supplied files (e.g. SVG): neutralize any
@@ -315,65 +314,67 @@ export async function handleFilesRequest(
   request: Request,
   env: WorkerEnv,
 ): Promise<Response> {
-    const store = new R2FileObjectStore(env.FILES_BUCKET);
-    const origin = allowedOrigin(request, env);
-    if (request.method === 'OPTIONS') {
-      if (!origin) return new Response('Forbidden origin', { status: 403 });
-      const headers = new Headers(corsHeaders(origin));
-      appendVaryOrigin(headers);
-      return new Response(null, { status: 204, headers });
-    }
+  const store = new R2FileObjectStore(env.FILES_BUCKET);
+  const origin = allowedOrigin(request, env);
+  if (request.method === 'OPTIONS') {
     if (!origin) return new Response('Forbidden origin', { status: 403 });
+    const headers = new Headers(corsHeaders(origin));
+    appendVaryOrigin(headers);
+    return new Response(null, { status: 204, headers });
+  }
+  if (!origin) return new Response('Forbidden origin', { status: 403 });
 
-    const url = new URL(request.url);
-    const uploadMatch = url.pathname.match(IMAGE_UPLOAD_PATH);
-    const objectMatch = url.pathname.match(FILE_OBJECT_PATH);
-    if (!uploadMatch && !objectMatch) {
-      return response(request, env, 'Not found', { status: 404 });
-    }
+  const url = new URL(request.url);
+  const uploadMatch =
+    url.pathname.match(FILE_UPLOAD_PATH) ??
+    url.pathname.match(IMAGE_UPLOAD_PATH);
+  const objectMatch = url.pathname.match(FILE_OBJECT_PATH);
+  if (!uploadMatch && !objectMatch) {
+    return response(request, env, 'Not found', { status: 404 });
+  }
 
-    const identity = await authenticate(request, env);
-    if (!identity) {
-      return response(request, env, 'Unauthorized', { status: 401 });
-    }
+  const identity = await authenticate(request, env);
+  if (!identity) {
+    return response(request, env, 'Unauthorized', { status: 401 });
+  }
 
-    let conversationId: string;
-    try {
-      conversationId = decodeURIComponent((uploadMatch ?? objectMatch)![1]);
-    } catch {
-      return response(request, env, 'Invalid path', { status: 400 });
-    }
+  let conversationId: string;
+  try {
+    conversationId = decodeURIComponent((uploadMatch ?? objectMatch)![1]);
+  } catch {
+    return response(request, env, 'Invalid path', { status: 400 });
+  }
 
-    const authResult = await authorizeConversation(
-      request,
-      conversationId,
-      identity,
-      env,
-    );
-    if (authResult instanceof Response) {
-      return authResult;
-    }
-    if (!authResult) {
-      return response(request, env, 'Forbidden', { status: 403 });
-    }
+  const authResult = await authorizeConversation(
+    request,
+    conversationId,
+    identity,
+    env,
+  );
+  if (authResult instanceof Response) {
+    return authResult;
+  }
+  if (!authResult) {
+    return response(request, env, 'Forbidden', { status: 403 });
+  }
 
-    if (uploadMatch) {
-      if (request.method !== 'POST') {
-        return response(request, env, 'Method not allowed', { status: 405 });
-      }
-      return handleUpload(request, env, store, conversationId, identity);
+  if (uploadMatch) {
+    if (request.method !== 'POST') {
+      return response(request, env, 'Method not allowed', { status: 405 });
     }
+    return handleUpload(request, env, store, conversationId, identity);
+  }
 
-    const key = storageKeyFromUrl(url, conversationId);
-    if (!key) {
-      return response(request, env, 'Invalid file key', { status: 400 });
-    }
+  const key = storageKeyFromUrl(url, conversationId);
+  if (!key) {
+    return response(request, env, 'Invalid file key', { status: 400 });
+  }
 
-    if (request.method === 'GET') {
-      return handleDownload(request, env, store, key);
-    }
-    if (request.method === 'DELETE') {
-      return handleDelete(request, env, store, key, identity);
-    }
-    return response(request, env, 'Method not allowed', { status: 405 });
+  if (request.method === 'GET') {
+    return handleDownload(request, env, store, key);
+  }
+  if (request.method === 'DELETE') {
+    return handleDelete(request, env, store, key, identity);
+  }
+  return response(request, env, 'Method not allowed', { status: 405 });
 }

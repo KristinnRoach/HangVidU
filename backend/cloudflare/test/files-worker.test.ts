@@ -139,7 +139,7 @@ beforeEach(async () => {
 
 describe('files worker routing + auth', () => {
   it('401s when no bearer token is provided', async () => {
-    const res = await request('/conversations/user-a_user-b/files/images', {
+    const res = await request('/conversations/conversation-1/files/images', {
       method: 'POST',
       contentType: 'image/png',
       body: 'image',
@@ -150,7 +150,7 @@ describe('files worker routing + auth', () => {
 
   it('403s a disallowed origin', async () => {
     const token = await signToken(validClaims());
-    const res = await request('/conversations/user-a_user-b/files/images', {
+    const res = await request('/conversations/conversation-1/files/images', {
       method: 'POST',
       token,
       origin: 'https://evil.com',
@@ -162,7 +162,7 @@ describe('files worker routing + auth', () => {
   });
 
   it('sets Vary: Origin on allowed CORS preflight responses', async () => {
-    const res = await request('/conversations/user-a_user-b/files/images', {
+    const res = await request('/conversations/conversation-1/files/images', {
       method: 'OPTIONS',
     });
 
@@ -176,10 +176,10 @@ describe('files worker routing + auth', () => {
   it('lets direct-message members upload and fetch an image', async () => {
     const uploadToken = await signToken(validClaims('user-a'));
     const getToken = await signToken(validClaims('user-b'));
-    await allowMember('user-a_user-b', 'user-a');
-    await allowMember('user-a_user-b', 'user-b');
+    await allowMember('conversation-1', 'user-a');
+    await allowMember('conversation-1', 'user-b');
 
-    const upload = await request('/conversations/user-a_user-b/files/images', {
+    const upload = await request('/conversations/conversation-1/files/images', {
       method: 'POST',
       token: uploadToken,
       contentType: 'image/png',
@@ -196,11 +196,11 @@ describe('files worker routing + auth', () => {
       provider: 'r2',
       bucket: 'hangvidu-files',
     });
-    expect(metadata.key).toMatch(/^conversation-files\/user-a_user-b\/.+/);
+    expect(metadata.key).toMatch(/^conversation-files\/conversation-1\/.+/);
     expect(metadata).not.toHaveProperty('fileId');
 
     const download = await request(
-      `/conversations/user-a_user-b/files/object?key=${encodeURIComponent(
+      `/conversations/conversation-1/files/object?key=${encodeURIComponent(
         metadata.key,
       )}`,
       { token: getToken },
@@ -222,9 +222,9 @@ describe('files worker routing + auth', () => {
 
   it('accepts app check tokens while authorizing through D1 membership', async () => {
     const token = await signToken(validClaims('user-a'));
-    await allowMember('user-a_user-b', 'user-a');
+    await allowMember('conversation-1', 'user-a');
 
-    const upload = await request('/conversations/user-a_user-b/files/images', {
+    const upload = await request('/conversations/conversation-1/files/images', {
       method: 'POST',
       token,
       appCheckToken: 'app-check-token',
@@ -266,7 +266,7 @@ describe('files worker routing + auth', () => {
 
   it('403s direct-message non-members', async () => {
     const token = await signToken(validClaims('user-c'));
-    const res = await request('/conversations/user-a_user-b/files/images', {
+    const res = await request('/conversations/conversation-1/files/images', {
       method: 'POST',
       token,
       contentType: 'image/png',
@@ -278,9 +278,9 @@ describe('files worker routing + auth', () => {
 
   it('403s removed conversation members', async () => {
     const token = await signToken(validClaims('user-a'));
-    await allowMember('user-a_user-b', 'user-a');
-    await removeMember('user-a_user-b', 'user-a');
-    const res = await request('/conversations/user-a_user-b/files/images', {
+    await allowMember('conversation-1', 'user-a');
+    await removeMember('conversation-1', 'user-a');
+    const res = await request('/conversations/conversation-1/files/images', {
       method: 'POST',
       token,
       contentType: 'image/png',
@@ -296,7 +296,7 @@ describe('files worker routing + auth', () => {
       'ALTER TABLE conversation_members RENAME TO unavailable_members',
     ).run();
     try {
-      const res = await request('/conversations/user-a_user-b/files/images', {
+      const res = await request('/conversations/conversation-1/files/images', {
         method: 'POST',
         token,
         contentType: 'image/png',
@@ -328,8 +328,8 @@ describe('files worker routing + auth', () => {
 
   it('accepts svg image uploads', async () => {
     const token = await signToken(validClaims());
-    await allowMember('user-a_user-b', 'user-a');
-    const res = await request('/conversations/user-a_user-b/files/images', {
+    await allowMember('conversation-1', 'user-a');
+    const res = await request('/conversations/conversation-1/files/images', {
       method: 'POST',
       token,
       contentType: 'image/svg+xml',
@@ -341,8 +341,8 @@ describe('files worker routing + auth', () => {
 
   it('accepts small non-image file uploads', async () => {
     const token = await signToken(validClaims());
-    await allowMember('user-a_user-b', 'user-a');
-    const res = await request('/conversations/user-a_user-b/files/images', {
+    await allowMember('conversation-1', 'user-a');
+    const res = await request('/conversations/conversation-1/files', {
       method: 'POST',
       token,
       contentType: 'application/pdf',
@@ -354,8 +354,8 @@ describe('files worker routing + auth', () => {
 
   it('rejects oversized uploads before storing', async () => {
     const token = await signToken(validClaims());
-    await allowMember('user-a_user-b', 'user-a');
-    const res = await request('/conversations/user-a_user-b/files/images', {
+    await allowMember('conversation-1', 'user-a');
+    const res = await request('/conversations/conversation-1/files/images', {
       method: 'POST',
       token,
       contentType: 'image/png',
@@ -367,8 +367,8 @@ describe('files worker routing + auth', () => {
 
   it('rejects uploads without a supported MIME type', async () => {
     const token = await signToken(validClaims());
-    await allowMember('user-a_user-b', 'user-a');
-    const res = await request('/conversations/user-a_user-b/files/images', {
+    await allowMember('conversation-1', 'user-a');
+    const res = await request('/conversations/conversation-1/files/images', {
       method: 'POST',
       token,
       contentType: 'not-a-mime',

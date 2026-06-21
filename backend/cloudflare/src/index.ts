@@ -7,7 +7,9 @@ export { ConversationChannel } from './realtime/conversation-channel';
 export { SignalingRoom } from './realtime/signaling-room';
 export { UserMailbox } from './realtime/user-mailbox';
 
-const FILES_PATH = /^\/conversations\/[^/]+\/files\/(?:images|object)$/;
+const FILES_PATH = /^\/conversations\/[^/]+\/files$/;
+const FILES_SUBRESOURCE_PATH =
+  /^\/conversations\/[^/]+\/files\/(?:images|object)$/;
 const SIGNALING_PATH = /^\/rooms\/[^/]+\/signal$/;
 const DATA_PATHS = [
   /^\/health$/,
@@ -23,7 +25,7 @@ const DATA_PATHS = [
 export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
     const { pathname } = new URL(request.url);
-    if (FILES_PATH.test(pathname)) {
+    if (FILES_PATH.test(pathname) || FILES_SUBRESOURCE_PATH.test(pathname)) {
       return handleFilesRequest(request, env);
     }
     if (SIGNALING_PATH.test(pathname)) {

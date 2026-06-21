@@ -27,6 +27,11 @@ import {
 } from '../../stores/filesStore.js';
 
 import { createMessagingRuntime } from './messaging-runtime.js';
+// Boundary note (spike): feature -> stores import; consolidate in refine pass.
+import {
+  markConversationRead,
+  recordConversationActivity,
+} from '../../stores/conversation-activity';
 
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
@@ -177,6 +182,13 @@ function isChatMessage(message: ChatMessage | null): message is ChatMessage {
 type ConversationPanelProps = {
   selection: ConversationSelection | null;
   myUserId: UserId | null;
+  /**
+   * Whether the messaging view is the one on screen. The panel stays mounted
+   * (and watching) when nav switches away, so this gates marking-read: an
+   * incoming message must not clear the unread badge while you're looking at
+   * the contacts list.
+   */
+  visible: boolean;
 };
 
 type HistorySource = {
@@ -306,6 +318,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyError, setHistoryError] = createSignal<unknown>(null);
   const [historyReady, setHistoryReady] = createSignal(false);
+  const [latestReadCandidate, setLatestReadCandidate] = createSignal<{
+    conversationId: ConversationId;
+    myUserId: UserId;
+    sentAt: number;
+  } | null>(null);
   const [filePreparing, setFilePreparing] = createSignal(false);
   const [r2AttachmentUrls, setR2AttachmentUrls] = createSignal<
     Record<string, string>
@@ -319,6 +336,30 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   }
 
   createEffect(on(() => state.messages.length, followIfPinned));
+
+  createEffect(() => {
+    const candidate = latestReadCandidate();
+    if (
+      !props.visible ||
+      !candidate ||
+      candidate.conversationId !== state.conversationId
+    ) {
+      return;
+    }
+
+    markConversationRead(candidate.conversationId, candidate.sentAt);
+    void Promise.resolve(
+      runtime.messageRepository.markConversationRead(
+        candidate.conversationId,
+        candidate.myUserId,
+      ),
+    ).catch((error) => {
+      console.warn('[conversation] failed to mark conversation read', {
+        conversationId: candidate.conversationId,
+        error,
+      });
+    });
+  });
 
   createEffect(() => {
     const conversationId = state.conversationId;
@@ -410,6 +451,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       () => historySource(),
       (source) => {
         flushDraftSave();
+        setLatestReadCandidate(null);
         setHistoryReady(false);
         suppressScroll = true;
         // The messages container remounts on switch; drop the old position so
@@ -440,7 +482,6 @@ export default function ConversationPanel(props: ConversationPanelProps) {
           (messages) => {
             if (source.conversationId !== state.conversationId) return;
 
-            const latestMessageId = messages.at(-1)?.messageId;
             const loadedMessages = sortMessagesBySentAt(
               messages
                 .map((msg) => envelopeToChatMessage(msg, 'persisted'))
@@ -455,21 +496,26 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               scrollToEnd();
               queueMicrotask(focusInput);
             }
-            if (latestMessageId) {
-              void Promise.resolve(
-                runtime.messageRepository.markConversationRead(
-                  source.conversationId,
-                  source.myUserId,
-                ),
-              ).catch((error) => {
-                console.warn(
-                  '[conversation] failed to mark conversation read',
-                  {
-                    conversationId: source.conversationId,
-                    error,
-                  },
-                );
+            const latest = loadedMessages.at(-1);
+            if (latest) {
+              // Only persisted watcher messages carry authoritative server time.
+              setLatestReadCandidate({
+                conversationId: source.conversationId,
+                myUserId: source.myUserId,
+                sentAt: latest.sentAt,
               });
+              // Keep the contact-list row ordered for the open conversation —
+              // covers the user's own send (never echoed over the mailbox). DM
+              // only: peer uid is the activity map key.
+              const peers = selection.remoteParticipantIds;
+              if (peers?.length === 1) {
+                recordConversationActivity(
+                  peers[0],
+                  source.conversationId,
+                  latest.sentAt,
+                  latest.senderId,
+                );
+              }
             }
           },
           (error) => {

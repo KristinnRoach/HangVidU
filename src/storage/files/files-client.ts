@@ -44,7 +44,9 @@ export function createFilesClient({
   async function authHeaders() {
     const token = await getToken();
     if (!token) throw new Error('files client requires an authenticated user');
-    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+    };
     const appCheckToken = await getAppCheckToken?.();
     if (appCheckToken) {
       headers['X-Firebase-AppCheck'] = appCheckToken;
@@ -68,18 +70,21 @@ export function createFilesClient({
   }
 
   return {
-    async uploadImage(
+    async uploadFile(
       conversationId: string,
       file: File,
     ): Promise<R2StorageDescriptor> {
-      const response = await fetch(`${conversationFilesUrl(conversationId)}/images`, {
-        method: 'POST',
-        headers: {
-          ...(await authHeaders()),
-          'Content-Type': file.type || 'application/octet-stream',
+      const response = await fetch(
+        `${conversationFilesUrl(conversationId)}/images`, // ! TODO: Change endpoint from "images" since this is for all files!
+        {
+          method: 'POST',
+          headers: {
+            ...(await authHeaders()),
+            'Content-Type': file.type || 'application/octet-stream',
+          },
+          body: file,
         },
-        body: file,
-      });
+      );
       if (!response.ok) {
         if (response.status === 401) {
           const detail = await response.text().catch(() => '');
@@ -88,9 +93,9 @@ export function createFilesClient({
             response.status,
             detail,
           );
-          throw new Error(`image upload failed: ${response.status} ${detail}`);
+          throw new Error(`file upload failed: ${response.status} ${detail}`);
         }
-        throw new Error(`image upload failed: ${response.status}`);
+        throw new Error(`file upload failed: ${response.status}`);
       }
 
       const body = (await response.json()) as Partial<UploadResponse>;
@@ -99,7 +104,7 @@ export function createFilesClient({
         typeof body.bucket !== 'string' ||
         typeof body.key !== 'string'
       ) {
-        throw new Error('image upload returned invalid storage metadata');
+        throw new Error('file upload returned invalid storage metadata');
       }
       return {
         provider: 'r2',
@@ -113,10 +118,13 @@ export function createFilesClient({
       storage: R2StorageDescriptor,
       signal?: AbortSignal,
     ) {
-      const response = await fetch(conversationFileObjectUrl(conversationId, storage), {
-        headers: await authHeaders(),
-        signal,
-      });
+      const response = await fetch(
+        conversationFileObjectUrl(conversationId, storage),
+        {
+          headers: await authHeaders(),
+          signal,
+        },
+      );
       if (!response.ok) {
         if (response.status === 401) {
           const detail = await response.text().catch(() => '');
@@ -125,19 +133,22 @@ export function createFilesClient({
             response.status,
             detail,
           );
-          throw new Error(`image download failed: ${response.status} ${detail}`);
+          throw new Error(`file download failed: ${response.status} ${detail}`);
         }
-        throw new Error(`image download failed: ${response.status}`);
+        throw new Error(`file download failed: ${response.status}`);
       }
 
       return URL.createObjectURL(await response.blob());
     },
 
     async deleteFile(conversationId: string, storage: R2StorageDescriptor) {
-      const response = await fetch(conversationFileObjectUrl(conversationId, storage), {
-        method: 'DELETE',
-        headers: await authHeaders(),
-      });
+      const response = await fetch(
+        conversationFileObjectUrl(conversationId, storage),
+        {
+          method: 'DELETE',
+          headers: await authHeaders(),
+        },
+      );
       if (!response.ok && response.status !== 404) {
         if (response.status === 401) {
           const detail = await response.text().catch(() => '');

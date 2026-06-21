@@ -24,7 +24,7 @@ describe('messaging-next RTDB conversation adapter', () => {
     vi.mocked(get).mockResolvedValue({
       exists: () => true,
       val: () => ({
-        conversationId: 'user-a_user-b',
+        conversationId: 'conversation-1',
         kind: 'direct',
         participants: {
           'user-a': { userId: 'user-a', joinedAt: 1 },
@@ -38,9 +38,9 @@ describe('messaging-next RTDB conversation adapter', () => {
 
     const repository = createConversationRepository();
 
-    const conversation = await repository.loadConversation('user-a_user-b');
+    const conversation = await repository.loadConversation('conversation-1');
 
-    expect(conversation?.conversationId).toBe('user-a_user-b');
+    expect(conversation?.conversationId).toBe('conversation-1');
     expect(conversation).not.toHaveProperty('draft');
   });
 });

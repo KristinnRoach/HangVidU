@@ -10,7 +10,7 @@ function participant(userId, joinedAt = 1) {
 
 function directConversation(overrides = {}) {
   return {
-    conversationId: 'user-a_user-b',
+    conversationId: 'conversation-1',
     kind: 'direct',
     participants: {
       'user-a': participant('user-a'),
@@ -66,7 +66,7 @@ describe('messaging-next in-memory conversation repository', () => {
     const seen = [];
 
     const unsubscribe = repository.subscribeConversation(
-      'user-a_user-b',
+      'conversation-1',
       (conversation) => seen.push(conversation),
     );
 
@@ -74,7 +74,7 @@ describe('messaging-next in-memory conversation repository', () => {
     seen[0].title = 'mutated subscriber copy';
     saved.title = 'mutated returned copy';
 
-    expect(repository.loadConversation('user-a_user-b')?.title).toBeUndefined();
+    expect(repository.loadConversation('conversation-1')?.title).toBeUndefined();
 
     unsubscribe();
     repository.upsertConversation(directConversation({ title: 'after off' }));
@@ -87,7 +87,7 @@ describe('messaging-next in-memory conversation repository', () => {
     repository.upsertConversation(directConversation({ title: 'Existing' }));
 
     const seen = [];
-    repository.subscribeConversation('user-a_user-b', (conversation) =>
+    repository.subscribeConversation('conversation-1', (conversation) =>
       seen.push(conversation),
     );
 

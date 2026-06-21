@@ -302,6 +302,26 @@ export async function handleDataRequest(
         } catch (err) {
           console.warn('[data] live broadcast failed', { conversationId, err });
         }
+        // Per-user activity push: ping every other member's mailbox so their
+        // conversation list reorders + badges without the conversation open.
+        // Best-effort, fire-and-forget (not persisted in the mailbox).
+        try {
+          const members = await getMembers(env.DB, conversationId);
+          await Promise.all(
+            members
+              .filter((m) => m.user_id !== callerId)
+              .map((m) =>
+                env.USER_MAILBOX.getByName(m.user_id).deliver({
+                  t: 'activity',
+                  conversationId,
+                  senderId: callerId,
+                  sentAt: now,
+                }),
+              ),
+          );
+        } catch (err) {
+          console.warn('[data] activity fan-out failed', { conversationId, err });
+        }
         return json({ message: wire }, 200, cors);
       }
     }

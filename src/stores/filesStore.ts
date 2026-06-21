@@ -17,18 +17,11 @@ function getFilesClient() {
   }));
 }
 
-export function uploadConversationImage(
-  conversationId: ConversationId,
-  file: File,
-) {
-  return getFilesClient().uploadImage(conversationId, file);
-}
-
 export function uploadConversationFile(
   conversationId: ConversationId,
   file: File,
 ) {
-  return uploadConversationImage(conversationId, file);
+  return getFilesClient().uploadFile(conversationId, file);
 }
 
 export function createConversationFileObjectUrl(

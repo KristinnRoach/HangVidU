@@ -36,6 +36,10 @@ export interface Conversation {
   title: string | null;
   created_at: number;
   updated_at: number;
+  // Latest-message meta for the conversation list (present on `list()`); null
+  // when the conversation has no messages yet.
+  latest_sent_at?: number | null;
+  latest_sender_id?: string | null;
 }
 
 export interface ConversationsClient {

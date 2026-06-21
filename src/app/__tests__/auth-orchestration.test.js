@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => {
     getPublicUserProfile: vi.fn(() => Promise.resolve(null)),
     registerInUserDirectory: vi.fn(() => Promise.resolve()),
     devDebug: vi.fn(),
+    stopConversationActivity: vi.fn(),
   };
 });
 
@@ -53,6 +54,9 @@ vi.mock('../../features/contacts/referrals/referral-handler.js', () => ({
 vi.mock('../../stores/contactsStore.js', () => ({
   hydrateContacts: mocks.hydrateContacts,
   resetContacts: mocks.resetContacts,
+}));
+vi.mock('../../stores/conversation-activity', () => ({
+  stopConversationActivity: mocks.stopConversationActivity,
 }));
 
 describe('wireAuthReactions', () => {
@@ -142,6 +146,7 @@ describe('wireAuthReactions', () => {
 
     expect(mocks.resetContacts).toHaveBeenCalled();
     expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
+    expect(mocks.stopConversationActivity).toHaveBeenCalledOnce();
     expect(localStorageClearSpy).toHaveBeenCalled();
 
     teardown();

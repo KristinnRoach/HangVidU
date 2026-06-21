@@ -162,6 +162,7 @@ export default function MainContent() {
               <ConversationPanel
                 selection={selectedConversation()}
                 myUserId={(user()?.uid as UserId | undefined) ?? null}
+                visible={activeView() === 'messaging'}
               />
             </div>
           </Show>

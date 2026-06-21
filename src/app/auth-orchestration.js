@@ -11,6 +11,7 @@ import { setupInviteListener } from '../features/contacts/invites/invite-listene
 import { processReferral } from '../features/contacts/referrals/referral-handler.js';
 import { hydrateContacts, resetContacts } from '../stores/contactsStore.js';
 import { resetConversationsState } from '../stores/conversations-client.js';
+import { stopConversationActivity } from '../stores/conversation-activity';
 
 let isReady = false;
 let initPromise = null;
@@ -114,6 +115,7 @@ export function wireAuthReactions() {
 
     const runMainLogoutCleanup = () => {
       runSafe(cleanupLoginScopedListeners, 'cleanupLoginScopedListeners');
+      runSafe(stopConversationActivity, 'stopConversationActivity');
       // NOTE: Local storage is cleared on log out, while selected keys are preserved.
       clearLocalStorageOnLogout();
     };

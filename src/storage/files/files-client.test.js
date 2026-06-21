@@ -91,7 +91,9 @@ describe('files client', () => {
   });
 
   it('reports a 401 to the auth-failure helper', async () => {
-    const fetchMock = vi.fn(async () => new Response('unauthorized', { status: 401 }));
+    const fetchMock = vi.fn(
+      async () => new Response('unauthorized', { status: 401 }),
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const client = createFilesClient({
@@ -105,7 +107,7 @@ describe('files client', () => {
         bucket: 'hangvidu-files',
         key: 'conversation-files/conversation-1/object-1',
       }),
-    ).rejects.toThrow('image download failed: 401 unauthorized');
+    ).rejects.toThrow('file download failed: 401 unauthorized');
 
     expect(mocks.reportApiAuthFailure).toHaveBeenCalledWith(
       'files download conversation-1',
@@ -115,7 +117,9 @@ describe('files client', () => {
   });
 
   it('reports a 401 on upload to the auth-failure helper', async () => {
-    const fetchMock = vi.fn(async () => new Response('unauthorized', { status: 401 }));
+    const fetchMock = vi.fn(
+      async () => new Response('unauthorized', { status: 401 }),
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const client = createFilesClient({
@@ -124,8 +128,11 @@ describe('files client', () => {
     });
 
     await expect(
-      client.uploadImage('conversation-1', new File(['x'], 'x.png', { type: 'image/png' })),
-    ).rejects.toThrow('image upload failed: 401 unauthorized');
+      client.uploadFile(
+        'conversation-1',
+        new File(['x'], 'x.png', { type: 'image/png' }),
+      ),
+    ).rejects.toThrow('file upload failed: 401 unauthorized');
 
     expect(mocks.reportApiAuthFailure).toHaveBeenCalledWith(
       'files upload conversation-1',
@@ -135,7 +142,9 @@ describe('files client', () => {
   });
 
   it('reports a 401 on delete to the auth-failure helper', async () => {
-    const fetchMock = vi.fn(async () => new Response('unauthorized', { status: 401 }));
+    const fetchMock = vi.fn(
+      async () => new Response('unauthorized', { status: 401 }),
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     const client = createFilesClient({
