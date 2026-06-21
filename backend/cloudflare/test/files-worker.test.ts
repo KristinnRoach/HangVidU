@@ -342,7 +342,7 @@ describe('files worker routing + auth', () => {
   it('accepts small non-image file uploads', async () => {
     const token = await signToken(validClaims());
     await allowMember('conversation-1', 'user-a');
-    const res = await request('/conversations/conversation-1/files/images', {
+    const res = await request('/conversations/conversation-1/files', {
       method: 'POST',
       token,
       contentType: 'application/pdf',
