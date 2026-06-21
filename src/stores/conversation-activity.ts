@@ -102,6 +102,8 @@ export async function refreshConversationActivity(): Promise<void> {
   }
   try {
     const conversations = await getConversationsClient().list();
+    if (getLoggedInUserId() !== me) return;
+
     const map = new Map<string, ParticipantActivity>();
     for (const c of conversations) {
       if (c.kind !== 'direct') continue; // contacts list is DMs only for now
@@ -113,7 +115,15 @@ export async function refreshConversationActivity(): Promise<void> {
         latestSenderId: c.latest_sender_id ?? null,
       });
     }
-    setActivity(map);
+    setActivity((current) => {
+      for (const [participantId, existing] of current) {
+        const fetched = map.get(participantId);
+        if (fetched && existing.latestSentAt > fetched.latestSentAt) {
+          map.set(participantId, existing);
+        }
+      }
+      return map;
+    });
   } catch (error) {
     console.warn('[conversation-activity] seed failed', error);
   }
