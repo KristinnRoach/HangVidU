@@ -327,8 +327,8 @@ function initializeFirebaseAdmin() {
 
   const credentialPath =
     process.env.GOOGLE_APPLICATION_CREDENTIALS ??
-    (existsSync('functions/service-account-key.json')
-      ? 'functions/service-account-key.json'
+    (existsSync('backend/firebase/service-account-key.json')
+      ? 'backend/firebase/service-account-key.json'
       : null);
 
   const credential = credentialPath

@@ -45,7 +45,7 @@ if (!DRY_RUN && !RTDB_URL_FROM_ENV) {
 
 const serviceAccountPath = path.join(
   __dirname,
-  '../functions/service-account-key.json',
+  '../backend/firebase/service-account-key.json',
 );
 
 const appOptions = {

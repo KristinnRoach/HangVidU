@@ -20,7 +20,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const shouldDelete = process.argv.includes('--delete');
 
 // Initialize Firebase Admin
-const serviceAccountPath = path.join(__dirname, '../functions/service-account-key.json');
+const serviceAccountPath = path.join(__dirname, '../backend/firebase/service-account-key.json');
 
 if (!fs.existsSync(serviceAccountPath)) {
   console.error('❌ Error: service-account-key.json not found at', serviceAccountPath);

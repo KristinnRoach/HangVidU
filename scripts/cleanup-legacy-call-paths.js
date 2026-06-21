@@ -30,7 +30,7 @@ const shouldDelete = process.argv.includes('--delete');
 
 const serviceAccountPath = path.join(
   __dirname,
-  '../functions/service-account-key.json',
+  '../backend/firebase/service-account-key.json',
 );
 
 if (!fs.existsSync(serviceAccountPath)) {

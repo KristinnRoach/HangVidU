@@ -78,5 +78,5 @@ Move from the current Workers endpoint to a stable first-party domain such as
 
 ### Firebase source relocation
 
-- [ ] Write a focused move plan and inventory all `functions/` path references
-- [ ] Move `functions/` under `backend/firebase/` in its own PR
+- [x] Write a focused move plan and inventory all `functions/` path references
+- [x] Move `functions/` under `backend/firebase/` in its own PR

@@ -21,7 +21,7 @@
  *   RTDB_URL="https://..." node scripts/repair-push-subscription-ownership.js --apply
  *
  * Requires GOOGLE_APPLICATION_CREDENTIALS or firebase-admin default credentials.
- * This script also loads `functions/service-account-key.json` if present, matching
+ * This script also loads `backend/firebase/service-account-key.json` if present, matching
  * the existing maintenance-script pattern in this repo.
  */
 
@@ -55,7 +55,7 @@ if (!RTDB_URL) {
 
 const serviceAccountPath = path.join(
   __dirname,
-  '../functions/service-account-key.json',
+  '../backend/firebase/service-account-key.json',
 );
 
 if (!fs.existsSync(serviceAccountPath)) {

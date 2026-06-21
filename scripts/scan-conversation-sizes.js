@@ -34,7 +34,7 @@ const PER_CONV_TOP = perConvArg
 
 const serviceAccountPath = path.join(
   __dirname,
-  '../functions/service-account-key.json',
+  '../backend/firebase/service-account-key.json',
 );
 
 if (!fs.existsSync(serviceAccountPath)) {

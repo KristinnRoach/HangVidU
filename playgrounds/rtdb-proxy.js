@@ -9,7 +9,7 @@ import admin from 'firebase-admin';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const serviceAccount = JSON.parse(
   readFileSync(
-    join(__dirname, '../functions/service-account-key.json'),
+    join(__dirname, '../backend/firebase/service-account-key.json'),
     'utf-8',
   ),
 );
