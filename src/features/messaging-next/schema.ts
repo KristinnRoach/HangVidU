@@ -2,8 +2,7 @@ import { z } from 'zod';
 
 export const UserIdSchema = z.string().trim().min(1);
 
-// Group ids carry a `group:` prefix; direct ids are otherwise opaque strings
-// (legacy sorted `a_b` on rtdb, registry UUIDs on d1 — both validate).
+// Group ids carry a `group:` prefix; direct ids are otherwise opaque strings.
 // Group is listed first in the union so the prefix wins discrimination — without
 // this, Direct's permissive rule would swallow any string including `group:*`.
 export const GroupConversationIdSchema = z

@@ -13,7 +13,7 @@ describe('messaging-next schema', () => {
 
   it('parses conversation metadata without shared draft state', () => {
     const node = ConversationNodeSchema.parse({
-      conversationId: 'user-a_user-b',
+      conversationId: 'conversation-1',
       kind: 'direct',
       participants: {
         'user-a': {
@@ -67,7 +67,7 @@ describe('messaging-next schema', () => {
   it('accepts R2-backed file payloads', () => {
     const message = MessageEnvelopeSchema.parse({
       messageId: 'msg-1',
-      conversationId: 'user-a_user-b',
+      conversationId: 'conversation-1',
       senderId: 'user-a',
       sentAt: 10,
       delivery: 'persistent',
@@ -79,7 +79,7 @@ describe('messaging-next schema', () => {
         storage: {
           provider: 'r2',
           bucket: 'hangvidu-files',
-          key: 'conversation-files/user-a_user-b/msg-1',
+          key: 'conversation-files/conversation-1/msg-1',
         },
       },
     });
@@ -91,7 +91,7 @@ describe('messaging-next schema', () => {
     expect(() =>
       MessageEnvelopeSchema.parse({
         messageId: 'msg-1',
-        conversationId: 'user-a_user-b',
+        conversationId: 'conversation-1',
         senderId: 'user-a',
         sentAt: 10,
         delivery: 'persistent',
