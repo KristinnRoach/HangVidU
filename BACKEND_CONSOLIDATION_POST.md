@@ -38,21 +38,17 @@ Live DM ordering and unread badges shipped in PR #565. Activity uses the shared
 per-user mailbox for push, `GET /conversations` for the initial snapshot, and
 per-device local storage for read state.
 
-- [ ] Restart conversation activity after an in-place user switch if auth stops
-  reloading the app; logout currently closes the shared mailbox and clears its
-  subscribers
-- [ ] Move read state to server-side `last_read_at` when cross-device consistency
-  is implemented (issue #563)
-- [ ] Generalize the participant-keyed activity model before showing group
-  conversations in the contacts list; the live path is intentionally DM-only
-- [ ] Remove the now-unused `MessageRepository.watchConversationActivity` contract
-  and adapter implementations, then update `src/features/contacts/docs/CONTRACT.md`
 - [ ] Rename the call-mailbox protocol/module if it continues carrying non-call
-  user events
-- [ ] Resolve the feature-to-store imports from `useContacts` and
-  `ConversationPanel` during the next boundary-focused refactor
+      user events
+- [ ] Generalize the participant-keyed activity model before showing group
+      conversations in the contacts list; the live path is intentionally DM-only
+- [ ] Move read state to server-side `last_read_at` when cross-device consistency
+      is implemented (issue #563)
+- [ ] Restart conversation activity after an in-place user switch if auth stops
+      reloading the app; logout currently closes the shared mailbox and clears its
+      subscribers
 - [ ] Replace the two correlated latest-message subqueries only if conversation-list
-  scale makes them measurable
+      scale makes them measurable
 
 ## OPTIONAL — undecided or nonessential
 
@@ -72,7 +68,7 @@ Move from the current Workers endpoint to a stable first-party domain such as
 ### Named staging environment
 
 - [ ] Define separate Worker name, D1/R2/DO resources, bindings, migrations, vars,
-  secrets, and deploy commands before introducing a Wrangler named environment
+      secrets, and deploy commands before introducing a Wrangler named environment
 
 ### Expanded observability and architecture enforcement
 

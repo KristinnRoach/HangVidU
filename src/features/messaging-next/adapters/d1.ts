@@ -180,14 +180,6 @@ export function createD1MessageRepository(
     // Read receipts are deferred (decision #5); marking is a no-op for now.
     markConversationRead() {},
 
-    // Activity / unread badges are deferred (decision #5). The contacts list
-    // watches this for every contact; doing real work here would resolve+load
-    // per contact. Emit one zero snapshot to satisfy the contract, no network.
-    watchConversationActivity(_conversationId, _userId, onChange) {
-      onChange({ latestSentAt: 0, latestSenderId: null, lastReadAt: 0 });
-      return noop;
-    },
-
     // Reactions are deferred (decision #5).
     setReaction() {},
     subscribeReactions() {

@@ -14,7 +14,7 @@
 - Current split
   - writes: `saveContact`, `updateContact`, `deleteContact`, `handleHangUp`
   - reads: `getAllContacts`, `getContactById`, `getContactByRoomId`, `getContactsIsHydrated`
-  - per-conversation activity (sort key + unread badge) comes from `MessageRepository.watchConversationActivity`, not the contacts store
+  - conversation-list activity (sort key + unread badge) comes from `stores/conversation-activity`, not the contacts store
   - lifecycle: `hydrateContacts`, `resetContacts`
 
 - Storage boundary

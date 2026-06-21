@@ -1,5 +1,4 @@
 import type {
-  ConversationActivity,
   IncomingMessage,
   MessageRepository,
   ReactionMap,
@@ -12,62 +11,19 @@ export function createInMemoryMessageRepository(): MessageRepository {
     ConversationId,
     Array<(messages: IncomingMessage[]) => void>
   >();
-  const activitySubs = new Map<
-    ConversationId,
-    Array<{
-      userId: UserId;
-      onChange: (activity: ConversationActivity) => void;
-      lastEmittedSentAt: number;
-      lastEmittedReadAt: number;
-      lastEmittedSenderId: UserId | null | undefined;
-    }>
-  >();
   const rxnSubs = new Map<
     ConversationId,
     Array<(messageId: string, reactions: ReactionMap) => void>
   >();
   const reactions = new Map<string, ReactionMap>(); // `${conversationId}:${messageId}`
-  const lastReadAt = new Map<string, number>(); // `${conversationId}:${userId}`
-
   function getStored(id: ConversationId) {
     if (!stored.has(id)) stored.set(id, []);
     return stored.get(id)!;
   }
 
-  function readKey(conversationId: ConversationId, userId: UserId) {
-    return `${conversationId}:${userId}`;
-  }
-
   function notifyRecent(conversationId: ConversationId) {
     const messages = [...getStored(conversationId)];
     for (const cb of recentSubs.get(conversationId) ?? []) cb(messages);
-  }
-
-  function activitySnapshot(
-    conversationId: ConversationId,
-    userId: UserId,
-  ): ConversationActivity {
-    const latest = getStored(conversationId).at(-1);
-    return {
-      latestSentAt: latest?.sentAt ?? 0,
-      latestSenderId: latest?.senderId ?? null,
-      lastReadAt: lastReadAt.get(readKey(conversationId, userId)) ?? 0,
-    };
-  }
-
-  function notifyActivity(conversationId: ConversationId) {
-    for (const sub of activitySubs.get(conversationId) ?? []) {
-      const next = activitySnapshot(conversationId, sub.userId);
-      if (
-        next.latestSentAt === sub.lastEmittedSentAt &&
-        next.lastReadAt === sub.lastEmittedReadAt &&
-        next.latestSenderId === sub.lastEmittedSenderId
-      ) continue;
-      sub.lastEmittedSentAt = next.latestSentAt;
-      sub.lastEmittedReadAt = next.lastReadAt;
-      sub.lastEmittedSenderId = next.latestSenderId;
-      sub.onChange(next);
-    }
   }
 
   return {
@@ -101,37 +57,10 @@ export function createInMemoryMessageRepository(): MessageRepository {
       };
       getStored(msg.conversationId).push(msg);
       notifyRecent(msg.conversationId);
-      notifyActivity(msg.conversationId);
       return { id: msg.messageId, sentAt: msg.sentAt };
     },
 
-    markConversationRead(conversationId, userId) {
-      lastReadAt.set(readKey(conversationId, userId), Date.now());
-      notifyActivity(conversationId);
-    },
-
-    watchConversationActivity(conversationId, userId, onChange) {
-      const list = activitySubs.get(conversationId) ?? [];
-      const initial = activitySnapshot(conversationId, userId);
-      const sub = {
-        userId,
-        onChange,
-        lastEmittedSentAt: initial.latestSentAt,
-        lastEmittedReadAt: initial.lastReadAt,
-        lastEmittedSenderId: initial.latestSenderId,
-      };
-      list.push(sub);
-      activitySubs.set(conversationId, list);
-      onChange(initial);
-      return () => {
-        activitySubs.set(
-          conversationId,
-          (activitySubs.get(conversationId) ?? []).filter(
-            (item) => item !== sub,
-          ),
-        );
-      };
-    },
+    markConversationRead() {},
 
     setReaction(conversationId, messageId, emoji, userId, active) {
       const key = `${conversationId}:${messageId}`;
