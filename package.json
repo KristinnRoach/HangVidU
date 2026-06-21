@@ -115,7 +115,7 @@
     "@kidlib/p2p": "^0.2.3",
     "@mediabunny/ac3": "^1.40.1",
     "@sentry/browser": "^10.49.0",
-    "firebase": "^12.12.1",
+    "firebase": "^12.15.0",
     "lucide-solid": "^1.16.0",
     "mediabunny": "^1.41.0",
     "solid-js": "^1.9.12",
