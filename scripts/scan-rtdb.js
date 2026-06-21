@@ -79,7 +79,7 @@ const LEGACY_ROOM_KEYS = new Set([
 
 const serviceAccountPath = path.join(
   __dirname,
-  '../functions/service-account-key.json',
+  '../backend/firebase/service-account-key.json',
 );
 
 if (!fs.existsSync(serviceAccountPath)) {

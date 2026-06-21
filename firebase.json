@@ -60,7 +60,7 @@
     ]
   },
   "functions": {
-    "source": "functions",
+    "source": "backend/firebase",
     "runtime": "nodejs22",
     "region": "europe-west1"
   },

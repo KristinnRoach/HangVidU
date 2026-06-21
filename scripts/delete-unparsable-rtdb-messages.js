@@ -51,7 +51,7 @@ if (!DRY_RUN && !RTDB_URL_FROM_ENV) {
 // Load service account from standard location
 const serviceAccountPath = path.join(
   __dirname,
-  '../functions/service-account-key.json',
+  '../backend/firebase/service-account-key.json',
 );
 
 if (!fs.existsSync(serviceAccountPath)) {

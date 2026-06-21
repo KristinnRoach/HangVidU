@@ -58,7 +58,7 @@ pnpm-debug.log*
 
 # Package manager
 package-lock.json
-!functions/package-lock.json
+!backend/firebase/package-lock.json
 .pnpm-store/
 
 # Editor directories and files
@@ -90,7 +90,7 @@ skills-lock.json
 
 # Firebase
 .firebase/
-functions/service-account-key.json
+backend/firebase/service-account-key.json
 
 # Cloudflare Wrangler local state
 **/.wrangler/

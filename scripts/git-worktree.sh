@@ -39,7 +39,7 @@ for relative_path in \
   .env.development \
   .env.development.local \
   .env.r2.local \
-  functions/.env \
+  backend/firebase/.env \
   workers/data/.dev.vars \
   workers/files/.dev.vars \
   workers/signaling/.dev.vars
