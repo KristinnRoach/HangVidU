@@ -57,12 +57,14 @@ export function markConversationRead(
   conversationId: string,
   latestSentAt: number,
 ): void {
+  const lastReadAt = getLastReadAt(conversationId);
+  const nextLastReadAt = Math.max(lastReadAt, latestSentAt);
   try {
-    localStorage.setItem(readKey(conversationId), String(latestSentAt));
+    localStorage.setItem(readKey(conversationId), String(nextLastReadAt));
   } catch {
     // localStorage unavailable: read state is best-effort.
   }
-  setReadVersion((v) => v + 1);
+  if (nextLastReadAt !== lastReadAt) setReadVersion((v) => v + 1);
 }
 
 // ── seed + live wiring ───────────────────────────────────────────────────────

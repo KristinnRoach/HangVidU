@@ -193,4 +193,14 @@ describe('listConversations', () => {
       'user-b',
     ]);
   });
+
+  it('uses message id to break latest-message timestamp ties', async () => {
+    const convoId = await resolveOrCreateDirect(db, 'user-a', 'user-b', 1000);
+    await insertMessage(db, convoId, 'm1', 'user-a', 'text', 'first', null, 2000);
+    await insertMessage(db, convoId, 'm2', 'user-b', 'text', 'second', null, 2000);
+
+    const [conversation] = await listConversations(db, 'user-a');
+    expect(conversation.latest_sent_at).toBe(2000);
+    expect(conversation.latest_sender_id).toBe('user-b');
+  });
 });

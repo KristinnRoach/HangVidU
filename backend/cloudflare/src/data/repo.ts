@@ -349,10 +349,10 @@ export async function listConversations(
       `SELECT c.*,
               (SELECT msg.created_at FROM messages msg
                 WHERE msg.conversation_id = c.id
-                ORDER BY msg.created_at DESC LIMIT 1) AS latest_sent_at,
+                ORDER BY msg.created_at DESC, msg.id DESC LIMIT 1) AS latest_sent_at,
               (SELECT msg.sender_id FROM messages msg
                 WHERE msg.conversation_id = c.id
-                ORDER BY msg.created_at DESC LIMIT 1) AS latest_sender_id
+                ORDER BY msg.created_at DESC, msg.id DESC LIMIT 1) AS latest_sender_id
        FROM conversations c
        JOIN conversation_members m
          ON m.conversation_id = c.id AND m.user_id = ?
