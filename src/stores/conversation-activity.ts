@@ -47,9 +47,18 @@ export function getLastReadAt(conversationId: string): number {
   }
 }
 
-export function markConversationRead(conversationId: string): void {
+/**
+ * Mark read up to `latestSentAt` — the SERVER timestamp of the newest seen
+ * message. Must be server-clock, not Date.now(): unread compares against
+ * server-stamped message times, so a client clock running ahead of the server
+ * would otherwise suppress every later message's badge.
+ */
+export function markConversationRead(
+  conversationId: string,
+  latestSentAt: number,
+): void {
   try {
-    localStorage.setItem(readKey(conversationId), String(Date.now()));
+    localStorage.setItem(readKey(conversationId), String(latestSentAt));
   } catch {
     // localStorage unavailable: read state is best-effort.
   }

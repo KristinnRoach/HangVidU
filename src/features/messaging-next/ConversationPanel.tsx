@@ -445,7 +445,6 @@ export default function ConversationPanel(props: ConversationPanelProps) {
           (messages) => {
             if (source.conversationId !== state.conversationId) return;
 
-            const latestMessageId = messages.at(-1)?.messageId;
             const loadedMessages = sortMessagesBySentAt(
               messages
                 .map((msg) => envelopeToChatMessage(msg, 'persisted'))
@@ -460,13 +459,13 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               scrollToEnd();
               queueMicrotask(focusInput);
             }
-            if (latestMessageId) {
+            const latest = loadedMessages.at(-1);
+            if (latest) {
               // Keep the contact-list row ordered for the open conversation —
               // covers the user's own send (never echoed over the mailbox). DM
               // only: peer uid is the activity map key.
               const peers = selection.remoteParticipantIds;
-              const latest = loadedMessages.at(-1);
-              if (latest && peers?.length === 1) {
+              if (peers?.length === 1) {
                 recordConversationActivity(
                   peers[0],
                   source.conversationId,
@@ -474,8 +473,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                   latest.senderId,
                 );
               }
-              // Clears the conversation-list unread badge (per-device read state).
-              markConversationRead(source.conversationId);
+              // Clears the badge: read up to the latest SERVER timestamp (never
+              // Date.now() — unread compares against server-stamped message times).
+              markConversationRead(source.conversationId, latest.sentAt);
               void Promise.resolve(
                 runtime.messageRepository.markConversationRead(
                   source.conversationId,
