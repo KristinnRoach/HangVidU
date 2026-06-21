@@ -182,6 +182,13 @@ function isChatMessage(message: ChatMessage | null): message is ChatMessage {
 type ConversationPanelProps = {
   selection: ConversationSelection | null;
   myUserId: UserId | null;
+  /**
+   * Whether the messaging view is the one on screen. The panel stays mounted
+   * (and watching) when nav switches away, so this gates marking-read: an
+   * incoming message must not clear the unread badge while you're looking at
+   * the contacts list.
+   */
+  visible: boolean;
 };
 
 type HistorySource = {
@@ -475,21 +482,25 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               }
               // Clears the badge: read up to the latest SERVER timestamp (never
               // Date.now() — unread compares against server-stamped message times).
-              markConversationRead(source.conversationId, latest.sentAt);
-              void Promise.resolve(
-                runtime.messageRepository.markConversationRead(
-                  source.conversationId,
-                  source.myUserId,
-                ),
-              ).catch((error) => {
-                console.warn(
-                  '[conversation] failed to mark conversation read',
-                  {
-                    conversationId: source.conversationId,
-                    error,
-                  },
-                );
-              });
+              // Only when the conversation is actually on screen: the panel keeps
+              // watching while hidden behind the contacts list.
+              if (props.visible) {
+                markConversationRead(source.conversationId, latest.sentAt);
+                void Promise.resolve(
+                  runtime.messageRepository.markConversationRead(
+                    source.conversationId,
+                    source.myUserId,
+                  ),
+                ).catch((error) => {
+                  console.warn(
+                    '[conversation] failed to mark conversation read',
+                    {
+                      conversationId: source.conversationId,
+                      error,
+                    },
+                  );
+                });
+              }
             }
           },
           (error) => {
