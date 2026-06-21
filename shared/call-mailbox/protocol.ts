@@ -45,7 +45,12 @@ export type MailboxEnvelope =
   | { t: 'invite'; invite: MailboxInvite }
   | { t: 'response'; response: MailboxResponse }
   | { t: 'cancel'; roomId: string; by: string }
-  | { t: 'handled'; roomId: string; by: string };
+  | { t: 'handled'; roomId: string; by: string }
+  // Fire-and-forget "a message landed in one of your conversations" ping, fanned
+  // to every member except the sender. Not persisted (no resurface on reconnect).
+  // ponytail: piggybacks the call mailbox to get per-user push with no new DO;
+  // the "call-mailbox" name is now a misnomer — rename in the refine pass.
+  | { t: 'activity'; conversationId: string; senderId: string; sentAt: number };
 
 export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {
   if (!value || typeof value !== 'object') return false;
@@ -74,6 +79,13 @@ export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {
   }
   if (e.t === 'cancel' || e.t === 'handled') {
     return typeof e.roomId === 'string' && typeof e.by === 'string';
+  }
+  if (e.t === 'activity') {
+    return (
+      typeof e.conversationId === 'string' &&
+      typeof e.senderId === 'string' &&
+      typeof e.sentAt === 'number'
+    );
   }
   return false;
 }

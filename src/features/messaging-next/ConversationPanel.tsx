@@ -27,6 +27,8 @@ import {
 } from '../../stores/filesStore.js';
 
 import { createMessagingRuntime } from './messaging-runtime.js';
+// Boundary note (spike): feature -> stores import; consolidate in refine pass.
+import { markConversationRead } from '../../stores/conversation-activity';
 
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
@@ -456,6 +458,8 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               queueMicrotask(focusInput);
             }
             if (latestMessageId) {
+              // Clears the conversation-list unread badge (per-device read state).
+              markConversationRead(source.conversationId);
               void Promise.resolve(
                 runtime.messageRepository.markConversationRead(
                   source.conversationId,

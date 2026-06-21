@@ -334,17 +334,37 @@ export async function getMembers(
 export async function listConversations(
   db: D1Database,
   userId: string,
-): Promise<(ConversationRow & { members: MemberRow[] })[]> {
+): Promise<
+  (ConversationRow & {
+    members: MemberRow[];
+    latest_sent_at: number | null;
+    latest_sender_id: string | null;
+  })[]
+> {
+  // latest_* feed the conversation list's MRU sort + unread badge (last message
+  // time + who sent it). ponytail: per-conversation correlated subqueries —
+  // fine at current scale; fold into a grouped join if the list grows large.
   const { results } = await db
     .prepare(
-      `SELECT c.*
+      `SELECT c.*,
+              (SELECT msg.created_at FROM messages msg
+                WHERE msg.conversation_id = c.id
+                ORDER BY msg.created_at DESC LIMIT 1) AS latest_sent_at,
+              (SELECT msg.sender_id FROM messages msg
+                WHERE msg.conversation_id = c.id
+                ORDER BY msg.created_at DESC LIMIT 1) AS latest_sender_id
        FROM conversations c
        JOIN conversation_members m
          ON m.conversation_id = c.id AND m.user_id = ?
        ORDER BY c.updated_at DESC`,
     )
     .bind(userId)
-    .all<ConversationRow>();
+    .all<
+      ConversationRow & {
+        latest_sent_at: number | null;
+        latest_sender_id: string | null;
+      }
+    >();
 
   const conversations = results ?? [];
   return Promise.all(
@@ -355,6 +375,8 @@ export async function listConversations(
       title: c.title,
       created_at: c.created_at,
       updated_at: c.updated_at,
+      latest_sent_at: c.latest_sent_at,
+      latest_sender_id: c.latest_sender_id,
       members: await getMembers(db, c.id),
     })),
   );
