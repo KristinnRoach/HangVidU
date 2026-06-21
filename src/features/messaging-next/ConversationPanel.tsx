@@ -28,7 +28,10 @@ import {
 
 import { createMessagingRuntime } from './messaging-runtime.js';
 // Boundary note (spike): feature -> stores import; consolidate in refine pass.
-import { markConversationRead } from '../../stores/conversation-activity';
+import {
+  markConversationRead,
+  recordConversationActivity,
+} from '../../stores/conversation-activity';
 
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
@@ -458,6 +461,19 @@ export default function ConversationPanel(props: ConversationPanelProps) {
               queueMicrotask(focusInput);
             }
             if (latestMessageId) {
+              // Keep the contact-list row ordered for the open conversation —
+              // covers the user's own send (never echoed over the mailbox). DM
+              // only: peer uid is the activity map key.
+              const peers = selection.remoteParticipantIds;
+              const latest = loadedMessages.at(-1);
+              if (latest && peers?.length === 1) {
+                recordConversationActivity(
+                  peers[0],
+                  source.conversationId,
+                  latest.sentAt,
+                  latest.senderId,
+                );
+              }
               // Clears the conversation-list unread badge (per-device read state).
               markConversationRead(source.conversationId);
               void Promise.resolve(

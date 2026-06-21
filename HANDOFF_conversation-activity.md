@@ -10,9 +10,10 @@ unread badge, in real time, without reload. Backend-agnostic at the seam.
 
 ## Status
 
-- Branch `feat/conversation-activity-feed`, commit `a685b954` — working spike,
-  verified "mostly works" in-browser via `pnpm dev:local` (two users, one DM).
-- There are a few core issues to address before refining (below).
+- Branch `feat/conversation-activity-feed` — spike verified in-browser via
+  `pnpm dev:local` (two users, one DM). Both deploy-blockers now cleared
+  (single socket + sender's own send); additive wire changes, safe to merge.
+- Remaining items are deferred refinements (below), not blockers.
 
 ## Approach (decided — do not relitigate)
 
@@ -41,17 +42,27 @@ Per-user **push** by reusing the existing `UserMailbox` Durable Object.
 prod-worker 403 trap). Two users sharing a DM; send from one, watch the other's list
 reorder + badge live with no conversation open.
 
+## Resolved (deploy-blockers cleared)
+
+- **Single mailbox socket** — `src/realtime/user-mailbox.ts` is a uid-keyed
+  singleton over `createMailboxChannel`; both `CallService` and
+  `conversation-activity` subscribe through it. No second per-user WS.
+- **Sender's own send** — `recordConversationActivity` bumps the open
+  conversation's row from the `watchRecentMessages` callback (DM-only, keyed on
+  the peer uid), so the sender's list reorders without a refetch.
+
 ## Deliberate spike shortcuts to refine (all flagged in code comments)
 
-- **Second mailbox socket** — `conversation-activity` opens its own mailbox WS,
-  separate from `CallService`'s. Consolidate to one shared mailbox subscription.
 - **Naming** — `call-mailbox` protocol now also carries message activity; rename to a
-  general per-user event channel.
+  general per-user event channel (the client `user-mailbox` keeps the `mailbox`
+  term until that pass).
 - **Boundaries** — `useContacts` and `ConversationPanel` (feature) import
   `stores/conversation-activity`. Re-decide boundaries in refine.
 - **DM-only** — live path keys on `senderId == the participant` (true for DMs, all the
   list shows); groups unhandled.
-- **Sender's own list** updates on seed refetch, not on their own send.
+- **Activity after logout/user-switch** — `closeUserMailbox` drops handlers and
+  `startConversationActivity` is latched, so activity stops until reload. Dominant
+  flow reloads on auth change; fix when in-place user-switch matters.
 - **Server N+1** — two correlated subqueries per conversation in the seed; fold into a
   grouped join if the list grows.
 - **Read-state** — per-device localStorage for now; cross-device is issue #563.

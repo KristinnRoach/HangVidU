@@ -11,14 +11,13 @@
 // Read state (lastReadAt) is per-device localStorage for now; markConversationRead
 // bumps a version signal so the unread derivation re-runs without a refetch.
 //
-// MINIMAL SPIKE (verify-then-refine): opens its own mailbox socket separate from
-// CallService's — a second per-user connection to the same DO. Consolidate to one
-// shared mailbox subscription in the refine pass.
+// Live push rides the user's shared mailbox socket (subscribeToUserMailbox), the
+// same connection CallService uses — no second per-user socket.
 
 import { createSignal } from 'solid-js';
 import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
 import { getConversationsClient } from './conversations-client';
-import { createMailboxChannel } from '../realtime/mailbox-channel';
+import { subscribeToUserMailbox } from '../realtime/user-mailbox';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 
 export interface ParticipantActivity {
@@ -66,6 +65,20 @@ function upsert(participantId: string, next: ParticipantActivity): void {
   });
 }
 
+/**
+ * Record activity for a DM from the open conversation's message stream. Covers
+ * the sender's OWN send, which never comes back over the mailbox (the server
+ * fans `activity` to other members only). `participantId` is the peer's uid.
+ */
+export function recordConversationActivity(
+  participantId: string,
+  conversationId: string,
+  latestSentAt: number,
+  latestSenderId: string | null,
+): void {
+  upsert(participantId, { conversationId, latestSentAt, latestSenderId });
+}
+
 /** Refetch the current activity snapshot (seed). */
 export async function refreshConversationActivity(): Promise<void> {
   const me = getLoggedInUserId();
@@ -101,20 +114,23 @@ export function startConversationActivity(): void {
 
   void refreshConversationActivity();
 
-  const channel = createMailboxChannel({
-    baseUrl: getHangViduApiBaseUrl(),
-    getToken: getLoggedInUserToken,
-  });
-  channel.onEnvelope((envelope) => {
-    if (envelope.t !== 'activity') return; // ignore call invites/responses
-    // DM: the envelope reaches only the other member, so senderId IS the
-    // participant this row is keyed on.
-    upsert(envelope.senderId, {
-      conversationId: envelope.conversationId,
-      latestSentAt: envelope.sentAt,
-      latestSenderId: envelope.senderId,
-    });
-  });
+  subscribeToUserMailbox(
+    {
+      localUID: getLoggedInUserId(),
+      baseUrl: getHangViduApiBaseUrl(),
+      getToken: getLoggedInUserToken,
+    },
+    (envelope) => {
+      if (envelope.t !== 'activity') return; // ignore call invites/responses
+      // DM: the envelope reaches only the other member, so senderId IS the
+      // participant this row is keyed on.
+      upsert(envelope.senderId, {
+        conversationId: envelope.conversationId,
+        latestSentAt: envelope.sentAt,
+        latestSenderId: envelope.senderId,
+      });
+    },
+  );
 
   // Cheap liveness for anything missed while disconnected (seed is authoritative).
   if (typeof document !== 'undefined') {
