@@ -1,7 +1,4 @@
-import {
-  subscribeToUserMailbox,
-  closeUserMailbox,
-} from '../../realtime/user-mailbox';
+import { subscribeToUserMailbox } from '../../realtime/user-mailbox';
 import type { MailboxEnvelope } from '../../../shared/call-mailbox/protocol';
 import type { CallInvite, CallResponse } from './model/call-schema';
 import { CALLING_TTL_MS } from '../../../shared/constants';
@@ -59,6 +56,7 @@ export class CallService {
   readonly localUID: string;
   private readonly baseUrl: string;
   private readonly getToken: () => Promise<string | null>;
+  private readonly unsubscribers = new Set<() => void>();
 
   constructor({ localUID, baseUrl, getToken }: CallServiceOptions) {
     if (!localUID || !baseUrl || !getToken) {
@@ -72,10 +70,15 @@ export class CallService {
   }
 
   private subscribe(handler: (e: MailboxEnvelope) => void): () => void {
-    return subscribeToUserMailbox(
+    const unsubscribe = subscribeToUserMailbox(
       { localUID: this.localUID, baseUrl: this.baseUrl, getToken: this.getToken },
       handler,
     );
+    this.unsubscribers.add(unsubscribe);
+    return () => {
+      unsubscribe();
+      this.unsubscribers.delete(unsubscribe);
+    };
   }
 
   private async post(path: string, body: unknown): Promise<void> {
@@ -194,6 +197,7 @@ export class CallService {
   }
 
   cleanup(): void {
-    closeUserMailbox();
+    for (const unsubscribe of this.unsubscribers) unsubscribe();
+    this.unsubscribers.clear();
   }
 }

@@ -17,7 +17,10 @@
 import { createSignal } from 'solid-js';
 import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
 import { getConversationsClient } from './conversations-client';
-import { subscribeToUserMailbox } from '../realtime/user-mailbox';
+import {
+  closeUserMailbox,
+  subscribeToUserMailbox,
+} from '../realtime/user-mailbox';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 
 export interface ParticipantActivity {
@@ -117,6 +120,25 @@ export async function refreshConversationActivity(): Promise<void> {
 }
 
 let started = false;
+let unsubscribeMailbox: (() => void) | undefined;
+
+function refreshWhenVisible(): void {
+  if (document.visibilityState === 'visible') {
+    void refreshConversationActivity();
+  }
+}
+
+/** Release login-scoped activity state and the shared mailbox. */
+export function stopConversationActivity(): void {
+  unsubscribeMailbox?.();
+  unsubscribeMailbox = undefined;
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', refreshWhenVisible);
+  }
+  closeUserMailbox();
+  started = false;
+  setActivity(new Map());
+}
 
 /** Idempotent: seed once + open the live mailbox subscription. */
 export function startConversationActivity(): void {
@@ -125,7 +147,7 @@ export function startConversationActivity(): void {
 
   void refreshConversationActivity();
 
-  subscribeToUserMailbox(
+  unsubscribeMailbox = subscribeToUserMailbox(
     {
       localUID: getLoggedInUserId(),
       baseUrl: getHangViduApiBaseUrl(),
@@ -145,10 +167,6 @@ export function startConversationActivity(): void {
 
   // Cheap liveness for anything missed while disconnected (seed is authoritative).
   if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        void refreshConversationActivity();
-      }
-    });
+    document.addEventListener('visibilitychange', refreshWhenVisible);
   }
 }
