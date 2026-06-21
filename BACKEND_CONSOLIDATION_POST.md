@@ -32,6 +32,28 @@ ownership and lifecycle design.
 - [ ] Verify existing attachment rendering and all file operations
 - [ ] Deploy independently from any Durable Object migration
 
+## Conversation-list activity follow-ups
+
+Live DM ordering and unread badges shipped in PR #565. Activity uses the shared
+per-user mailbox for push, `GET /conversations` for the initial snapshot, and
+per-device local storage for read state.
+
+- [ ] Restart conversation activity after an in-place user switch if auth stops
+  reloading the app; logout currently closes the shared mailbox and clears its
+  subscribers
+- [ ] Move read state to server-side `last_read_at` when cross-device consistency
+  is implemented (issue #563)
+- [ ] Generalize the participant-keyed activity model before showing group
+  conversations in the contacts list; the live path is intentionally DM-only
+- [ ] Remove the now-unused `MessageRepository.watchConversationActivity` contract
+  and adapter implementations, then update `src/features/contacts/docs/CONTRACT.md`
+- [ ] Rename the call-mailbox protocol/module if it continues carrying non-call
+  user events
+- [ ] Resolve the feature-to-store imports from `useContacts` and
+  `ConversationPanel` during the next boundary-focused refactor
+- [ ] Replace the two correlated latest-message subqueries only if conversation-list
+  scale makes them measurable
+
 ## OPTIONAL — undecided or nonessential
 
 These are not commitments. Promote an item into a dedicated plan only when its
