@@ -12,6 +12,12 @@ TODO: Review this again in a dedicated session addressing the concerns listed in
 - Firebase Auth gateway: `src/auth/adapters/firebase-auth-adapter.js`
 - Only this adapter is allowed to import `firebase/auth` directly.
 - Other `src/auth/` files must import Firebase behavior through adapter exports.
+- Error codes: never branch on raw `auth/...` Firebase error strings outside
+  the adapter. Use `normalizeAuthErrorCode(error)` from the adapter and branch
+  on its generic codes instead. (Known pre-existing exceptions not yet
+  migrated: `auth-commands.js`, `onetap.js`, `password-auth.js`,
+  `components/UsernamePasswordForm.jsx` — migrate opportunistically when
+  touching those files.)
 
 ## State Boundary
 
