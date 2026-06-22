@@ -1,5 +1,3 @@
-/* ===== MESSAGE REACTIONS ===== */
-
 /* Reaction container - positioned like Messenger (bottom-right of message bubble) */
 .message-reactions {
   display: flex;

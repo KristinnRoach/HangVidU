@@ -1,0 +1,39 @@
+import { describe, expect, it, vi } from 'vitest';
+import { attachReactions } from './attachReactions.js';
+
+describe('attachReactions', () => {
+  it('toggles the default reaction on double click', () => {
+    const element = document.createElement('div');
+    const onChange = vi.fn();
+    attachReactions(element, 'message-1', 'user-1', onChange);
+    const tap = () =>
+      element.dispatchEvent(
+        new Event('ontouchstart' in window ? 'touchend' : 'click', {
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+
+    tap();
+    tap();
+    expect(element.querySelector('.reaction-badge')?.textContent).toBe('❤️');
+    expect(onChange).toHaveBeenLastCalledWith({
+      messageId: 'message-1',
+      userId: 'user-1',
+      reactionType: 'heart',
+      active: true,
+    });
+
+    tap();
+    tap();
+    expect(element.querySelector('.message-reactions')?.style.display).toBe(
+      'none',
+    );
+    expect(onChange).toHaveBeenLastCalledWith({
+      messageId: 'message-1',
+      userId: 'user-1',
+      reactionType: 'heart',
+      active: false,
+    });
+  });
+});

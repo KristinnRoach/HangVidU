@@ -1,0 +1,72 @@
+# Message reactions
+
+Framework-agnostic, in-memory emoji reactions for any HTML element. The module
+has no backend or application-state dependency.
+
+## Drop-in usage
+
+```js
+import { attachReactions } from './index.js';
+import './reactions.css';
+
+const cleanup = attachReactions(
+  document.querySelector('.message'),
+  'message-123',
+  'user-456',
+  ({ messageId, userId, reactionType, active }) => {
+    // Optional integration seam for persistence or analytics.
+  },
+);
+
+cleanup();
+```
+
+Double-tap toggles the default heart. Long-press opens the reaction picker.
+Calling `attachReactions` again for the same element replaces its existing
+gesture listeners.
+
+The optional callback receives one event per changed reaction:
+
+```js
+{ messageId, userId, reactionType, active }
+```
+
+Persistence and remote synchronization belong to the host. Use the exported
+`ReactionManager` and `ReactionUI` directly when the host needs to hydrate or
+own reaction state.
+
+## Solid
+
+The optional directive adapter handles reactive options and DOM cleanup without
+adding wrapper markup:
+
+```tsx
+import { reactions } from './solid.js';
+import './reactions.css';
+
+<div
+  use:reactions={{
+    messageId: message.id,
+    userId: currentUser.id,
+    onChange: persistReaction,
+  }}
+/>
+```
+
+Importing `index.js` does not import Solid; framework adapters remain separate.
+
+## Files
+
+- `attachReactions.js` — drop-in behavior and local state
+- `ReactionManager.js` — reaction state and per-user tracking
+- `ReactionUI.js` — DOM rendering, picker, and animation
+- `ReactionConfig.js` — available emoji and gesture settings
+- `onTapGesture.js` — framework-independent gesture handling
+- `solid.ts` — optional Solid directive adapter
+- `reactions.css` — required styles
+
+## Tests
+
+```sh
+pnpm vitest --run src/features/messaging-next/reactions
+```

@@ -40,6 +40,8 @@ import { createConversationActions } from './conversation.actions.js';
 import { envelopeToChatMessage, useConversation } from './use-conversation.js';
 import { sortMessagesBySentAt } from './message-ordering.js';
 import { clearLocalDraft, saveLocalDraft } from './local-drafts.js';
+// TODO: Pass reactions an onChange callback when persistence is wired.
+import { reactions } from './reactions/solid.js';
 import type { ConversationId, UserId } from './types.js';
 import type {
   ChatMessage,
@@ -798,6 +800,10 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                       </Match>
                       <Match when={msg.source !== 'system'}>
                         <div
+                          use:reactions={{
+                            messageId: msg.id,
+                            userId: state.myUserId,
+                          }}
                           class={styles.msg}
                           data-timestamp={msg.sentAt}
                           classList={{
