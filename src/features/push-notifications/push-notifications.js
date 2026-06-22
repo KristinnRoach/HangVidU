@@ -432,14 +432,36 @@ export class PushNotifications {
   }
 
   /**
-   * Message push delivery remains backend-owned in V1.
-   * App code should not call this method as a real send path.
+   * Sends a message push to each recipient via the authenticated cloud function.
+   * Best-effort, fire-and-forget from the sender's client. Recipients come from
+   * the conversation's remoteParticipantIds.
    */
-  async sendMessageNotification(_targetUserId, _messageData) {
-    console.warn(
-      '[Push Notifications] Message notifications are not implemented in this phase',
-    );
-    return false;
+  async sendMessageNotification(messageData) {
+    const { recipientIds, conversationId, ...rest } = messageData || {};
+
+    if (!this.options.enableMessageNotifications) {
+      return false;
+    }
+    if (!Array.isArray(recipientIds) || recipientIds.length === 0) {
+      return false;
+    }
+
+    try {
+      const formatted = await this.formatMessageNotification(rest);
+      return await callCloudFunction('sendMessageNotification', {
+        recipientIds,
+        conversationId,
+        senderId: rest.senderId,
+        senderName: formatted.senderName,
+        messagePreview: formatted.messageText,
+      });
+    } catch (error) {
+      console.error(
+        '[Push Notifications] Failed to send message notification:',
+        error,
+      );
+      return false;
+    }
   }
 
   /**
@@ -643,6 +665,7 @@ export class PushNotifications {
         platform: navigator.platform || 'unknown',
         userAgent: navigator.userAgent,
         language: navigator.language,
+        origin: window.location.origin,
       },
     });
   }

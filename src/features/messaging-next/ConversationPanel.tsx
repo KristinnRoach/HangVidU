@@ -579,6 +579,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     store,
     actions,
     getSenderName: getUserName,
+    getRecipientIds: () => props.selection?.remoteParticipantIds ?? [],
   });
 
   function persistReaction(

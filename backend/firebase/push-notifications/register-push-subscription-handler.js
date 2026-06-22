@@ -10,6 +10,7 @@ const {
 const MAX_PLATFORM_LENGTH = 100;
 const MAX_LANGUAGE_LENGTH = 32;
 const MAX_USER_AGENT_LENGTH = 512;
+const MAX_ORIGIN_LENGTH = 256;
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim() !== '';
@@ -50,6 +51,7 @@ function sanitizeDeviceInfo(deviceInfo) {
     platform: sanitizeString(deviceInfo.platform, MAX_PLATFORM_LENGTH),
     userAgent: sanitizeString(deviceInfo.userAgent, MAX_USER_AGENT_LENGTH),
     language: sanitizeString(deviceInfo.language, MAX_LANGUAGE_LENGTH),
+    origin: sanitizeString(deviceInfo.origin, MAX_ORIGIN_LENGTH),
   };
 
   return Object.fromEntries(

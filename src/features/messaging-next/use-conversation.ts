@@ -17,12 +17,15 @@ import type {
 import type { ConversationStateStore } from './conversation.state.js';
 import type { ConversationActions } from './conversation.actions.js';
 import { sortMessagesBySentAt } from './message-ordering.js';
+import { getPushNotifications } from '../push-notifications/index.js';
 
 type UseConversationOptions = {
   repository: MessageRepository;
   store: ConversationStateStore;
   actions: ConversationActions;
   getSenderName?: () => string | null | undefined;
+  /** Recipient user ids for best-effort message push (persistent sends only). */
+  getRecipientIds?: () => UserId[];
   /** Optional datachannel transport for private mode. Without it, private sends fail. */
   privateTransport?: PrivateMessageTransport;
 };
@@ -117,6 +120,7 @@ export function useConversation({
   store,
   actions,
   getSenderName,
+  getRecipientIds,
   privateTransport,
 }: UseConversationOptions) {
   const { state } = store;
@@ -234,6 +238,21 @@ export function useConversation({
           payload,
         });
         actions.markSent(tempId, saved.id);
+
+        const recipientIds = getRecipientIds?.() ?? [];
+        if (recipientIds.length > 0) {
+          const messageText =
+            payload.type === 'text'
+              ? payload.text
+              : payload.text || 'Sent a file';
+          void getPushNotifications()?.sendMessageNotification({
+            recipientIds,
+            conversationId,
+            senderId: myUserId,
+            senderName,
+            messageText,
+          });
+        }
         return true;
       }
     } catch {

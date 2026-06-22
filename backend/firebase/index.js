@@ -1,5 +1,4 @@
 const { onRequest } = require('firebase-functions/v2/https');
-const { onValueCreated } = require('firebase-functions/v2/database');
 const { initializeApp } = require('firebase-admin/app');
 
 const { REGION } = require('./push-notifications/config');
@@ -58,9 +57,9 @@ exports.deleteAccount = onRequest(
   handleDeleteAccount,
 );
 
-exports.sendMessageNotification = onValueCreated(
+exports.sendMessageNotification = onRequest(
   {
-    ref: '/conversations/{conversationId}/messages/{messageId}',
+    cors: true,
     region: REGION,
   },
   handleSendMessageNotification,
