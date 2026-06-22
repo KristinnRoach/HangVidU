@@ -25,9 +25,7 @@ describe('attachReactions', () => {
 
     tap();
     tap();
-    expect(element.querySelector('.message-reactions')?.style.display).toBe(
-      'none',
-    );
+    expect(element.querySelector('.message-reactions')?.hidden).toBe(true);
     expect(onChange).toHaveBeenLastCalledWith({
       messageId: 'message-1',
       userId: 'user-1',

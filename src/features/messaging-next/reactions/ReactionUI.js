@@ -27,135 +27,9 @@ export class ReactionUI {
   constructor(reactionManager, config = DEFAULT_CONFIG) {
     this.reactionManager = reactionManager;
     this.config = config;
-    this.doubleTapTimers = new Map(); // messageElement -> timestamp of last tap
-    this.longPressTimers = new Map(); // messageElement -> timeout id
     this.activePicker = null; // Currently open picker element
     this.activePickerMessageElement = null; // Message element that picker belongs to
     this.pickerSetupTimer = null; // Pending setTimeout id for the outside-click listener
-  }
-
-  /**
-   * Enable reaction interactions on a message element
-   * - Double-tap: adds default reaction (heart)
-   * - Long-press: shows reaction picker
-   * @param {HTMLElement} messageElement - The message DOM element
-   * @param {string} messageId - Unique identifier for the message
-   * @param {Function} onReactionChange - Async callback(reactionType, messageElement, messageId) when reaction is toggled
-   */
-  enableDoubleTap(messageElement, messageId, onReactionChange) {
-    if (!messageElement || !messageId) {
-      console.warn('[ReactionUI] Invalid parameters for enableDoubleTap');
-      return;
-    }
-
-    const isTouchDevice = 'ontouchstart' in window;
-
-    // --- Double-tap detection ---
-    const tapEvent = isTouchDevice ? 'touchend' : 'click';
-
-    const handleTap = (e) => {
-      if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') {
-        return;
-      }
-
-      const now = Date.now();
-      const lastTap = this.doubleTapTimers.get(messageElement);
-
-      if (lastTap && now - lastTap < this.config.doubleTapDelay) {
-        e.preventDefault();
-        this.handleDoubleTap(messageElement, messageId, onReactionChange);
-        this.doubleTapTimers.delete(messageElement);
-      } else {
-        this.doubleTapTimers.set(messageElement, now);
-      }
-    };
-
-    // --- Long-press detection ---
-    const startLongPress = (e) => {
-      if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') {
-        return;
-      }
-
-      const timerId = setTimeout(() => {
-        this.showPicker(messageElement, messageId, onReactionChange);
-      }, this.config.longPressDelay || 500);
-
-      this.longPressTimers.set(messageElement, timerId);
-    };
-
-    const cancelLongPress = () => {
-      const timerId = this.longPressTimers.get(messageElement);
-      if (timerId) {
-        clearTimeout(timerId);
-        this.longPressTimers.delete(messageElement);
-
-        // Only re-enable selection if picker wasn't shown (cancelled early)
-        // If picker was shown, hidePicker() will re-enable selection
-        if (!this.activePicker) {
-          messageElement.style.userSelect = '';
-          messageElement.style.webkitUserSelect = '';
-        }
-      }
-    };
-
-    // Attach event listeners
-    messageElement.addEventListener(tapEvent, handleTap, { passive: false });
-
-    if (isTouchDevice) {
-      messageElement.addEventListener('touchstart', startLongPress, {
-        passive: true,
-      });
-      messageElement.addEventListener('touchend', cancelLongPress, {
-        passive: true,
-      });
-      messageElement.addEventListener('touchmove', cancelLongPress, {
-        passive: true,
-      });
-      messageElement.addEventListener('touchcancel', cancelLongPress, {
-        passive: true,
-      });
-    } else {
-      messageElement.addEventListener('mousedown', startLongPress);
-      messageElement.addEventListener('mouseup', cancelLongPress);
-      messageElement.addEventListener('mouseleave', cancelLongPress);
-    }
-
-    // Store cleanup function
-    messageElement._reactionCleanup = () => {
-      messageElement.removeEventListener(tapEvent, handleTap);
-      if (isTouchDevice) {
-        messageElement.removeEventListener('touchstart', startLongPress);
-        messageElement.removeEventListener('touchend', cancelLongPress);
-        messageElement.removeEventListener('touchmove', cancelLongPress);
-        messageElement.removeEventListener('touchcancel', cancelLongPress);
-      } else {
-        messageElement.removeEventListener('mousedown', startLongPress);
-        messageElement.removeEventListener('mouseup', cancelLongPress);
-        messageElement.removeEventListener('mouseleave', cancelLongPress);
-      }
-      this.doubleTapTimers.delete(messageElement);
-      cancelLongPress();
-    };
-  }
-
-  /**
-   * Handle double-tap on a message
-   * @param {HTMLElement} messageElement - The message DOM element
-   * @param {string} messageId - Unique identifier for the message
-   * @param {Function} onReactionChange - Async callback to handle toggle logic
-   */
-  async handleDoubleTap(messageElement, messageId, onReactionChange) {
-    const reactionType = this.config.defaultReaction;
-
-    // Delegate to callback which has access to session/transport for checking user's reaction state
-    if (onReactionChange) {
-      await onReactionChange(
-        reactionType,
-        messageElement,
-        messageId,
-        'doubleTap',
-      );
-    }
   }
 
   /**
@@ -171,14 +45,10 @@ export class ReactionUI {
     if (!reactionContainer) {
       reactionContainer = document.createElement('div');
       reactionContainer.className = 'message-reactions';
-      // Prefer to attach reactions to the message bubble (`.message-text`) so
-      // they position relative to the bubble instead of the full-width p.
-      const textContainer = messageElement.querySelector('.message-text');
-      if (textContainer) {
-        textContainer.appendChild(reactionContainer);
-      } else {
-        messageElement.appendChild(reactionContainer);
-      }
+      // Host can redirect the container into a child (e.g. a message bubble)
+      // via config.mountInto; defaults to the element itself.
+      const mount = this.config.mountInto?.(messageElement) ?? messageElement;
+      mount.appendChild(reactionContainer);
     }
 
     // Clear existing reactions
@@ -190,11 +60,11 @@ export class ReactionUI {
     );
 
     if (!hasActiveReactions) {
-      reactionContainer.style.display = 'none';
+      reactionContainer.hidden = true;
       return;
     }
 
-    reactionContainer.style.display = '';
+    reactionContainer.hidden = false;
 
     // Render each reaction type (just show emoji, no count for 1:1 chats)
     for (const [reactionType, count] of Object.entries(reactions)) {
@@ -330,17 +200,6 @@ export class ReactionUI {
     if (this.pickerCleanup) {
       this.pickerCleanup();
       this.pickerCleanup = null;
-    }
-
-  }
-
-  /**
-   * Cleanup reactions for a message element
-   * @param {HTMLElement} messageElement - The message DOM element
-   */
-  cleanup(messageElement) {
-    if (messageElement._reactionCleanup) {
-      messageElement._reactionCleanup();
     }
   }
 }

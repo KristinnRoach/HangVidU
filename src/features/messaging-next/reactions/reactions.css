@@ -9,6 +9,12 @@
   right: -1em;
 }
 
+/* `display: flex` above (author origin) beats the UA [hidden] rule, so hiding
+   needs an explicit selector. */
+.message-reactions[hidden] {
+  display: none;
+}
+
 /* Individual reaction badge - minimal like Messenger */
 .reaction-badge {
   display: inline-flex;

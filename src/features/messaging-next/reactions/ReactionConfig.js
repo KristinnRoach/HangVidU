@@ -34,6 +34,11 @@ export const DEFAULT_CONFIG = {
 
   // Available reaction types and their emoji
   reactions: DEFAULT_REACTIONS,
+
+  // Optional: redirect the reaction container into a child of the attached
+  // element (e.g. a message bubble). (element) => HTMLElement. Defaults to
+  // mounting on the attached element itself.
+  mountInto: null,
 };
 
 /**
