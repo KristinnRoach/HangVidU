@@ -65,6 +65,10 @@ export function onTapGesture(
 
     longPressTimer = setTimeout(() => {
       longPressTimer = null;
+      // The touchend that releases this long-press also reaches handleTap;
+      // clear lastTapTime so that touchend isn't mistaken for the first half
+      // of a double-tap.
+      lastTapTime = 0;
       onLongPress(e);
     }, longPressDelay);
   };

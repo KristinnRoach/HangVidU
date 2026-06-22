@@ -84,3 +84,15 @@ Importing `index.js` does not import Solid; framework adapters remain separate.
 ```sh
 pnpm vitest --run src/features/messaging-next/reactions
 ```
+
+## Gesture edge cases
+
+`onTapGesture.js`'s `shouldIgnore` skips gesture handling only when the exact
+tap target is an `<a>`/`<button>` (or matches `ignoreTarget`). It does not
+walk up via `closest()`, so a tap on a nested child (e.g. an icon inside a
+button) inside the message element is not currently ignored. This hasn't
+been an issue because message bubbles don't nest interactive elements today.
+If a future layout puts links/buttons inside a message bubble's content, this
+will need a bounded ancestor check (stopping at the message element, not
+walking past it) so an unrelated wrapping `<a>`/`<button>` further up the DOM
+doesn't suppress gestures on the whole message.
