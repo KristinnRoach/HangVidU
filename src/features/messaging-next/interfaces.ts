@@ -13,7 +13,15 @@ import type {
 
 // ─── Wire types ───────────────────────────────────────────────────────────────
 
-export type IncomingMessage = MessageEnvelope;
+export type ReactionSummary = {
+  key: string;
+  count: number;
+  reactedByMe: boolean;
+};
+
+export type IncomingMessage = MessageEnvelope & {
+  reactions: ReactionSummary[];
+};
 export type OutgoingMessage = MessageEnvelope;
 
 /** Wire format for chat messages sent over a datachannel (private mode). */
@@ -24,9 +32,6 @@ export type P2PChatEnvelope = {
 };
 
 // ─── Persistent backend ───────────────────────────────────────────────────────
-
-/** emoji → userId → true  (RTDB nested-object shape, JSON-safe) */
-export type ReactionMap = Record<string, Record<UserId, true>>;
 
 export type MessageRepository = {
   /**
@@ -68,27 +73,13 @@ export type MessageRepository = {
     userId: UserId,
   ): void | Promise<void>;
 
-  /**
-   * Write a reaction delta to the persistent store.
-   * active=true adds the userId, active=false removes it.
-   */
-  setReaction(
+  /** Set or remove the current user's one reaction on a persisted message. */
+  setMyReaction(
     conversationId: ConversationId,
     messageId: string,
-    emoji: string,
     userId: UserId,
-    active: boolean,
+    reactionKey: string | null,
   ): void | Promise<void>;
-
-  /**
-   * Subscribe to reaction changes for the open conversation.
-   * Called whenever any reaction on any message changes.
-   * Returns unsubscribe.
-   */
-  subscribeReactions(
-    conversationId: ConversationId,
-    onReactions: (messageId: string, reactions: ReactionMap) => void,
-  ): (() => void) | Promise<() => void>;
 };
 
 // ─── Conversation metadata backend ───────────────────────────────────────────
@@ -225,7 +216,7 @@ export type ChatMessage = {
   status: MessageStatus;
   source: MessageSource;
   delivery: DeliveryPolicy;
-  reactions: ReactionMap;
+  reactions: ReactionSummary[];
   actions?: MessageAction[];
 };
 

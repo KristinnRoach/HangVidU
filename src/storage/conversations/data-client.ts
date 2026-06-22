@@ -4,7 +4,10 @@
 // Surface: /me, /conversations/resolve-direct, /conversations,
 // /conversations/:id, and the message endpoints (/conversations/:id/messages).
 
-import type { WireMessage } from '../../../shared/conversation-channel/protocol';
+import type {
+  WireMessage,
+  WireReactionSummary,
+} from '../../../shared/conversation-channel/protocol';
 import { reportApiAuthFailure } from '../../infra/api-auth-failure.js';
 
 /** Input for sending a message. `messageId` is client-reserved (optimistic id). */
@@ -59,6 +62,11 @@ export interface ConversationsClient {
     conversationId: string,
     input: SendMessageInput,
   ): Promise<WireMessage>;
+  setMyReaction(
+    conversationId: string,
+    messageId: string,
+    reactionKey: string | null,
+  ): Promise<WireReactionSummary[]>;
 }
 
 export interface ConversationsClientOptions {
@@ -143,6 +151,16 @@ export function createConversationsClient(
         `/conversations/${encodeURIComponent(conversationId)}/messages`,
         input,
       ).then((r) => r.message);
+    },
+    setMyReaction(conversationId, messageId, reactionKey) {
+      return request<{
+        messageId: string;
+        reactions: WireReactionSummary[];
+      }>(
+        'PUT',
+        `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/reaction`,
+        { reactionKey },
+      ).then((r) => r.reactions);
     },
   };
 }

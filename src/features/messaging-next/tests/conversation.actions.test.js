@@ -12,7 +12,7 @@ function message(overrides) {
     source: 'persisted',
     delivery: 'persistent',
     status: 'sent',
-    reactions: {},
+    reactions: [],
     ...overrides,
   };
 }

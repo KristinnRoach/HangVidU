@@ -1,4 +1,3 @@
-import { createRoot, createSignal } from 'solid-js';
 import { describe, expect, it, vi } from 'vitest';
 import { createConversationActions } from '../conversation.actions.js';
 import { createConversationState } from '../conversation.state.js';
@@ -75,44 +74,6 @@ describe('messaging-next useConversation', () => {
     });
   });
 
-  it('starts reaction subscriptions only after history is ready', async () => {
-    const store = createConversationState();
-    const actions = createConversationActions(store);
-    actions.startConversation({ conversationId: 'conversation-1' }, 'me');
-
-    const repository = {
-      subscribeReactions: vi.fn(() => () => {}),
-      send: vi.fn(),
-    };
-
-    await new Promise((resolve) => {
-      createRoot((dispose) => {
-        const [historyReady, setHistoryReady] = createSignal(false);
-        useConversation({
-          repository,
-          store,
-          actions,
-          historyReady,
-        });
-
-        queueMicrotask(() => {
-          expect(repository.subscribeReactions).not.toHaveBeenCalled();
-
-          setHistoryReady(true);
-
-          queueMicrotask(() => {
-            expect(repository.subscribeReactions).toHaveBeenCalledWith(
-              'conversation-1',
-              expect.any(Function),
-            );
-            dispose();
-            resolve();
-          });
-        });
-      });
-    });
-  });
-
   it('uses a reserved persistent id for the optimistic message and send payload', async () => {
     const store = createConversationState();
     const actions = createConversationActions(store);
@@ -121,7 +82,6 @@ describe('messaging-next useConversation', () => {
 
     const repository = {
       createMessageId: vi.fn(() => 'reserved-1'),
-      subscribeReactions: vi.fn(() => () => {}),
       send: vi.fn(() => ({ id: 'reserved-1', sentAt: 10 })),
     };
 
@@ -154,7 +114,6 @@ describe('messaging-next useConversation', () => {
 
     const repository = {
       createMessageId: vi.fn(() => 'reserved-file-1'),
-      subscribeReactions: vi.fn(() => () => {}),
       send: vi.fn(() => ({ id: 'reserved-file-1', sentAt: 10 })),
     };
 

@@ -10,12 +10,18 @@
 // may import storage, auth, and realtime) injects a concrete implementation
 // that wires the HTTP client + the live channel.
 //
-// Scope (decision 2026-06-15 #5): text + file messages with live push. The
-// reaction/read methods are inert (deferred to the fast-follow).
+// Scope: text + file messages and one reaction per user, all with live push.
 
-import type { IncomingMessage, MessageRepository, ReactionMap } from '../interfaces.js';
+import type {
+  IncomingMessage,
+  MessageRepository,
+  ReactionSummary,
+} from '../interfaces.js';
 import type { ConversationId, MessageEnvelope, UserId } from '../types.js';
-import type { WireMessage } from '../../../realtime/conversation-protocol';
+import type {
+  ConversationServerEvent,
+  WireMessage,
+} from '../../../realtime/conversation-protocol';
 
 /** Input the adapter hands the client for a send (mirrors the worker body). */
 export interface D1SendInput {
@@ -41,15 +47,18 @@ export interface D1SendInput {
 export interface D1MessageClient {
   loadMessages(conversationId: string): Promise<WireMessage[]>;
   sendMessage(conversationId: string, input: D1SendInput): Promise<WireMessage>;
+  setMyReaction(
+    conversationId: string,
+    messageId: string,
+    reactionKey: string | null,
+  ): Promise<ReactionSummary[]>;
+  getUserId(): string | null;
   /** Subscribe to live broadcasts for a conversation. Returns unsubscribe. */
   subscribe(
     conversationId: string,
-    onMessage: (message: WireMessage) => void,
+    onEvent: (event: ConversationServerEvent) => void,
   ): () => void;
 }
-
-const noop = () => {};
-const EMPTY_REACTIONS: ReactionMap = {};
 
 // Cap the in-memory live window so long-lived sessions don't grow unbounded.
 // Matches the rtdb adapter's RECENT_MESSAGES_WINDOW.
@@ -63,6 +72,7 @@ function toIncoming(m: WireMessage): IncomingMessage | null {
     senderName: m.senderName ?? undefined,
     sentAt: m.sentAt,
     delivery: 'persistent' as const,
+    reactions: m.reactions,
   };
 
   if (m.kind === 'file') {
@@ -161,10 +171,30 @@ export function createD1MessageRepository(
         onError?.(error);
       }
 
-      return client.subscribe(conversationId, (wire) => {
-        const incoming = toIncoming(wire);
-        if (!incoming) return;
-        window.set(incoming.messageId, incoming);
+      return client.subscribe(conversationId, (event) => {
+        if (event.t === 'message') {
+          const incoming = toIncoming(event.message);
+          if (!incoming) return;
+          window.set(incoming.messageId, incoming);
+          emit();
+          return;
+        }
+
+        const message = window.get(event.messageId);
+        if (!message) return;
+        const previous = message.reactions;
+        const actorIsMe = event.actorUserId === client.getUserId();
+        window.set(event.messageId, {
+          ...message,
+          reactions: event.reactions.map(({ key, count }) => ({
+            key,
+            count,
+            reactedByMe: actorIsMe
+              ? event.actorReactionKey === key
+              : (previous.find((reaction) => reaction.key === key)
+                  ?.reactedByMe ?? false),
+          })),
+        });
         emit();
       });
     },
@@ -180,11 +210,8 @@ export function createD1MessageRepository(
     // Read receipts are deferred (decision #5); marking is a no-op for now.
     markConversationRead() {},
 
-    // Reactions are deferred (decision #5).
-    setReaction() {},
-    subscribeReactions() {
-      void EMPTY_REACTIONS;
-      return noop;
+    async setMyReaction(conversationId, messageId, _userId, reactionKey) {
+      await client.setMyReaction(conversationId, messageId, reactionKey);
     },
   };
 }

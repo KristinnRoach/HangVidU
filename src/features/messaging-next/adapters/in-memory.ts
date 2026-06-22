@@ -1,7 +1,6 @@
 import type {
   IncomingMessage,
   MessageRepository,
-  ReactionMap,
 } from '../interfaces.js';
 import type { ConversationId, UserId } from '../types.js';
 
@@ -11,11 +10,7 @@ export function createInMemoryMessageRepository(): MessageRepository {
     ConversationId,
     Array<(messages: IncomingMessage[]) => void>
   >();
-  const rxnSubs = new Map<
-    ConversationId,
-    Array<(messageId: string, reactions: ReactionMap) => void>
-  >();
-  const reactions = new Map<string, ReactionMap>(); // `${conversationId}:${messageId}`
+  const reactions = new Map<string, Map<UserId, string>>();
   function getStored(id: ConversationId) {
     if (!stored.has(id)) stored.set(id, []);
     return stored.get(id)!;
@@ -54,6 +49,7 @@ export function createInMemoryMessageRepository(): MessageRepository {
       const msg: IncomingMessage = {
         ...message,
         sentAt: Date.now(),
+        reactions: [],
       };
       getStored(msg.conversationId).push(msg);
       notifyRecent(msg.conversationId);
@@ -62,33 +58,31 @@ export function createInMemoryMessageRepository(): MessageRepository {
 
     markConversationRead() {},
 
-    setReaction(conversationId, messageId, emoji, userId, active) {
+    setMyReaction(conversationId, messageId, userId, reactionKey) {
       const key = `${conversationId}:${messageId}`;
-      const map: ReactionMap = { ...(reactions.get(key) ?? {}) };
-      if (active) {
-        map[emoji] = { ...map[emoji], [userId as string]: true };
-      } else if (map[emoji]) {
-        const { [userId as string]: _, ...rest } = map[emoji];
-        if (Object.keys(rest).length === 0) {
-          delete map[emoji];
-        } else {
-          map[emoji] = rest as Record<UserId, true>;
-        }
+      const byUser = reactions.get(key) ?? new Map<UserId, string>();
+      if (reactionKey === null) {
+        byUser.delete(userId);
+      } else {
+        byUser.set(userId, reactionKey);
       }
-      reactions.set(key, map);
-      for (const cb of rxnSubs.get(conversationId) ?? []) cb(messageId, map);
-    },
+      reactions.set(key, byUser);
 
-    subscribeReactions(conversationId, onReactions) {
-      const list = rxnSubs.get(conversationId) ?? [];
-      list.push(onReactions);
-      rxnSubs.set(conversationId, list);
-      return () => {
-        rxnSubs.set(
-          conversationId,
-          (rxnSubs.get(conversationId) ?? []).filter((cb) => cb !== onReactions),
-        );
-      };
+      const counts = new Map<string, number>();
+      for (const value of byUser.values()) {
+        counts.set(value, (counts.get(value) ?? 0) + 1);
+      }
+      const message = getStored(conversationId).find(
+        (candidate) => candidate.messageId === messageId,
+      );
+      if (message) {
+        message.reactions = [...counts].map(([reaction, count]) => ({
+          key: reaction,
+          count,
+          reactedByMe: byUser.get(userId) === reaction,
+        }));
+        notifyRecent(conversationId);
+      }
     },
   };
 }

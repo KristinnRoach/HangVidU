@@ -48,6 +48,16 @@ export class ConversationChannel extends DurableObject<Env> {
   /** Clients are receive-only; ignore anything they send. */
   async webSocketMessage(): Promise<void> {}
 
+  webSocketClose(
+    ws: WebSocket,
+    code: number,
+    reason: string,
+    _wasClean: boolean,
+  ): void | Promise<void> {
+    if (code === 1005) ws.close();
+    else ws.close(code, reason);
+  }
+
   /**
    * Fan an event out to every connected member. Called by the worker (RPC) after
    * a successful write. Broadcasts to all sockets — no origin filtering (see class

@@ -1,6 +1,6 @@
 import { env, SELF } from 'cloudflare:test';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { resolveOrCreateDirect } from '../src/data/repo';
+import { insertMessage, resolveOrCreateDirect } from '../src/data/repo';
 
 // End-to-end coverage of the security seam: the Bearer-auth + membership guard
 // on a real route (GET /conversations/:id/messages), exercised through the full
@@ -70,6 +70,18 @@ function jsonPost(path: string, token: string, body: unknown) {
   });
 }
 
+function jsonPut(path: string, token: string, body: unknown) {
+  return SELF.fetch(`https://data${path}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Origin: ORIGIN,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 async function connectMailbox(token: string) {
   const res = await SELF.fetch('https://data/users/me/mailbox/ws', {
     headers: {
@@ -98,6 +110,38 @@ async function connectMailbox(token: string) {
         const queued = queue.shift();
         if (queued) resolve(queued);
         else waiters.push(resolve);
+      }),
+  };
+}
+
+async function connectConversation(conversationId: string, token: string) {
+  const res = await SELF.fetch(
+    `https://data/conversations/${encodeURIComponent(conversationId)}/ws`,
+    {
+      headers: {
+        Upgrade: 'websocket',
+        Origin: ORIGIN,
+        'Sec-WebSocket-Protocol': `bearer, ${token}`,
+      },
+    },
+  );
+  expect(res.status).toBe(101);
+  const ws = res.webSocket as WebSocket;
+  ws.accept();
+  return {
+    close: () => ws.close(),
+    next: () =>
+      new Promise<unknown>((resolve, reject) => {
+        ws.addEventListener(
+          'message',
+          (event: MessageEvent) => resolve(JSON.parse(event.data as string)),
+          { once: true },
+        );
+        ws.addEventListener(
+          'close',
+          () => reject(new Error('websocket closed before message')),
+          { once: true },
+        );
       }),
   };
 }
@@ -152,12 +196,105 @@ afterAll(() => {
 
 beforeEach(async () => {
   await env.DB.batch([
+    env.DB.prepare('DELETE FROM message_reactions'),
     env.DB.prepare('DELETE FROM message_attachments'),
     env.DB.prepare('DELETE FROM messages'),
     env.DB.prepare('DELETE FROM conversation_members'),
     env.DB.prepare('DELETE FROM conversations'),
     env.DB.prepare('DELETE FROM users'),
   ]);
+});
+
+describe('message reactions', () => {
+  it('allows PUT in CORS preflight responses', async () => {
+    const res = await SELF.fetch(
+      'https://data/conversations/c1/messages/m1/reaction',
+      { method: 'OPTIONS', headers: { Origin: ORIGIN } },
+    );
+
+    expect(res.status).toBe(204);
+    expect(res.headers.get('Access-Control-Allow-Methods')).toContain('PUT');
+  });
+
+  it('persists, hydrates, and broadcasts authoritative reaction counts', async () => {
+    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    await insertMessage(env.DB, convoId, 'm1', 'user-a', 'text', 'hi', null, 2000);
+    const aliceToken = await signToken(validClaims('user-a'));
+    const bobToken = await signToken(validClaims('user-b'));
+    const bobChannel = await connectConversation(convoId, bobToken);
+
+    try {
+      const eventPromise = bobChannel.next();
+      const res = await jsonPut(
+        `/conversations/${convoId}/messages/m1/reaction`,
+        aliceToken,
+        { reactionKey: 'heart' },
+      );
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        messageId: 'm1',
+        reactions: [{ key: 'heart', count: 1, reactedByMe: true }],
+      });
+      expect(await eventPromise).toEqual({
+        t: 'reaction',
+        messageId: 'm1',
+        actorUserId: 'user-a',
+        actorReactionKey: 'heart',
+        reactions: [{ key: 'heart', count: 1 }],
+      });
+
+      const history = await messagesRequest(convoId, bobToken);
+      expect((await history.json()).messages[0].reactions).toEqual([
+        { key: 'heart', count: 1, reactedByMe: false },
+      ]);
+    } finally {
+      bobChannel.close();
+    }
+  });
+
+  it('uses null to remove and rejects invalid or inaccessible reactions', async () => {
+    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const otherConvoId = await resolveOrCreateDirect(
+      env.DB,
+      'user-c',
+      'user-d',
+      1000,
+    );
+    await insertMessage(env.DB, convoId, 'm1', 'user-a', 'text', 'hi', null, 2000);
+    const token = await signToken(validClaims('user-a'));
+
+    expect(
+      (
+        await jsonPut(`/conversations/${convoId}/messages/m1/reaction`, token, {
+          reactionKey: 'heart',
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await jsonPut(`/conversations/${convoId}/messages/m1/reaction`, token, {
+          reactionKey: null,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await jsonPut(`/conversations/${convoId}/messages/m1/reaction`, token, {
+          reactionKey: 'x'.repeat(65),
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await jsonPut(
+          `/conversations/${otherConvoId}/messages/m1/reaction`,
+          token,
+          { reactionKey: 'heart' },
+        )
+      ).status,
+    ).toBe(404);
+  });
 });
 
 describe('auth + membership guard on GET /conversations/:id/messages', () => {

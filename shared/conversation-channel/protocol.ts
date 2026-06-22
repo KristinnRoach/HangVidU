@@ -10,16 +10,14 @@
  * ## Event envelope specification
  *
  * The DO broadcasts events using a discriminated union keyed by `t` (type).
- * Only one variant exists today:
- *
  * - `{ t: 'message', message: WireMessage }` — new message (text or file).
  *   Payload fields: id, conversationId, senderId, senderName, kind, body, sentAt,
  *   attachments (each with id, r2Key, bucket, fileName, mimeType, fileSize, width, height).
+ * - `{ t: 'reaction', ... }` — authoritative counts after one user's reaction
+ *   changed. The actor fields let each receiver derive its viewer-specific
+ *   `reactedByMe` value from the shared broadcast.
  *
- * Reactions and read-receipts are deferred to a fast-follow PR; when wired they
- * become additional `t` variants (e.g. `t: 'reaction'`, `t: 'read'`) added to the
- * union below and to `isConversationServerEvent`. Keep payloads camelCase (wire
- * shape), distinct from the worker's snake_case D1 rows.
+ * Keep payloads camelCase (wire shape), distinct from snake_case D1 rows.
  */
 
 export interface WireAttachment {
@@ -33,6 +31,15 @@ export interface WireAttachment {
   height: number | null;
 }
 
+export interface WireReactionCount {
+  key: string;
+  count: number;
+}
+
+export interface WireReactionSummary extends WireReactionCount {
+  reactedByMe: boolean;
+}
+
 export interface WireMessage {
   id: string;
   conversationId: string;
@@ -42,16 +49,33 @@ export interface WireMessage {
   body: string | null;
   sentAt: number;
   attachments: WireAttachment[];
+  reactions: WireReactionSummary[];
 }
 
 /** Durable Object → client. Broadcast to all connected members of the room. */
-export type ConversationServerEvent = { t: 'message'; message: WireMessage };
+export type ConversationServerEvent =
+  | { t: 'message'; message: WireMessage }
+  | {
+      t: 'reaction';
+      messageId: string;
+      actorUserId: string;
+      actorReactionKey: string | null;
+      reactions: WireReactionCount[];
+    };
 
 export function isConversationServerEvent(
   value: unknown,
 ): value is ConversationServerEvent {
   if (!value || typeof value !== 'object') return false;
   const e = value as Record<string, unknown>;
+  if (e.t === 'reaction') {
+    return (
+      typeof e.messageId === 'string' &&
+      typeof e.actorUserId === 'string' &&
+      (e.actorReactionKey === null || isValidReactionKey(e.actorReactionKey)) &&
+      isReactionList(e.reactions, false)
+    );
+  }
   if (e.t !== 'message') return false;
   const m = e.message as Record<string, unknown> | undefined;
   return (
@@ -61,6 +85,28 @@ export function isConversationServerEvent(
     typeof m.senderId === 'string' &&
     (m.kind === 'text' || m.kind === 'file') &&
     typeof m.sentAt === 'number' &&
-    Array.isArray(m.attachments)
+    Array.isArray(m.attachments) &&
+    isReactionList(m.reactions, true)
+  );
+}
+
+function isValidReactionKey(value: unknown): boolean {
+  return typeof value === 'string' && value.length >= 1 && value.length <= 64;
+}
+
+function isReactionList(value: unknown, includeViewerState: boolean): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => {
+      if (!item || typeof item !== 'object') return false;
+      const reaction = item as Record<string, unknown>;
+      return (
+        isValidReactionKey(reaction.key) &&
+        typeof reaction.count === 'number' &&
+        Number.isInteger(reaction.count) &&
+        reaction.count > 0 &&
+        (!includeViewerState || typeof reaction.reactedByMe === 'boolean')
+      );
+    })
   );
 }

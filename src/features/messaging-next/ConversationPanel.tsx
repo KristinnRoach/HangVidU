@@ -40,6 +40,8 @@ import { createConversationActions } from './conversation.actions.js';
 import { envelopeToChatMessage, useConversation } from './use-conversation.js';
 import { sortMessagesBySentAt } from './message-ordering.js';
 import { clearLocalDraft, saveLocalDraft } from './local-drafts.js';
+import { reactions } from './reactions/solid/solid.js';
+import type { ReactionChange } from './reactions/solid/solid.js';
 import type { ConversationId, UserId } from './types.js';
 import type {
   ChatMessage,
@@ -319,7 +321,6 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyError, setHistoryError] = createSignal<unknown>(null);
-  const [historyReady, setHistoryReady] = createSignal(false);
   const [latestReadCandidate, setLatestReadCandidate] = createSignal<{
     conversationId: ConversationId;
     myUserId: UserId;
@@ -454,7 +455,6 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       (source) => {
         flushDraftSave();
         setLatestReadCandidate(null);
-        setHistoryReady(false);
         suppressScroll = true;
         // The messages container remounts on switch; drop the old position so
         // the first scroll comparison isn't against the previous conversation.
@@ -490,7 +490,6 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                 .filter(isChatMessage),
             );
             actions.mergeLoadedMessages(loadedMessages);
-            setHistoryReady(true);
             setHistoryLoading(false);
             suppressScroll = false;
             if (isInitialLoad) {
@@ -579,8 +578,25 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     store,
     actions,
     getSenderName: getUserName,
-    historyReady,
   });
+
+  function persistReaction(
+    change: ReactionChange,
+    source: ChatMessage['source'],
+  ) {
+    const conversationId = state.conversationId;
+    if (source !== 'persisted' || !conversationId) return;
+    void Promise.resolve(
+      runtime.messageRepository.setMyReaction(
+        conversationId,
+        change.messageId,
+        change.userId as UserId,
+        change.reactionKey,
+      ),
+    ).catch((error) => {
+      console.warn('[conversation] failed to persist reaction', error);
+    });
+  }
 
   onCleanup(() => {
     flushDraftSave();
@@ -798,6 +814,13 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                       </Match>
                       <Match when={msg.source !== 'system'}>
                         <div
+                          use:reactions={{
+                            messageId: msg.id,
+                            userId: state.myUserId,
+                            reactions: msg.reactions,
+                            onChange: (change) =>
+                              persistReaction(change, msg.source),
+                          }}
                           class={styles.msg}
                           data-timestamp={msg.sentAt}
                           classList={{
