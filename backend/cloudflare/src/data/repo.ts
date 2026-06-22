@@ -138,6 +138,12 @@ export interface AttachmentRow {
   height: number | null;
 }
 
+export interface ReactionSummary {
+  key: string;
+  count: number;
+  reactedByMe: boolean;
+}
+
 export type MessageWithAttachments = MessageRow & {
   attachments: AttachmentRow[];
 };
@@ -287,6 +293,59 @@ async function loadAttachments(
     (out[a.message_id] ??= []).push(a);
   }
   return out;
+}
+
+// --- reactions --------------------------------------------------------------
+
+export async function setMyReaction(
+  db: D1Database,
+  messageId: string,
+  userId: string,
+  reactionKey: string | null,
+): Promise<ReactionSummary[]> {
+  if (reactionKey === null) {
+    await db
+      .prepare(`DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?`)
+      .bind(messageId, userId)
+      .run();
+  } else {
+    await db
+      .prepare(
+        `INSERT INTO message_reactions (message_id, user_id, reaction_key)
+         VALUES (?, ?, ?)
+         ON CONFLICT(message_id, user_id) DO UPDATE SET
+           reaction_key = excluded.reaction_key`,
+      )
+      .bind(messageId, userId, reactionKey)
+      .run();
+  }
+
+  return getReactionSummaries(db, messageId, userId);
+}
+
+export async function getReactionSummaries(
+  db: D1Database,
+  messageId: string,
+  myUserId: string,
+): Promise<ReactionSummary[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT reaction_key AS key,
+              COUNT(*) AS count,
+              MAX(CASE WHEN user_id = ? THEN 1 ELSE 0 END) AS reacted_by_me
+       FROM message_reactions
+       WHERE message_id = ?
+       GROUP BY reaction_key
+       ORDER BY reaction_key`,
+    )
+    .bind(myUserId, messageId)
+    .all<{ key: string; count: number; reacted_by_me: number }>();
+
+  return (results ?? []).map((row) => ({
+    key: row.key,
+    count: row.count,
+    reactedByMe: row.reacted_by_me === 1,
+  }));
 }
 
 export async function isMember(
