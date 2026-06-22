@@ -40,6 +40,9 @@ function normalizeRoomId(roomId) {
   return normalized || null;
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function normalizeConversationId(conversationId) {
   if (conversationId == null) {
     return null;
@@ -50,7 +53,11 @@ function normalizeConversationId(conversationId) {
   }
 
   const normalized = conversationId.trim();
-  return normalized || null;
+  if (!normalized) return null;
+
+  // Pre-#564 records may still carry the legacy `<uidA>_<uidB>` composite
+  // key under this field name; only the opaque D1 UUID is valid here.
+  return UUID_RE.test(normalized) ? normalized : null;
 }
 
 function normalizeTimestamp(value, fallbackValue) {
