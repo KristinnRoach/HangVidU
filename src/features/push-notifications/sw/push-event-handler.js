@@ -12,23 +12,14 @@ function parsePushPayload(event) {
 }
 
 /**
- * Returns a foreground app client that should suppress native push display.
- */
-async function findFocusedVisibleWindowClient() {
-  const clients = await self.clients.matchAll({
-    type: 'window',
-    includeUncontrolled: true,
-  });
-
-  return (
-    clients.find(
-      (client) => client?.focused && client?.visibilityState === 'visible',
-    ) || null
-  );
-}
-
-/**
  * Service-worker push entrypoint for native notification presentation.
+ *
+ * Always shows the notification — no foreground suppression. Under
+ * userVisibleOnly, skipping showNotification consumes Chrome's per-origin
+ * silent-push budget, which eventually throttles/stops delivery (a prime suspect
+ * for notifications "suddenly stopping" on Android).
+ * ponytail: if foreground de-dup is wanted later, do it server-side (skip the
+ * push when the recipient has a live ConversationChannel socket), not here.
  */
 export async function handlePushEvent(event) {
   const payload = parsePushPayload(event);
@@ -36,11 +27,6 @@ export async function handlePushEvent(event) {
     payload,
     import.meta.env.BASE_URL,
   );
-
-  const focusedVisibleClient = await findFocusedVisibleWindowClient();
-  if (focusedVisibleClient) {
-    return;
-  }
 
   try {
     await self.registration.showNotification(

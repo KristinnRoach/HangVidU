@@ -45,6 +45,45 @@ self.addEventListener('push', (event) => {
 });
 self.addEventListener('notificationclick', handleNotificationClickEvent);
 
+// The browser can rotate/expire the push subscription (common on Android over
+// time). Without re-subscribing, delivery silently stops until the next app open
+// re-registers — a prime suspect for notifications "suddenly stopping".
+// Re-subscribe immediately so the browser-side subscription persists, then ping
+// any open client to re-register the new endpoint via the authenticated path
+// (the SW has no Firebase token of its own). With no client open, the next app
+// open self-heals through ensureEnabledIfGranted.
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from(raw, (char) => char.charCodeAt(0));
+}
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  const vapidKey = import.meta.env.VITE_PUSH_VAPID_KEY;
+  event.waitUntil(
+    (async () => {
+      if (vapidKey) {
+        try {
+          await self.registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey),
+          });
+        } catch (error) {
+          console.error('[SW] pushsubscriptionchange re-subscribe failed', error);
+        }
+      }
+      const clients = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
+      for (const client of clients) {
+        client.postMessage({ type: 'PUSH_SUBSCRIPTION_CHANGED' });
+      }
+    })(),
+  );
+});
+
 // ============================================================================
 // MESSAGE HANDLING FROM MAIN THREAD
 // ============================================================================

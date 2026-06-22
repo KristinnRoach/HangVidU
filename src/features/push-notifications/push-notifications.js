@@ -757,6 +757,18 @@ export const initPushNotifications = async (options = {}) => {
         dispatchCommand('cmd:app-notifications:show:enable-push');
       }
     });
+
+    // The SW re-subscribes on pushsubscriptionchange but can't authenticate to the
+    // backend itself; it pings us to re-register the new endpoint via enable().
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'PUSH_SUBSCRIPTION_CHANGED') {
+          instance.enable().catch((e) => {
+            console.warn('[Push Notifications] re-register failed:', e);
+          });
+        }
+      });
+    }
   }
 
   return instance;

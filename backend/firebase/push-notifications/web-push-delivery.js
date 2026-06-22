@@ -14,8 +14,18 @@ const PUSH_TTL_SECONDS = {
   default: 60,
 };
 
+// User-visible, time-sensitive pushes that must wake the device immediately even
+// in Doze. Normal-urgency pushes are deferred to a Doze maintenance window (or
+// dropped past TTL), which is why messages were unreliable on Android while calls
+// were fine. missed_call is a deferrable follow-up, so it stays normal.
+const HIGH_URGENCY_TYPES = new Set(['incoming_call', 'message']);
+
 function getPushTtlSeconds(type) {
   return PUSH_TTL_SECONDS[type] || PUSH_TTL_SECONDS.default;
+}
+
+function getPushUrgency(type) {
+  return HIGH_URGENCY_TYPES.has(type) ? 'high' : 'normal';
 }
 
 /**
@@ -68,7 +78,7 @@ async function sendWebPushToUser(userId, payload) {
       try {
         await webpush.sendNotification(value.subscription, payloadJson, {
           TTL: getPushTtlSeconds(payload.data?.type),
-          urgency: isIncomingCallType(payload.data?.type) ? 'high' : 'normal',
+          urgency: getPushUrgency(payload.data?.type),
           topic:
             isIncomingCallType(payload.data?.type) &&
             payload.data?.notificationId
