@@ -39,6 +39,7 @@ describe('ContactsRepository', () => {
       contactId: 'u1',
       contactNickName: 'Alice',
       roomId: 'room-2',
+      conversationId: null,
       savedAt: 10,
       lastInteractionAt: 20,
     });

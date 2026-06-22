@@ -25,6 +25,7 @@ import type {
   StartCallDetails,
 } from './call-types.js';
 import { resolveDirectConversationId } from '../../stores/conversations-client.js';
+import { getContactById } from '../../stores/contactsStore.js';
 import { CALLING_TTL_MS } from '../../../shared/constants';
 import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
 
@@ -262,8 +263,14 @@ export class CallHandshakeController {
    * so every interaction between the same participants shares one id.
    * The data worker authorizes call mailbox writes against that conversation's
    * D1 membership, so there is no valid random-room fallback.
+   *
+   * Normally already on the contact record (minted at invite-accept time);
+   * resolveDirectConversationId() is only a fallback for contacts saved
+   * before that existed.
    */
   private async resolveCallRoomId(calleeId: string): Promise<string> {
+    const storedConversationId = getContactById(calleeId)?.conversationId;
+    if (storedConversationId) return storedConversationId;
     return resolveDirectConversationId(calleeId);
   }
 
