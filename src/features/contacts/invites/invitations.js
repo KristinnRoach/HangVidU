@@ -5,6 +5,24 @@ import { rtdb } from '../../../infra/firebase-rtdb.js';
 import { getLoggedInUserId, getUser } from '../../../auth/index.js';
 import { getDeterministicRoomId } from '../../../shared/utils/room-id.js';
 import { saveContact } from '../../../stores/contactsStore.js';
+import { resolveDirectConversationId } from '../../../stores/conversations-client.js';
+
+/**
+ * Best-effort resolve-or-create of the DM conversationId for a newly-confirmed
+ * contact. Failure (e.g. Worker unreachable) is not fatal: the contact is still
+ * saved, and resolveDirectConversationId() lazily backfills the id on first open.
+ */
+async function resolveConversationIdForContact(otherUserId) {
+  try {
+    return await resolveDirectConversationId(otherUserId);
+  } catch (error) {
+    console.warn(
+      '[INVITATIONS] Failed to eagerly resolve conversationId, will lazily resolve on first open',
+      { otherUserId, error },
+    );
+    return null;
+  }
+}
 
 // Track invite listeners for cleanup
 let inviteListener = null;
@@ -99,10 +117,13 @@ export async function acceptInvite(fromUserId, inviteData) {
     throw new Error('Must be logged in to accept invites');
   }
 
+  const conversationId = await resolveConversationIdForContact(fromUserId);
+
   const savedContact = await saveContact(
     fromUserId,
     inviteData.fromName || 'User',
     inviteData.roomId,
+    conversationId,
   );
 
   if (!savedContact) {
@@ -195,10 +216,14 @@ export function listenForAcceptedInvites(callback) {
     if (!acceptData) return;
 
     try {
+      const conversationId =
+        await resolveConversationIdForContact(acceptedByUserId);
+
       const savedContact = await saveContact(
         acceptedByUserId,
         acceptData.acceptedByName || 'User',
         acceptData.roomId,
+        conversationId,
       );
 
       if (!savedContact) {

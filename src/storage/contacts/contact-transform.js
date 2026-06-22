@@ -40,6 +40,26 @@ function normalizeRoomId(roomId) {
   return normalized || null;
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function normalizeConversationId(conversationId) {
+  if (conversationId == null) {
+    return null;
+  }
+
+  if (typeof conversationId !== 'string') {
+    throw new TypeError('conversationId must be a string or null');
+  }
+
+  const normalized = conversationId.trim();
+  if (!normalized) return null;
+
+  // Pre-#564 records may still carry the legacy `<uidA>_<uidB>` composite
+  // key under this field name; only the opaque D1 UUID is valid here.
+  return UUID_RE.test(normalized) ? normalized : null;
+}
+
 function normalizeTimestamp(value, fallbackValue) {
   if (value == null) {
     return fallbackValue;
@@ -67,6 +87,7 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
     contactId,
     contactNickName,
     roomId: normalizeRoomId(input.roomId),
+    conversationId: normalizeConversationId(input.conversationId),
     savedAt,
     lastInteractionAt: normalizeTimestamp(input.lastInteractionAt, savedAt),
   });
@@ -92,6 +113,11 @@ export function normalizeContactPatch(patch) {
 
     if (key === 'roomId') {
       next.roomId = normalizeRoomId(value);
+      continue;
+    }
+
+    if (key === 'conversationId') {
+      next.conversationId = normalizeConversationId(value);
       continue;
     }
 

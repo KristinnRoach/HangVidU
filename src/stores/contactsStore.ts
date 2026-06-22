@@ -74,19 +74,19 @@ export async function saveContact(
   contactId: string,
   contactNickName: string,
   roomId: string | null | undefined,
+  conversationId: string | null | undefined = null,
 ) {
   try {
     const ownerId = getLoggedInUserId();
     const repo = getRepo(ownerId);
     const existing = await repo.get(contactId);
     const now = Date.now();
-    // Opaque conversation ids are minted lazily by the registry on first open
-    // (resolveDirectConversationId); contacts do not carry a conversation id.
 
     const contact = await repo.put({
       contactId,
       contactNickName,
       roomId,
+      conversationId: conversationId ?? existing?.conversationId ?? null,
       savedAt: existing?.savedAt ?? now,
       lastInteractionAt: existing?.lastInteractionAt ?? now,
     });
@@ -115,6 +115,24 @@ export async function updateContact(
   } catch (error) {
     logFailure('updateContact', error, { contactId, roomId: roomId ?? null });
     return null;
+  }
+}
+
+/**
+ * Cache a lazily-resolved conversationId onto the contact record so future
+ * opens use the fast local path instead of re-resolving over the network.
+ * Best-effort: failures are logged, not surfaced — the caller already has
+ * the id in memory for the current open.
+ */
+export async function cacheContactConversationId(
+  contactId: string,
+  conversationId: string,
+): Promise<void> {
+  try {
+    const updated = await getRepo().patch(contactId, { conversationId });
+    if (updated) setState('byId', contactId, updated);
+  } catch (error) {
+    logFailure('cacheContactConversationId', error, { contactId });
   }
 }
 

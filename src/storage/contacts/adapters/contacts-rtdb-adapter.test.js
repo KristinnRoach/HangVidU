@@ -63,6 +63,7 @@ describe('ContactsRTDBAdapter', () => {
       contactId: 'u1',
       contactNickName: 'Alice',
       roomId: 'room-2',
+      conversationId: null,
       savedAt: 10,
       lastInteractionAt: 30,
     });
@@ -103,6 +104,7 @@ describe('ContactsRTDBAdapter', () => {
       contactId: 'u1',
       contactNickName: '',
       roomId: 'room-1',
+      conversationId: null,
       savedAt: 10,
       lastInteractionAt: 20,
     });
@@ -149,7 +151,8 @@ describe('ContactsRTDBAdapter', () => {
       {
         contactId: 'u1',
         contactNickName: 'Alice',
-          roomId: 'room-1',
+        roomId: 'room-1',
+        conversationId: null,
         savedAt: 10,
         lastInteractionAt: 20,
       },
@@ -186,7 +189,8 @@ describe('ContactsRTDBAdapter', () => {
       {
         contactId: 'u1',
         contactNickName: 'Alice',
-          roomId: 'room-2',
+        roomId: 'room-2',
+        conversationId: null,
         savedAt: 10,
         lastInteractionAt: 30,
       },
@@ -195,6 +199,7 @@ describe('ContactsRTDBAdapter', () => {
       contactId: 'u1',
       contactNickName: 'Alice',
       roomId: 'room-2',
+      conversationId: null,
       savedAt: 10,
       lastInteractionAt: 30,
     });
@@ -228,6 +233,7 @@ describe('ContactsRTDBAdapter', () => {
       contactId: 'u1',
       contactNickName: 'Alice',
       roomId: 'room-2',
+      conversationId: null,
       savedAt: 10,
       lastInteractionAt: 30,
     });

@@ -39,6 +39,7 @@ describe('ContactsLocalAdapter', () => {
       contactId: 'u1',
       contactNickName: 'Alice',
       roomId: 'room-1',
+      conversationId: null,
       savedAt: 10,
       lastInteractionAt: 30,
     });
@@ -81,6 +82,7 @@ describe('ContactsLocalAdapter', () => {
       contactId: 'u2',
       contactNickName: '',
       roomId: 'room-2',
+      conversationId: null,
       savedAt: 11,
       lastInteractionAt: 22,
     });
