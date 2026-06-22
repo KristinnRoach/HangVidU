@@ -8,7 +8,7 @@
 import {
   isMailboxEnvelope,
   type MailboxEnvelope,
-} from '../../shared/call-mailbox/protocol';
+} from '../../shared/user-mailbox/protocol';
 import { buildHangViduWebSocketUrl } from '../infra/hangvidu-api-url';
 
 export interface MailboxChannelOptions {

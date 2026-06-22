@@ -13,7 +13,7 @@ import {
   createMailboxChannel,
   type MailboxChannel,
 } from './mailbox-channel';
-import type { MailboxEnvelope } from '../../shared/call-mailbox/protocol';
+import type { MailboxEnvelope } from '../../shared/user-mailbox/protocol';
 
 export interface UserMailboxOptions {
   /** Current user; null is tolerated pre-login (socket waits for a token). */

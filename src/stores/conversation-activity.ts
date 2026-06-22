@@ -4,7 +4,7 @@
 //   - seed: GET /conversations once on start (and on demand), carrying each
 //     conversation's latest message time + sender.
 //   - live: the per-user mailbox pushes an `activity` envelope on every message
-//     to a conversation you're in (see shared/call-mailbox/protocol). For a DM
+//     to a conversation you're in (see shared/user-mailbox/protocol). For a DM
 //     the envelope only reaches the *other* member, so senderId is exactly the
 //     participant we key on.
 //

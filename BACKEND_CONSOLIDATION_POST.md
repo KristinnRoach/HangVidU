@@ -38,8 +38,8 @@ Live DM ordering and unread badges shipped in PR #565. Activity uses the shared
 per-user mailbox for push, `GET /conversations` for the initial snapshot, and
 per-device local storage for read state.
 
-- [ ] Rename the call-mailbox protocol/module if it continues carrying non-call
-      user events
+- [x] Rename the call-mailbox protocol/module if it continues carrying non-call
+      user events — `shared/call-mailbox/` → `shared/user-mailbox/`
 - [ ] Generalize the participant-keyed activity model before showing group
       conversations in the contacts list; the live path is intentionally DM-only
 - [ ] Move read state to server-side `last_read_at` when cross-device consistency

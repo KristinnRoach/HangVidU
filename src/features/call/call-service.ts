@@ -1,5 +1,5 @@
 import { subscribeToUserMailbox } from '../../realtime/user-mailbox';
-import type { MailboxEnvelope } from '../../../shared/call-mailbox/protocol';
+import type { MailboxEnvelope } from '../../../shared/user-mailbox/protocol';
 import type { CallInvite, CallResponse } from './model/call-schema';
 import { CALLING_TTL_MS } from '../../../shared/constants';
 import { reportApiAuthFailure } from '../../infra/api-auth-failure.js';

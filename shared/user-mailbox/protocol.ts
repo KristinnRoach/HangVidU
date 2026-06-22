@@ -1,5 +1,5 @@
 /**
- * Call-mailbox wire protocol — single source of truth shared by the client
+ * User-mailbox wire protocol — single source of truth shared by the client
  * transport (`src/realtime/mailbox-channel.ts`) and the Durable Object
  * (`backend/cloudflare/src/realtime/user-mailbox.ts`).
  *
@@ -48,8 +48,6 @@ export type MailboxEnvelope =
   | { t: 'handled'; roomId: string; by: string }
   // Fire-and-forget "a message landed in one of your conversations" ping, fanned
   // to every member except the sender. Not persisted (no resurface on reconnect).
-  // ponytail: piggybacks the call mailbox to get per-user push with no new DO;
-  // the "call-mailbox" name is now a misnomer — rename in the refine pass.
   | { t: 'activity'; conversationId: string; senderId: string; sentAt: number };
 
 export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {

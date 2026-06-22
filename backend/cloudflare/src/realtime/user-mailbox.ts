@@ -3,7 +3,7 @@ import type {
   MailboxEnvelope,
   MailboxInvite,
   MailboxResponse,
-} from '../../../../shared/call-mailbox/protocol';
+} from '../../../../shared/user-mailbox/protocol';
 
 // One stored key per pending invite, keyed by roomId (= conversationId). Using a
 // key per invite (rather than one blob) lets concurrent deliver() calls from
