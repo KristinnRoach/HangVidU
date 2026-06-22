@@ -99,9 +99,11 @@ export function createConversationsClient(
       if (res.status === 401) {
         reportApiAuthFailure(`data:${method} ${path}`, res.status, detail);
       }
-      throw new Error(
+      const err = new Error(
         `data worker ${method} ${path} -> ${res.status} ${detail}`,
-      );
+      ) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
     }
     return res.json() as Promise<T>;
   }

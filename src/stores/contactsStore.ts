@@ -126,7 +126,7 @@ export async function updateContact(
  */
 export async function cacheContactConversationId(
   contactId: string,
-  conversationId: string,
+  conversationId: string | null,
 ): Promise<void> {
   try {
     const updated = await getRepo().patch(contactId, { conversationId });

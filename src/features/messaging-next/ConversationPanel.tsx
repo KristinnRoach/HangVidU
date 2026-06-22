@@ -32,6 +32,8 @@ import {
   markConversationRead,
   recordConversationActivity,
 } from '../../stores/conversation-activity';
+import { cacheContactConversationId } from '../../stores/contactsStore.js';
+import { openDirectConversation } from '../../stores/selectedConversationStore';
 
 import { createConversationState } from './conversation.state.js';
 import { createConversationActions } from './conversation.actions.js';
@@ -520,6 +522,23 @@ export default function ConversationPanel(props: ConversationPanelProps) {
           },
           (error) => {
             if (source.conversationId !== state.conversationId) return;
+            // Stale cached conversationId (env switch, deleted conversation):
+            // clear the cache and re-resolve once. resolve-direct is
+            // resolve-or-create, so the retry can't 404 again in a loop.
+            const contactId = selection.remoteParticipantIds?.[0];
+            if (
+              (error as { status?: number })?.status === 404 &&
+              selection.remoteParticipantIds?.length === 1 &&
+              contactId
+            ) {
+              void cacheContactConversationId(contactId, null).then(() =>
+                openDirectConversation(contactId, {
+                  contactNickName: selection.contactNickName,
+                  displayUI: selection.displayUI,
+                }),
+              );
+              return;
+            }
             setHistoryError(error);
             setHistoryLoading(false);
             suppressScroll = false;
