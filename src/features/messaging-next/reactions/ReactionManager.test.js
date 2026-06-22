@@ -17,16 +17,17 @@ describe('ReactionManager', () => {
       expect(reactions).toEqual({ heart: 1 });
     });
 
-    it('should increment count when adding same reaction multiple times', () => {
+    it('should be a no-op when re-selecting the same reaction', () => {
       manager.addReaction('msg1', 'heart');
       const reactions = manager.addReaction('msg1', 'heart');
-      expect(reactions).toEqual({ heart: 2 });
+      expect(reactions).toEqual({ heart: 1 });
     });
 
-    it('should support multiple reaction types on same message', () => {
+    it('should replace the previous reaction when a different type is selected', () => {
       manager.addReaction('msg1', 'heart');
       const reactions = manager.addReaction('msg1', 'thumbsUp');
-      expect(reactions).toEqual({ heart: 1, thumbsUp: 1 });
+      expect(reactions).toEqual({ thumbsUp: 1 });
+      expect(manager.getUserReactionType('msg1')).toBe('thumbsUp');
     });
 
     it('should throw error if messageId is missing', () => {
@@ -41,28 +42,27 @@ describe('ReactionManager', () => {
   });
 
   describe('removeReaction', () => {
-    it('should decrement reaction count', () => {
+    it('should remove the actor reaction', () => {
       manager.addReaction('msg1', 'heart');
-      manager.addReaction('msg1', 'heart');
-      const reactions = manager.removeReaction('msg1', 'heart');
-      expect(reactions).toEqual({ heart: 1 });
-    });
-
-    it('should remove reaction entry when count reaches 0', () => {
-      manager.addReaction('msg1', 'heart');
-      const reactions = manager.removeReaction('msg1', 'heart');
+      const reactions = manager.removeReaction('msg1');
       expect(reactions).toEqual({});
     });
 
-    it('should not go below 0 when removing non-existent reaction', () => {
-      const reactions = manager.removeReaction('msg1', 'heart');
+    it('should not go below 0 when removing with no existing reaction', () => {
+      const reactions = manager.removeReaction('msg1');
       expect(reactions).toEqual({});
     });
 
     it('should delete message entry when no reactions left', () => {
       manager.addReaction('msg1', 'heart');
-      manager.removeReaction('msg1', 'heart');
+      manager.removeReaction('msg1');
       expect(manager.reactions.has('msg1')).toBe(false);
+    });
+
+    it('should clear getUserReactionType after removal', () => {
+      manager.addReaction('msg1', 'heart');
+      manager.removeReaction('msg1');
+      expect(manager.getUserReactionType('msg1')).toBe(null);
     });
   });
 
@@ -72,11 +72,10 @@ describe('ReactionManager', () => {
       expect(reactions).toEqual({});
     });
 
-    it('should return all reactions for a message', () => {
+    it('should return the message reactions', () => {
       manager.addReaction('msg1', 'heart');
-      manager.addReaction('msg1', 'thumbsUp');
       const reactions = manager.getReactions('msg1');
-      expect(reactions).toEqual({ heart: 1, thumbsUp: 1 });
+      expect(reactions).toEqual({ heart: 1 });
     });
   });
 
@@ -90,9 +89,9 @@ describe('ReactionManager', () => {
       expect(manager.hasReactions('msg1')).toBe(true);
     });
 
-    it('should return false after all reactions removed', () => {
+    it('should return false after reaction removed', () => {
       manager.addReaction('msg1', 'heart');
-      manager.removeReaction('msg1', 'heart');
+      manager.removeReaction('msg1');
       expect(manager.hasReactions('msg1')).toBe(false);
     });
   });
@@ -102,33 +101,33 @@ describe('ReactionManager', () => {
       expect(manager.getReactionCount('msg1', 'heart')).toBe(0);
     });
 
-    it('should return correct count for specific reaction', () => {
+    it('should return the count for the actor reaction', () => {
       manager.addReaction('msg1', 'heart');
-      manager.addReaction('msg1', 'heart');
-      expect(manager.getReactionCount('msg1', 'heart')).toBe(2);
+      expect(manager.getReactionCount('msg1', 'heart')).toBe(1);
     });
   });
 
   describe('syncFromSummaries', () => {
-    it('hydrates aggregate counts and the current user reaction', () => {
-      manager.syncFromSummaries(
-        'msg1',
-        [
-          { key: 'heart', count: 2, reactedByMe: true },
-          { key: 'laugh', count: 1, reactedByMe: false },
-        ],
-        'me',
-      );
+    it('hydrates aggregate counts and the local actor reaction', () => {
+      manager.syncFromSummaries('msg1', [
+        { key: 'heart', count: 2, reactedByMe: true },
+        { key: 'laugh', count: 1, reactedByMe: false },
+      ]);
 
       expect(manager.getReactions('msg1')).toEqual({ heart: 2, laugh: 1 });
-      expect(manager.getUserReactionType('msg1', 'me')).toBe('heart');
+      expect(manager.getUserReactionType('msg1')).toBe('heart');
+    });
+
+    it('clears state when summaries are empty', () => {
+      manager.addReaction('msg1', 'heart');
+      manager.syncFromSummaries('msg1', []);
+      expect(manager.hasReactions('msg1')).toBe(false);
     });
   });
 
   describe('clearReactions', () => {
     it('should remove all reactions from a message', () => {
       manager.addReaction('msg1', 'heart');
-      manager.addReaction('msg1', 'thumbsUp');
       manager.clearReactions('msg1');
       expect(manager.hasReactions('msg1')).toBe(false);
     });
@@ -150,13 +149,10 @@ describe('ReactionManager', () => {
       manager.addReaction('msg1', 'heart');
       manager.addReaction('msg2', 'heart');
 
-      const reactions1 = manager.getReactions('msg1');
-      const reactions2 = manager.getReactions('msg2');
+      expect(manager.getReactions('msg1')).toEqual({ heart: 1 });
+      expect(manager.getReactions('msg2')).toEqual({ heart: 1 });
 
-      expect(reactions1).toEqual({ heart: 1 });
-      expect(reactions2).toEqual({ heart: 1 });
-
-      manager.removeReaction('msg1', 'heart');
+      manager.removeReaction('msg1');
 
       expect(manager.hasReactions('msg1')).toBe(false);
       expect(manager.hasReactions('msg2')).toBe(true);

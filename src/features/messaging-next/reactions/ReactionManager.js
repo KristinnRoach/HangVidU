@@ -1,103 +1,77 @@
 // src/messaging/reactions/ReactionManager.js
-// Core reaction management logic with per-user tracking
+// Core reaction state: aggregate counts per message, plus which key (if any)
+// the local actor has selected.
 
-import { REACTION_CONFIG, getReactionEmoji } from './ReactionConfig.js';
+import { DEFAULT_CONFIG } from './ReactionConfig.js';
 
 /**
- * ReactionManager - Manages reactions for messages with per-user tracking
- *
- * Responsibilities:
- * - Track reactions per message per user
- * - Add/remove reactions
- * - Provide reaction data for rendering
+ * ReactionManager - Manages aggregate reaction counts for messages and the
+ * local actor's currently-selected reaction key.
  *
  * Design principles:
  * - Data-focused: manages reaction state, not UI
- * - Per-user tracking: supports group chats and accurate toggles
- * - Backward compatible: getReactions() returns counts for UI
+ * - One reaction per actor: selecting a new key replaces the previous one
+ * - getReactions() returns counts for UI; remote aggregates hydrate directly
+ *   via syncFromSummaries()
  */
 export class ReactionManager {
-  constructor() {
-    // Map of messageId -> { reactionType -> Set<userId> }
+  constructor(config = DEFAULT_CONFIG) {
+    this.config = config;
+    // Map of messageId -> { counts: Object.create(null) keyed by reactionType, myKey: string|null }
     this.reactions = new Map();
   }
 
   /**
-   * Add a reaction to a message for a specific user
+   * Select a reaction for a message, replacing the actor's previous one.
    * @param {string} messageId - Unique identifier for the message
    * @param {string} reactionType - Type of reaction (e.g., 'heart')
-   * @param {string} userId - User adding the reaction
    * @returns {Object} Updated reaction counts { reactionType: count }
    */
-  addReaction(messageId, reactionType = REACTION_CONFIG.defaultReaction, userId) {
+  addReaction(messageId, reactionType = this.config.defaultReaction) {
     if (!messageId) {
       throw new Error('messageId is required');
     }
 
-    // Get or create reactions for this message
-    if (!this.reactions.has(messageId)) {
-      this.reactions.set(messageId, {});
+    const entry = this.reactions.get(messageId) ?? {
+      counts: Object.create(null),
+      myKey: null,
+    };
+
+    if (entry.myKey === reactionType) {
+      return this.getReactions(messageId);
     }
 
-    const messageReactions = this.reactions.get(messageId);
-
-    // Get or create Set for this reaction type
-    if (!messageReactions[reactionType]) {
-      messageReactions[reactionType] = new Set();
+    if (entry.myKey) {
+      entry.counts[entry.myKey] = Math.max(0, (entry.counts[entry.myKey] ?? 1) - 1);
+      if (entry.counts[entry.myKey] === 0) delete entry.counts[entry.myKey];
     }
+    entry.counts[reactionType] = (entry.counts[reactionType] ?? 0) + 1;
+    entry.myKey = reactionType;
 
-    // Add userId to the set (if provided)
-    if (userId) {
-      messageReactions[reactionType].add(userId);
-    } else {
-      // Legacy fallback: generate a unique placeholder
-      messageReactions[reactionType].add(`_anon_${Date.now()}_${Math.random()}`);
-    }
-
+    this.reactions.set(messageId, entry);
     return this.getReactions(messageId);
   }
 
   /**
-   * Remove a reaction from a message for a specific user
+   * Remove the local actor's reaction from a message.
    * @param {string} messageId - Unique identifier for the message
-   * @param {string} reactionType - Type of reaction to remove
-   * @param {string} userId - User removing the reaction
    * @returns {Object} Updated reaction counts { reactionType: count }
    */
-  removeReaction(messageId, reactionType = REACTION_CONFIG.defaultReaction, userId) {
+  removeReaction(messageId) {
     if (!messageId) {
       throw new Error('messageId is required');
     }
 
-    const messageReactions = this.reactions.get(messageId);
-    if (!messageReactions) {
-      return {};
-    }
-
-    const userSet = messageReactions[reactionType];
-    if (!userSet || userSet.size === 0) {
+    const entry = this.reactions.get(messageId);
+    if (!entry?.myKey) {
       return this.getReactions(messageId);
     }
 
-    // Remove userId from the set
-    if (userId) {
-      userSet.delete(userId);
-    } else {
-      // Legacy fallback: remove one arbitrary entry (backward compat with count-based API)
-      console.debug('[ReactionManager] removeReaction called without userId - using legacy fallback');
-      const firstEntry = userSet.values().next().value;
-      if (firstEntry) {
-        userSet.delete(firstEntry);
-      }
-    }
+    entry.counts[entry.myKey] = Math.max(0, (entry.counts[entry.myKey] ?? 1) - 1);
+    if (entry.counts[entry.myKey] === 0) delete entry.counts[entry.myKey];
+    entry.myKey = null;
 
-    // Remove entry if set is empty
-    if (userSet.size === 0) {
-      delete messageReactions[reactionType];
-    }
-
-    // Clean up if no reactions left
-    if (Object.keys(messageReactions).length === 0) {
+    if (Object.keys(entry.counts).length === 0) {
       this.reactions.delete(messageId);
     }
 
@@ -105,106 +79,46 @@ export class ReactionManager {
   }
 
   /**
-   * Check if a user has a specific reaction on a message
+   * Get the reaction type the local actor has on a message (or null if none)
    * @param {string} messageId - Unique identifier for the message
-   * @param {string} reactionType - Type of reaction
-   * @param {string} userId - User to check
-   * @returns {boolean} True if user has this reaction
-   */
-  hasUserReaction(messageId, reactionType, userId) {
-    const messageReactions = this.reactions.get(messageId);
-    if (!messageReactions || !messageReactions[reactionType]) {
-      return false;
-    }
-    return messageReactions[reactionType].has(userId);
-  }
-
-  /**
-   * Get the reaction type a user has on a message (or null if none)
-   * @param {string} messageId - Unique identifier for the message
-   * @param {string} userId - User to check
    * @returns {string|null} Reaction type or null
    */
-  getUserReactionType(messageId, userId) {
-    const messageReactions = this.reactions.get(messageId);
-    if (!messageReactions) {
-      return null;
-    }
-
-    for (const [type, userSet] of Object.entries(messageReactions)) {
-      if (userSet.has(userId)) {
-        return type;
-      }
-    }
-    return null;
+  getUserReactionType(messageId) {
+    return this.reactions.get(messageId)?.myKey ?? null;
   }
 
   /**
-   * Get all reactions for a message as counts (backward compatible)
+   * Get all reactions for a message as counts
    * @param {string} messageId - Unique identifier for the message
    * @returns {Object} Reaction data { reactionType: count }
    */
   getReactions(messageId) {
-    const messageReactions = this.reactions.get(messageId);
-    if (!messageReactions) {
-      return {};
-    }
-
-    // Convert Sets to counts
-    const counts = {};
-    for (const [type, userSet] of Object.entries(messageReactions)) {
-      counts[type] = userSet.size;
-    }
-    return counts;
+    return { ...(this.reactions.get(messageId)?.counts ?? {}) };
   }
 
   /**
-   * Sync reaction state from remote data
+   * Hydrate aggregate counts and the local actor's reaction from server
+   * summaries (authoritative; replaces local state for the message).
    * @param {string} messageId - Unique identifier for the message
-   * @param {Object} reactions - Remote reactions { type: [userIds] }
+   * @param {Array<{key: string, count: number, reactedByMe: boolean}>} summaries
    */
-  syncFromRemote(messageId, reactions) {
+  syncFromSummaries(messageId, summaries) {
     if (!messageId) {
       throw new Error('messageId is required');
     }
 
-    // Clear existing reactions for this message
-    this.reactions.delete(messageId);
-
-    if (!reactions || Object.keys(reactions).length === 0) {
-      return;
-    }
-
-    // Rebuild from remote data
-    const messageReactions = {};
-    for (const [type, users] of Object.entries(reactions)) {
-      if (Array.isArray(users) && users.length > 0) {
-        messageReactions[type] = new Set(users);
-      }
-    }
-
-    if (Object.keys(messageReactions).length > 0) {
-      this.reactions.set(messageId, messageReactions);
-    }
-  }
-
-  /** Sync aggregate state without requiring the host to expose user lists. */
-  syncFromSummaries(messageId, summaries, userId) {
-    this.reactions.delete(messageId);
-    const messageReactions = {};
-
+    const counts = Object.create(null);
+    let myKey = null;
     for (const { key, count, reactedByMe } of summaries ?? []) {
       if (!key || count <= 0) continue;
-      const users = new Set();
-      if (reactedByMe && userId) users.add(userId);
-      for (let i = users.size; i < count; i += 1) {
-        users.add(`_remote_${key}_${i}`);
-      }
-      messageReactions[key] = users;
+      counts[key] = count;
+      if (reactedByMe) myKey = key;
     }
 
-    if (Object.keys(messageReactions).length > 0) {
-      this.reactions.set(messageId, messageReactions);
+    if (Object.keys(counts).length > 0) {
+      this.reactions.set(messageId, { counts, myKey });
+    } else {
+      this.reactions.delete(messageId);
     }
   }
 
@@ -214,8 +128,8 @@ export class ReactionManager {
    * @returns {boolean} True if message has reactions
    */
   hasReactions(messageId) {
-    const messageReactions = this.reactions.get(messageId);
-    return !!(messageReactions && Object.keys(messageReactions).length > 0);
+    const entry = this.reactions.get(messageId);
+    return !!(entry && Object.keys(entry.counts).length > 0);
   }
 
   /**
@@ -225,11 +139,7 @@ export class ReactionManager {
    * @returns {number} Count of reactions
    */
   getReactionCount(messageId, reactionType) {
-    const messageReactions = this.reactions.get(messageId);
-    if (!messageReactions || !messageReactions[reactionType]) {
-      return 0;
-    }
-    return messageReactions[reactionType].size;
+    return this.reactions.get(messageId)?.counts[reactionType] ?? 0;
   }
 
   /**

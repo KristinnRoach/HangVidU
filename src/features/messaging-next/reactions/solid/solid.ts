@@ -32,7 +32,7 @@ export function reactions(
       userId,
       (change: ReactionChange) => value().onChange?.(change),
     );
-    syncReactionSummaries(element, messageId, userId, reactions);
+    syncReactionSummaries(element, messageId, reactions);
     onCleanup(cleanup);
   });
 }

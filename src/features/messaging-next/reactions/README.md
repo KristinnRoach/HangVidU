@@ -35,6 +35,19 @@ Persistence and remote synchronization belong to the host. Use the exported
 `ReactionManager` and `ReactionUI` directly when the host needs to hydrate or
 own reaction state.
 
+Use `createReactions(config)` instead of the default `attachReactions` export
+when a host needs its own emoji set, gesture timings, or isolated state (e.g.
+two panels with different reaction sets in the same process):
+
+```js
+import { createReactions, DEFAULT_CONFIG } from './index.js';
+
+const { attachReactions, syncReactionSummaries } = createReactions({
+  ...DEFAULT_CONFIG,
+  reactions: { heart: '❤️', sad: '😢' },
+});
+```
+
 ## Solid
 
 The optional directive adapter handles reactive options and DOM cleanup without
@@ -58,12 +71,12 @@ Importing `index.js` does not import Solid; framework adapters remain separate.
 
 ## Files
 
-- `attachReactions.js` — drop-in behavior and local state
-- `ReactionManager.js` — reaction state and per-user tracking
+- `attachReactions.js` — drop-in behavior, local state, and `createReactions(config)`
+- `ReactionManager.js` — reaction counts and the local actor's selected key
 - `ReactionUI.js` — DOM rendering, picker, and animation
-- `ReactionConfig.js` — available emoji and gesture settings
+- `ReactionConfig.js` — default emoji set and gesture settings
 - `onTapGesture.js` — framework-independent gesture handling
-- `solid.ts` — optional Solid directive adapter
+- `solid/solid.ts` — optional Solid directive adapter
 - `reactions.css` — required styles
 
 ## Tests

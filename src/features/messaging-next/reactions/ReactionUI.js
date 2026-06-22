@@ -1,7 +1,7 @@
 // UI rendering and interaction handling for reactions
 
 import {
-  REACTION_CONFIG,
+  DEFAULT_CONFIG,
   getReactionEmoji,
   getAvailableReactions,
 } from './ReactionConfig.js';
@@ -24,8 +24,9 @@ export class ReactionUI {
    * Create a ReactionUI instance
    * @param {ReactionManager} reactionManager - The reaction manager instance
    */
-  constructor(reactionManager) {
+  constructor(reactionManager, config = DEFAULT_CONFIG) {
     this.reactionManager = reactionManager;
+    this.config = config;
     this.doubleTapTimers = new Map(); // messageElement -> timestamp of last tap
     this.longPressTimers = new Map(); // messageElement -> timeout id
     this.activePicker = null; // Currently open picker element
@@ -59,7 +60,7 @@ export class ReactionUI {
       const now = Date.now();
       const lastTap = this.doubleTapTimers.get(messageElement);
 
-      if (lastTap && now - lastTap < REACTION_CONFIG.doubleTapDelay) {
+      if (lastTap && now - lastTap < this.config.doubleTapDelay) {
         e.preventDefault();
         this.handleDoubleTap(messageElement, messageId, onReactionChange);
         this.doubleTapTimers.delete(messageElement);
@@ -76,7 +77,7 @@ export class ReactionUI {
 
       const timerId = setTimeout(() => {
         this.showPicker(messageElement, messageId, onReactionChange);
-      }, REACTION_CONFIG.longPressDelay || 500);
+      }, this.config.longPressDelay || 500);
 
       this.longPressTimers.set(messageElement, timerId);
     };
@@ -143,7 +144,7 @@ export class ReactionUI {
    * @param {Function} onReactionChange - Async callback to handle toggle logic
    */
   async handleDoubleTap(messageElement, messageId, onReactionChange) {
-    const reactionType = REACTION_CONFIG.defaultReaction;
+    const reactionType = this.config.defaultReaction;
 
     // Delegate to callback which has access to session/transport for checking user's reaction state
     if (onReactionChange) {
@@ -212,7 +213,7 @@ export class ReactionUI {
     const badge = document.createElement('span');
     badge.className = 'reaction-badge';
     badge.dataset.reactionType = reactionType;
-    badge.textContent = getReactionEmoji(reactionType);
+    badge.textContent = getReactionEmoji(reactionType, this.config.reactions);
     return badge;
   }
 
@@ -222,7 +223,7 @@ export class ReactionUI {
    * @param {string} reactionType - Type of reaction
    */
   showReactionAnimation(messageElement, reactionType) {
-    const emoji = getReactionEmoji(reactionType);
+    const emoji = getReactionEmoji(reactionType, this.config.reactions);
     const animation = document.createElement('div');
     animation.className = 'reaction-animation';
     animation.textContent = emoji;
@@ -254,7 +255,7 @@ export class ReactionUI {
     const picker = document.createElement('div');
     picker.className = 'reaction-picker';
 
-    const reactions = getAvailableReactions();
+    const reactions = getAvailableReactions(this.config.reactions);
     for (const [type, emoji] of Object.entries(reactions)) {
       const btn = document.createElement('button');
       btn.type = 'button';

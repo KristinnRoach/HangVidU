@@ -12,9 +12,11 @@ export const DEFAULT_REACTIONS = {
 };
 
 /**
- * Configuration for reaction behavior
+ * Default configuration for reaction behavior. Pass a partial override to
+ * `createReactions(config)` to customize the emoji set or gesture timings
+ * per instance instead of mutating this shared default.
  */
-export const REACTION_CONFIG = {
+export const DEFAULT_CONFIG = {
   // Double-tap detection settings
   doubleTapDelay: 300, // milliseconds between taps to count as double-tap
 
@@ -29,21 +31,26 @@ export const REACTION_CONFIG = {
 
   // Enable/disable reaction animations
   enableAnimations: true,
+
+  // Available reaction types and their emoji
+  reactions: DEFAULT_REACTIONS,
 };
 
 /**
  * Get the emoji for a reaction type
  * @param {string} reactionType - The reaction type key
+ * @param {Object} [reactions] - Reaction type -> emoji map
  * @returns {string} The emoji for the reaction type
  */
-export function getReactionEmoji(reactionType) {
-  return DEFAULT_REACTIONS[reactionType] || reactionType;
+export function getReactionEmoji(reactionType, reactions = DEFAULT_REACTIONS) {
+  return reactions[reactionType] || reactionType;
 }
 
 /**
  * Get all available reaction types
+ * @param {Object} [reactions] - Reaction type -> emoji map
  * @returns {Object} Object mapping reaction types to emojis
  */
-export function getAvailableReactions() {
-  return { ...DEFAULT_REACTIONS };
+export function getAvailableReactions(reactions = DEFAULT_REACTIONS) {
+  return { ...reactions };
 }
