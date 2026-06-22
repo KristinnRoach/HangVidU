@@ -85,6 +85,10 @@ export function buildNotificationPresentation(payload, baseUrl) {
       data,
       tag,
       requireInteraction: isIncomingCallType(data.type),
+      // Re-alert (sound/vibrate/heads-up) when a tagged notification is replaced.
+      // Without this, the 2nd+ message from the same sender (same tag) updates
+      // silently on Android even on an Alerting channel.
+      renotify: true,
       actions,
       vibrate: getVibrationPattern(data.type),
     },
