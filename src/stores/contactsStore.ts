@@ -118,6 +118,24 @@ export async function updateContact(
   }
 }
 
+/**
+ * Cache a lazily-resolved conversationId onto the contact record so future
+ * opens use the fast local path instead of re-resolving over the network.
+ * Best-effort: failures are logged, not surfaced — the caller already has
+ * the id in memory for the current open.
+ */
+export async function cacheContactConversationId(
+  contactId: string,
+  conversationId: string,
+): Promise<void> {
+  try {
+    const updated = await getRepo().patch(contactId, { conversationId });
+    if (updated) setState('byId', contactId, updated);
+  } catch (error) {
+    logFailure('cacheContactConversationId', error, { contactId });
+  }
+}
+
 export async function deleteContact(contactId: string): Promise<boolean> {
   try {
     const deleted = await getRepo().remove(contactId);

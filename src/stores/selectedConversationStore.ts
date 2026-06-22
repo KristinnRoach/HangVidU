@@ -1,7 +1,7 @@
 import { createSignal } from 'solid-js';
 import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
 import { resolveDirectConversationId } from './conversations-client';
-import { getContactById } from './contactsStore.js';
+import { cacheContactConversationId, getContactById } from './contactsStore.js';
 
 const [selection, setSelection] = createSignal<ConversationSelection | null>(
   null,
@@ -44,6 +44,7 @@ export async function openDirectConversation(
       // here to keep failures on the warn-and-return path instead of an
       // unhandled rejection.
       conversationId = await resolveDirectConversationId(contactId);
+      cacheContactConversationId(contactId, conversationId);
     } catch (error) {
       console.warn('[conversation] failed to resolve conversation id', {
         contactId,

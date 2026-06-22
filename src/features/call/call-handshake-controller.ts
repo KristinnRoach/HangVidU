@@ -25,7 +25,10 @@ import type {
   StartCallDetails,
 } from './call-types.js';
 import { resolveDirectConversationId } from '../../stores/conversations-client.js';
-import { getContactById } from '../../stores/contactsStore.js';
+import {
+  cacheContactConversationId,
+  getContactById,
+} from '../../stores/contactsStore.js';
 import { CALLING_TTL_MS } from '../../../shared/constants';
 import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
 
@@ -271,7 +274,9 @@ export class CallHandshakeController {
   private async resolveCallRoomId(calleeId: string): Promise<string> {
     const storedConversationId = getContactById(calleeId)?.conversationId;
     if (storedConversationId) return storedConversationId;
-    return resolveDirectConversationId(calleeId);
+    const conversationId = await resolveDirectConversationId(calleeId);
+    cacheContactConversationId(calleeId, conversationId);
+    return conversationId;
   }
 
   private async enterRoom(
