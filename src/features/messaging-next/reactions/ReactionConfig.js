@@ -43,7 +43,9 @@ export const DEFAULT_CONFIG = {
  * @returns {string} The emoji for the reaction type
  */
 export function getReactionEmoji(reactionType, reactions = DEFAULT_REACTIONS) {
-  return reactions[reactionType] || reactionType;
+  return Object.hasOwn(reactions, reactionType)
+    ? reactions[reactionType]
+    : reactionType;
 }
 
 /**
@@ -52,5 +54,5 @@ export function getReactionEmoji(reactionType, reactions = DEFAULT_REACTIONS) {
  * @returns {Object} Object mapping reaction types to emojis
  */
 export function getAvailableReactions(reactions = DEFAULT_REACTIONS) {
-  return { ...reactions };
+  return { ...(reactions && typeof reactions === 'object' ? reactions : DEFAULT_REACTIONS) };
 }

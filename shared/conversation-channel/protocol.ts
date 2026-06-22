@@ -72,7 +72,7 @@ export function isConversationServerEvent(
     return (
       typeof e.messageId === 'string' &&
       typeof e.actorUserId === 'string' &&
-      (e.actorReactionKey === null || typeof e.actorReactionKey === 'string') &&
+      (e.actorReactionKey === null || isValidReactionKey(e.actorReactionKey)) &&
       isReactionList(e.reactions, false)
     );
   }
@@ -90,6 +90,10 @@ export function isConversationServerEvent(
   );
 }
 
+function isValidReactionKey(value: unknown): boolean {
+  return typeof value === 'string' && value.length >= 1 && value.length <= 64;
+}
+
 function isReactionList(value: unknown, includeViewerState: boolean): boolean {
   return (
     Array.isArray(value) &&
@@ -97,7 +101,7 @@ function isReactionList(value: unknown, includeViewerState: boolean): boolean {
       if (!item || typeof item !== 'object') return false;
       const reaction = item as Record<string, unknown>;
       return (
-        typeof reaction.key === 'string' &&
+        isValidReactionKey(reaction.key) &&
         typeof reaction.count === 'number' &&
         Number.isInteger(reaction.count) &&
         reaction.count > 0 &&

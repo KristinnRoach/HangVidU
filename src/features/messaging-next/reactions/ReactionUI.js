@@ -31,6 +31,7 @@ export class ReactionUI {
     this.longPressTimers = new Map(); // messageElement -> timeout id
     this.activePicker = null; // Currently open picker element
     this.activePickerMessageElement = null; // Message element that picker belongs to
+    this.pickerSetupTimer = null; // Pending setTimeout id for the outside-click listener
   }
 
   /**
@@ -288,7 +289,8 @@ export class ReactionUI {
     this.activePickerMessageElement = messageElement; // Track which message this picker belongs to
 
     // Close picker when clicking outside
-    setTimeout(() => {
+    this.pickerSetupTimer = setTimeout(() => {
+      this.pickerSetupTimer = null;
       const closePicker = (event) => {
         if (event.type === 'keydown' && event.key !== 'Escape') return;
         if (event.type !== 'keydown' && picker.contains(event.target)) return;
@@ -307,6 +309,11 @@ export class ReactionUI {
    * Hide the active reaction picker
    */
   hidePicker() {
+    if (this.pickerSetupTimer) {
+      clearTimeout(this.pickerSetupTimer);
+      this.pickerSetupTimer = null;
+    }
+
     if (this.activePicker) {
       this.activePicker.remove();
       this.activePicker = null;

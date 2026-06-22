@@ -131,10 +131,15 @@ async function connectConversation(conversationId: string, token: string) {
   return {
     close: () => ws.close(),
     next: () =>
-      new Promise<unknown>((resolve) => {
+      new Promise<unknown>((resolve, reject) => {
         ws.addEventListener(
           'message',
           (event: MessageEvent) => resolve(JSON.parse(event.data as string)),
+          { once: true },
+        );
+        ws.addEventListener(
+          'close',
+          () => reject(new Error('websocket closed before message')),
           { once: true },
         );
       }),
