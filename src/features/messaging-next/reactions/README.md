@@ -96,3 +96,8 @@ If a future layout puts links/buttons inside a message bubble's content, this
 will need a bounded ancestor check (stopping at the message element, not
 walking past it) so an unrelated wrapping `<a>`/`<button>` further up the DOM
 doesn't suppress gestures on the whole message.
+
+# TODO before package extraction:
+
+- remove HangVidU CSS variables
+- consider allowing custom CSS
