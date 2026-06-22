@@ -1,8 +1,5 @@
 import { createEffect, onCleanup, type Accessor } from 'solid-js';
-import {
-  attachReactions,
-  syncReactionSummaries,
-} from './attachReactions.js';
+import { attachReactions, syncReactionSummaries } from '../attachReactions.js';
 
 export type ReactionSummary = {
   key: string;

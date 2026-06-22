@@ -40,8 +40,8 @@ import { createConversationActions } from './conversation.actions.js';
 import { envelopeToChatMessage, useConversation } from './use-conversation.js';
 import { sortMessagesBySentAt } from './message-ordering.js';
 import { clearLocalDraft, saveLocalDraft } from './local-drafts.js';
-import { reactions } from './reactions/solid.js';
-import type { ReactionChange } from './reactions/solid.js';
+import { reactions } from './reactions/solid/solid.js';
+import type { ReactionChange } from './reactions/solid/solid.js';
 import type { ConversationId, UserId } from './types.js';
 import type {
   ChatMessage,

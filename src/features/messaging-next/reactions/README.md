@@ -41,7 +41,7 @@ The optional directive adapter handles reactive options and DOM cleanup without
 adding wrapper markup:
 
 ```tsx
-import { reactions } from './solid.js';
+import { reactions } from './solid/solid.js';
 import './reactions.css';
 
 <div
@@ -51,7 +51,7 @@ import './reactions.css';
     reactions: message.reactions,
     onChange: persistReaction,
   }}
-/>
+/>;
 ```
 
 Importing `index.js` does not import Solid; framework adapters remain separate.
