@@ -6,7 +6,7 @@
 
 import {
   isConversationServerEvent,
-  type WireMessage,
+  type ConversationServerEvent,
 } from './conversation-protocol';
 import { buildHangViduWebSocketUrl } from '../infra/hangvidu-api-url';
 
@@ -20,7 +20,7 @@ export interface ConversationChannelOptions {
 }
 
 export interface ConversationChannel {
-  onMessage(handler: (message: WireMessage) => void): () => void;
+  onEvent(handler: (event: ConversationServerEvent) => void): () => void;
   close(): void;
 }
 
@@ -36,7 +36,7 @@ export function createConversationChannel(
 ): ConversationChannel {
   const url = toWsUrl(options.baseUrl, options.conversationId);
   const maxBackoff = options.maxBackoffMs ?? 10_000;
-  const handlers = new Set<(m: WireMessage) => void>();
+  const handlers = new Set<(event: ConversationServerEvent) => void>();
 
   let ws: WebSocket | null = null;
   let closed = false;
@@ -71,7 +71,7 @@ export function createConversationChannel(
         return;
       }
       if (!isConversationServerEvent(parsed)) return;
-      handlers.forEach((h) => h(parsed.message));
+      handlers.forEach((handler) => handler(parsed));
     });
     socket.addEventListener('close', () => {
       if (ws === socket) ws = null;
@@ -92,7 +92,7 @@ export function createConversationChannel(
   void connect();
 
   return {
-    onMessage(handler) {
+    onEvent(handler) {
       handlers.add(handler);
       return () => handlers.delete(handler);
     },

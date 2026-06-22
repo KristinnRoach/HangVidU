@@ -1,5 +1,4 @@
-import { createEffect, onCleanup } from 'solid-js';
-import type { Accessor } from 'solid-js';
+import { onCleanup } from 'solid-js';
 import type {
   ChatMessage,
   ConversationRepository,
@@ -24,7 +23,6 @@ type UseConversationOptions = {
   store: ConversationStateStore;
   actions: ConversationActions;
   getSenderName?: () => string | null | undefined;
-  historyReady?: Accessor<boolean>;
   /** Optional datachannel transport for private mode. Without it, private sends fail. */
   privateTransport?: PrivateMessageTransport;
 };
@@ -32,7 +30,7 @@ type UseConversationOptions = {
 type SendPayload = TextMessagePayload | FileMessagePayload;
 
 export function envelopeToChatMessage(
-  message: MessageEnvelope,
+  message: MessageEnvelope & { reactions?: ChatMessage['reactions'] },
   source: ChatMessage['source'],
 ): ChatMessage | null {
   if (message.payload.type === 'system' || message.payload.type === 'event') {
@@ -66,7 +64,7 @@ export function envelopeToChatMessage(
     delivery: message.delivery,
     source,
     status: 'sent',
-    reactions: {},
+    reactions: message.reactions ?? [],
   };
 }
 
@@ -119,7 +117,6 @@ export function useConversation({
   store,
   actions,
   getSenderName,
-  historyReady = () => true,
   privateTransport,
 }: UseConversationOptions) {
   const { state } = store;
@@ -145,35 +142,6 @@ export function useConversation({
     const cleanup = privateTransport.onMessage(handleIncomingPrivateData);
     onCleanup(cleanup);
   }
-
-  createEffect(() => {
-    const conversationId = state.conversationId;
-    if (!conversationId || !historyReady()) return;
-
-    let cleanup: (() => void) | undefined;
-    let disposed = false;
-
-    const result = repository.subscribeReactions(
-      conversationId,
-      (messageId, reactions) => {
-        actions.updateReactions(messageId, reactions);
-      },
-    );
-
-    if (typeof result === 'function') {
-      cleanup = result;
-    } else {
-      void result.then((unsub) => {
-        if (disposed) unsub();
-        else cleanup = unsub;
-      });
-    }
-
-    onCleanup(() => {
-      disposed = true;
-      cleanup?.();
-    });
-  });
 
   async function send(payloadOverride?: SendPayload) {
     const { conversationId, myUserId, draft, transportMode } = state;
@@ -228,7 +196,7 @@ export function useConversation({
       status: 'sending',
       source,
       delivery,
-      reactions: {},
+      reactions: [],
     });
     actions.clearDraft();
     actions.setSending(true);

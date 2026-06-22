@@ -146,6 +146,7 @@ export interface ReactionSummary {
 
 export type MessageWithAttachments = MessageRow & {
   attachments: AttachmentRow[];
+  reactions: ReactionSummary[];
 };
 
 /** Recent-window size; mirrors the RTDB adapter's RECENT_MESSAGES_WINDOW intent. */
@@ -170,6 +171,7 @@ export async function loadMessages(
   db: D1Database,
   conversationId: string,
   limit: number,
+  myUserId: string,
 ): Promise<MessageWithAttachments[]> {
   const { results } = await db
     .prepare(
@@ -191,9 +193,15 @@ export async function loadMessages(
     db,
     rows.map((r) => r.id),
   );
+  const reactionsByMessage = await loadReactionSummaries(
+    db,
+    rows.map((r) => r.id),
+    myUserId,
+  );
   return rows.map((r) => ({
     ...r,
     attachments: attachmentsByMessage[r.id] ?? [],
+    reactions: reactionsByMessage[r.id] ?? [],
   }));
 }
 
@@ -269,7 +277,11 @@ async function getMessage(
     .first<MessageRow>();
   if (!row) return null;
   const attachmentsByMessage = await loadAttachments(db, [messageId]);
-  return { ...row, attachments: attachmentsByMessage[messageId] ?? [] };
+  return {
+    ...row,
+    attachments: attachmentsByMessage[messageId] ?? [],
+    reactions: [],
+  };
 }
 
 /** Attachment rows for a set of message ids, keyed by message id. */
@@ -299,10 +311,17 @@ async function loadAttachments(
 
 export async function setMyReaction(
   db: D1Database,
+  conversationId: string,
   messageId: string,
   userId: string,
   reactionKey: string | null,
-): Promise<ReactionSummary[]> {
+): Promise<ReactionSummary[] | null> {
+  const message = await db
+    .prepare(`SELECT 1 FROM messages WHERE id = ? AND conversation_id = ?`)
+    .bind(messageId, conversationId)
+    .first();
+  if (!message) return null;
+
   if (reactionKey === null) {
     await db
       .prepare(`DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?`)
@@ -346,6 +365,42 @@ export async function getReactionSummaries(
     count: row.count,
     reactedByMe: row.reacted_by_me === 1,
   }));
+}
+
+async function loadReactionSummaries(
+  db: D1Database,
+  messageIds: string[],
+  myUserId: string,
+): Promise<Record<string, ReactionSummary[]>> {
+  if (messageIds.length === 0) return {};
+  const placeholders = messageIds.map(() => '?').join(',');
+  const { results } = await db
+    .prepare(
+      `SELECT message_id, reaction_key AS key,
+              COUNT(*) AS count,
+              MAX(CASE WHEN user_id = ? THEN 1 ELSE 0 END) AS reacted_by_me
+       FROM message_reactions
+       WHERE message_id IN (${placeholders})
+       GROUP BY message_id, reaction_key
+       ORDER BY message_id, reaction_key`,
+    )
+    .bind(myUserId, ...messageIds)
+    .all<{
+      message_id: string;
+      key: string;
+      count: number;
+      reacted_by_me: number;
+    }>();
+
+  const out: Record<string, ReactionSummary[]> = {};
+  for (const row of results ?? []) {
+    (out[row.message_id] ??= []).push({
+      key: row.key,
+      count: row.count,
+      reactedByMe: row.reacted_by_me === 1,
+    });
+  }
+  return out;
 }
 
 export async function isMember(

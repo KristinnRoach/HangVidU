@@ -13,7 +13,7 @@ const cleanup = attachReactions(
   document.querySelector('.message'),
   'message-123',
   'user-456',
-  ({ messageId, userId, reactionType, active }) => {
+  ({ messageId, userId, reactionKey }) => {
     // Optional integration seam for persistence or analytics.
   },
 );
@@ -28,7 +28,7 @@ gesture listeners.
 The optional callback receives one event per changed reaction:
 
 ```js
-{ messageId, userId, reactionType, active }
+{ messageId, userId, reactionKey: string | null }
 ```
 
 Persistence and remote synchronization belong to the host. Use the exported
@@ -48,6 +48,7 @@ import './reactions.css';
   use:reactions={{
     messageId: message.id,
     userId: currentUser.id,
+    reactions: message.reactions,
     onChange: persistReaction,
   }}
 />

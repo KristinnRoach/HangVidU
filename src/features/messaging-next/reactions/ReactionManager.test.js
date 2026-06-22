@@ -109,6 +109,22 @@ describe('ReactionManager', () => {
     });
   });
 
+  describe('syncFromSummaries', () => {
+    it('hydrates aggregate counts and the current user reaction', () => {
+      manager.syncFromSummaries(
+        'msg1',
+        [
+          { key: 'heart', count: 2, reactedByMe: true },
+          { key: 'laugh', count: 1, reactedByMe: false },
+        ],
+        'me',
+      );
+
+      expect(manager.getReactions('msg1')).toEqual({ heart: 2, laugh: 1 });
+      expect(manager.getUserReactionType('msg1', 'me')).toBe('heart');
+    });
+  });
+
   describe('clearReactions', () => {
     it('should remove all reactions from a message', () => {
       manager.addReaction('msg1', 'heart');

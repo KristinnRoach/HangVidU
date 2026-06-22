@@ -19,6 +19,7 @@ const DATA_PATHS = [
   /^\/conversations$/,
   /^\/conversations\/resolve-direct$/,
   /^\/conversations\/[^/]+\/(?:messages|ws)$/,
+  /^\/conversations\/[^/]+\/messages\/[^/]+\/reaction$/,
   /^\/conversations\/[^/]+$/,
 ];
 

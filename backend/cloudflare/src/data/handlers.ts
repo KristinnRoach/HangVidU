@@ -9,6 +9,7 @@ import {
   listConversations,
   loadMessages,
   resolveOrCreateDirect,
+  setMyReaction,
   upsertUser,
   RECENT_MESSAGES_WINDOW,
   type MessageWithAttachments,
@@ -246,6 +247,50 @@ export async function handleDataRequest(
       return json({ conversation, members }, 200, cors);
     }
 
+    const reactionMatch = url.pathname.match(
+      /^\/conversations\/([^/]+)\/messages\/([^/]+)\/reaction$/,
+    );
+    if (request.method === 'PUT' && reactionMatch) {
+      const conversationId = decodeURIComponent(reactionMatch[1]);
+      const messageId = decodeURIComponent(reactionMatch[2]);
+      if (!(await isMember(env.DB, conversationId, callerId))) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+
+      const reactionKey = parseReactionKey((await readJson(request))?.reactionKey);
+      if (reactionKey === undefined) {
+        return json({ error: 'reactionKey must be null or 1-64 characters' }, 400, cors);
+      }
+      const reactions = await setMyReaction(
+        env.DB,
+        conversationId,
+        messageId,
+        callerId,
+        reactionKey,
+      );
+      if (!reactions) return json({ error: 'not_found' }, 404, cors);
+
+      const event: ConversationServerEvent = {
+        t: 'reaction',
+        messageId,
+        actorUserId: callerId,
+        actorReactionKey: reactionKey,
+        reactions: reactions.map(({ key, count }) => ({ key, count })),
+      };
+      try {
+        await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(
+          event,
+        );
+      } catch (err) {
+        console.warn('[data] reaction broadcast failed', {
+          conversationId,
+          messageId,
+          err,
+        });
+      }
+      return json({ messageId, reactions }, 200, cors);
+    }
+
     // GET /conversations/:id/messages -> recent messages (membership-guarded)
     const messagesMatch = url.pathname.match(
       /^\/conversations\/([^/]+)\/messages$/,
@@ -261,6 +306,7 @@ export async function handleDataRequest(
           env.DB,
           conversationId,
           RECENT_MESSAGES_WINDOW,
+          callerId,
         );
         return json({ messages: rows.map(toWireMessage) }, 200, cors);
       }
@@ -349,6 +395,7 @@ function toWireMessage(row: MessageWithAttachments): WireMessage {
       width: a.width,
       height: a.height,
     })),
+    reactions: row.reactions,
   };
 }
 
@@ -444,6 +491,13 @@ function str(value: unknown): string | null {
 /** Finite number, or undefined (for optional payload fields). */
 function numOrUndef(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function parseReactionKey(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  if (typeof value !== 'string') return undefined;
+  const key = value.trim();
+  return key.length >= 1 && key.length <= 64 ? key : undefined;
 }
 
 function json(

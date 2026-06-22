@@ -4,7 +4,7 @@
 // import storage, realtime, and auth together, so the boundary-clean pieces are
 // composed here and handed to the feature adapter.
 
-import { getLoggedInUserToken } from '../auth/index.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
 import { getConversationsClient } from './conversations-client';
 import { createConversationChannel } from '../realtime/conversation-channel';
 import {
@@ -22,13 +22,16 @@ export function createD1MessageRepositoryFromEnv(): MessageRepository {
     loadMessages: (conversationId) => http.loadMessages(conversationId),
     sendMessage: (conversationId, input) =>
       http.sendMessage(conversationId, input),
-    subscribe: (conversationId, onMessage) => {
+    setMyReaction: (conversationId, messageId, reactionKey) =>
+      http.setMyReaction(conversationId, messageId, reactionKey),
+    getUserId: getLoggedInUserId,
+    subscribe: (conversationId, onEvent) => {
       const channel = createConversationChannel({
         baseUrl,
         conversationId,
         getToken: getLoggedInUserToken,
       });
-      const off = channel.onMessage(onMessage);
+      const off = channel.onEvent(onEvent);
       return () => {
         off();
         channel.close();

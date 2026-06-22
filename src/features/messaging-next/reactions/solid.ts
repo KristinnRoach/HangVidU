@@ -1,16 +1,25 @@
 import { createEffect, onCleanup, type Accessor } from 'solid-js';
-import { attachReactions } from './attachReactions.js';
+import {
+  attachReactions,
+  syncReactionSummaries,
+} from './attachReactions.js';
+
+export type ReactionSummary = {
+  key: string;
+  count: number;
+  reactedByMe: boolean;
+};
 
 export type ReactionChange = {
   messageId: string;
   userId: string;
-  reactionType: string;
-  active: boolean;
+  reactionKey: string | null;
 };
 
 export type ReactionsDirectiveOptions = {
   messageId: string;
   userId: string | null;
+  reactions?: ReactionSummary[];
   onChange?: (change: ReactionChange) => void;
 };
 
@@ -19,13 +28,14 @@ export function reactions(
   value: Accessor<ReactionsDirectiveOptions>,
 ) {
   createEffect(() => {
-    const { messageId, userId } = value();
+    const { messageId, userId, reactions = [] } = value();
     const cleanup = attachReactions(
       element,
       messageId,
       userId,
       (change: ReactionChange) => value().onChange?.(change),
     );
+    syncReactionSummaries(element, messageId, userId, reactions);
     onCleanup(cleanup);
   });
 }

@@ -188,6 +188,26 @@ export class ReactionManager {
     }
   }
 
+  /** Sync aggregate state without requiring the host to expose user lists. */
+  syncFromSummaries(messageId, summaries, userId) {
+    this.reactions.delete(messageId);
+    const messageReactions = {};
+
+    for (const { key, count, reactedByMe } of summaries ?? []) {
+      if (!key || count <= 0) continue;
+      const users = new Set();
+      if (reactedByMe && userId) users.add(userId);
+      for (let i = users.size; i < count; i += 1) {
+        users.add(`_remote_${key}_${i}`);
+      }
+      messageReactions[key] = users;
+    }
+
+    if (Object.keys(messageReactions).length > 0) {
+      this.reactions.set(messageId, messageReactions);
+    }
+  }
+
   /**
    * Check if a message has any reactions
    * @param {string} messageId - Unique identifier for the message

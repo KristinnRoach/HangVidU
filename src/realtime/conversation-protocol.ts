@@ -7,6 +7,8 @@
 export type {
   WireAttachment,
   WireMessage,
+  WireReactionCount,
+  WireReactionSummary,
   ConversationServerEvent,
 } from '../../shared/conversation-channel/protocol';
 export { isConversationServerEvent } from '../../shared/conversation-channel/protocol';

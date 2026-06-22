@@ -22,20 +22,19 @@ export function attachReactions(element, messageId, userId, onChange) {
         messageId,
         manager.removeReaction(messageId, current, userId),
       );
-      onChange?.({ messageId, userId, reactionType: current, active: false });
+      onChange?.({ messageId, userId, reactionKey: null });
       return;
     }
 
     if (current) {
       manager.removeReaction(messageId, current, userId);
-      onChange?.({ messageId, userId, reactionType: current, active: false });
     }
     ui.renderReactions(
       element,
       messageId,
       manager.addReaction(messageId, reactionType, userId),
     );
-    onChange?.({ messageId, userId, reactionType, active: true });
+    onChange?.({ messageId, userId, reactionKey: reactionType });
     if (REACTION_CONFIG.enableAnimations) {
       ui.showReactionAnimation(element, reactionType);
     }
@@ -61,4 +60,14 @@ export function attachReactions(element, messageId, userId, onChange) {
   };
   cleanups.set(element, cleanup);
   return cleanup;
+}
+
+export function syncReactionSummaries(
+  element,
+  messageId,
+  userId,
+  summaries,
+) {
+  manager.syncFromSummaries(messageId, summaries, userId);
+  ui.renderReactions(element, messageId, manager.getReactions(messageId));
 }

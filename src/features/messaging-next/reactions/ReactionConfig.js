@@ -37,7 +37,7 @@ export const REACTION_CONFIG = {
  * @returns {string} The emoji for the reaction type
  */
 export function getReactionEmoji(reactionType) {
-  return DEFAULT_REACTIONS[reactionType] || DEFAULT_REACTIONS.heart;
+  return DEFAULT_REACTIONS[reactionType] || reactionType;
 }
 
 /**

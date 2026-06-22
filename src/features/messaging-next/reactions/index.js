@@ -3,7 +3,10 @@
 
 export { ReactionManager } from './ReactionManager.js';
 export { ReactionUI } from './ReactionUI.js';
-export { attachReactions } from './attachReactions.js';
+export {
+  attachReactions,
+  syncReactionSummaries,
+} from './attachReactions.js';
 export {
   DEFAULT_REACTIONS,
   REACTION_CONFIG,

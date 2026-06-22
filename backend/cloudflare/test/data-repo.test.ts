@@ -97,7 +97,7 @@ describe('insertMessage + loadMessages', () => {
       attachments: [],
     });
 
-    const loaded = await loadMessages(db, convoId, 50);
+    const loaded = await loadMessages(db, convoId, 50, 'user-a');
     expect(loaded.map((m) => m.id)).toEqual(['msg-1']);
   });
 
@@ -107,7 +107,7 @@ describe('insertMessage + loadMessages', () => {
     await insertMessage(db, convoId, 'm2', 'user-a', 'text', 'second', null, 2000);
     await insertMessage(db, convoId, 'm3', 'user-a', 'text', 'third', null, 3000);
 
-    const loaded = await loadMessages(db, convoId, 50);
+    const loaded = await loadMessages(db, convoId, 50, 'user-a');
     expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
   });
 
@@ -117,7 +117,7 @@ describe('insertMessage + loadMessages', () => {
     await insertMessage(db, convoId, 'm2', 'user-a', 'text', 'second', null, 2000);
     await insertMessage(db, convoId, 'm3', 'user-a', 'text', 'third', null, 3000);
 
-    const loaded = await loadMessages(db, convoId, 2);
+    const loaded = await loadMessages(db, convoId, 2, 'user-a');
     expect(loaded.map((m) => m.id)).toEqual(['m2', 'm3']);
   });
 
@@ -175,20 +175,25 @@ describe('message reactions', () => {
     const convoId = await resolveOrCreateDirect(db, 'user-a', 'user-b', 1000);
     await insertMessage(db, convoId, 'm1', 'user-a', 'text', 'hi', null, 2000);
 
-    await setMyReaction(db, 'm1', 'user-a', 'heart');
-    await setMyReaction(db, 'm1', 'user-b', 'heart');
+    await setMyReaction(db, convoId, 'm1', 'user-a', 'heart');
+    await setMyReaction(db, convoId, 'm1', 'user-b', 'heart');
     expect(await getReactionSummaries(db, 'm1', 'user-a')).toEqual([
       { key: 'heart', count: 2, reactedByMe: true },
     ]);
 
-    await setMyReaction(db, 'm1', 'user-a', 'laugh');
+    await setMyReaction(db, convoId, 'm1', 'user-a', 'laugh');
     expect(await getReactionSummaries(db, 'm1', 'user-a')).toEqual([
       { key: 'heart', count: 1, reactedByMe: false },
       { key: 'laugh', count: 1, reactedByMe: true },
     ]);
 
-    expect(await setMyReaction(db, 'm1', 'user-a', null)).toEqual([
+    expect(await setMyReaction(db, convoId, 'm1', 'user-a', null)).toEqual([
       { key: 'heart', count: 1, reactedByMe: false },
+    ]);
+
+    const [loaded] = await loadMessages(db, convoId, 50, 'user-b');
+    expect(loaded.reactions).toEqual([
+      { key: 'heart', count: 1, reactedByMe: true },
     ]);
   });
 });

@@ -4,7 +4,7 @@ import type {
   ChatMessage,
   ConversationSelection,
   MessageAction,
-  ReactionMap,
+  ReactionSummary,
   TransportMode,
 } from './interfaces.js';
 import type { UserId } from './types.js';
@@ -109,7 +109,7 @@ export function createConversationActions(store: ConversationStateStore) {
     setState('messages', (m) => m.id === tempId, 'status', 'failed');
   }
 
-  function updateReactions(messageId: string, reactions: ReactionMap) {
+  function updateReactions(messageId: string, reactions: ReactionSummary[]) {
     const idx = state.messages.findIndex((m) => m.id === messageId);
     if (idx !== -1) setState('messages', idx, 'reactions', reactions);
   }
@@ -127,7 +127,7 @@ export function createConversationActions(store: ConversationStateStore) {
         status: 'sent' as const,
         source: 'system' as const,
         delivery: 'persistent' as const,
-        reactions: {},
+        reactions: [],
         actions,
       } satisfies ChatMessage,
     ]);

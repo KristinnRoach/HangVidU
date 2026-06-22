@@ -20,8 +20,7 @@ describe('attachReactions', () => {
     expect(onChange).toHaveBeenLastCalledWith({
       messageId: 'message-1',
       userId: 'user-1',
-      reactionType: 'heart',
-      active: true,
+      reactionKey: 'heart',
     });
 
     tap();
@@ -32,8 +31,7 @@ describe('attachReactions', () => {
     expect(onChange).toHaveBeenLastCalledWith({
       messageId: 'message-1',
       userId: 'user-1',
-      reactionType: 'heart',
-      active: false,
+      reactionKey: null,
     });
   });
 });
