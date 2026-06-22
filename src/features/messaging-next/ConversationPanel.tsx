@@ -20,6 +20,7 @@ import { compressImage } from '@lib/media/image-compress.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
 import { isIOSOrAndroidDevice } from '@lib/utils/detect-device.js';
 import { keepVirtualKeyboardOpenOnTap } from '@shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.js';
+import { detectDoubleClick } from '@shared/utils/ui-utils/detectDoubleClick.js';
 import {
   createConversationFileObjectUrl,
   deleteConversationFile,
@@ -889,9 +890,19 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                       role='button'
                                       tabIndex={0}
                                       aria-label={`Open preview for ${file.fileName}`}
-                                      onClick={() => {
-                                        const url = attachmentUrl();
-                                        if (url) openPreview(url);
+                                      ref={(el) => {
+                                        // Single tap opens preview; double tap is
+                                        // left to the reaction gesture so it adds
+                                        // a reaction instead of opening.
+                                        const dc = detectDoubleClick(
+                                          el,
+                                          () => {
+                                            const url = attachmentUrl();
+                                            if (url) openPreview(url);
+                                          },
+                                          () => {},
+                                        );
+                                        onCleanup(dc.destroy);
                                       }}
                                       onKeyDown={(e) => {
                                         if (

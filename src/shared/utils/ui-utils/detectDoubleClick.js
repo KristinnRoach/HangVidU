@@ -33,13 +33,14 @@ export function detectDoubleClick(
     }, timeout);
   };
 
-  element.addEventListener('click', handleInteraction);
-  element.addEventListener('touchend', handleInteraction, { passive: true });
+  // One event per platform: a synthetic click fires after touchend, which would
+  // otherwise make every single tap misread as a double tap.
+  const tapEvent = 'ontouchstart' in window ? 'touchend' : 'click';
+  element.addEventListener(tapEvent, handleInteraction, { passive: true });
 
   return {
     destroy: () => {
-      element.removeEventListener('click', handleInteraction);
-      element.removeEventListener('touchend', handleInteraction);
+      element.removeEventListener(tapEvent, handleInteraction);
       clearTimeout(timer);
     },
   };
