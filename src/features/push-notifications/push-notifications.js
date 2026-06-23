@@ -432,14 +432,44 @@ export class PushNotifications {
   }
 
   /**
-   * Message push delivery remains backend-owned in V1.
-   * App code should not call this method as a real send path.
+   * Sends a message push to each recipient via the authenticated cloud function.
+   * Best-effort, fire-and-forget from the sender's client. Recipients come from
+   * the conversation's remoteParticipantIds.
    */
-  async sendMessageNotification(_targetUserId, _messageData) {
-    console.warn(
-      '[Push Notifications] Message notifications are not implemented in this phase',
-    );
-    return false;
+  async sendMessageNotification(messageData) {
+    const { recipientIds, conversationId, ...rest } = messageData || {};
+
+    if (!this.options.enableMessageNotifications) {
+      return false;
+    }
+    if (!Array.isArray(recipientIds) || recipientIds.length === 0) {
+      return false;
+    }
+    if (
+      typeof conversationId !== 'string' ||
+      !conversationId.trim() ||
+      typeof rest.senderId !== 'string' ||
+      !rest.senderId.trim()
+    ) {
+      return false;
+    }
+
+    try {
+      const formatted = await this.formatMessageNotification(rest);
+      return await callCloudFunction('sendMessageNotification', {
+        recipientIds,
+        conversationId,
+        senderId: rest.senderId,
+        senderName: formatted.senderName,
+        messagePreview: formatted.messageText,
+      });
+    } catch (error) {
+      console.error(
+        '[Push Notifications] Failed to send message notification:',
+        error,
+      );
+      return false;
+    }
   }
 
   /**
@@ -643,6 +673,7 @@ export class PushNotifications {
         platform: navigator.platform || 'unknown',
         userAgent: navigator.userAgent,
         language: navigator.language,
+        origin: window.location.origin,
       },
     });
   }
@@ -734,6 +765,18 @@ export const initPushNotifications = async (options = {}) => {
         dispatchCommand('cmd:app-notifications:show:enable-push');
       }
     });
+
+    // The SW re-subscribes on pushsubscriptionchange but can't authenticate to the
+    // backend itself; it pings us to re-register the new endpoint via enable().
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'PUSH_SUBSCRIPTION_CHANGED') {
+          instance.enable().catch((e) => {
+            console.warn('[Push Notifications] re-register failed:', e);
+          });
+        }
+      });
+    }
   }
 
   return instance;
