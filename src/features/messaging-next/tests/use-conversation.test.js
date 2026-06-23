@@ -1,6 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createConversationActions } from '../conversation.actions.js';
 import { createConversationState } from '../conversation.state.js';
+
+const pushMocks = vi.hoisted(() => ({
+  sendMessageNotification: vi.fn(),
+}));
+
+vi.mock('../../push-notifications/index.js', () => ({
+  getPushNotifications: () => ({
+    sendMessageNotification: pushMocks.sendMessageNotification,
+  }),
+}));
+
 import {
   loadConversationHistory,
   useConversation,
@@ -22,6 +33,38 @@ function envelope(overrides) {
 }
 
 describe('messaging-next useConversation', () => {
+  it('snapshots push recipients before persistence and isolates push failures', async () => {
+    const store = createConversationState();
+    const actions = createConversationActions(store);
+    actions.startConversation({ conversationId: 'conversation-1' }, 'me');
+    actions.setDraft('hello');
+    const callOrder = [];
+    const repository = {
+      createMessageId: () => 'reserved-1',
+      send: vi.fn(() => {
+        callOrder.push('send');
+        return { id: 'reserved-1', sentAt: 10 };
+      }),
+    };
+    pushMocks.sendMessageNotification.mockImplementationOnce(() => {
+      throw new Error('push unavailable');
+    });
+
+    const result = await useConversation({
+      repository,
+      store,
+      actions,
+      getRecipientIds: () => {
+        callOrder.push('recipients');
+        return ['user-a'];
+      },
+    }).send();
+
+    expect(callOrder).toEqual(['recipients', 'send']);
+    expect(result).toBe(true);
+    expect(store.state.messages[0].status).toBe('sent');
+  });
+
   it('loads message history in chronological order regardless of repository order', async () => {
     const repository = {
       loadMessages: () => [

@@ -445,6 +445,14 @@ export class PushNotifications {
     if (!Array.isArray(recipientIds) || recipientIds.length === 0) {
       return false;
     }
+    if (
+      typeof conversationId !== 'string' ||
+      !conversationId.trim() ||
+      typeof rest.senderId !== 'string' ||
+      !rest.senderId.trim()
+    ) {
+      return false;
+    }
 
     try {
       const formatted = await this.formatMessageNotification(rest);

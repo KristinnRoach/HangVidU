@@ -136,6 +136,13 @@ describe('PushNotifications', () => {
     expect(controller.getPermissionState()).toBe('granted');
   });
 
+  it('rejects message notifications without sender and conversation ids', async () => {
+    await expect(
+      controller.sendMessageNotification({ recipientIds: ['user-a'] }),
+    ).resolves.toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('enables notifications by registering the current subscription', async () => {
     await controller.initialize();
     const result = await controller.enable();
