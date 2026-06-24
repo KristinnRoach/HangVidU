@@ -3,7 +3,7 @@
 ## Layers
 
 Import rules between layers are enforced by `eslint.boundaries.config.js`; the
-full allow-table lives in [`lint/boundaries/BOUNDARY_MAP.md`](./lint/boundaries/BOUNDARY_MAP.md).
+full allow-table lives in [`BOUNDARY_MAP.md`](BOUNDARY_MAP.md).
 The two foundational layers:
 
 - **`src/lib/`** — the bottom layer: framework-agnostic primitives with **zero
@@ -39,10 +39,10 @@ Both are backend-agnostic behind their ports; features import them (realtime dir
 
 ### `src/components/` structure
 
-| Subpath | Rule | Examples |
-|---|---|---|
-| `components/*.jsx` | Generic primitives. **No** imports from `features/*`. Eventually absorbs `shared/components/base/`. | `Button`, `Dialog`, `Toast`, `Icon` (none yet; seed on first migration) |
-| `components/<feature>/*.jsx` | Feature-scoped UI + self-subscribing widgets. May import `features/<feature>/`. Eventually absorbs `features/<feature>/components/`. | `contacts/ContactsList.jsx`, `presence/PresenceIndicator.jsx` |
+| Subpath                      | Rule                                                                                                                                 | Examples                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `components/*.jsx`           | Generic primitives. **No** imports from `features/*`. Eventually absorbs `shared/components/base/`.                                  | `Button`, `Dialog`, `Toast`, `Icon` (none yet; seed on first migration) |
+| `components/<feature>/*.jsx` | Feature-scoped UI + self-subscribing widgets. May import `features/<feature>/`. Eventually absorbs `features/<feature>/components/`. | `contacts/ContactsList.jsx`, `presence/PresenceIndicator.jsx`           |
 
 Rule of thumb: if a component imports from any `features/<x>/` module, it belongs in `components/<x>/`, not at `components/` top level.
 
