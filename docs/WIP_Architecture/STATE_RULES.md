@@ -11,12 +11,16 @@ See also: [`NAMING.md`](./NAMING.md), [`STRUCTURE.md`](./STRUCTURE.md), [`EVENTS
 
 ## When to use a dedicated state file
 
-A `src/<module>/<module>-state.js` file is **optional**. Use one only when:
+**Default: a Solid store** (`createStore`) is the reactive in-memory mirror —
+either in `src/stores/` (`contactsStore.ts`) or inside the module for
+feature-local state. Read it directly or via a `use<X>()` hook. Most modules need
+nothing more.
 
-- ≥1 non-Solid consumer must observe changes via the event bus, **or**
+A `src/<module>/<module>-state.js` file is the **exception**, used only when:
+
+- ≥1 non-Solid consumer must observe changes via the event bus (currently only
+  `auth`), **or**
 - the module owns coordinating behavior beyond mirroring storage into a reactive store.
-
-When the only consumers are Solid surfaces in the same feature, a Solid store (`createStore`) inside the module is sufficient — it is the reactive in-memory mirror. Read it directly or via a `use<X>()` hook.
 
 ## Shape (when a dedicated state file is used)
 
