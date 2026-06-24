@@ -127,4 +127,3 @@ scripts/migrate-usersbyemail-display-name-to-user-name.js
 
 **/OLD_*.js
 **/*.ref.txt
-CURRENT_WIP/
