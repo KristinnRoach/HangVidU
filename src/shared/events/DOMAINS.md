@@ -8,20 +8,18 @@ Reference list for the second segment of `<kind>:<domain>:<entity>:<action>`.
 
 ## Distinction
 
-- `notifications`: in-app notification UI and notification-list behavior
+- `app-notifications`: in-app notification UI and notification-list behavior
 - `push`: web push subscription / delivery behavior
 
-Do not use `push` for in-app notification commands, and do not use `notifications`
-for browser push subscription or delivery concerns.
+Do not use `push` for in-app notification commands, and do not use
+`app-notifications` for browser push subscription or delivery concerns.
 
 ## Currently Used `cmd` Domains
 
+- `app-notifications`
 - `auth`
-- `call`
-- `contacts`
 - `dialog`
 - `messaging`
-- `notifications`
 - `push`
 - `user`
 
@@ -29,12 +27,10 @@ for browser push subscription or delivery concerns.
 
 - `auth`
 - `call`
-- `contacts`
+- `media`
 - `messaging`
-- `room`
 
 ## Notes
 
-- `contacts` currently includes room/contact lookup and contact lifecycle facts.
 - `dialog` is the target domain for app-modal state.
-- `room` is currently used only for room lifecycle facts.
+- `media` is currently used only for local-stream lifecycle facts.

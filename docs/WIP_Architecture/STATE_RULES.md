@@ -2,21 +2,25 @@
 
 Pattern for module state that other modules observe (`isLoggedIn`, `isInCall`, `contactsById`, …).
 
-This file is for domain/module state only.
-Solid UI-only reactive state in `src/components/` is covered by [`SOLID_UI_STATE_RULES.md`](./SOLID_UI_STATE_RULES.md).
+This file is for domain/module state only. Solid reactive stores live in
+`src/stores/` and are mirrors over the persistence/realtime layers.
 
-See also: [`NAMING.md`](./NAMING.md), [`STRUCTURE.md`](./STRUCTURE.md), [`EVENTS.md`](./EVENTS.md), [`LINT_ENFORCEMENT.md`](./LINT_ENFORCEMENT.md).
+See also: [`NAMING.md`](./NAMING.md), [`STRUCTURE.md`](./STRUCTURE.md), [`EVENTS.md`](./EVENTS.md).
 
 ---
 
 ## When to use a dedicated state file
 
-A `src/<module>/<module>-state.js` file is **optional**. Use one only when:
+**Default: a Solid store** (`createStore`) is the reactive in-memory mirror —
+either in `src/stores/` (`contactsStore.ts`) or inside the module for
+feature-local state. Read it directly or via a `use<X>()` hook. Most modules need
+nothing more.
 
-- ≥1 non-Solid consumer must observe changes via the event bus, **or**
+A `src/<module>/<module>-state.js` file is the **exception**, used only when:
+
+- ≥1 non-Solid consumer must observe changes via the event bus (currently only
+  `auth`), **or**
 - the module owns coordinating behavior beyond mirroring storage into a reactive store.
-
-When the only consumers are Solid surfaces in the same feature, a Solid store (`createStore`) inside the module is sufficient — it is the reactive in-memory mirror. Read it directly or via a `use<X>()` hook.
 
 ## Shape (when a dedicated state file is used)
 
@@ -56,10 +60,10 @@ It exposes:
 
 | Module    | Shape                                  | Notes                                                              |
 | --------- | -------------------------------------- | ------------------------------------------------------------------ |
-| auth      | dedicated `auth-state.js`              | non-Solid consumers subscribe to `evt:auth:session:*`              |
-| contacts  | Solid store in `contacts-store.ts`     | Solid-only consumers; no `evt:contacts:state:changed`              |
-| messaging | —                                      |                                                                    |
-| call      | —                                      |                                                                    |
+| auth           | dedicated `auth-state.js`                  | non-Solid consumers subscribe to `evt:auth:session:*`         |
+| contacts       | Solid store in `stores/contactsStore.ts`   | Solid-only consumers; no `evt:contacts:state:changed`         |
+| messaging-next | —                                          |                                                              |
+| call           | —                                          |                                                              |
 
 ## Migration notes
 

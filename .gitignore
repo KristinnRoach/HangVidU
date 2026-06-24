@@ -124,6 +124,7 @@ docs/misc/
 docs/WIP_Architecture/REFERENCE_WebDevSimplified.md
 docs/WIP_Architecture/references/solidjs.llms.txt
 database.rules.TODO.md
+src/shared/events/STALE?_WIP_EVENT_DRIVEN_STANDARDIZATION_DOCS/
 
 # Scripts
 scripts/migrate-usersbyemail-display-name-to-user-name.js

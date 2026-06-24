@@ -8,7 +8,7 @@ Peer-to-peer video chat app with text messaging and synced media sharing capabil
 
 ## Usage
 
-1. Login via Google
+1. Login
 2. Click "Add Contacts" button in top bar
 3. Send invite link to add contacts and/or import your Google contacts and select bulk invite
 4. Video call, send messages and watch videos with your contacts
