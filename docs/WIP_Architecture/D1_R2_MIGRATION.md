@@ -13,7 +13,7 @@
 Make `conversationId` the single spine of the data model and split persistence
 from realtime cleanly across Cloudflare primitives. This diagram is the **target
 state**; per the DECISION section, the message-related tables (`messages`,
-`message_attachments`, `message_reactions`) are *not* being migrated yet —
+`message_attachments`, `message_reactions`) are _not_ being migrated yet —
 message bodies stay on RTDB for now.
 
 ```text
@@ -34,7 +34,7 @@ conversationId
 Everything is owned by a conversation. A DM, a group, a call, a file, a message
 — all hang off one stable, **opaque** `conversationId`.
 
-This builds on Slice 1 ([SIGNALING_DO_SLICE1.md](./SIGNALING_DO_SLICE1.md)),
+This builds on Slice 1 (SIGNALING_DO_SLICE1),
 which already put room signaling on a DO behind `src/realtime/`.
 
 ---
@@ -50,6 +50,7 @@ adapter. No further conversation-DO push work until this is revisited.
 
 The Cloudflare targets that stand on their own merits and have no hidden realtime
 cost:
+
 - **WebRTC signaling** → DO. Realtime is the DO's whole purpose; already done and
   verified (Slice 1).
 - **Files** → R2. Object storage, no realtime expectation. Clean fit (Slice D).
@@ -57,7 +58,7 @@ cost:
   dedup via `dm_key`) → D1. Reference / membership data read on open, not a live
   feed. Fits D1 without needing push. (Slices A/C.)
 
-**Messages are the exception.** RTDB gives live cross-client delivery *for free*:
+**Messages are the exception.** RTDB gives live cross-client delivery _for free_:
 one write to `conversations/{id}/messages`, and every client with a
 `child_added` listener receives it with zero extra infrastructure. RTDB is both
 the store and the push channel; unread/activity and reactions ride the same free
@@ -66,14 +67,14 @@ realtime.
 D1 is a plain SQL store with **no subscriptions**. Moving messages there means a
 send becomes an HTTP insert that no one else hears about until they reload — the
 load-on-open limitation Slice B shipped with. Restoring the live behavior RTDB
-already provides requires *building and operating* a per-conversation Durable
+already provides requires _building and operating_ a per-conversation Durable
 Object push layer (Slice E). That is net-new infrastructure to own, in exchange
 for no functional gain at the current pre-production stage (cost / lock-in are
 not yet pressing).
 
 ### Key insight for whoever revisits this
 
-The opaque `conversationId` spine does **not** require message *bodies* to live
+The opaque `conversationId` spine does **not** require message _bodies_ to live
 in D1. Membership/dedup can be opaque-ID in D1 while message delivery stays on
 RTDB keyed by that same `conversationId`. So the relational migration and the
 message migration are separable — moving the foundation to D1 does not commit us
@@ -110,7 +111,7 @@ ID you can recover the two users by `split('_')`.
 ### Practical implications you must be aware of
 
 1. **You can no longer compute a conversation's ID from its participants.**
-   Opening a DM with someone becomes a *lookup*, not a *calculation*:
+   Opening a DM with someone becomes a _lookup_, not a _calculation_:
    "find the direct conversation whose members are exactly {me, them}; if none
    exists, create one." Dedup moves to a `dm_key UNIQUE` column (below), not the
    primary key.
@@ -120,7 +121,7 @@ ID you can recover the two users by `split('_')`.
    `conversations` row must be inserted (and its ID allocated) before you can
    send a message, open the DO room, or upload a file. This is the biggest
    behavioral shift: the first interaction with a new contact must first
-   *resolve-or-create* the conversation, then proceed.
+   _resolve-or-create_ the conversation, then proceed.
 
 3. **You can no longer recover the "other user" from the ID.**
    `resolveContactIdFromDirectConversationId` disappears. The UI gets the other
@@ -156,7 +157,7 @@ CREATE TABLE conversations (
 );
 ```
 
-`dm_key` is the *old* `sort().join` rule demoted from identity to a lookup key.
+`dm_key` is the _old_ `sort().join` rule demoted from identity to a lookup key.
 `UNIQUE` enforces no-duplicate-DM. Resolve-or-create a DM = `INSERT ... ON
 CONFLICT(dm_key) DO NOTHING` then `SELECT id WHERE dm_key = ?`. Groups leave
 `dm_key` NULL (NULLs don't collide under UNIQUE in SQLite/D1).
@@ -228,6 +229,7 @@ CREATE TABLE message_reactions (
 ```
 
 Decisions baked in:
+
 - `last_read_at` lives on `conversation_members` (it is per-conversation-per-user
   by definition). `ConversationActivity` becomes a join, no separate store.
 - `message_reactions` replaces the RTDB `emoji → userId → true` nesting.
@@ -245,6 +247,7 @@ refinement are deferred until after manual e2e verification per slice.
 ### Slice A — D1 schema + conversation resolve/create (no UI change yet)
 
 Decisions (locked):
+
 - **Worker:** new `workers/data/` (separate persistence worker; mirrors
   `workers/signaling/`). Keeps the realtime/persistence split at the deploy
   boundary.
@@ -255,6 +258,7 @@ Decisions (locked):
 - **Auth:** reuse the signaling worker's RS256 `authenticate()` seam.
 
 Tasks:
+
 - [x] Scaffold `workers/data/` (package.json, wrangler.jsonc, tsconfig), D1
       binding, local dev.
 - [x] `migrations/0001_init.sql` — 6 tables + FKs + 3 indexes + `dm_key UNIQUE`.
@@ -277,6 +281,7 @@ Tasks:
       correctly sorted `dm_key`. Local only; remote D1 still to provision.
 
 Decisions made during implementation (carry forward):
+
 - **Stub `users` row for the other participant** in `resolveOrCreateDirect` —
   FK requires it; `display_name` backfills when that user later authenticates.
 - **404 (not 403)** for non-member conversation access, so ids can't be probed.
@@ -286,6 +291,7 @@ Decisions made during implementation (carry forward):
   (tracked alongside the signaling worker config).
 
 Not yet done in Slice A (before calling it complete):
+
 - Remote D1: run `wrangler d1 create hangvidu-data`, paste `database_id` into
   `workers/data/wrangler.jsonc`, `pnpm -C workers/data migrate:remote`, deploy,
   set prod `VITE_DATA_URL`. (Local dev needs none of this.)
@@ -301,6 +307,7 @@ accepted: two users not in an active call won't see new messages until they
 reopen/reload, during the B→E window.
 
 Backend + adapter (DONE 2026-05-29, behind `VITE_MESSAGE_BACKEND=d1`):
+
 - [x] Worker message endpoints (`workers/data/src/index.ts` + `repo.ts`), all
       membership-guarded (404 to non-members), reusing the 6 tables from
       `0001_init.sql` (no new migration):
@@ -308,7 +315,7 @@ Backend + adapter (DONE 2026-05-29, behind `VITE_MESSAGE_BACKEND=d1`):
       200, reactions batched in); `POST .../messages {kind?,body}` (server
       allocates id + `created_at`, bumps `conversations.updated_at`);
       `POST .../read`; `GET .../activity`; `POST .../messages/:mid/reactions
-      {emoji,active}`.
+    {emoji,active}`.
 - [x] Client methods on `data-client.ts`: `loadMessages`, `sendMessage`,
       `markRead`, `activity`, `setReaction` (+ `MessageRecord` / reaction types).
 - [x] D1 `MessageRepository` adapter
@@ -321,16 +328,17 @@ Backend + adapter (DONE 2026-05-29, behind `VITE_MESSAGE_BACKEND=d1`):
       (`rtdb` default | `d1`); conversation metadata stays on RTDB until Slice C.
 - [x] `pnpm ts`, `pnpm lint`, `pnpm lint:boundaries` clean.
 - [x] **Verify (console) — DONE 2026-05-29.** With servers up: `id =
-      resolveDirect('OTHER_UID')`; `sendMessage(id,'hi')`; `loadMessages(id)`
+    resolveDirect('OTHER_UID')`; `sendMessage(id,'hi')`; `loadMessages(id)`
       shows it; reload page → `loadMessages(id)` still returns it (persisted in
       D1); `markRead(id)` + `activity(id)` reflect `lastReadAt`; `setReaction`
       then `loadMessages` shows the reaction map.
 
 Remaining for full UI swap (entangled with Slice C — see note):
+
 - [ ] **Open-flow must resolve-or-create the D1 conversation and use the opaque
       id before messaging.** Today the UI opens a DM by the derived `a_b` id,
       which does not exist in D1 → the membership guard 404s. So flipping
-      `VITE_MESSAGE_BACKEND=d1` for the *UI* requires the opaque-id open flow
+      `VITE_MESSAGE_BACKEND=d1` for the _UI_ requires the opaque-id open flow
       that Slice C builds. The D1 message layer itself is done and verified via
       console; the UI flip rides on Slice C.
 - **Verify (UI, after Slice C):** open a DM, send text, reload → messages
@@ -342,8 +350,9 @@ Scope intentionally trimmed to "just enough to make the `VITE_MESSAGE_BACKEND=d1
 UI flip testable." The list rename and member-driven rendering are deferred.
 
 Done (2026-05-29, uncommitted):
+
 - [x] Opaque-id open flow. `openDirectConversation({contactId, fallbackConversationId,
-      contactNickName})` in [selectedConversationStore.ts](../../src/stores/selectedConversationStore.ts):
+    contactNickName})` in [selectedConversationStore.ts](../../src/stores/selectedConversationStore.ts):
       when `VITE_MESSAGE_BACKEND=d1` it `resolveDirect(contactId)`s the opaque id
       (resolve-or-create) before selecting; otherwise uses the legacy derived id.
       `ContactEntry` now calls this instead of `open()` with a precomputed id.
@@ -365,6 +374,7 @@ Unread badge + list reorder fix (DONE & VERIFIED 2026-05-29, commits 7159fa52 +
 82eca6a9). Root cause was an id mismatch, not missing live push: the list watched
 `/activity` per contact using the **derived `a_b`** id from `contactsStore`, which
 D1 404s (D1 only has opaque ids). Contained fix:
+
 - [x] Worker `listConversations` now returns per-conversation `activity`
       ({latestSentAt, latestSenderId, lastReadAt}) in one query.
 - [x] `useContacts` (d1 backend) replaces the N per-contact derived-id activity
@@ -376,6 +386,7 @@ D1 404s (D1 only has opaque ids). Contained fix:
   conversation just have empty activity). Still reload-based — live push is Slice E.
 
 Deferred from Slice C (do later):
+
 - [ ] Rename `ContactsList` → `ConversationList`, move under messaging-next; go
       fully conversation-driven (render the other member from `conversation_members`).
 - [ ] Remove `resolveContactIdFromDirectConversationId` + `group:` prefix
@@ -410,6 +421,7 @@ envelope (`src/realtime/` transport). This is the realtime half of the spine
 
 **E1 — live message/activity push** (removes the reload requirement for unread +
 reorder; makes the d1 adapter's one-shot `watch*` methods actually live):
+
 - [ ] Decide where the room lives + how a D1 write notifies subscribers (the data
       worker writes to D1, so it must signal the room on send/read/reaction). Pin
       this down first — it's the only real design question in E1.
@@ -422,6 +434,7 @@ reorder; makes the d1 adapter's one-shot `watch*` methods actually live):
   conversation; B's list unread badge + ordering update live.
 
 **E2 — call handshake on the same room** (after E1 verified):
+
 - [ ] Fold the call-invite handshake into the conversation room (reuse the
       `src/realtime/` transport + protocol envelope; a new `channel` value, not a
       new room). Caller path: resolve-or-create conversation → open room → handshake.
@@ -437,7 +450,7 @@ unless we decide old history must survive.
 
 ## What this explicitly defers
 
-- Contact metadata (display name, avatar) as a concern that *decorates* a member
+- Contact metadata (display name, avatar) as a concern that _decorates_ a member
   — not folded back into the conversation model.
 - Tests (unit/integration/E2E) until manual e2e per slice is reported back.
 - Pagination/windowing tuning, optimistic send retry.
