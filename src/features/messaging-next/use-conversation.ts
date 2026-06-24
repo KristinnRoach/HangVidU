@@ -1,7 +1,6 @@
 import { onCleanup } from 'solid-js';
 import type {
   ChatMessage,
-  ConversationRepository,
   MessageRepository,
   P2PChatEnvelope,
   PrivateMessageTransport,
@@ -81,39 +80,6 @@ export async function loadConversationHistory(
       .filter((msg): msg is ChatMessage => Boolean(msg)),
   );
 }
-
-// export async function ensureDirectConversation(
-//   repository: ConversationRepository,
-//   conversationId: ConversationId,
-//   myUserId: UserId,
-//   remoteParticipantIds: UserId[],
-// ) {
-//   const existing = await repository.loadConversation(conversationId);
-//   if (existing || remoteParticipantIds.length !== 1) return existing;
-
-//   const now = Date.now();
-//   const remoteUserId = remoteParticipantIds[0];
-//   return repository.upsertConversation({
-//     conversationId,
-//     kind: 'direct',
-//     participants: {
-//       [myUserId]: {
-//         userId: myUserId,
-//         joinedAt: now,
-//         role: 'member', // "owner" | "admin" | "member"
-//         status: 'active', // "active" | "left" | "removed"
-//       },
-//       [remoteUserId]: {
-//         userId: remoteUserId,
-//         joinedAt: now,
-//         role: 'member', // "owner" | "admin" | "member"
-//         // status: 'active' // "active" | "left" | "removed"
-//       },
-//     },
-//     createdAt: now,
-//     updatedAt: now,
-//   });
-// }
 
 export function useConversation({
   repository,
@@ -260,9 +226,7 @@ export function useConversation({
     if (!sent) return false;
     if (recipientIds.length > 0) {
       const messageText =
-        payload.type === 'text'
-          ? payload.text
-          : payload.text || 'Sent a file';
+        payload.type === 'text' ? payload.text : payload.text || 'Sent a file';
       try {
         void getPushNotifications()?.sendMessageNotification({
           recipientIds,
