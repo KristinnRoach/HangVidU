@@ -61,7 +61,6 @@ export interface D1MessageClient {
 }
 
 // Cap the in-memory live window so long-lived sessions don't grow unbounded.
-// Matches the rtdb adapter's RECENT_MESSAGES_WINDOW.
 const RECENT_MESSAGES_WINDOW = 40;
 
 function toIncoming(m: WireMessage): IncomingMessage | null {
@@ -119,7 +118,9 @@ function toSendInput(message: MessageEnvelope): D1SendInput {
       },
     };
   }
-  throw new Error(`D1 message adapter cannot send payload type: ${payload.type}`);
+  throw new Error(
+    `D1 message adapter cannot send payload type: ${payload.type}`,
+  );
 }
 
 export function createD1MessageRepository(
@@ -129,9 +130,7 @@ export function createD1MessageRepository(
     conversationId: ConversationId,
   ): Promise<IncomingMessage[]> {
     const rows = await client.loadMessages(conversationId);
-    return rows
-      .map(toIncoming)
-      .filter((m): m is IncomingMessage => m !== null);
+    return rows.map(toIncoming).filter((m): m is IncomingMessage => m !== null);
   }
 
   return {
@@ -149,7 +148,9 @@ export function createD1MessageRepository(
       // Window keyed by id so the live echo dedupes against the snapshot.
       const window = new Map<string, IncomingMessage>();
       const emit = () => {
-        const ordered = [...window.values()].sort((a, b) => a.sentAt - b.sentAt);
+        const ordered = [...window.values()].sort(
+          (a, b) => a.sentAt - b.sentAt,
+        );
         if (ordered.length > RECENT_MESSAGES_WINDOW) {
           // Evict oldest beyond the window so the Map stays bounded.
           for (const stale of ordered.splice(
