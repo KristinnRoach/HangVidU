@@ -1,11 +1,13 @@
-# Users → D1 Slice (contacts, profile, directory, invitations)
+# Users → D1 Slice (contacts, profile, directory, contact requests)
 
 Move the user-scoped RTDB data onto D1, reusing the existing client adapter seam
-and the existing `hangvidu-data` Worker. One-session scope.
+and the existing `hangvidu-data` Worker. Also lands **user search by handle** —
+finding someone already on HangVidU without a referral link. One-session scope.
 
 ## Scope
 
-**In:** contacts, user profile, directory/discovery, invitations.
+**In:** contacts, user profile, directory/discovery (handle search), contact
+requests (the request/accept handshake).
 **Explicitly out:**
 - **Presence** — `onDisconnect` has no D1 equivalent. Stays on RTDB. If ever
   moved it belongs on a DO (WS hibernation + alarm TTL), not D1.
@@ -16,81 +18,152 @@ and the existing `hangvidu-data` Worker. One-session scope.
   swapping an adapter. Do **not** delete.
 
 Firebase Auth stays regardless (RS256 token seam in `backend/cloudflare/src/auth.ts`).
-This slice is query-layer consolidation, not Firebase removal.
+This slice is query-layer consolidation + the new discovery feature, not Firebase
+removal.
 
-## Decisions (settle before coding)
+## What the legacy code already does (don't rebuild)
+
+`invitations.js` is **already a request/accept handshake**, implemented as RTDB
+fan-out: sender writes `users/{to}/incomingInvites/{from}`; accepter saves the
+contact and writes `users/{from}/acceptedInvites/{to}`; sender's `onChildAdded`
+listener auto-saves. Two live listeners + a referral synthetic-invite path
+(`referral-handler.js` calls `acceptInvite` directly).
+
+The D1 version **collapses this**: one `contact_requests` table queried both
+directions, delivered live via the existing `UserMailbox` DO (same shape as call
+invites). That removes both RTDB listeners. The only genuinely new capability is
+**discovery** — the handshake itself is a port, not a redesign.
+
+## Discovery model (decided)
+
+**Search by unique username handle, exact match, gated by a visibility flag.**
+Proven minimal model (Signal/Telegram): no full-text search, no ranking, no
+enumeration surface.
+
+- `users.username` — the searchable handle. **First pass: plain index, NOT a
+  UNIQUE constraint** (see "Keep it soft" below).
+- `users.discoverable` — `BOOLEAN DEFAULT 1`. Opt-out = `0`; user is then
+  unfindable by handle but still addable via referral link (existing path).
+- Lookup = `SELECT … FROM users WHERE username = ? AND discoverable = 1` (one
+  indexed read). Email-hash lookup stays as a second exact-match path.
+
+**Handle-claim flow (the one real build cost):** today only password-auth users
+have a handle; Google-auth users have only a display name. To be searchable they
+need to claim one. One-time prompt, default suggestion derived from name/email.
+Until claimed, a user is simply not handle-searchable — no hard block on the rest
+of the app.
+
+### Keep it soft (first pass)
+
+Don't cement the handle model before real e2e usage — we may find exact-unique
+handles aren't convenient (want display-name fallback, allow duplicates, change
+the identifier entirely). So the first pass deliberately stays loose, in a way
+that's *minimal code to tighten later*, not extra code now:
+
+- **No DB `UNIQUE` on `username`** — plain index only. Uniqueness is a
+  best-effort app-level check at claim time (query-then-insert; tolerate the
+  rare race). Adding the constraint later is one migration.
+- **Lookup endpoint stays identifier-agnostic** — `/users/lookup?handle=` returns
+  an array, not a single user. Costs nothing now; lets us add a second match path
+  (or return multiple matches) without changing the contract.
+- **Claim flow re-suggests but doesn't hard-reject** on a soft collision — UX
+  nudge, not a wall.
+
+Lock it in (DB `UNIQUE`, secured claim, single-result contract) once usage tells
+us the model is right.
+
+## Decisions (settled)
 
 1. **`users` table: extend, don't add.** D1 already has
    `users(id, display_name, created_at)`, populated as a side-effect of
-   conversations (`repo.ts`). Add profile columns here rather than a new
-   `user_profiles` table — fewer joins. New cols: `photo_url`, `username`
-   (handle), `email_hash`, `registered_at`.
-2. **Directory = indexed lookup on `users`.** Keep the `emailHash` indirection
-   (store `email_hash`, never raw email); add a UNIQUE index. Replaces the
-   RTDB `usersByEmail/{hash}` node.
-3. **Username handle: real UNIQUE constraint** — D1 gives us what RTDB couldn't.
-   `username` UNIQUE (nullable). Decide collision behavior = reject on insert.
-4. **Backfill, not lazy-migrate.** Tiny user base → one-shot script, no dual-read
-   code. Repo idiom: generate idempotent SQL, apply via
-   `wrangler d1 execute --remote --file`. Prod D1 `hangvidu-data`
-   `cfac7c1c-cb3c-430d-b33d-6fd12aac48d0`.
+   conversations (`repo.ts`). Add: `photo_url`, `username` (plain index, not
+   UNIQUE — see "Keep it soft"), `email_hash` (UNIQUE), `discoverable`
+   (DEFAULT 1), `registered_at`.
+2. **Directory = indexed lookup on `users`**, not a separate node. Keep the
+   `emailHash` indirection (store hash, never raw email). Replaces RTDB
+   `usersByEmail/{hash}`.
+3. **Handle uniqueness: soft for now** — app-level best-effort check at claim,
+   no DB constraint. Tighten to DB UNIQUE after real usage.
+4. **Requests = one `contact_requests` table**, replacing the dual
+   `incomingInvites`/`acceptedInvites` mirror. Live nudge via `UserMailbox` DO.
+5. **Backfill, not lazy-migrate.** Tiny user base → one-shot script, no dual-read.
+   Idiom: idempotent SQL → `wrangler d1 execute --remote --file`. Prod D1
+   `hangvidu-data` `cfac7c1c-cb3c-430d-b33d-6fd12aac48d0`.
 
 ## Server (Worker `backend/cloudflare/`)
 
-- [ ] **Migration `migrations/0006_users_profile.sql`**: add cols to `users`
-      (`photo_url`, `username`, `email_hash`, `registered_at`); UNIQUE on
-      `username`, UNIQUE index on `email_hash`. New table
-      `contacts(owner_id, contact_id, nickname, room_id, created_at, updated_at,
-      PRIMARY KEY(owner_id, contact_id))`. New table
-      `invitations(...)` mirroring `invitations.js` shape.
-- [ ] **`data/repo.ts`**: add user/contacts/invitation queries next to the
-      conversation ones (get/list/put/patch/remove contacts; get/upsert profile;
-      lookup-by-email-hash; create/list/consume invitation). Keep one repo file;
-      split to `data/user-repo.ts` only if it gets unwieldy.
-- [ ] **`data/handlers.ts` + `src/index.ts`**: add routes. Reuse the existing
-      regex-router + `auth.ts` token verify (uid from token = `owner_id`, no
-      client-supplied owner). Suggested paths:
-      `/users/me/profile` (GET/PUT), `/users/lookup` (GET, by email hash),
-      `/users/me/contacts` (GET/POST), `/users/me/contacts/:id` (PATCH/DELETE),
-      `/invitations` (POST/GET), `/invitations/:id/consume` (POST).
+- [ ] **Migration `migrations/0006_users_profile.sql`**:
+  - `ALTER users` add `photo_url`, `username`, `email_hash`, `discoverable`
+    (DEFAULT 1), `registered_at`; plain index on `username` (not UNIQUE —
+    first pass), UNIQUE index on `email_hash`.
+  - `contacts(owner_id, contact_id, nickname, room_id, conversation_id,
+    saved_at, last_interaction_at, PRIMARY KEY(owner_id, contact_id))` — columns
+    mirror `ContactRecordSchema` in `src/storage/contacts/contact-schema.js`.
+  - `contact_requests(from_id, to_id, status TEXT, room_id, created_at,
+    PRIMARY KEY(from_id, to_id))` — `status` in `pending|accepted|declined`.
+- [ ] **`data/repo.ts`**: add queries next to the conversation ones —
+      contacts CRUD; profile get/upsert; `lookupByHandle`/`lookupByEmailHash`
+      (both `AND discoverable = 1`); request create/list-incoming/accept/decline.
+      Accept = tx: insert `contacts` row for both sides + set request `accepted`.
+      Keep one repo file; split to `data/user-repo.ts` only if unwieldy.
+- [ ] **`data/handlers.ts` + `src/index.ts`**: add routes on the existing
+      regex-router + `auth.ts` verify (uid from token = owner; never
+      client-supplied):
+  - `/users/me/profile` (GET/PUT), `/users/me/discoverable` (PUT)
+  - `/users/lookup?handle=` and `/users/lookup?emailHash=` (GET, exact)
+  - `/users/me/contacts` (GET/POST), `/users/me/contacts/:id` (PATCH/DELETE)
+  - `/contact-requests` (POST send, GET list incoming),
+    `/contact-requests/:fromId/accept` (POST), `/.../decline` (POST)
+- [ ] **`UserMailbox` DO**: add a `contact_request` event type pushed to the
+      recipient (mirror the call-invite push). Recipient client also fetches
+      pending on load from D1, so the push is a nudge, not the source of truth.
 - [ ] Worker tests in `test/` mirroring `data-worker.test.ts`.
 
 ## Client (`src/storage/`)
 
-The seam already exists — repositories wrap a `*DBInterface` adapter, selected by
-a factory in each `index.js`. Add D1 adapters parallel to the RTDB ones; no
-domain/repository changes.
+Seam exists — repositories wrap a `*DBInterface` adapter via a factory in each
+`index.js`. Add D1 adapters parallel to the RTDB ones; no domain/repository
+changes.
 
 - [ ] **Contacts**: `src/storage/contacts/adapters/contacts-d1-adapter.js`
       implementing `ContactsDBInterface` (get/list/put/patch/remove) against the
       Worker. Add `createContactsD1Repository(options)` to
-      `src/storage/contacts/index.js`. Switch the call site from
+      `src/storage/contacts/index.js`. Switch `src/stores/contactsStore.ts` from
       `createContactsRTDBRepository`.
-- [ ] **Profile**: `src/storage/user/user-profile-d1-adapter.js`; wire
-      `createUserProfileRepository(createUserProfileD1Adapter(...))` in
-      `src/storage/user/index.js`.
-- [ ] **Directory**: port `user-discovery.js` (`registerUserInDirectory`,
-      `lookupUserByEmail`) to call `/users/lookup` + profile PUT. Keep `hashEmail`
-      on the client (server stores the hash).
-- [ ] **Invitations**: port `src/features/contacts/invites/invitations.js` to the
-      `/invitations` routes.
-- [ ] Reuse existing zod schemas in `src/storage/user/schema.js` /
-      `contact-schema.js` for response parsing.
+- [ ] **Profile**: `src/storage/user/user-profile-d1-adapter.js`; wire it in
+      `src/storage/user/index.js`. Add `discoverable` + `username` to
+      `UserProfileSchema`.
+- [ ] **Discovery**: port `user-discovery.js` to call `/users/lookup`. Keep
+      `hashEmail` client-side. Add a `searchByHandle(handle)` call. New UI: a
+      search box that resolves a handle → "send request" button.
+- [ ] **Handle claim**: one-time prompt component; suggest default from
+      name/email; PUT to `/users/me/profile`, handle 409 (taken) by re-suggesting.
+- [ ] **Contact requests**: replace `invitations.js` +
+      `invite-listener.js` with calls to `/contact-requests*`; subscribe to the
+      `UserMailbox` `contact_request` event instead of the two RTDB
+      `onChildAdded` listeners. Re-point `referral-handler.js` to the
+      accept-request path (or direct contact insert for referral auto-accept).
+- [ ] Reuse zod schemas in `src/storage/user/schema.js` / `contact-schema.js`
+      for response parsing.
 
 ## Backfill
 
 - [ ] Script `backend/cloudflare/scripts/backfill-users-to-d1.mjs`: read RTDB
       (`users/{uid}/profile`, `users/{uid}/contacts`, `usersByEmail`,
-      invitations) → emit idempotent `INSERT … ON CONFLICT DO UPDATE` SQL →
-      apply with `wrangler d1 execute --remote --file`. Dry-run default,
-      `--limit=N` to validate on one row first (mirrors
-      `scripts/migrate-d1-attachment-keys.mjs`).
+      `incomingInvites`/`acceptedInvites`) → idempotent
+      `INSERT … ON CONFLICT DO UPDATE` → `wrangler d1 execute --remote --file`.
+      Dry-run default, `--limit=N` to validate one row first (mirrors
+      `scripts/migrate-d1-attachment-keys.mjs`). Existing pending invites map to
+      `contact_requests(status='pending')`. `discoverable` defaults to 1; no
+      handle is invented for handle-less users — they claim on next sign-in.
 
 ## Cutover
 
 - [ ] Backfill prod D1.
-- [ ] Flip client factories to D1 repositories.
-- [ ] Smoke: add/edit/remove contact, edit profile, email lookup, invite flow.
+- [ ] Flip client factories to D1 repositories; mount handle-claim prompt.
+- [ ] Smoke: search by handle → send request → accept on other account → both
+      sides see contact; edit profile; toggle discoverable (off = not found);
+      add/edit/remove contact; referral link still adds a contact.
 - [ ] Leave RTDB nodes in place (no destructive delete) until verified in prod;
       sweep later.
 
