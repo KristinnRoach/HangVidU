@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ConversationIdSchema,
   EventMessagePayloadSchema,
   MessageEnvelopeSchema,
 } from '../schema.js';
 
 describe('messaging-next schema', () => {
+  it('normalizes and rejects blank conversation ids', () => {
+    expect(ConversationIdSchema.parse(' conversation-1 ')).toBe('conversation-1');
+    expect(() => ConversationIdSchema.parse('   ')).toThrow();
+  });
+
   it('requires every message envelope to carry conversation id and delivery', () => {
     const message = MessageEnvelopeSchema.parse({
       messageId: 'msg-1',
