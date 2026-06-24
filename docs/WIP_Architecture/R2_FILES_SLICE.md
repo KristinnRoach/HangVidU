@@ -13,7 +13,7 @@ this is deliberately decoupled from the paused message migration
 ## Why this is a clean, self-contained slice
 
 The messaging core already supports R2 file payloads on the read/model side —
-the schema and RTDB read adapter can already *carry* an R2 reference:
+the schema and RTDB read adapter can already _carry_ an R2 reference:
 
 - `FileMessagePayloadSchema` (`src/features/messaging-next/schema.ts`) accepts
   `storage: { provider: 'r2', bucket, key }`.
@@ -103,7 +103,7 @@ Do not carry over:
 - [x] Download/serve endpoint + same authz; correct content-type.
 - [x] Client: upload-then-send-file-message path (images).
 - [x] Client: render R2-backed image messages.
-- [ ] Manual e2e: send an image in a DM, other browser receives + renders;
+- [x] Manual e2e: send an image in a DM, other browser receives + renders;
       reload → still renders from R2.
 - [x] `pnpm ts` / `lint` / `lint:boundaries` / `build` clean.
 

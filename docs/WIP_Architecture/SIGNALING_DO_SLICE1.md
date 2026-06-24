@@ -8,19 +8,20 @@ adapter stays as the fallback. Persistence (contacts, messages, user) stays on
 RTDB — this slice touches realtime only.
 
 This establishes the **realtime vs persistence** split:
+
 - `src/infra/firebase-rtdb.js` + `src/storage/**` → persistence (RTDB)
 - `workers/signaling/` + `src/realtime/**` → ephemeral coordination (Durable Objects)
 
 ## Boundaries
 
-| Layer | Path | Responsibility | Must NOT |
-|-------|------|----------------|----------|
-| Contract | `shared/signaling/protocol.ts` | Wire message types, shared by client + worker | depend on RTDB, Firebase, or DOM |
-| Worker router | `workers/signaling/src/index.ts` | Authenticate, map `roomId → DO`, hand off WS | hold signaling logic |
-| Auth seam | `workers/signaling/src/auth.ts` | `authenticate(request, env) → { userId }` | leak provider choice past return type |
-| Durable Object | `workers/signaling/src/signaling-room.ts` | Presence + relay fan-out | parse SDP, persist, know channels |
-| Transport | `src/realtime/signaling-socket.ts` | Connect / reconnect / heartbeat | hold signaling semantics |
-| Adapter | `src/realtime/signaling/do-room-signaling.ts` | Map `P2PRoomSignaling` ↔ protocol | know transport internals |
+| Layer          | Path                                          | Responsibility                                | Must NOT                              |
+| -------------- | --------------------------------------------- | --------------------------------------------- | ------------------------------------- |
+| Contract       | `shared/signaling/protocol.ts`                | Wire message types, shared by client + worker | depend on RTDB, Firebase, or DOM      |
+| Worker router  | `workers/signaling/src/index.ts`              | Authenticate, map `roomId → DO`, hand off WS  | hold signaling logic                  |
+| Auth seam      | `workers/signaling/src/auth.ts`               | `authenticate(request, env) → { userId }`     | leak provider choice past return type |
+| Durable Object | `workers/signaling/src/signaling-room.ts`     | Presence + relay fan-out                      | parse SDP, persist, know channels     |
+| Transport      | `src/realtime/signaling-socket.ts`            | Connect / reconnect / heartbeat               | hold signaling semantics              |
+| Adapter        | `src/realtime/signaling/do-room-signaling.ts` | Map `P2PRoomSignaling` ↔ protocol             | know transport internals              |
 
 The DO is a **relay**: it holds only presence (who's joined). SDP/ICE are
 forwarded peer-to-peer and discarded. `media-sync` later = a new `channel`
@@ -67,6 +68,7 @@ cleaner request-path guard and avoids async-throw noise in the test runner.
 Flip `VITE_SIGNALING_BACKEND=rtdb` to fall back instantly if needed.
 
 Notes:
+
 - Auth: client sends its real Firebase ID token as the `bearer` subprotocol; the
   worker verifies the RS256 signature (Google JWKS) + claims against `vidu-aae11`.
   Production-ready. Switching auth provider later = replace the verify internals
@@ -82,6 +84,4 @@ Notes:
 
 ## Migration path (preserved, no work now)
 
-RTDB + DO adapters coexist behind the flag → cut over per environment → delete
-`firebase-room-signaling.js` once proven. Call-invite mailbox + media-sync are
-later slices reusing `src/realtime/` transport and this protocol envelope.
+RTDB + DO adapters coexist behind the flag → cut over per environment. Call-invite mailbox + media-sync are later slices reusing `src/realtime/` transport and this protocol envelope.
