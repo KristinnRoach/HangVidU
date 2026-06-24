@@ -1,10 +1,9 @@
 import type { z } from 'zod';
 import type {
   DeliveryPolicySchema,
-  DirectConversationIdSchema,
   EventMessagePayloadSchema,
   FileMessagePayloadSchema,
-  GroupConversationIdSchema,
+  ConversationIdSchema,
   MessageEnvelopeSchema,
   MessagePayloadSchema,
   SystemMessagePayloadSchema,
@@ -13,9 +12,7 @@ import type {
 } from './schema.js';
 
 export type UserId = z.infer<typeof UserIdSchema>;
-export type DirectConversationId = z.infer<typeof DirectConversationIdSchema>;
-export type GroupConversationId = z.infer<typeof GroupConversationIdSchema>;
-export type ConversationId = DirectConversationId | GroupConversationId;
+export type ConversationId = z.infer<typeof ConversationIdSchema>;
 export type DeliveryPolicy = z.infer<typeof DeliveryPolicySchema>;
 
 export type TextMessagePayload = z.infer<typeof TextMessagePayloadSchema>;

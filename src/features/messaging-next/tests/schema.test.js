@@ -8,7 +8,7 @@ describe('messaging-next schema', () => {
   it('requires every message envelope to carry conversation id and delivery', () => {
     const message = MessageEnvelopeSchema.parse({
       messageId: 'msg-1',
-      conversationId: 'group:team_1',
+      conversationId: 'conversation-1',
       senderId: 'user-a',
       senderName: 'User A',
       sentAt: 10,
@@ -19,7 +19,7 @@ describe('messaging-next schema', () => {
       },
     });
 
-    expect(message.conversationId).toBe('group:team_1');
+    expect(message.conversationId).toBe('conversation-1');
     expect(message.sentAt).toBe(10);
     expect(message.delivery).toBe('private');
   });

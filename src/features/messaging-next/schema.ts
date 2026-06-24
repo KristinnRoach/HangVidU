@@ -2,26 +2,7 @@ import { z } from 'zod';
 
 export const UserIdSchema = z.string().trim().min(1);
 
-// Group ids carry a `group:` prefix; direct ids are otherwise opaque strings.
-// Group is listed first in the union so the prefix wins discrimination — without
-// this, Direct's permissive rule would swallow any string including `group:*`.
-export const GroupConversationIdSchema = z
-  .string()
-  .regex(/^group:[A-Za-z0-9_-]+$/);
-
-export const DirectConversationIdSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .regex(
-    /^(?!group:).+/,
-    'direct conversation id must not start with "group:"',
-  );
-
-export const ConversationIdSchema = z.union([
-  GroupConversationIdSchema,
-  DirectConversationIdSchema,
-]);
+export const ConversationIdSchema = z.string().trim().min(1);
 
 export const DeliveryPolicySchema = z.enum(['persistent', 'private']);
 
