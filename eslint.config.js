@@ -169,12 +169,12 @@ const appConfig = [
             {
               group: ['**/auth-state', '**/auth-state.js'],
               message:
-                'auth-state.js is private to src/auth/. Import read-only getters from src/auth/index.js and subscribe to evt:auth:state:changed. See docs/WIP_Architecture/STATE_RULES.md.',
+                'auth-state.js is private to src/auth/. Import read-only getters from src/auth/index.js and subscribe to evt:auth:state:changed. See docs/architecture/STATE_RULES.md.',
             },
             {
               group: ['**/contacts-state', '**/contacts-state.js'],
               message:
-                'contacts-state.js is private to src/features/contacts/. Import read-only getters from src/features/contacts/index.js and subscribe to evt:contacts:state:changed. See docs/WIP_Architecture/STATE_RULES.md.',
+                'contacts-state.js is private to src/features/contacts/. Import read-only getters from src/features/contacts/index.js and subscribe to evt:contacts:state:changed. See docs/architecture/STATE_RULES.md.',
             },
           ],
         },
@@ -184,7 +184,6 @@ const appConfig = [
 ];
 
 // Solid components must use `useI18n()` as the i18n seam so the impl stays swappable.
-// See docs/WIP_Architecture/MIGRATE_COMPONENT_TO_SOLIDJS.md.
 const solidComponentsI18nConfig = [
   {
     files: ['src/components/**/*.jsx', 'src/components/**/*.tsx'],

@@ -17,7 +17,7 @@
 //         lifecycle. Non-Solid auth-scoped listeners (e.g. `presence`,
 //         `wireAuthReactions`) (re)wire on these so they survive a login that
 //         completes after setup.
-//     See docs/WIP_Architecture/STATE_RULES.md.
+//     See docs/architecture/STATE_RULES.md.
 //
 // App-level cross-feature wiring lives in `app/auth-orchestration.js`
 // (`wireAuthReactions`), which is NOT part of this module.
@@ -46,7 +46,7 @@ export {
 
 // Read-only state API. `setState` is intentionally NOT re-exported — writers live
 // inside the auth module only. External consumers read via getters and subscribe
-// to `evt:auth:state:changed`. See docs/WIP_Architecture/STATE_RULES.md.
+// to `evt:auth:state:changed`. See docs/architecture/STATE_RULES.md.
 export {
   getAuthState,
   getIsLoggedIn,

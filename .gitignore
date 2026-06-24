@@ -99,16 +99,11 @@ backend/firebase/service-account-key.json
 TODO.md
 .planning/codebase/potentially_stale
 /tests/e2e/OUTDATED_IGNORE/
-kill-hanging-dev-processes.sh
 /scripts/sync-gh-secrets.sh
-PWA-TESTING-GUIDE.md
 coverage/
 *.lcov
-first-contact-agent-prompt.md
 **/__screenshots__/
 __screenshots__/
-test-reactions.html
-debug-discovery.html
 src/shared/media/test-images/
 backups/
 .playwright-mcp/
@@ -121,12 +116,10 @@ docs/archive/
 docs/metrics/
 docs/ui-audit-wip/
 docs/misc/
-docs/WIP_Architecture/REFERENCE_WebDevSimplified.md
-docs/WIP_Architecture/references/solidjs.llms.txt
-database.rules.TODO.md
 src/shared/events/STALE?_WIP_EVENT_DRIVEN_STANDARDIZATION_DOCS/
 
 # Scripts
+scripts/kill-hanging-dev-processes.sh
 scripts/migrate-usersbyemail-display-name-to-user-name.js
 
 # Git worktrees
