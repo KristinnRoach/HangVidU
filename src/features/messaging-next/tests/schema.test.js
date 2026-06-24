@@ -1,42 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ConversationNodeSchema,
+  ConversationIdSchema,
   EventMessagePayloadSchema,
   MessageEnvelopeSchema,
-  createGroupConversationId,
 } from '../schema.js';
 
 describe('messaging-next schema', () => {
-  it('creates generated group conversation ids', () => {
-    expect(createGroupConversationId('group-123')).toBe('group:group-123');
-  });
-
-  it('parses conversation metadata without shared draft state', () => {
-    const node = ConversationNodeSchema.parse({
-      conversationId: 'conversation-1',
-      kind: 'direct',
-      participants: {
-        'user-a': {
-          userId: 'user-a',
-          joinedAt: 1,
-        },
-        'user-b': {
-          userId: 'user-b',
-          joinedAt: 1,
-        },
-      },
-      createdAt: 1,
-      updatedAt: 2,
-    });
-
-    expect(node.deliveryPolicy).toBe('persistent');
-    expect(node.participants['user-a'].role).toBe('member');
+  it('normalizes and rejects blank conversation ids', () => {
+    expect(ConversationIdSchema.parse(' conversation-1 ')).toBe('conversation-1');
+    expect(() => ConversationIdSchema.parse('   ')).toThrow();
   });
 
   it('requires every message envelope to carry conversation id and delivery', () => {
     const message = MessageEnvelopeSchema.parse({
       messageId: 'msg-1',
-      conversationId: 'group:team_1',
+      conversationId: 'conversation-1',
       senderId: 'user-a',
       senderName: 'User A',
       sentAt: 10,
@@ -47,7 +25,7 @@ describe('messaging-next schema', () => {
       },
     });
 
-    expect(message.conversationId).toBe('group:team_1');
+    expect(message.conversationId).toBe('conversation-1');
     expect(message.sentAt).toBe(10);
     expect(message.delivery).toBe('private');
   });

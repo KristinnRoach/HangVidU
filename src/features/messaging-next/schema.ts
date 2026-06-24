@@ -2,49 +2,9 @@ import { z } from 'zod';
 
 export const UserIdSchema = z.string().trim().min(1);
 
-// Group ids carry a `group:` prefix; direct ids are otherwise opaque strings.
-// Group is listed first in the union so the prefix wins discrimination — without
-// this, Direct's permissive rule would swallow any string including `group:*`.
-export const GroupConversationIdSchema = z
-  .string()
-  .regex(/^group:[A-Za-z0-9_-]+$/);
-
-export const DirectConversationIdSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .regex(
-    /^(?!group:).+/,
-    'direct conversation id must not start with "group:"',
-  );
-
-export const ConversationIdSchema = z.union([
-  GroupConversationIdSchema,
-  DirectConversationIdSchema,
-]);
+export const ConversationIdSchema = z.string().trim().min(1);
 
 export const DeliveryPolicySchema = z.enum(['persistent', 'private']);
-
-export const ConversationKindSchema = z.enum(['direct', 'group']);
-
-export const ConversationParticipantSchema = z.object({
-  userId: UserIdSchema,
-  role: z.enum(['owner', 'admin', 'member']).default('member'),
-  status: z.enum(['active', 'left', 'removed']).default('active'),
-  joinedAt: z.number().int().nonnegative(),
-});
-
-export const ConversationRecordSchema = z.object({
-  conversationId: ConversationIdSchema,
-  kind: ConversationKindSchema,
-  title: z.string().trim().min(1).optional(),
-  participants: z.record(UserIdSchema, ConversationParticipantSchema),
-  deliveryPolicy: DeliveryPolicySchema.default('persistent'),
-  createdAt: z.number().int().nonnegative(),
-  updatedAt: z.number().int().nonnegative(),
-});
-
-export const ConversationNodeSchema = ConversationRecordSchema;
 
 const MessageBaseSchema = z.object({
   messageId: z.string().trim().min(1),
@@ -105,9 +65,3 @@ export const MessagePayloadSchema = z.discriminatedUnion('type', [
 export const MessageEnvelopeSchema = MessageBaseSchema.extend({
   payload: MessagePayloadSchema,
 });
-
-export function createGroupConversationId(
-  id: string,
-): z.infer<typeof GroupConversationIdSchema> {
-  return GroupConversationIdSchema.parse(`group:${id}`);
-}

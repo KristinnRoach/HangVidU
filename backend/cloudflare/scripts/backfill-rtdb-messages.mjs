@@ -94,7 +94,7 @@ const stats = { convos: 0, skippedGroup: 0, skippedEmpty: 0, text: 0, file: 0, d
 for (const [convoId, convo] of Object.entries(conversations ?? {})) {
   const parts = convoId.split('_');
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
-    stats.skippedGroup += 1; // group:/opaque/malformed — not a legacy direct id
+    stats.skippedGroup += 1; // not a legacy derived direct-conversation id
     continue;
   }
   const [a, b] = parts;

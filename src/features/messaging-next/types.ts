@@ -1,14 +1,9 @@
 import type { z } from 'zod';
 import type {
-  ConversationKindSchema,
-  ConversationNodeSchema,
-  ConversationParticipantSchema,
-  ConversationRecordSchema,
   DeliveryPolicySchema,
-  DirectConversationIdSchema,
   EventMessagePayloadSchema,
   FileMessagePayloadSchema,
-  GroupConversationIdSchema,
+  ConversationIdSchema,
   MessageEnvelopeSchema,
   MessagePayloadSchema,
   SystemMessagePayloadSchema,
@@ -17,17 +12,8 @@ import type {
 } from './schema.js';
 
 export type UserId = z.infer<typeof UserIdSchema>;
-export type DirectConversationId = z.infer<typeof DirectConversationIdSchema>;
-export type GroupConversationId = z.infer<typeof GroupConversationIdSchema>;
-export type ConversationId = DirectConversationId | GroupConversationId;
+export type ConversationId = z.infer<typeof ConversationIdSchema>;
 export type DeliveryPolicy = z.infer<typeof DeliveryPolicySchema>;
-export type ConversationKind = z.infer<typeof ConversationKindSchema>;
-
-export type ConversationParticipant = z.infer<
-  typeof ConversationParticipantSchema
->;
-export type ConversationRecord = z.infer<typeof ConversationRecordSchema>;
-export type ConversationNode = z.infer<typeof ConversationNodeSchema>;
 
 export type TextMessagePayload = z.infer<typeof TextMessagePayloadSchema>;
 export type FileMessagePayload = z.infer<typeof FileMessagePayloadSchema>;

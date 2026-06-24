@@ -3,9 +3,6 @@
 
 import type {
   ConversationId,
-  ConversationKind,
-  ConversationNode,
-  ConversationParticipant,
   DeliveryPolicy,
   MessageEnvelope,
   UserId,
@@ -80,39 +77,6 @@ export type MessageRepository = {
     userId: UserId,
     reactionKey: string | null,
   ): void | Promise<void>;
-};
-
-// ─── Conversation metadata backend ───────────────────────────────────────────
-
-export type ConversationUpsert = {
-  conversationId: ConversationId;
-  kind: ConversationKind;
-  title?: string;
-  participants: Record<UserId, ConversationParticipant>;
-  deliveryPolicy?: DeliveryPolicy;
-  createdAt?: number;
-  updatedAt?: number;
-};
-
-export type ConversationRepository = {
-  /** Load shared conversation metadata. */
-  loadConversation(
-    conversationId: ConversationId,
-  ): ConversationNode | null | Promise<ConversationNode | null>;
-
-  /** Create or replace a conversation node. Adapter fills missing timestamps. */
-  upsertConversation(
-    conversation: ConversationUpsert,
-  ): ConversationNode | Promise<ConversationNode>;
-
-  /**
-   * Subscribe to conversation-node changes. Called with null if deleted or
-   * unavailable in a future persistent adapter.
-   */
-  subscribeConversation(
-    conversationId: ConversationId,
-    onConversation: (conversation: ConversationNode | null) => void,
-  ): (() => void) | Promise<() => void>;
 };
 
 // ─── Private (datachannel) transport ──────────────────────────────────────────

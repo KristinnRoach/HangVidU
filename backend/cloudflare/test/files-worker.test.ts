@@ -238,11 +238,11 @@ describe('files worker routing + auth', () => {
   it('reuses successful download membership checks briefly', async () => {
     const uploadToken = await signToken(validClaims('user-a'));
     const downloadToken = await signToken(validClaims('user-b'));
-    await allowMember('group:cache-test', 'user-a');
-    await allowMember('group:cache-test', 'user-b');
+    await allowMember('conversation-cache-test', 'user-a');
+    await allowMember('conversation-cache-test', 'user-b');
 
     const upload = await request(
-      '/conversations/group%3Acache-test/files/images',
+      '/conversations/conversation-cache-test/files/images',
       {
         method: 'POST',
         token: uploadToken,
@@ -252,12 +252,12 @@ describe('files worker routing + auth', () => {
     );
     const metadata = (await upload.json()) as { key: string };
 
-    const path = `/conversations/group%3Acache-test/files/object?key=${encodeURIComponent(
+    const path = `/conversations/conversation-cache-test/files/object?key=${encodeURIComponent(
       metadata.key,
     )}`;
 
     const firstDownload = await request(path, { token: downloadToken });
-    await removeMember('group:cache-test', 'user-b');
+    await removeMember('conversation-cache-test', 'user-b');
     const secondDownload = await request(path, { token: downloadToken });
 
     expect(firstDownload.status).toBe(200);
@@ -314,9 +314,9 @@ describe('files worker routing + auth', () => {
 
   it('authorizes group conversations through D1 membership', async () => {
     const token = await signToken(validClaims('user-a'));
-    await allowMember('group:abc', 'user-a');
+    await allowMember('conversation-membership-test', 'user-a');
 
-    const upload = await request('/conversations/group%3Aabc/files/images', {
+    const upload = await request('/conversations/conversation-membership-test/files/images', {
       method: 'POST',
       token,
       contentType: 'image/webp',
