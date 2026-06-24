@@ -25,27 +25,6 @@ export const ConversationIdSchema = z.union([
 
 export const DeliveryPolicySchema = z.enum(['persistent', 'private']);
 
-export const ConversationKindSchema = z.enum(['direct', 'group']);
-
-export const ConversationParticipantSchema = z.object({
-  userId: UserIdSchema,
-  role: z.enum(['owner', 'admin', 'member']).default('member'),
-  status: z.enum(['active', 'left', 'removed']).default('active'),
-  joinedAt: z.number().int().nonnegative(),
-});
-
-export const ConversationRecordSchema = z.object({
-  conversationId: ConversationIdSchema,
-  kind: ConversationKindSchema,
-  title: z.string().trim().min(1).optional(),
-  participants: z.record(UserIdSchema, ConversationParticipantSchema),
-  deliveryPolicy: DeliveryPolicySchema.default('persistent'),
-  createdAt: z.number().int().nonnegative(),
-  updatedAt: z.number().int().nonnegative(),
-});
-
-export const ConversationNodeSchema = ConversationRecordSchema;
-
 const MessageBaseSchema = z.object({
   messageId: z.string().trim().min(1),
   conversationId: ConversationIdSchema,
@@ -105,9 +84,3 @@ export const MessagePayloadSchema = z.discriminatedUnion('type', [
 export const MessageEnvelopeSchema = MessageBaseSchema.extend({
   payload: MessagePayloadSchema,
 });
-
-export function createGroupConversationId(
-  id: string,
-): z.infer<typeof GroupConversationIdSchema> {
-  return GroupConversationIdSchema.parse(`group:${id}`);
-}
