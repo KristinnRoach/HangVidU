@@ -15,6 +15,10 @@ export default defineConfig(({ mode }) => {
   return {
     base: basePath,
 
+    resolve: {
+      dedupe: ['solid-js'],
+    },
+
     build: {
       // AC3 support is intentionally emitted as a large, on-demand chunk.
       // Keep warnings focused on regressions beyond the current expected ceiling.
@@ -131,7 +135,10 @@ export default defineConfig(({ mode }) => {
     },
 
     preview: {
-      port: 5173,
+      // Distinct from dev's 5173 so preview's service worker / precache never
+      // lands on the dev origin and serves stale code into `pnpm dev`.
+      // Tunnel ingress (~/.cloudflared/config.yml) points here.
+      port: 4173,
       strictPort: true,
       host: true,
       allowedHosts: ['dev.hangvidu.com'],
