@@ -2,10 +2,10 @@
 
 Pattern for module state that other modules observe (`isLoggedIn`, `isInCall`, `contactsById`, …).
 
-This file is for domain/module state only.
-Solid UI-only reactive state in `src/components/` is covered by [`SOLID_UI_STATE_RULES.md`](./SOLID_UI_STATE_RULES.md).
+This file is for domain/module state only. Solid reactive stores live in
+`src/stores/` and are mirrors over the persistence/realtime layers.
 
-See also: [`NAMING.md`](./NAMING.md), [`STRUCTURE.md`](./STRUCTURE.md), [`EVENTS.md`](./EVENTS.md), [`LINT_ENFORCEMENT.md`](./LINT_ENFORCEMENT.md).
+See also: [`NAMING.md`](./NAMING.md), [`STRUCTURE.md`](./STRUCTURE.md), [`EVENTS.md`](./EVENTS.md).
 
 ---
 
@@ -56,10 +56,10 @@ It exposes:
 
 | Module    | Shape                                  | Notes                                                              |
 | --------- | -------------------------------------- | ------------------------------------------------------------------ |
-| auth      | dedicated `auth-state.js`              | non-Solid consumers subscribe to `evt:auth:session:*`              |
-| contacts  | Solid store in `contacts-store.ts`     | Solid-only consumers; no `evt:contacts:state:changed`              |
-| messaging | —                                      |                                                                    |
-| call      | —                                      |                                                                    |
+| auth           | dedicated `auth-state.js`                  | non-Solid consumers subscribe to `evt:auth:session:*`         |
+| contacts       | Solid store in `stores/contactsStore.ts`   | Solid-only consumers; no `evt:contacts:state:changed`         |
+| messaging-next | —                                          |                                                              |
+| call           | —                                          |                                                              |
 
 ## Migration notes
 
