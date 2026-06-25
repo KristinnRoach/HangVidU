@@ -43,6 +43,13 @@ export default function HandleClaimPrompt(props: { user: UserLike | null }) {
         setOpen(false);
         setMessage('');
         if (!uid || localStorage.getItem(storageKey(uid))) return;
+        // Email accounts are already discoverable by email-hash, so a public
+        // @handle is OPT-IN (claimed from settings), not a forced onboarding
+        // step. Only auto-prompt accounts whose sole identity would be a handle
+        // — i.e. no email. (Those are username/password accounts, which already
+        // have a handle, so in practice this rarely fires; the guard is the
+        // policy.) The component is still openable on demand for the opt-in path.
+        if (props.user?.email) return;
         const profile = await getPublicUserProfile(uid);
         if (profile?.username) return;
         setHandle(suggestHandle(props.user ?? {}));
