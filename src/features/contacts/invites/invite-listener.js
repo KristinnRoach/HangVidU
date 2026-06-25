@@ -3,7 +3,7 @@ import { showErrorToast, showSuccessToast } from '../../../components/base-legac
 import { getHangViduApiBaseUrl } from '../../../infra/hangvidu-api-url.js';
 import { subscribeToUserMailbox } from '../../../realtime/user-mailbox';
 import { dispatchCommand } from '../../../shared/events/index.js';
-import { hydrateContacts } from '../../../stores/contactsStore.js';
+import { reloadContacts } from '../../../stores/contactsStore.js';
 import {
   acceptContactRequest,
   declineContactRequest,
@@ -36,7 +36,7 @@ async function showRequestNotification(request) {
     onAccept: async () => {
       try {
         await acceptContactRequest(fromUserId);
-        await hydrateContacts();
+        await reloadContacts();
         showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
         dispatchCommand('cmd:app-notifications:invite:remove', {
           notificationId,
@@ -75,7 +75,7 @@ async function syncIncomingRequests() {
     dispatchCommand('cmd:app-notifications:invite:remove', { notificationId });
     pendingNotificationIds.delete(notificationId);
   }
-  await hydrateContacts();
+  await reloadContacts();
 }
 
 export function setupInviteListener() {

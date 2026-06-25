@@ -4,7 +4,7 @@ import {
   signInWithAccountSelection,
   getLoggedInUserId,
 } from '../../../auth/index.js';
-import { hydrateContacts } from '../../../stores/contactsStore.js';
+import { reloadContacts } from '../../../stores/contactsStore.js';
 import {
   showInfoToast,
   showSuccessToast,
@@ -86,7 +86,7 @@ export async function processReferral() {
     const profile = await getPublicUserProfile(referrerId);
     const referrerName = profile?.userName?.trim() || t('contact.no_name');
     await connectReferral(referrerId);
-    await hydrateContacts();
+    await reloadContacts();
 
     console.log(
       `[REFERRAL] ✅ Connected with ${referrerName} via referral link!`,

@@ -218,6 +218,33 @@ export async function hydrateContacts(): Promise<void> {
   return hydrationPromise;
 }
 
+/**
+ * Force a re-list from storage, bypassing the `ready` short-circuit in
+ * `hydrateContacts`. This is the live-refresh path after a connect (request
+ * accept / referral auto-connect): the new contact must appear on an
+ * already-hydrated tab without a manual reload. No `loading` flip — the current
+ * list stays visible to avoid a flicker. Bumps the request id so any in-flight
+ * hydrate bails out in favor of this fresher read.
+ */
+export async function reloadContacts(): Promise<void> {
+  const ownerId = getLoggedInUserId();
+  const scopeKey = getScopeKey(ownerId);
+  const requestId = ++hydrationRequestId;
+  try {
+    const records = await getRepo(ownerId).list();
+    if (requestId !== hydrationRequestId) return;
+    const byId: Record<string, Contact> = {};
+    for (const record of records) {
+      if (record?.contactId) byId[record.contactId] = record;
+    }
+    hydratedScopeKey = scopeKey;
+    setState({ byId, status: 'ready' });
+  } catch (error) {
+    if (requestId === hydrationRequestId) hydrationPromise = null;
+    logFailure('reloadContacts', error);
+  }
+}
+
 export function resetContacts(): void {
   hydrationPromise = null;
   hydratedScopeKey = null;
