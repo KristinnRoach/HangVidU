@@ -29,7 +29,7 @@ export default function SaveContactDialog(props) {
       const savedContact = await saveContact(
         props.contactId,
         nextName,
-        props.roomId,
+        props.conversationId,
       );
 
       if (savedContact) {

@@ -34,7 +34,7 @@ vi.mock('../../../shared/events/index.js', () => ({
 }));
 
 vi.mock('../../../stores/contactsStore.js', () => ({
-  getContactByRoomId: vi.fn(() => null),
+  getContactByConversationId: vi.fn(() => null),
 }));
 
 vi.mock('../../../auth/auth-setup.js', () => ({

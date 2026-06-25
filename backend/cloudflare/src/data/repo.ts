@@ -262,7 +262,6 @@ export interface ContactRow {
   owner_id: string;
   contact_id: string;
   nickname: string;
-  room_id: string | null;
   conversation_id: string | null;
   saved_at: number;
   last_interaction_at: number;
@@ -295,7 +294,6 @@ export async function listContacts(
 export interface NewContact {
   contactId: string;
   nickname: string;
-  roomId: string | null;
   conversationId: string | null;
   savedAt: number;
   lastInteractionAt: number;
@@ -310,11 +308,10 @@ export function contactUpsert(
   return db
     .prepare(
       `INSERT INTO contacts
-         (owner_id, contact_id, nickname, room_id, conversation_id, saved_at, last_interaction_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+         (owner_id, contact_id, nickname, conversation_id, saved_at, last_interaction_at)
+       VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(owner_id, contact_id) DO UPDATE SET
          nickname            = excluded.nickname,
-         room_id             = excluded.room_id,
          conversation_id     = excluded.conversation_id,
          saved_at            = excluded.saved_at,
          last_interaction_at = excluded.last_interaction_at`,
@@ -323,7 +320,6 @@ export function contactUpsert(
       ownerId,
       c.contactId,
       c.nickname,
-      c.roomId,
       c.conversationId,
       c.savedAt,
       c.lastInteractionAt,
@@ -341,7 +337,6 @@ export async function putContact(
 
 export interface ContactPatch {
   nickname?: string;
-  roomId?: string | null;
   conversationId?: string | null;
   lastInteractionAt?: number;
 }
@@ -362,14 +357,12 @@ export async function patchContact(
     .prepare(
       `UPDATE contacts SET
          nickname            = COALESCE(?, nickname),
-         room_id             = COALESCE(?, room_id),
          conversation_id     = COALESCE(?, conversation_id),
          last_interaction_at = COALESCE(?, last_interaction_at)
        WHERE owner_id = ? AND contact_id = ?`,
     )
     .bind(
       patch.nickname ?? null,
-      patch.roomId ?? null,
       patch.conversationId ?? null,
       patch.lastInteractionAt ?? null,
       ownerId,
@@ -399,7 +392,6 @@ export interface ContactRequestRow {
   from_id: string;
   to_id: string;
   status: 'pending' | 'accepted' | 'declined';
-  room_id: string | null;
   created_at: number;
   from_name?: string | null; // joined in list queries
 }
@@ -412,22 +404,20 @@ export async function createRequest(
   db: D1Database,
   fromId: string,
   toId: string,
-  roomId: string | null,
   now: number,
 ): Promise<void> {
   await db.batch([
     ensureUserStub(db, toId, now),
     db
       .prepare(
-        `INSERT INTO contact_requests (from_id, to_id, status, room_id, created_at)
-         VALUES (?, ?, 'pending', ?, ?)
+        `INSERT INTO contact_requests (from_id, to_id, status, created_at)
+         VALUES (?, ?, 'pending', ?)
          ON CONFLICT(from_id, to_id) DO UPDATE SET
            status     = CASE WHEN contact_requests.status = 'accepted'
                              THEN 'accepted' ELSE 'pending' END,
-           room_id    = excluded.room_id,
            created_at = excluded.created_at`,
       )
-      .bind(fromId, toId, roomId, now),
+      .bind(fromId, toId, now),
   ]);
 }
 
@@ -438,7 +428,7 @@ export async function listIncomingRequests(
 ): Promise<ContactRequestRow[]> {
   const { results } = await db
     .prepare(
-      `SELECT r.from_id, r.to_id, r.status, r.room_id, r.created_at,
+      `SELECT r.from_id, r.to_id, r.status, r.created_at,
               u.display_name AS from_name
        FROM contact_requests r
        JOIN users u ON u.id = r.from_id
@@ -463,13 +453,12 @@ export async function acceptRequest(
 ): Promise<boolean> {
   const req = await db
     .prepare(
-      `SELECT room_id FROM contact_requests WHERE from_id = ? AND to_id = ?`,
+      `SELECT 1 FROM contact_requests WHERE from_id = ? AND to_id = ?`,
     )
     .bind(fromId, toId)
-    .first<{ room_id: string | null }>();
+    .first();
   if (!req) return false;
 
-  const roomId = req.room_id;
   await db.batch([
     db
       .prepare(
@@ -480,7 +469,6 @@ export async function acceptRequest(
     contactUpsert(db, toId, {
       contactId: fromId,
       nickname: '',
-      roomId,
       conversationId: null,
       savedAt: now,
       lastInteractionAt: now,
@@ -488,7 +476,6 @@ export async function acceptRequest(
     contactUpsert(db, fromId, {
       contactId: toId,
       nickname: '',
-      roomId,
       conversationId: null,
       savedAt: now,
       lastInteractionAt: now,

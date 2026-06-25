@@ -34,11 +34,7 @@ export default function EditContactDialog(props) {
     setIsSubmitting(true);
 
     try {
-      const updated = await updateContact(
-        props.contactId,
-        nextName,
-        props.roomId,
-      );
+      const updated = await updateContact(props.contactId, nextName);
 
       if (updated) {
         close();

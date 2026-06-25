@@ -321,7 +321,6 @@ export async function handleDataRequest(
               typeof body?.contactNickName === 'string'
                 ? body.contactNickName
                 : '',
-            roomId: str(body?.roomId),
             conversationId: str(body?.conversationId),
             savedAt: numOrUndef(body?.savedAt) ?? now,
             lastInteractionAt: numOrUndef(body?.lastInteractionAt) ?? now,
@@ -349,7 +348,6 @@ export async function handleDataRequest(
             typeof body?.contactNickName === 'string'
               ? body.contactNickName
               : undefined,
-          roomId: 'roomId' in (body ?? {}) ? str(body?.roomId) : undefined,
           conversationId:
             'conversationId' in (body ?? {})
               ? str(body?.conversationId)
@@ -376,8 +374,7 @@ export async function handleDataRequest(
         if (toId === callerId) {
           return json({ error: 'cannot request self' }, 400, cors);
         }
-        const roomId = str(body?.roomId);
-        await createRequest(env.DB, callerId, toId, roomId, now);
+        await createRequest(env.DB, callerId, toId, now);
         // Live nudge to the recipient (fire-and-forget; D1 is source of truth).
         try {
           const me = await getProfile(env.DB, callerId);
@@ -655,7 +652,6 @@ function toWireContact(row: ContactRow) {
   return {
     contactId: row.contact_id,
     contactNickName: row.nickname,
-    roomId: row.room_id,
     conversationId: row.conversation_id,
     savedAt: row.saved_at,
     lastInteractionAt: row.last_interaction_at,
@@ -666,7 +662,6 @@ function toWireRequest(row: ContactRequestRow) {
   return {
     fromId: row.from_id,
     fromName: row.from_name ?? null,
-    roomId: row.room_id,
     createdAt: row.created_at,
   };
 }

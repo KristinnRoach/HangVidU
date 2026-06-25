@@ -27,19 +27,6 @@ function normalizeContactNickName(contactNickName) {
   return contactNickName.trim();
 }
 
-function normalizeRoomId(roomId) {
-  if (roomId == null) {
-    return null;
-  }
-
-  if (typeof roomId !== 'string') {
-    throw new TypeError('roomId must be a string or null');
-  }
-
-  const normalized = roomId.trim();
-  return normalized || null;
-}
-
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -86,7 +73,6 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
   return ContactRecordSchema.parse({
     contactId,
     contactNickName,
-    roomId: normalizeRoomId(input.roomId),
     conversationId: normalizeConversationId(input.conversationId),
     savedAt,
     lastInteractionAt: normalizeTimestamp(input.lastInteractionAt, savedAt),
@@ -108,11 +94,6 @@ export function normalizeContactPatch(patch) {
   for (const [key, value] of Object.entries(patch)) {
     if (key === 'contactNickName') {
       next.contactNickName = normalizeContactNickName(value);
-      continue;
-    }
-
-    if (key === 'roomId') {
-      next.roomId = normalizeRoomId(value);
       continue;
     }
 

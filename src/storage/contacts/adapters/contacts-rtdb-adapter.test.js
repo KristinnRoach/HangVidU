@@ -35,7 +35,7 @@ describe('ContactsRTDBAdapter', () => {
       const nextValue = updateFn({
         contactId: 'u1',
         contactNickName: 'Alice',
-        roomId: 'room-1',
+        conversationId: '11111111-1111-4111-8111-111111111111',
         savedAt: 10,
         lastInteractionAt: 20,
       });
@@ -49,7 +49,7 @@ describe('ContactsRTDBAdapter', () => {
     });
 
     const result = await adapter.patch('u1', {
-      roomId: 'room-2',
+      conversationId: '22222222-2222-4222-8222-222222222222',
       lastInteractionAt: 30,
     });
 
@@ -62,8 +62,7 @@ describe('ContactsRTDBAdapter', () => {
     expect(result).toEqual({
       contactId: 'u1',
       contactNickName: 'Alice',
-      roomId: 'room-2',
-      conversationId: null,
+      conversationId: '22222222-2222-4222-8222-222222222222',
       savedAt: 10,
       lastInteractionAt: 30,
     });
@@ -84,7 +83,11 @@ describe('ContactsRTDBAdapter', () => {
       val: () => null,
     });
 
-    await expect(adapter.patch('missing', { roomId: 'room-2' })).resolves.toBeNull();
+    await expect(
+      adapter.patch('missing', {
+        conversationId: '22222222-2222-4222-8222-222222222222',
+      }),
+    ).resolves.toBeNull();
     expect(mocks.set).not.toHaveBeenCalled();
   });
 
@@ -94,7 +97,7 @@ describe('ContactsRTDBAdapter', () => {
       val: () => ({
         contactId: 'u1',
         contactName: ' Legacy Alice ',
-        roomId: 'room-1',
+        conversationId: '11111111-1111-4111-8111-111111111111',
         savedAt: 10,
         lastInteractionAt: 20,
       }),
@@ -103,8 +106,7 @@ describe('ContactsRTDBAdapter', () => {
     await expect(adapter.get('u1')).resolves.toEqual({
       contactId: 'u1',
       contactNickName: '',
-      roomId: 'room-1',
-      conversationId: null,
+      conversationId: '11111111-1111-4111-8111-111111111111',
       savedAt: 10,
       lastInteractionAt: 20,
     });
@@ -116,7 +118,7 @@ describe('ContactsRTDBAdapter', () => {
       exists: () => true,
       val: () => ({
         contactNickName: 'Legacy No Id',
-        roomId: 'room-1',
+        conversationId: '11111111-1111-4111-8111-111111111111',
         savedAt: 10,
         lastInteractionAt: 20,
       }),
@@ -134,13 +136,13 @@ describe('ContactsRTDBAdapter', () => {
         u1: {
           contactId: 'u1',
           contactNickName: 'Alice',
-          roomId: 'room-1',
+          conversationId: '11111111-1111-4111-8111-111111111111',
           savedAt: 10,
           lastInteractionAt: 20,
         },
         broken: {
           contactNickName: 'Missing Id',
-          roomId: 'room-2',
+          conversationId: '22222222-2222-4222-8222-222222222222',
           savedAt: 11,
           lastInteractionAt: 21,
         },
@@ -151,8 +153,7 @@ describe('ContactsRTDBAdapter', () => {
       {
         contactId: 'u1',
         contactNickName: 'Alice',
-        roomId: 'room-1',
-        conversationId: null,
+        conversationId: '11111111-1111-4111-8111-111111111111',
         savedAt: 10,
         lastInteractionAt: 20,
       },
@@ -172,14 +173,14 @@ describe('ContactsRTDBAdapter', () => {
       val: () => ({
         contactId: 'u1',
         contactNickName: 'Alice',
-        roomId: 'room-1',
+        conversationId: '11111111-1111-4111-8111-111111111111',
         savedAt: 10,
         lastInteractionAt: 20,
       }),
     });
 
     const result = await adapter.patch('u1', {
-      roomId: 'room-2',
+      conversationId: '22222222-2222-4222-8222-222222222222',
       lastInteractionAt: 30,
     });
 
@@ -189,8 +190,7 @@ describe('ContactsRTDBAdapter', () => {
       {
         contactId: 'u1',
         contactNickName: 'Alice',
-        roomId: 'room-2',
-        conversationId: null,
+        conversationId: '22222222-2222-4222-8222-222222222222',
         savedAt: 10,
         lastInteractionAt: 30,
       },
@@ -198,8 +198,7 @@ describe('ContactsRTDBAdapter', () => {
     expect(result).toEqual({
       contactId: 'u1',
       contactNickName: 'Alice',
-      roomId: 'room-2',
-      conversationId: null,
+      conversationId: '22222222-2222-4222-8222-222222222222',
       savedAt: 10,
       lastInteractionAt: 30,
     });
@@ -211,7 +210,7 @@ describe('ContactsRTDBAdapter', () => {
       const nextValue = updateFn({
         contactId: 'u1',
         contactNickName: 'Alice',
-        roomId: 'room-1',
+        conversationId: '11111111-1111-4111-8111-111111111111',
         savedAt: 10,
         lastInteractionAt: 20,
       });
@@ -225,15 +224,14 @@ describe('ContactsRTDBAdapter', () => {
     });
 
     const result = await adapter.patch('u1', {
-      roomId: 'room-2',
+      conversationId: '22222222-2222-4222-8222-222222222222',
       lastInteractionAt: 30,
     });
 
     expect(result).toEqual({
       contactId: 'u1',
       contactNickName: 'Alice',
-      roomId: 'room-2',
-      conversationId: null,
+      conversationId: '22222222-2222-4222-8222-222222222222',
       savedAt: 10,
       lastInteractionAt: 30,
     });

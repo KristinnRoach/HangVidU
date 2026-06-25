@@ -11,7 +11,7 @@ describe('ContactsLocalAdapter', () => {
       u1: {
         contactId: 'u1',
         contactNickName: 'Alice',
-        roomId: 'room-1',
+        conversationId: '11111111-1111-4111-8111-111111111111',
         savedAt: 10,
         lastInteractionAt: 20,
       },
@@ -38,8 +38,7 @@ describe('ContactsLocalAdapter', () => {
     expect(result).toEqual({
       contactId: 'u1',
       contactNickName: 'Alice',
-      roomId: 'room-1',
-      conversationId: null,
+      conversationId: '11111111-1111-4111-8111-111111111111',
       savedAt: 10,
       lastInteractionAt: 30,
     });
@@ -48,7 +47,11 @@ describe('ContactsLocalAdapter', () => {
   });
 
   it('returns null when patching a missing record', async () => {
-    await expect(adapter.patch('missing', { roomId: 'room-2' })).resolves.toBeNull();
+    await expect(
+      adapter.patch('missing', {
+        conversationId: '11111111-1111-4111-8111-111111111111',
+      }),
+    ).resolves.toBeNull();
   });
 
   it('does not promote legacy contactName on get', async () => {
@@ -56,13 +59,13 @@ describe('ContactsLocalAdapter', () => {
       u2: {
         contactId: 'u2',
         contactName: ' Legacy Bob ',
-        roomId: 'room-2',
+        conversationId: '22222222-2222-4222-8222-222222222222',
         savedAt: 11,
         lastInteractionAt: 22,
       },
       u3: {
         contactNickName: 'Legacy No Id',
-        roomId: 'room-3',
+        conversationId: '33333333-3333-4333-8333-333333333333',
         savedAt: 13,
         lastInteractionAt: 23,
       },
@@ -81,8 +84,7 @@ describe('ContactsLocalAdapter', () => {
     await expect(legacyAdapter.get('u2')).resolves.toEqual({
       contactId: 'u2',
       contactNickName: '',
-      roomId: 'room-2',
-      conversationId: null,
+      conversationId: '22222222-2222-4222-8222-222222222222',
       savedAt: 11,
       lastInteractionAt: 22,
     });

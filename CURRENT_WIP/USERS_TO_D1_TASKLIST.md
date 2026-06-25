@@ -12,16 +12,16 @@ locked decisions. Refine tasks only after the flow is verified working.
 - handle-claim prompt for accounts with no handle
 
 **Status note:** server + several client pieces were built earlier this session
-against the *pre-lock* plan. Items below marked **revise** adjust existing code
-to the locked model (drop `room_id`, create-on-accept, `/referrals/connect`,
-UUID guard); items marked **build** are net-new; **verify** is wiring already in
-place.
+against the *pre-lock* plan. The legacy contact/request `room_id` field and
+client contact `roomId` shape are now removed; remaining **revise** work is
+create-on-accept, `/referrals/connect`, and the live-refresh details. Items
+marked **build** are net-new; **verify** is wiring already in place.
 
 ---
 
-## 1. Schema — revise migration `0006`
-- Drop `room_id` from `contacts` and `contact_requests`. Keep `conversation_id`
-  on `contacts`, nullable.
+## 1. Schema — migration `0006`
+- [x] Drop `room_id` from `contacts` and `contact_requests`. Keep
+  `conversation_id` on `contacts`, nullable.
 - 0006 is dev-only / not deployed remotely → edit in place. To re-apply: drop
   ONLY the new (empty) `contacts` + `contact_requests` tables and the added
   `users` columns (`photo_url`, `username`, `email_hash`, `discoverable`,
@@ -41,19 +41,19 @@ place.
   (will read as a bug in the e2e). Reuse the `contact_request` mailbox event as
   the refresh signal.
 - Rewrite `acceptRequest` = verify pending request → `connectUsers` → mark
-  `accepted`. Remove all `room_id` handling from repo + handlers + wire shapes.
+  `accepted`. `room_id` handling is already removed from repo + handlers + wire
+  shapes.
 - `handlers.ts` + `index.ts`: add `POST /referrals/connect { referrerId }`,
   authorized by the caller's (joiner's) token alone; runs `connectUsers`.
 - Update the worker smoke test: accept yields a `conversation_id` on both sides.
 
-## 3. Client — contacts on D1 (verify + revise)
+## 3. Client — contacts on D1 (verify + remaining revise)
 - Adapter + `createContactsD1Repository` + `contactsStore` flip already in place
   — **verify**.
-- **Revise:** drop `roomId` from the contact shape (`contact-transform`,
+- [x] Drop `roomId` from the contact shape (`contact-transform`,
   `contact-schema`); rename `getContactByRoomId` → `getContactByConversationId`;
   re-point its one consumer (`push-notifications.js`).
-- Apply the UUID-shape guard on `conversation_id` reads (non-UUID → `null` →
-  `resolveDirectConversationId` fallback).
+- [x] Apply the UUID-shape guard on `conversation_id` reads (non-UUID → `null`).
 - **Name fallback:** auto-connected contacts have `nickname = null`. The contact
   list must fall back to the other user's profile `display_name` (now in D1) so
   neither side shows a blank / "No name" contact after auto-connect.

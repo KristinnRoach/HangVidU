@@ -13,7 +13,7 @@
 
 - Current split
   - writes: `saveContact`, `updateContact`, `deleteContact`, `handleHangUp`
-  - reads: `getAllContacts`, `getContactById`, `getContactByRoomId`, `getContactsIsHydrated`
+  - reads: `getAllContacts`, `getContactById`, `getContactByConversationId`, `getContactsIsHydrated`
   - conversation-list activity (sort key + unread badge) comes from `stores/conversation-activity`, not the contacts store
   - lifecycle: `hydrateContacts`, `resetContacts`
 

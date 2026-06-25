@@ -60,12 +60,12 @@ export function getContactById(contactId: string): Contact | null {
   return state.byId[contactId] ?? null;
 }
 
-export function getContactByRoomId(
-  roomId: string | null | undefined,
+export function getContactByConversationId(
+  conversationId: string | null | undefined,
 ): Contact | null {
-  if (!roomId) return null;
+  if (!conversationId) return null;
   for (const contact of Object.values(state.byId)) {
-    if (contact?.roomId === roomId) return contact;
+    if (contact?.conversationId === conversationId) return contact;
   }
   return null;
 }
@@ -79,7 +79,6 @@ export function getContactsIsHydrated(): boolean {
 export async function saveContact(
   contactId: string,
   contactNickName: string,
-  roomId: string | null | undefined,
   conversationId: string | null | undefined = null,
 ) {
   try {
@@ -91,7 +90,6 @@ export async function saveContact(
     const contact = await repo.put({
       contactId,
       contactNickName,
-      roomId,
       conversationId: conversationId ?? existing?.conversationId ?? null,
       savedAt: existing?.savedAt ?? now,
       lastInteractionAt: existing?.lastInteractionAt ?? now,
@@ -100,7 +98,10 @@ export async function saveContact(
     setState('byId', contactId, contact);
     return contact;
   } catch (error) {
-    logFailure('saveContact', error, { contactId, roomId: roomId ?? null });
+    logFailure('saveContact', error, {
+      contactId,
+      conversationId: conversationId ?? null,
+    });
     return null;
   }
 }
@@ -108,18 +109,17 @@ export async function saveContact(
 export async function updateContact(
   contactId: string,
   contactNickName: string,
-  roomId: string | null | undefined,
 ) {
   try {
     const repo = getRepo();
     const existing = await repo.get(contactId);
     if (!existing) return null;
-    const updated = await repo.patch(contactId, { contactNickName, roomId });
+    const updated = await repo.patch(contactId, { contactNickName });
     if (!updated) return null;
     setState('byId', contactId, updated);
     return updated;
   } catch (error) {
-    logFailure('updateContact', error, { contactId, roomId: roomId ?? null });
+    logFailure('updateContact', error, { contactId });
     return null;
   }
 }
@@ -171,8 +171,8 @@ export async function handleHangUp(contactUserId: string, roomId: string) {
 
   const entry = state.byId[contactUserId];
   if (entry) {
-    if (entry.roomId !== roomId) {
-      await updateContact(contactUserId, entry.contactNickName, roomId);
+    if (entry.conversationId !== roomId) {
+      await cacheContactConversationId(contactUserId, roomId);
     }
     return { action: 'existing' as const };
   }

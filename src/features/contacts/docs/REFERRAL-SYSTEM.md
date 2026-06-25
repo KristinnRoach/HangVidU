@@ -86,4 +86,3 @@ Consistent description across all invites:
 
 - `src/features/contacts/invites/invitations.js` - Mutual contact-add system
 - `src/features/contacts/referrals/referral-handler.js` - Core referral logic
-- `src/shared/utils/room-id.js` - Deterministic room ID generation

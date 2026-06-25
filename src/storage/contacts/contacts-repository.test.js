@@ -21,25 +21,24 @@ describe('ContactsRepository', () => {
     adapter.patch.mockResolvedValue({
       contactId: 'u1',
       contactNickName: 'Alice',
-      roomId: 'room-2',
+      conversationId: '11111111-1111-4111-8111-111111111111',
       savedAt: 10,
       lastInteractionAt: 20,
     });
 
     const result = await store.patch('u1', {
       contactNickName: '  Alice  ',
-      roomId: ' room-2 ',
+      conversationId: ' 11111111-1111-4111-8111-111111111111 ',
     });
 
     expect(adapter.patch).toHaveBeenCalledWith('u1', {
       contactNickName: 'Alice',
-      roomId: 'room-2',
+      conversationId: '11111111-1111-4111-8111-111111111111',
     });
     expect(result).toEqual({
       contactId: 'u1',
       contactNickName: 'Alice',
-      roomId: 'room-2',
-      conversationId: null,
+      conversationId: '11111111-1111-4111-8111-111111111111',
       savedAt: 10,
       lastInteractionAt: 20,
     });
@@ -49,7 +48,9 @@ describe('ContactsRepository', () => {
     adapter.patch.mockResolvedValue(null);
 
     await expect(
-      store.patch('missing', { roomId: 'room-1' }),
+      store.patch('missing', {
+        conversationId: '11111111-1111-4111-8111-111111111111',
+      }),
     ).resolves.toBeNull();
   });
 });

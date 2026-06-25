@@ -41,7 +41,7 @@ This keeps normal control flow simple while still making real failures visible.
 {
   contactId: string,
   contactNickName: string,
-  roomId: string | null,
+  conversationId: string | null,
   savedAt: number,
   lastInteractionAt: number
 }
@@ -64,7 +64,7 @@ separate service-layer schema, not a second copy of the storage record schema.
 - auth readiness policy
 - backend selection policy
 - result envelopes
-- query helpers like "get by room id"
+- query helpers like "get by conversation id"
 - sorting helpers
 - migration between guest/local and authenticated/RTDB storage
 

@@ -6,7 +6,6 @@ import {
   getLoggedInUserId,
 } from '../../../auth/index.js';
 import { acceptInvite } from '../invites/invitations.js';
-import { getDeterministicRoomId } from '../../../shared/utils/room-id.js';
 import {
   showInfoToast,
   showSuccessToast,
@@ -85,16 +84,12 @@ export async function processReferral() {
     const referrerName = profile?.userName?.trim() || t('contact.no_name');
     const referrerPhotoURL = profile?.photoURL || null;
 
-    // Generate deterministic room ID
-    const roomId = getDeterministicRoomId(myUserId, referrerId);
-
     // Create a synthetic invite data object (same format as real invites)
     const syntheticInvite = {
       fromUserId: referrerId,
       fromName: referrerName,
       fromEmail: '',
       fromPhotoURL: referrerPhotoURL,
-      roomId: roomId,
       timestamp: Date.now(),
       status: 'pending',
     };

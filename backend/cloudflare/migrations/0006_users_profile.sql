@@ -24,7 +24,6 @@ CREATE TABLE contacts (
   owner_id            TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   contact_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   nickname            TEXT NOT NULL DEFAULT '',
-  room_id             TEXT,
   conversation_id     TEXT,
   saved_at            INTEGER NOT NULL,
   last_interaction_at INTEGER NOT NULL,
@@ -38,7 +37,6 @@ CREATE TABLE contact_requests (
   to_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   status     TEXT NOT NULL DEFAULT 'pending'
                CHECK (status IN ('pending', 'accepted', 'declined')),
-  room_id    TEXT,
   created_at INTEGER NOT NULL,
   PRIMARY KEY (from_id, to_id)
 );

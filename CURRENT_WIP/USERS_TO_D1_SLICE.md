@@ -170,8 +170,8 @@ Plain index, app-level uniqueness, lookup returns an array. See "Keep it soft."
 ## Server (Worker `backend/cloudflare/`)
 
 > **Note (2026-06-25):** the server items below were built against the pre-lock
-> plan and need the revisions in the locked model above (drop `room_id`,
-> create-on-accept, `/referrals/connect`). The concrete revise/build sequence
+> plan. `room_id` cleanup is now done; the remaining locked-model revisions are
+> create-on-accept and `/referrals/connect`. The concrete revise/build sequence
 > lives in [`USERS_TO_D1_TASKLIST.md`](./USERS_TO_D1_TASKLIST.md).
 
 - [x] **Migration `migrations/0006_users_profile.sql`**:
@@ -193,7 +193,7 @@ Plain index, app-level uniqueness, lookup returns an array. See "Keep it soft."
       resolve-or-create conversation + upsert both contact rows with
       `conversation_id` stamped (create-on-accept #568). `acceptRequest` =
       verify pending request → `connectUsers` → mark `accepted`. Referral calls
-      `connectUsers` directly. Drop all `room_id` handling.
+      `connectUsers` directly. `room_id` handling is already removed.
       Keep one repo file; split to `data/user-repo.ts` only if unwieldy.
 - [x]⚠ **`data/handlers.ts` + `src/index.ts`**: add routes on the existing
       regex-router + `auth.ts` verify (uid from token = owner; never
@@ -220,10 +220,10 @@ changes.
       implementing `ContactsDBInterface` (get/list/put/patch/remove) against the
       Worker. Add `createContactsD1Repository(options)` to
       `src/storage/contacts/index.js`. Switch `src/stores/contactsStore.ts` from
-      `createContactsRTDBRepository`. **Locked:** drop `roomId` from the contact
-      shape; rename `getContactByRoomId` → `getContactByConversationId`; apply the
-      UUID-shape guard when reading `conversation_id` (non-UUID → `null` →
-      `resolveDirectConversationId` fallback).
+      `createContactsRTDBRepository`. Done in cleanup: drop `roomId` from the
+      contact shape; rename `getContactByRoomId` → `getContactByConversationId`;
+      apply the UUID-shape guard when reading `conversation_id` (non-UUID →
+      `null` → `resolveDirectConversationId` fallback).
 - [ ] **Profile**: `src/storage/user/user-profile-d1-adapter.js`; wire it in
       `src/storage/user/index.js`. Add `discoverable` + `username` to
       `UserProfileSchema`.

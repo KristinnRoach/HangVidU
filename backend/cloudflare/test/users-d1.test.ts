@@ -179,12 +179,16 @@ describe('contacts CRUD', () => {
     await req('POST', '/users/me/contacts', alice, {
       contactId: 'bob',
       contactNickName: 'Bob',
-      roomId: 'room-1',
+      conversationId: '11111111-1111-4111-8111-111111111111',
     });
 
     let list = await (await req('GET', '/users/me/contacts', alice)).json();
     expect(list.contacts).toHaveLength(1);
-    expect(list.contacts[0]).toMatchObject({ contactId: 'bob', contactNickName: 'Bob', roomId: 'room-1' });
+    expect(list.contacts[0]).toMatchObject({
+      contactId: 'bob',
+      contactNickName: 'Bob',
+      conversationId: '11111111-1111-4111-8111-111111111111',
+    });
 
     await req('PATCH', '/users/me/contacts/bob', alice, { contactNickName: 'Bobby' });
     list = await (await req('GET', '/users/me/contacts', alice)).json();
@@ -204,7 +208,7 @@ describe('contact request handshake', () => {
 
     const bobMailbox = await connectMailbox(bob);
     try {
-      const res = await req('POST', '/contact-requests', alice, { toId: 'bob', roomId: 'room-1' });
+      const res = await req('POST', '/contact-requests', alice, { toId: 'bob' });
       expect(res.status).toBe(200);
 
       const nudge = await bobMailbox.next();

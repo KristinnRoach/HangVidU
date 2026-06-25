@@ -16,10 +16,10 @@ export {
 } from './contact-transform.js';
 export {
   ContactIdSchema,
+  ContactConversationIdSchema,
   ContactNickNameSchema,
   ContactPatchSchema,
   ContactRecordSchema,
-  ContactRoomIdSchema,
   ContactTimestampSchema,
 } from './contact-schema.js';
 

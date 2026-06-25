@@ -3,7 +3,6 @@
 import { ref, set, remove, onChildAdded } from 'firebase/database';
 import { rtdb } from '../../../infra/firebase-rtdb.js';
 import { getLoggedInUserId, getUser } from '../../../auth/index.js';
-import { getDeterministicRoomId } from '../../../shared/utils/room-id.js';
 import { saveContact } from '../../../stores/contactsStore.js';
 import { resolveDirectConversationId } from '../../../stores/conversations-client.js';
 
@@ -48,9 +47,6 @@ export async function sendInvite(toUserId, toName = 'User') {
     throw new Error('Recipient user ID is required');
   }
 
-  // Generate deterministic room ID for this user pair
-  const roomId = getDeterministicRoomId(myUserId, toUserId);
-
   // Write invite to recipient's incoming invites
   const inviteRef = ref(rtdb, `users/${toUserId}/incomingInvites/${myUserId}`);
 
@@ -59,7 +55,6 @@ export async function sendInvite(toUserId, toName = 'User') {
     fromName: currentUser.userName || 'Anonymous',
     fromEmail: currentUser.email || '',
     fromPhotoURL: currentUser.photoURL || null,
-    roomId: roomId,
     timestamp: Date.now(),
     status: 'pending',
   };
@@ -122,14 +117,13 @@ export async function acceptInvite(fromUserId, inviteData) {
   const savedContact = await saveContact(
     fromUserId,
     inviteData.fromName || 'User',
-    inviteData.roomId,
     conversationId,
   );
 
   if (!savedContact) {
     console.error('[INVITATIONS] Failed to save accepted invite contact', {
       fromUserId,
-      roomId: inviteData.roomId ?? null,
+      conversationId,
     });
     return;
   }
@@ -145,7 +139,6 @@ export async function acceptInvite(fromUserId, inviteData) {
     acceptedByName: currentUser.userName || 'User',
     acceptedByEmail: currentUser.email || '',
     acceptedByPhotoURL: currentUser.photoURL || null,
-    roomId: inviteData.roomId,
     timestamp: Date.now(),
   });
 
@@ -222,7 +215,6 @@ export function listenForAcceptedInvites(callback) {
       const savedContact = await saveContact(
         acceptedByUserId,
         acceptData.acceptedByName || 'User',
-        acceptData.roomId,
         conversationId,
       );
 
@@ -231,7 +223,7 @@ export function listenForAcceptedInvites(callback) {
           '[INVITATIONS] Failed to auto-save contact from accepted invite',
           {
             acceptedByUserId,
-            roomId: acceptData.roomId ?? null,
+            conversationId,
           },
         );
         return;
