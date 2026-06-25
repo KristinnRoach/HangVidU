@@ -36,7 +36,7 @@ export async function captureReferral() {
 
     // Fetch referrer profile (world-readable, no auth needed)
     const profile = await getPublicUserProfile(referrerId);
-    const name = profile?.userName || null;
+    const name = profile?.displayName || null;
     const photoURL = profile?.photoURL || null;
 
     // Clickable toast (ephemeral)
@@ -84,7 +84,7 @@ export async function processReferral() {
 
     // Fetch referrer profile (may not exist yet for older users)
     const profile = await getPublicUserProfile(referrerId);
-    const referrerName = profile?.userName?.trim() || t('contact.no_name');
+    const referrerName = profile?.displayName?.trim() || t('contact.no_name');
     await connectReferral(referrerId);
     await reloadContacts();
 

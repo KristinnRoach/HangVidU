@@ -8,7 +8,7 @@ import { createWorkerRequest } from '../worker-request.js';
  * - `save(user)` writes the CALLER's own profile (PUT /users/me/profile); the
  *   owner is token-derived server-side, so `user.uid` is only a guard here.
  *
- * Wire fields match the RTDB adapter's shape (`userName`, `photoURL`, plus the
+ * Wire fields match the RTDB adapter's shape (`displayName`, `photoURL`, plus the
  * `username` handle), so consumers don't branch on backend.
  */
 export class UserProfileD1Adapter {
@@ -21,7 +21,7 @@ export class UserProfileD1Adapter {
 
   /**
    * @param {string} userId
-   * @returns {Promise<{ userName: string|null, photoURL: string|null, username: string|null }|null>}
+   * @returns {Promise<{ displayName: string|null, photoURL: string|null, username: string|null }|null>}
    */
   async get(userId) {
     const { profile } = await this._request(
@@ -32,13 +32,13 @@ export class UserProfileD1Adapter {
   }
 
   /**
-   * @param {{ uid: string, userName?: string|null, photoURL?: string|null, username?: string|null, emailHash?: string|null }} user
+   * @param {{ uid: string, displayName?: string|null, photoURL?: string|null, username?: string|null, emailHash?: string|null }} user
    * @returns {Promise<void>}
    */
   async save(user) {
     if (!user?.uid) throw new TypeError('user.uid is required');
     await this._request('PUT', '/users/me/profile', {
-      userName: user.userName ?? null,
+      displayName: user.displayName ?? null,
       photoURL: user.photoURL ?? null,
       username: user.username ?? null,
       emailHash: user.emailHash ?? null,

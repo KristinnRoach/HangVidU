@@ -11,7 +11,7 @@ import styles from './HandleClaimPrompt.module.css';
 
 type UserLike = {
   uid?: string;
-  userName?: string | null;
+  displayName?: string | null;
   email?: string | null;
   photoURL?: string | null;
 };

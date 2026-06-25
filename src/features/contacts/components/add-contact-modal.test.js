@@ -26,7 +26,7 @@ vi.mock('../../../auth/index.js', () => ({
   requestContactsAccess: vi.fn(),
   requestGmailSendAccess: vi.fn(),
   getLoggedInUserId: vi.fn(() => 'user-123'),
-  getUser: vi.fn(() => ({ uid: 'user-123', userName: 'Alice' })),
+  getUser: vi.fn(() => ({ uid: 'user-123', displayName: 'Alice' })),
   getIsLoggedIn: vi.fn(() => true),
 }));
 

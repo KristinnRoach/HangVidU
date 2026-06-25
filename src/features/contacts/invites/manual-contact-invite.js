@@ -42,7 +42,7 @@ export async function inviteContactByEmail(email, { onNotFound } = {}) {
       return { ok: false, status: 'already_saved' };
     }
 
-    return await sendContactInvite(user.uid, user.userName);
+    return await sendContactInvite(user.uid, user.displayName);
   } catch (error) {
     return { ok: false, status: 'error', error };
   }

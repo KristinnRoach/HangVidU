@@ -108,7 +108,7 @@ describe('wireAuthReactions', () => {
     const lobbyElement = { id: 'lobby' };
     const user = {
       uid: 'user-1',
-      userName: 'Ada',
+      displayName: 'Ada',
       email: 'ada@example.com',
       photoURL: null,
     };

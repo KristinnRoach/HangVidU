@@ -39,7 +39,7 @@ export default function AuthControls() {
 
   // TODO: Decide whether to show name, for now just showing avatar
   const displayName = createMemo(() => {
-    const name = user()?.userName || user()?.email || t('auth.guest_user');
+    const name = user()?.displayName || user()?.email || t('auth.guest_user');
     return smartTruncateName(name);
   });
 

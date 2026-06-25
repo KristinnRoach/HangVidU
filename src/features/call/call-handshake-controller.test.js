@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
   ackCallResponse: vi.fn(),
   getLoggedInUserId: vi.fn(() => 'callee-id'),
   getLoggedInUserToken: vi.fn(async () => 'token'),
-  getUser: vi.fn(() => ({ userName: 'Callee' })),
+  getUser: vi.fn(() => ({ displayName: 'Callee' })),
   sendIncomingCallPushNotification: vi.fn(),
   sendMissedCallPushNotification: vi.fn(),
   resolveDirectConversationId: vi.fn(),

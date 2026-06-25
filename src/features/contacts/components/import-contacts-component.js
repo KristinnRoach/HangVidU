@@ -204,7 +204,7 @@ export function createImportContactsComponent({
       } else if (user) {
         statusBadge = `<span class="status-badge on-app">${t('contact.status.on_app')}</span>`;
         actionButton = `
-          <button type="button" class="invite-btn" data-uid="${escapeHtml(user.uid)}" data-name="${escapeHtml(user.userName)}">
+          <button type="button" class="invite-btn" data-uid="${escapeHtml(user.uid)}" data-name="${escapeHtml(user.displayName)}">
             ${t('contact.invite')}
           </button>
         `;

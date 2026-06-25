@@ -52,7 +52,7 @@ const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
 type StatusState = { text: string; type: string };
 type DirectoryUser = {
   uid: string;
-  userName: string;
+  displayName: string;
   username?: string | null;
 };
 
@@ -67,7 +67,7 @@ function openEmailComposeFallback(
 ) {
   const referralLink = buildReferralLink(userId, APP_ORIGIN);
   const currentUser = getUser();
-  const senderName = currentUser?.userName || 'A friend';
+  const senderName = currentUser?.displayName || 'A friend';
   const subject = encodeURIComponent(t_('contact.invite.subject'));
   const body = encodeURIComponent(
     t_('contact.invite.body', { name: senderName, link: referralLink }),
@@ -120,7 +120,7 @@ export default function AddContactModal(props: Props) {
         );
       },
       onInviteContact: async (contact: any) => {
-        return sendContactInvite(contact.user.uid, contact.user.userName);
+        return sendContactInvite(contact.user.uid, contact.user.displayName);
       },
       onInviteSelected: async (contacts: any[]) => {
         let count = 0;
@@ -128,7 +128,7 @@ export default function AddContactModal(props: Props) {
         for (const contact of contacts) {
           const result = await sendContactInvite(
             contact.user.uid,
-            contact.user.userName,
+            contact.user.displayName,
           );
           if (result.status === 'sent') {
             count++;
@@ -165,7 +165,7 @@ export default function AddContactModal(props: Props) {
             APP_ORIGIN,
           );
           const currentUser = getUser();
-          const senderName = currentUser?.userName || 'A friend';
+          const senderName = currentUser?.displayName || 'A friend';
           const subject = t('contact.invite.subject');
           const body = t('contact.invite.body', {
             name: senderName,
@@ -240,7 +240,7 @@ export default function AddContactModal(props: Props) {
     setStatus({ text: t('contact.invite.share.opening'), type: 'loading' });
     const currentUser = getUser();
     const result = await shareInvite({
-      senderName: currentUser?.userName,
+      senderName: currentUser?.displayName,
       userId: getLoggedInUserId(),
     });
     const statusConfig: Record<
@@ -275,7 +275,7 @@ export default function AddContactModal(props: Props) {
     const currentUser = getUser();
     const result = await shareInviteViaProvider({
       providerId: providerId as 'whatsapp' | 'telegram',
-      senderName: currentUser?.userName,
+      senderName: currentUser?.displayName,
       userId: getLoggedInUserId(),
     });
     if (result.status === 'opened') {
@@ -504,7 +504,7 @@ export default function AddContactModal(props: Props) {
               {(user) => (
                 <div class={styles.handleResult}>
                   <span>
-                    {user.userName}
+                    {user.displayName}
                     <Show when={user.username}>
                       <small>@{user.username}</small>
                     </Show>

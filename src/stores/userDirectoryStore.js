@@ -52,7 +52,7 @@ export function savePublicUserProfile(user) {
 export async function claimUsername(user, username) {
   if (!user?.uid) throw new Error('user required');
   const body = {
-    userName: user.userName || null,
+    displayName: user.displayName || null,
     photoURL: user.photoURL || null,
     username,
   };
@@ -65,11 +65,11 @@ export async function claimUsername(user, username) {
  * Derive a default handle from the user's display name / email / uid, normalized
  * to the handle charset (lowercase, 3–20 of [a-z0-9_]). `suffix` is appended for
  * collision retries. Shared by the login auto-assign and the claim prompt.
- * @param {{ userName?: string|null, email?: string|null, uid?: string }} user
+ * @param {{ displayName?: string|null, email?: string|null, uid?: string }} user
  * @param {string} [suffix]
  */
 export function suggestHandle(user, suffix = '') {
-  const source = user?.userName || user?.email?.split('@')[0] || user?.uid || '';
+  const source = user?.displayName || user?.email?.split('@')[0] || user?.uid || '';
   const base = source
     .toLowerCase()
     .replace(/[^a-z0-9_]+/g, '_')
@@ -83,7 +83,7 @@ export function suggestHandle(user, suffix = '') {
  * No-op when one already exists (password accounts, returning users). Otherwise
  * derive a default and claim it, retrying with a random suffix on a soft
  * collision (409). Returns the resulting handle, or null if none could be set.
- * @param {{ uid?: string, userName?: string|null, email?: string|null, photoURL?: string|null }} user
+ * @param {{ uid?: string, displayName?: string|null, email?: string|null, photoURL?: string|null }} user
  * @returns {Promise<{ handle: string|null, assigned: boolean }>}
  */
 export async function ensureHandle(user) {
@@ -117,7 +117,7 @@ export async function registerInUserDirectory(user, opts) {
   if (user?.uid && user?.email) {
     const entry = {
       uid: user.uid,
-      userName: user.userName || 'Anonymous',
+      displayName: user.displayName || 'Anonymous',
       photoURL: user.photoURL || null,
       registeredAt: Date.now(),
     };

@@ -139,7 +139,7 @@ describe('profile + directory', () => {
   it('saves a profile and looks it up by handle (discoverable only)', async () => {
     const alice = await signToken('alice');
     await req('PUT', '/users/me/profile', alice, {
-      userName: 'Alice',
+      displayName: 'Alice',
       username: 'alice99',
       emailHash: 'hash-alice',
     });
@@ -148,7 +148,7 @@ describe('profile + directory', () => {
     const bob = await signToken('bob');
     const found = await (await req('GET', '/users/lookup?handle=alice99', bob)).json();
     expect(found.users).toHaveLength(1);
-    expect(found.users[0]).toMatchObject({ uid: 'alice', userName: 'Alice', username: 'alice99' });
+    expect(found.users[0]).toMatchObject({ uid: 'alice', displayName: 'Alice', username: 'alice99' });
 
     // Alice opts out → no longer findable.
     await req('PUT', '/users/me/discoverable', alice, { discoverable: false });
@@ -204,7 +204,7 @@ describe('contact request handshake', () => {
   it('delivers a nudge, then accept saves the contact on both sides', async () => {
     const alice = await signToken('alice');
     const bob = await signToken('bob');
-    await req('PUT', '/users/me/profile', alice, { userName: 'Alice' });
+    await req('PUT', '/users/me/profile', alice, { displayName: 'Alice' });
 
     const bobMailbox = await connectMailbox(bob);
     try {
@@ -250,7 +250,7 @@ describe('contact request handshake', () => {
   it('declines a request without creating contacts', async () => {
     const alice = await signToken('alice');
     const bob = await signToken('bob');
-    await req('PUT', '/users/me/profile', alice, { userName: 'Alice' });
+    await req('PUT', '/users/me/profile', alice, { displayName: 'Alice' });
     await req('POST', '/contact-requests', alice, { toId: 'bob' });
 
     const declined = await req('POST', '/contact-requests/alice/decline', bob);

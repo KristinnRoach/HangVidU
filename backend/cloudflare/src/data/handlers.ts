@@ -247,7 +247,7 @@ export async function handleDataRequest(
           env.DB,
           callerId,
           {
-            displayName: str(body?.userName),
+            displayName: str(body?.displayName),
             photoUrl: str(body?.photoURL),
             username,
             emailHash: str(body?.emailHash),
@@ -619,12 +619,12 @@ function toWireMessage(row: MessageWithAttachments): WireMessage {
 }
 
 /**
- * Profile row → wire. `userName` is the display name; `username` is the handle
+ * Profile row → wire. `displayName` is the display name; `username` is the handle
  * (matches the client's UserProfileSchema split). email_hash is never returned.
  */
 function toWireProfile(row: UserProfileRow) {
   return {
-    userName: row.display_name,
+    displayName: row.display_name,
     photoURL: row.photo_url,
     username: row.username,
     discoverable: row.discoverable === 1,
@@ -634,7 +634,7 @@ function toWireProfile(row: UserProfileRow) {
 /** Public profile read by known uid — display fields only, no discoverable. */
 function toPublicProfile(row: UserProfileRow) {
   return {
-    userName: row.display_name,
+    displayName: row.display_name,
     photoURL: row.photo_url,
     username: row.username,
   };
@@ -644,7 +644,7 @@ function toPublicProfile(row: UserProfileRow) {
 function toDirectoryEntry(row: UserProfileRow) {
   return {
     uid: row.id,
-    userName: row.display_name ?? 'Anonymous',
+    displayName: row.display_name ?? 'Anonymous',
     photoURL: row.photo_url,
     registeredAt: row.registered_at ?? row.created_at,
     username: row.username,

@@ -32,12 +32,12 @@ afterEach(() => {
 describe('lookupByEmail', () => {
   it('returns found when the directory has a match', async () => {
     fetchMock.mockReturnValue(
-      jsonResponse({ users: [{ uid: 'u1', userName: 'Alice' }] }),
+      jsonResponse({ users: [{ uid: 'u1', displayName: 'Alice' }] }),
     );
     const result = await discovery.lookupByEmail('alice@example.com');
     expect(result).toEqual({
       status: 'found',
-      user: { uid: 'u1', userName: 'Alice' },
+      user: { uid: 'u1', displayName: 'Alice' },
     });
     // Queried by hash, not raw email.
     const calledUrl = fetchMock.mock.calls[0][0];
@@ -68,11 +68,11 @@ describe('lookupByEmail', () => {
 describe('searchByHandle', () => {
   it('queries by handle and canonicalizes entries', async () => {
     fetchMock.mockReturnValue(
-      jsonResponse({ users: [{ uid: 'u1', userName: '  ' }] }),
+      jsonResponse({ users: [{ uid: 'u1', displayName: '  ' }] }),
     );
     const result = await discovery.searchByHandle('alice99');
     expect(fetchMock.mock.calls[0][0]).toContain('/users/lookup?handle=alice99');
-    expect(result).toEqual([{ uid: 'u1', userName: 'Anonymous' }]);
+    expect(result).toEqual([{ uid: 'u1', displayName: 'Anonymous' }]);
   });
 
   it('skips the request for an empty handle', async () => {

@@ -12,11 +12,11 @@ import { createWorkerRequest } from '../worker-request.js';
 
 function canonicalizeDirectoryUser(entry) {
   if (!entry || typeof entry !== 'object') return null;
-  const userName =
-    typeof entry.userName === 'string' && entry.userName.trim()
-      ? entry.userName.trim()
+  const displayName =
+    typeof entry.displayName === 'string' && entry.displayName.trim()
+      ? entry.displayName.trim()
       : 'Anonymous';
-  return { ...entry, userName };
+  return { ...entry, displayName };
 }
 
 /**
@@ -35,7 +35,7 @@ export function createUserDiscovery({ baseUrl, getToken }) {
    * Register/refresh the caller's directory fields (email hash + optional
    * handle). The D1 directory IS the `users` row, so this is a profile write;
    * the worker stamps registered_at once and COALESCEs unset fields.
-   * @param {{ uid: string, email: string, userName?: string, photoURL?: string|null }} user
+   * @param {{ uid: string, email: string, displayName?: string, photoURL?: string|null }} user
    * @param {{ username?: string|null }} [opts]
    */
   async function register(user, { username = null } = {}) {
@@ -43,7 +43,7 @@ export function createUserDiscovery({ baseUrl, getToken }) {
       throw new Error('Invalid user: must have uid and email');
     }
     await request('PUT', '/users/me/profile', {
-      userName: user.userName || 'Anonymous',
+      displayName: user.displayName || 'Anonymous',
       photoURL: user.photoURL || null,
       username: username || null,
       emailHash: hashEmail(user.email),

@@ -147,7 +147,7 @@ function normalizeUser(firebaseUser) {
   const email = isSyntheticEmail(rawEmail) ? null : rawEmail;
   return {
     uid: firebaseUser.uid,
-    userName: firebaseUser.displayName,
+    displayName: firebaseUser.displayName,
     email,
     photoURL: firebaseUser.photoURL,
     // Login handle for username (password) accounts — recovered from the
