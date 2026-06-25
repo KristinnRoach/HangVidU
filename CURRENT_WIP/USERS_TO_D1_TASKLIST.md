@@ -60,8 +60,8 @@ is wiring already in place.
   neither side shows a blank / "No name" contact after auto-connect.
 
 ## 4. Client — profile on D1 (verify)
-- Profile D1 adapter + `userDirectoryStore` wiring already in place — **verify**.
-- Add `discoverable` + `username` to `UserProfileSchema`.
+- [x] Profile D1 adapter + `userDirectoryStore` wiring already in place — **verify**.
+- [x] Add `discoverable` + `username` to `UserProfileSchema`.
 
 ## 5. Discovery + search UI (build)
 - Discovery client ported to `/users/lookup` already in place — **verify**.

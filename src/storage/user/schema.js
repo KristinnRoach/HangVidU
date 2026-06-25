@@ -7,6 +7,7 @@ export const UserProfileSchema = z.object({
   userName: z.string().nullable().optional(),
   photoURL: z.string().nullable().optional(),
   username: z.string().nullable().optional(),
+  discoverable: z.boolean().optional(),
   email: z.string().nullable().optional(),
 });
 
