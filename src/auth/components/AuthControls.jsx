@@ -98,7 +98,7 @@ export default function AuthControls() {
           </Show>
 
           {/* TODO: Decide whether to keep name */}
-          {/* <span class={styles.userName}>{displayName()}</span> */}
+          {/* <span class={styles.displayName}>{displayName()}</span> */}
         </div>
         <button
           id='goog-logout-btn'

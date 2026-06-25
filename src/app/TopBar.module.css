@@ -204,7 +204,7 @@
     flex-shrink: 0;
   }
 
-  & .userName {
+  & .displayName {
     overflow-x: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

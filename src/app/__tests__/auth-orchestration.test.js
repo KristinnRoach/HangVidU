@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
     resetContacts: vi.fn(),
     savePublicUserProfile: vi.fn(() => Promise.resolve()),
     getPublicUserProfile: vi.fn(() => Promise.resolve(null)),
+    ensureHandle: vi.fn(() => Promise.resolve({ handle: null, assigned: false })),
     registerInUserDirectory: vi.fn(() => Promise.resolve()),
     devDebug: vi.fn(),
     stopConversationActivity: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock('../../auth/index.js', () => ({
 vi.mock('../../stores/userDirectoryStore.js', () => ({
   savePublicUserProfile: mocks.savePublicUserProfile,
   getPublicUserProfile: mocks.getPublicUserProfile,
+  ensureHandle: mocks.ensureHandle,
   registerInUserDirectory: mocks.registerInUserDirectory,
 }));
 
@@ -112,7 +114,7 @@ describe('wireAuthReactions', () => {
       email: 'ada@example.com',
       photoURL: null,
     };
-    mocks.getPublicUserProfile.mockResolvedValue({ username: 'ada' });
+    mocks.ensureHandle.mockResolvedValue({ handle: 'ada', assigned: false });
 
     const teardown = await wireAuthReactions({ lobbyElement });
 
@@ -124,7 +126,9 @@ describe('wireAuthReactions', () => {
     expect(mocks.processReferral).toHaveBeenCalled();
     expect(mocks.hydrateContacts).toHaveBeenCalled();
     expect(mocks.savePublicUserProfile).toHaveBeenCalledWith(user);
-    expect(mocks.getPublicUserProfile).toHaveBeenCalledWith('user-1');
+    // Login guarantees a handle via ensureHandle, then indexes the email→account
+    // entry with that handle (replaces the old getPublicUserProfile read).
+    expect(mocks.ensureHandle).toHaveBeenCalledWith(user);
     expect(mocks.registerInUserDirectory).toHaveBeenCalledWith(user, {
       username: 'ada',
     });
