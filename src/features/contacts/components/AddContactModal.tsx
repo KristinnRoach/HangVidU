@@ -4,7 +4,14 @@
 // The import-contacts section is mounted as a vanilla JS island via ref.
 // TODO: Port import-contacts-component.js to SolidJS (ImportContactsSection.tsx)
 
-import { createSignal, createEffect, For, onMount, onCleanup } from 'solid-js';
+import {
+  createSignal,
+  createEffect,
+  For,
+  Show,
+  onMount,
+  onCleanup,
+} from 'solid-js';
 import Modal from '../../../components/dialogs/Modal.js';
 import styles from './AddContactModal.module.css';
 import { Share2, Copy } from 'lucide-solid';
@@ -25,6 +32,11 @@ import {
 } from '../../../auth/index.js';
 import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
 import { sendContactInvite } from '../invites/send-contact-invite.js';
+import { getAllContacts, hydrateContacts } from '../../../stores/contactsStore.js';
+import {
+  searchUsersByHandle,
+  sendContactRequest,
+} from '../../../stores/userDirectoryStore.js';
 import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
 import { filterImportableContacts } from '../import/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
@@ -38,6 +50,11 @@ import {
 const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
 
 type StatusState = { text: string; type: string };
+type DirectoryUser = {
+  uid: string;
+  userName: string;
+  username?: string | null;
+};
 
 type Props = {
   open: boolean;
@@ -78,6 +95,12 @@ export default function AddContactModal(props: Props) {
 
   const [emailInput, setEmailInput] = createSignal('');
   const [emailSending, setEmailSending] = createSignal(false);
+  const [handleInput, setHandleInput] = createSignal('');
+  const [handleSearching, setHandleSearching] = createSignal(false);
+  const [handleResults, setHandleResults] = createSignal<DirectoryUser[]>([]);
+  const [requestingUserId, setRequestingUserId] = createSignal<string | null>(
+    null,
+  );
   const [status, setStatus] = createSignal<StatusState>({ text: '', type: '' });
   const [sharePending, setSharePending] = createSignal(false);
 
@@ -345,6 +368,51 @@ export default function AddContactModal(props: Props) {
     setEmailSending(false);
   }
 
+  async function handleSearchByHandle() {
+    const handle = handleInput().trim().replace(/^@+/, '');
+    if (!handle) return;
+    setHandleSearching(true);
+    setHandleResults([]);
+    setStatus({ text: '', type: '' });
+    try {
+      const users = await searchUsersByHandle(handle);
+      setHandleResults(users as DirectoryUser[]);
+      if (users.length === 0) {
+        setStatus({ text: t('contact.add.handle_not_found'), type: 'info' });
+      }
+    } catch (error) {
+      console.error('[AddContactModal] Handle search error:', error);
+      setStatus({ text: t('contact.add.lookup_error'), type: 'error' });
+    } finally {
+      setHandleSearching(false);
+    }
+  }
+
+  async function handleSendRequest(user: DirectoryUser) {
+    if (!user?.uid || requestingUserId()) return;
+    if (user.uid === getLoggedInUserId()) {
+      setStatus({ text: t('contact.add.self_error'), type: 'error' });
+      return;
+    }
+    setRequestingUserId(user.uid);
+    setStatus({ text: '', type: '' });
+    try {
+      await hydrateContacts();
+      if (getAllContacts()?.[user.uid]) {
+        setStatus({ text: t('contact.add.already_saved'), type: 'info' });
+        return;
+      }
+      await sendContactRequest(user.uid);
+      showSuccessToast(t('contact.invite.sent_one'));
+      setStatus({ text: `✓ ${t('contact.invite.sent_one')}`, type: 'success' });
+    } catch (error) {
+      console.error('[AddContactModal] Contact request error:', error);
+      setStatus({ text: t('contact.add.email_error'), type: 'error' });
+    } finally {
+      setRequestingUserId(null);
+    }
+  }
+
   // --- Google contacts import ---
 
   async function handleGoogleContactsImport() {
@@ -406,6 +474,57 @@ export default function AddContactModal(props: Props) {
       title={t('contact.add.title')}
     >
       <div class={styles.directActions}>
+        <div class={styles.manualEmailRow}>
+          <input
+            type='text'
+            value={handleInput()}
+            onInput={(e) => setHandleInput(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !handleSearching())
+                handleSearchByHandle();
+            }}
+            placeholder={t('contact.add.enter_handle')}
+            aria-label={t('contact.add.enter_handle')}
+            autocomplete='off'
+            autocapitalize='none'
+          />
+          <button
+            type='button'
+            class={styles.sharePresetBtn}
+            disabled={handleSearching()}
+            onClick={handleSearchByHandle}
+          >
+            {handleSearching() ? t('shared.searching') : t('shared.search')}
+          </button>
+        </div>
+
+        <Show when={handleResults().length > 0}>
+          <div class={styles.handleResults}>
+            <For each={handleResults()}>
+              {(user) => (
+                <div class={styles.handleResult}>
+                  <span>
+                    {user.userName}
+                    <Show when={user.username}>
+                      <small>@{user.username}</small>
+                    </Show>
+                  </span>
+                  <button
+                    type='button'
+                    class={styles.sharePresetBtn}
+                    disabled={requestingUserId() === user.uid}
+                    onClick={() => handleSendRequest(user)}
+                  >
+                    {requestingUserId() === user.uid
+                      ? t('shared.sending')
+                      : t('contact.invite')}
+                  </button>
+                </div>
+              )}
+            </For>
+          </div>
+        </Show>
+
         <div class={styles.manualEmailRow}>
           <input
             type='email'

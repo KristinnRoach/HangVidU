@@ -13,6 +13,7 @@ import {
   createUserProfileD1Adapter,
   createUserDiscovery,
 } from '../storage/user/index.js';
+import { createWorkerRequest } from '../storage/worker-request.js';
 
 let profileRepo = null;
 function getProfileRepo() {
@@ -27,6 +28,14 @@ function getProfileRepo() {
 let discovery = null;
 function getDiscovery() {
   return (discovery ??= createUserDiscovery({
+    baseUrl: getHangViduApiBaseUrl(),
+    getToken: getLoggedInUserToken,
+  }));
+}
+
+let request = null;
+function getRequest() {
+  return (request ??= createWorkerRequest({
     baseUrl: getHangViduApiBaseUrl(),
     getToken: getLoggedInUserToken,
   }));
@@ -73,4 +82,8 @@ export function findRegisteredUsersByEmails(emails) {
 /** Exact handle search — the new directory search box's data source. */
 export function searchUsersByHandle(handle) {
   return getDiscovery().searchByHandle(handle);
+}
+
+export async function sendContactRequest(toId) {
+  await getRequest()('POST', '/contact-requests', { toId });
 }

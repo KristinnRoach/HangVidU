@@ -64,8 +64,8 @@ is wiring already in place.
 - [x] Add `discoverable` + `username` to `UserProfileSchema`.
 
 ## 5. Discovery + search UI (build)
-- Discovery client ported to `/users/lookup` already in place — **verify**.
-- **Build:** a search box — handle in → result → "send request" button.
+- [x] Discovery client ported to `/users/lookup` already in place — **verify**.
+- [x] **Build:** a search box — handle in → result → "send request" button.
 
 ## 6. Contact requests — client + live nudge (build)
 - Contact-requests client (send / list-incoming / accept) over `/contact-requests*`.
