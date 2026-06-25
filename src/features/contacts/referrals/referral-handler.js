@@ -1,16 +1,18 @@
 // referral-handler.js - Handle referral links and auto-add contacts
-// Reuses the existing invitation system for consistency
 
 import {
   signInWithAccountSelection,
   getLoggedInUserId,
 } from '../../../auth/index.js';
-import { acceptInvite } from '../invites/invitations.js';
+import { hydrateContacts } from '../../../stores/contactsStore.js';
 import {
   showInfoToast,
   showSuccessToast,
 } from '../../../components/base-legacy/toast.js';
-import { getPublicUserProfile } from '../../../stores/userDirectoryStore.js';
+import {
+  connectReferral,
+  getPublicUserProfile,
+} from '../../../stores/userDirectoryStore.js';
 import { dispatchCommand } from '../../../shared/events/index.js';
 import { t } from '../../../shared/i18n/index.js';
 
@@ -58,7 +60,8 @@ export async function captureReferral() {
 
 /**
  * Process referral after user signs in.
- * Uses the same mutual contact-add flow as "Invite Selected".
+ * Uses the D1 referral connect endpoint. Referral links are pre-authorized:
+ * the sharer consented by sharing, and the joiner consented by clicking.
  * Called after successful authentication.
  */
 export async function processReferral() {
@@ -82,23 +85,8 @@ export async function processReferral() {
     // Fetch referrer profile (may not exist yet for older users)
     const profile = await getPublicUserProfile(referrerId);
     const referrerName = profile?.userName?.trim() || t('contact.no_name');
-    const referrerPhotoURL = profile?.photoURL || null;
-
-    // Create a synthetic invite data object (same format as real invites)
-    const syntheticInvite = {
-      fromUserId: referrerId,
-      fromName: referrerName,
-      fromEmail: '',
-      fromPhotoURL: referrerPhotoURL,
-      timestamp: Date.now(),
-      status: 'pending',
-    };
-
-    // Use the existing acceptInvite flow - this will:
-    // 1. Save referrer to my contacts
-    // 2. Notify referrer (via acceptedInvites)
-    // 3. Auto-save me to referrer's contacts (via listenForAcceptedInvites)
-    await acceptInvite(referrerId, syntheticInvite);
+    await connectReferral(referrerId);
+    await hydrateContacts();
 
     console.log(
       `[REFERRAL] ✅ Connected with ${referrerName} via referral link!`,

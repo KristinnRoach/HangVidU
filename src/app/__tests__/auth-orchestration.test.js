@@ -11,7 +11,6 @@ const mocks = vi.hoisted(() => {
         return () => handlers.delete(eventName);
       }),
     },
-    cleanupInviteListeners: vi.fn(),
     setupInviteListener: vi.fn(),
     processReferral: vi.fn(() => Promise.resolve()),
     hydrateContacts: vi.fn(() => Promise.resolve()),
@@ -42,9 +41,6 @@ vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
 }));
 
-vi.mock('../../features/contacts/invites/invitations.js', () => ({
-  cleanupInviteListeners: mocks.cleanupInviteListeners,
-}));
 vi.mock('../../features/contacts/invites/invite-listener.js', () => ({
   setupInviteListener: mocks.setupInviteListener,
 }));
@@ -69,6 +65,7 @@ describe('wireAuthReactions', () => {
     vi.clearAllMocks();
     mocks.handlers.clear();
     mocks.hydrateContacts.mockResolvedValue();
+    mocks.setupInviteListener.mockReturnValue(undefined);
     localStorageData = new Map();
     localStorageRef = {
       get length() {
@@ -145,7 +142,6 @@ describe('wireAuthReactions', () => {
     await mocks.handlers.get('evt:auth:session:logged-out')({});
 
     expect(mocks.resetContacts).toHaveBeenCalled();
-    expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
     expect(mocks.stopConversationActivity).toHaveBeenCalledOnce();
     expect(localStorageClearSpy).toHaveBeenCalled();
 

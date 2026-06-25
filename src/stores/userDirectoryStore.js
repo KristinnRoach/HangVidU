@@ -87,3 +87,26 @@ export function searchUsersByHandle(handle) {
 export async function sendContactRequest(toId) {
   await getRequest()('POST', '/contact-requests', { toId });
 }
+
+export async function listIncomingContactRequests() {
+  const { requests } = await getRequest()('GET', '/contact-requests');
+  return Array.isArray(requests) ? requests : [];
+}
+
+export async function acceptContactRequest(fromId) {
+  return getRequest()(
+    'POST',
+    `/contact-requests/${encodeURIComponent(fromId)}/accept`,
+  );
+}
+
+export async function declineContactRequest(fromId) {
+  return getRequest()(
+    'POST',
+    `/contact-requests/${encodeURIComponent(fromId)}/decline`,
+  );
+}
+
+export async function connectReferral(referrerId) {
+  return getRequest()('POST', '/referrals/connect', { referrerId });
+}

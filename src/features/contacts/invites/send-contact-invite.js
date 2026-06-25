@@ -1,4 +1,4 @@
-import { sendInvite } from './invitations.js';
+import { sendContactRequest } from '../../../stores/userDirectoryStore.js';
 
 const DUPLICATE_ERROR_TOKENS = [
   'already_invited',
@@ -63,7 +63,7 @@ function isAlreadyInvitedError(error) {
 
 export async function sendContactInvite(toUserId, toName = 'User') {
   try {
-    await sendInvite(toUserId, toName);
+    await sendContactRequest(toUserId);
     return { ok: true, status: 'sent' };
   } catch (error) {
     if (isPermissionDeniedError(error)) {

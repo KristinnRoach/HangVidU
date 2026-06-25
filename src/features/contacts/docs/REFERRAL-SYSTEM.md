@@ -30,19 +30,20 @@ await processReferral(); // Auto-adds both users as contacts
 
 ## Architecture
 
-### Reuses Existing Invitation System
+### Uses D1 Connect Primitive
 
-The referral system leverages the existing `invitations.js` infrastructure:
+The referral system calls the same D1 connect primitive as contact-request
+acceptance, without creating a pending request:
 
 1. **Referral link clicked** → `captureReferral()` stores referrer ID
-2. **User signs in** → `processReferral()` creates synthetic invite
-3. **Synthetic invite accepted** → Uses `acceptInvite()` from invitations.js
-4. **Mutual contact add** → Both users get each other via `listenForAcceptedInvites()`
+2. **User signs in** → `processReferral()` calls `/referrals/connect`
+3. **Mutual contact add** → Worker creates/reuses the direct conversation and
+   saves both contact rows
 
 ### Why This Approach?
 
 - ✅ **Consistent UX**: Same flow as "Invite Selected" button for contacts already on the app
-- ✅ **Code reuse**: No duplicate contact-add logic
+- ✅ **Code reuse**: One server-side contact-add primitive
 - ✅ **Maintainable**: Single source of truth for mutual adds
 
 ## Integration Points
@@ -84,5 +85,4 @@ Consistent description across all invites:
 
 ## Files
 
-- `src/features/contacts/invites/invitations.js` - Mutual contact-add system
 - `src/features/contacts/referrals/referral-handler.js` - Core referral logic

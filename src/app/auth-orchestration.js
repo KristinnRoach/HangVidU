@@ -6,7 +6,6 @@ import {
   registerInUserDirectory,
   getPublicUserProfile,
 } from '../stores/userDirectoryStore.js';
-import { cleanupInviteListeners } from '../features/contacts/invites/invitations.js';
 import { setupInviteListener } from '../features/contacts/invites/invite-listener.js';
 import { processReferral } from '../features/contacts/referrals/referral-handler.js';
 import { hydrateContacts, resetContacts } from '../stores/contactsStore.js';
@@ -101,16 +100,12 @@ export function wireAuthReactions() {
     const ac = new AbortController();
     let initialized = false;
 
-    let inviteCleanup = () => {
-      runSafe(cleanupInviteListeners, 'cleanupInviteListeners');
-    };
+    let inviteCleanup = () => {};
 
     const cleanupLoginScopedListeners = () => {
       runSafe(inviteCleanup, 'invite cleanup');
 
-      inviteCleanup = () => {
-        runSafe(cleanupInviteListeners, 'cleanupInviteListeners');
-      };
+      inviteCleanup = () => {};
     };
 
     const runMainLogoutCleanup = () => {

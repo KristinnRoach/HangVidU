@@ -68,13 +68,13 @@ is wiring already in place.
 - [x] **Build:** a search box — handle in → result → "send request" button.
 
 ## 6. Contact requests — client + live nudge (build)
-- Contact-requests client (send / list-incoming / accept) over `/contact-requests*`.
-- Subscribe the `UserMailbox` `contact_request` event; on nudge, refetch incoming
+- [x] Contact-requests client (send / list-incoming / accept) over `/contact-requests*`.
+- [x] Subscribe the `UserMailbox` `contact_request` event; on nudge, refetch incoming
   + refresh contacts. Replace `invite-listener.js` / `invitations.js` consumers
   (`auth-orchestration.js`, `send-contact-invite.js`, `manual-contact-invite.js`).
 
 ## 7. Referral re-point (build)
-- `referral-handler.js`: on sign-in call `/referrals/connect`; retire the
+- [x] `referral-handler.js`: on sign-in call `/referrals/connect`; retire the
   `syntheticInvite` hack. Keep the `?ref=<uid>` capture as-is for now.
 
 ## 8. Handle-claim prompt (build)

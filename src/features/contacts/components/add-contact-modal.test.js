@@ -19,10 +19,7 @@ vi.mock('../../../stores/userDirectoryStore.js', () => ({
   lookupRegisteredUserByEmail: vi.fn().mockResolvedValue({
     status: 'not_found',
   }),
-}));
-
-vi.mock('../invites/invitations.js', () => ({
-  sendInvite: vi.fn().mockResolvedValue(undefined),
+  sendContactRequest: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../../auth/index.js', () => ({
