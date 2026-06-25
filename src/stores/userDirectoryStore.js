@@ -148,6 +148,14 @@ export async function listIncomingContactRequests() {
   return Array.isArray(requests) ? requests : [];
 }
 
+export async function listOutgoingContactRequests() {
+  const { requests } = await getRequest()(
+    'GET',
+    '/contact-requests?direction=outgoing',
+  );
+  return Array.isArray(requests) ? requests : [];
+}
+
 export async function acceptContactRequest(fromId) {
   return getRequest()(
     'POST',

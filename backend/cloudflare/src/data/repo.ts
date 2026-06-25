@@ -448,6 +448,7 @@ export interface ContactRequestRow {
   status: 'pending' | 'accepted' | 'declined';
   created_at: number;
   from_name?: string | null; // joined in list queries
+  to_name?: string | null; // joined in list queries
 }
 
 /**
@@ -490,6 +491,25 @@ export async function listIncomingRequests(
        ORDER BY r.created_at DESC`,
     )
     .bind(toId)
+    .all<ContactRequestRow>();
+  return results ?? [];
+}
+
+/** Pending requests sent by `fromId`, newest first, with recipient name. */
+export async function listOutgoingRequests(
+  db: D1Database,
+  fromId: string,
+): Promise<ContactRequestRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT r.from_id, r.to_id, r.status, r.created_at,
+              u.display_name AS to_name
+       FROM contact_requests r
+       JOIN users u ON u.id = r.to_id
+       WHERE r.from_id = ? AND r.status = 'pending'
+       ORDER BY r.created_at DESC`,
+    )
+    .bind(fromId)
     .all<ContactRequestRow>();
   return results ?? [];
 }

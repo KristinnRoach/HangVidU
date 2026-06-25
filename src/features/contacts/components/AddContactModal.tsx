@@ -32,10 +32,13 @@ import {
 } from '../../../auth/index.js';
 import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
 import { sendContactInvite } from '../invites/send-contact-invite.js';
-import { getAllContacts, hydrateContacts } from '../../../stores/contactsStore.js';
 import {
+  getAllContacts,
+  hydrateContacts,
+} from '../../../stores/contactsStore.js';
+import {
+  listOutgoingContactRequests,
   searchUsersByHandle,
-  sendContactRequest,
 } from '../../../stores/userDirectoryStore.js';
 import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
 import { filterImportableContacts } from '../import/import-contacts-utils.js';
@@ -55,6 +58,7 @@ type DirectoryUser = {
   displayName: string;
   username?: string | null;
 };
+type HandleInviteStatus = 'already_saved' | 'already_invited' | 'sent';
 
 type Props = {
   open: boolean;
@@ -98,6 +102,9 @@ export default function AddContactModal(props: Props) {
   const [handleInput, setHandleInput] = createSignal('');
   const [handleSearching, setHandleSearching] = createSignal(false);
   const [handleResults, setHandleResults] = createSignal<DirectoryUser[]>([]);
+  const [handleInviteStatuses, setHandleInviteStatuses] = createSignal<
+    Record<string, HandleInviteStatus>
+  >({});
   const [requestingUserId, setRequestingUserId] = createSignal<string | null>(
     null,
   );
@@ -214,6 +221,10 @@ export default function AddContactModal(props: Props) {
     if (!props.open) {
       importComponent?.reset?.();
       allContacts = [];
+      setHandleInput('');
+      setHandleResults([]);
+      setHandleInviteStatuses({});
+      setStatus({ text: '', type: '' });
     }
   });
 
@@ -375,8 +386,28 @@ export default function AddContactModal(props: Props) {
     setHandleResults([]);
     setStatus({ text: '', type: '' });
     try {
-      const users = await searchUsersByHandle(handle);
+      await hydrateContacts().catch((error) => {
+        console.warn('[AddContactModal] Contact hydration before search failed:', error);
+      });
+      const [users, outgoingRequests] = await Promise.all([
+        searchUsersByHandle(handle),
+        listOutgoingContactRequests().catch((error) => {
+          console.warn('[AddContactModal] Outgoing contact requests lookup failed:', error);
+          return [];
+        }),
+      ]);
+      const contacts = getAllContacts();
+      const outgoingIds = new Set(outgoingRequests.map((request) => request.toId));
       setHandleResults(users as DirectoryUser[]);
+      setHandleInviteStatuses(
+        Object.fromEntries(
+          users.flatMap((user: DirectoryUser) => {
+            if (contacts?.[user.uid]) return [[user.uid, 'already_saved']];
+            if (outgoingIds.has(user.uid)) return [[user.uid, 'already_invited']];
+            return [];
+          }),
+        ),
+      );
       if (users.length === 0) {
         setStatus({ text: t('contact.add.handle_not_found'), type: 'info' });
       }
@@ -397,12 +428,27 @@ export default function AddContactModal(props: Props) {
     setRequestingUserId(user.uid);
     setStatus({ text: '', type: '' });
     try {
-      await hydrateContacts();
-      if (getAllContacts()?.[user.uid]) {
+      if (handleInviteStatuses()[user.uid] === 'already_saved') {
         setStatus({ text: t('contact.add.already_saved'), type: 'info' });
         return;
       }
-      await sendContactRequest(user.uid);
+      const result = await sendContactInvite(user.uid, user.displayName);
+      if (result.status === 'already_invited') {
+        setHandleInviteStatuses((statuses) => ({
+          ...statuses,
+          [user.uid]: 'already_invited',
+        }));
+        setStatus({ text: t('contact.add.already_invited'), type: 'info' });
+        return;
+      }
+      if (result.status !== 'sent') {
+        setStatus({ text: t('contact.add.email_error'), type: 'error' });
+        return;
+      }
+      setHandleInviteStatuses((statuses) => ({
+        ...statuses,
+        [user.uid]: 'sent',
+      }));
       showSuccessToast(t('contact.invite.sent_one'));
       setStatus({ text: `✓ ${t('contact.invite.sent_one')}`, type: 'success' });
     } catch (error) {
@@ -501,26 +547,41 @@ export default function AddContactModal(props: Props) {
         <Show when={handleResults().length > 0}>
           <div class={styles.handleResults}>
             <For each={handleResults()}>
-              {(user) => (
-                <div class={styles.handleResult}>
-                  <span>
-                    {user.displayName}
-                    <Show when={user.username}>
-                      <small>@{user.username}</small>
-                    </Show>
-                  </span>
-                  <button
-                    type='button'
-                    class={styles.sharePresetBtn}
-                    disabled={requestingUserId() === user.uid}
-                    onClick={() => handleSendRequest(user)}
-                  >
-                    {requestingUserId() === user.uid
-                      ? t('shared.sending')
-                      : t('contact.invite')}
-                  </button>
-                </div>
-              )}
+              {(user) => {
+                const inviteStatus = () => handleInviteStatuses()[user.uid];
+                const inviteLabel = () => {
+                  if (requestingUserId() === user.uid)
+                    return t('shared.sending');
+                  if (inviteStatus() === 'already_saved')
+                    return t('contact.add.already_saved');
+                  if (inviteStatus() === 'already_invited')
+                    return t('contact.add.already_invited');
+                  if (inviteStatus() === 'sent')
+                    return `✓ ${t('contact.invite.sent_one')}`;
+                  return t('contact.invite');
+                };
+                return (
+                  <div class={styles.handleResult}>
+                    <span>
+                      {user.displayName}
+                      <Show when={user.username}>
+                        <small>@{user.username}</small>
+                      </Show>
+                    </span>
+                    <button
+                      type='button'
+                      class={styles.sharePresetBtn}
+                      disabled={
+                        requestingUserId() === user.uid ||
+                        Boolean(inviteStatus())
+                      }
+                      onClick={() => handleSendRequest(user)}
+                    >
+                      {inviteLabel()}
+                    </button>
+                  </div>
+                );
+              }}
             </For>
           </div>
         </Show>

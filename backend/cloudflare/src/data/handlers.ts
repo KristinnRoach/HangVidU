@@ -16,6 +16,7 @@ import {
   listContacts,
   listConversations,
   listIncomingRequests,
+  listOutgoingRequests,
   loadMessages,
   lookupByEmailHash,
   lookupByHandle,
@@ -375,7 +376,7 @@ export async function handleDataRequest(
 
   // --- contact requests (the request/accept handshake) --------------------
 
-  // POST send / GET list-incoming  /contact-requests
+  // POST send / GET list incoming/outgoing  /contact-requests
   if (url.pathname === '/contact-requests') {
     if (request.method === 'POST') {
       const body = await readJson(request);
@@ -400,7 +401,10 @@ export async function handleDataRequest(
       return json({ ok: true }, 200, cors);
     }
     if (request.method === 'GET') {
-      const rows = await listIncomingRequests(env.DB, callerId);
+      const rows =
+        url.searchParams.get('direction') === 'outgoing'
+          ? await listOutgoingRequests(env.DB, callerId)
+          : await listIncomingRequests(env.DB, callerId);
       return json({ requests: rows.map(toWireRequest) }, 200, cors);
     }
   }
@@ -692,7 +696,9 @@ function toWireContact(row: ContactRow) {
 function toWireRequest(row: ContactRequestRow) {
   return {
     fromId: row.from_id,
+    toId: row.to_id,
     fromName: row.from_name ?? null,
+    toName: row.to_name ?? null,
     createdAt: row.created_at,
   };
 }

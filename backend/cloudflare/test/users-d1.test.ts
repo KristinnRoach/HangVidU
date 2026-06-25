@@ -244,6 +244,15 @@ describe('contact request handshake', () => {
         fromName: 'Alice',
       });
 
+      const outgoing = await (
+        await req('GET', '/contact-requests?direction=outgoing', alice)
+      ).json();
+      expect(outgoing.requests).toHaveLength(1);
+      expect(outgoing.requests[0]).toMatchObject({
+        fromId: 'alice',
+        toId: 'bob',
+      });
+
       const accept = await req('POST', '/contact-requests/alice/accept', bob);
       expect(accept.status).toBe(200);
       const accepted = (await accept.json()) as { conversationId: string };
