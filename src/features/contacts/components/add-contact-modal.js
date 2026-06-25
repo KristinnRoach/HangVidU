@@ -33,13 +33,11 @@ import { sendContactInvite } from '../invites/send-contact-invite.js';
 
 // ! Note - vanilla js icons currently missing
 
-const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
-
 /**
  * Open Gmail compose (preferred) or mailto: as fallback for emailing invite links.
  */
 function openEmailComposeFallback(contacts) {
-  const referralLink = buildReferralLink(getLoggedInUserId(), APP_ORIGIN);
+  const referralLink = buildReferralLink(getLoggedInUserId());
 
   const currentUser = getUser();
   const senderName = currentUser?.displayName || 'A friend';
@@ -211,10 +209,7 @@ export async function showAddContactModal() {
       onEmailSelected: async (contacts) => {
         try {
           const accessToken = await requestGmailSendAccess();
-          const referralLink = buildReferralLink(
-            getLoggedInUserId(),
-            APP_ORIGIN,
-          );
+          const referralLink = buildReferralLink(getLoggedInUserId());
           const currentUser = getUser();
           const senderName = currentUser?.displayName || 'A friend';
           const subject = t('contact.invite.subject');

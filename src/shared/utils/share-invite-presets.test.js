@@ -9,6 +9,7 @@ vi.mock('@lib/utils/clipboard.js', () => ({
 }));
 
 vi.mock('./share-invite.js', () => ({
+  getInviteAppOrigin: vi.fn(() => 'https://hangvidu.com'),
   buildReferralLink: vi.fn(() => 'https://hangvidu.com/?ref=user-123'),
   buildInviteText: vi.fn(
     () => 'Alice invited you to HangVidU: https://hangvidu.com/?ref=user-123',

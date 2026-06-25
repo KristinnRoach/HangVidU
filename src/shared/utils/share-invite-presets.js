@@ -1,7 +1,9 @@
 import { copyToClipboard } from '@lib/utils/clipboard.js';
-import { buildInviteText, buildReferralLink } from './share-invite.js';
-
-const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
+import {
+  buildInviteText,
+  buildReferralLink,
+  getInviteAppOrigin,
+} from './share-invite.js';
 
 /**
  * Icon paths sourced from Simple Icons:
@@ -66,7 +68,7 @@ export async function shareInviteViaProvider({
   providerId,
   senderName,
   userId,
-  origin = APP_ORIGIN,
+  origin = getInviteAppOrigin(),
   openImpl = typeof window !== 'undefined'
     ? (url) => window.open(url, '_blank', 'noopener,noreferrer')
     : null,

@@ -50,8 +50,6 @@ import {
   showSuccessToast,
 } from '../../../components/base-legacy/toast.js';
 
-const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
-
 type StatusState = { text: string; type: string };
 type DirectoryUser = {
   uid: string;
@@ -69,7 +67,7 @@ function openEmailComposeFallback(
   contacts: { email: string }[],
   userId: string,
 ) {
-  const referralLink = buildReferralLink(userId, APP_ORIGIN);
+  const referralLink = buildReferralLink(userId);
   const currentUser = getUser();
   const senderName = currentUser?.displayName || 'A friend';
   const subject = encodeURIComponent(t_('contact.invite.subject'));
@@ -167,10 +165,7 @@ export default function AddContactModal(props: Props) {
       onEmailSelected: async (contacts: any[]) => {
         try {
           const accessToken = await requestGmailSendAccess();
-          const referralLink = buildReferralLink(
-            getLoggedInUserId(),
-            APP_ORIGIN,
-          );
+          const referralLink = buildReferralLink(getLoggedInUserId());
           const currentUser = getUser();
           const senderName = currentUser?.displayName || 'A friend';
           const subject = t('contact.invite.subject');
