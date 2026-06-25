@@ -55,7 +55,7 @@ is wiring already in place.
   `contact-schema`); rename `getContactByRoomId` → `getContactByConversationId`;
   re-point its one consumer (`push-notifications.js`).
 - [x] Apply the UUID-shape guard on `conversation_id` reads (non-UUID → `null`).
-- **Name fallback:** auto-connected contacts have `nickname = null`. The contact
+- [x] **Name fallback:** auto-connected contacts have a blank nickname. The contact
   list must fall back to the other user's profile `display_name` (now in D1) so
   neither side shows a blank / "No name" contact after auto-connect.
 

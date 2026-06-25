@@ -265,7 +265,12 @@ export interface ContactRow {
   conversation_id: string | null;
   saved_at: number;
   last_interaction_at: number;
+  display_name?: string | null;
 }
+
+const CONTACT_SELECT = `SELECT c.*, u.display_name AS display_name
+  FROM contacts c
+  LEFT JOIN users u ON u.id = c.contact_id`;
 
 export async function getContact(
   db: D1Database,
@@ -273,7 +278,7 @@ export async function getContact(
   contactId: string,
 ): Promise<ContactRow | null> {
   return db
-    .prepare(`SELECT * FROM contacts WHERE owner_id = ? AND contact_id = ?`)
+    .prepare(`${CONTACT_SELECT} WHERE c.owner_id = ? AND c.contact_id = ?`)
     .bind(ownerId, contactId)
     .first<ContactRow>();
 }
@@ -284,7 +289,7 @@ export async function listContacts(
 ): Promise<ContactRow[]> {
   const { results } = await db
     .prepare(
-      `SELECT * FROM contacts WHERE owner_id = ? ORDER BY saved_at ASC`,
+      `${CONTACT_SELECT} WHERE c.owner_id = ? ORDER BY c.saved_at ASC`,
     )
     .bind(ownerId)
     .all<ContactRow>();
@@ -421,7 +426,7 @@ export async function patchContact(
     )
     .run();
   return db
-    .prepare(`SELECT * FROM contacts WHERE owner_id = ? AND contact_id = ?`)
+    .prepare(`${CONTACT_SELECT} WHERE c.owner_id = ? AND c.contact_id = ?`)
     .bind(ownerId, contactId)
     .first<ContactRow>();
 }

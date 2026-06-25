@@ -6,6 +6,7 @@ import { z } from 'zod';
  * @typedef {Object} ContactRecord
  * @property {string} contactId
  * @property {string} contactNickName
+ * @property {string|null} [displayName]
  * @property {string|null} conversationId
  * @property {number} savedAt
  * @property {number} lastInteractionAt
@@ -60,6 +61,7 @@ export const ContactTimestampSchema = z
 export const ContactRecordSchema = z.object({
   contactId: ContactIdSchema,
   contactNickName: ContactNickNameSchema,
+  displayName: ContactNickNameSchema.nullable().optional(),
   conversationId: ContactConversationIdSchema,
   savedAt: ContactTimestampSchema,
   lastInteractionAt: ContactTimestampSchema,

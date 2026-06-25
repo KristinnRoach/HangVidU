@@ -656,6 +656,7 @@ function toWireContact(row: ContactRow) {
   return {
     contactId: row.contact_id,
     contactNickName: row.nickname,
+    displayName: row.display_name ?? null,
     conversationId: row.conversation_id,
     savedAt: row.saved_at,
     lastInteractionAt: row.last_interaction_at,

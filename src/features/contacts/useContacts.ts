@@ -36,12 +36,13 @@ export function useContacts() {
             act.latestSenderId !== null &&
             act.latestSenderId !== me &&
             act.latestSentAt > lastReadAt;
+          const name = c.contactNickName || c.displayName || null;
           return {
             id: contactId,
-            name: c.contactNickName ?? null,
+            name,
             hasUnread,
             _sortKey: act?.latestSentAt || c?.savedAt || 0,
-            _name: (c?.contactNickName || '').toLowerCase(),
+            _name: (name || '').toLowerCase(),
           };
         })
         .sort((a, b) => {

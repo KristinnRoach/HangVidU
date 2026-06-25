@@ -27,6 +27,16 @@ function normalizeContactNickName(contactNickName) {
   return contactNickName.trim();
 }
 
+function normalizeDisplayName(displayName) {
+  if (displayName == null) {
+    return null;
+  }
+  if (typeof displayName !== 'string') {
+    throw new TypeError('displayName must be a string or null');
+  }
+  return displayName.trim() || null;
+}
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -69,14 +79,17 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
   const contactId = assertContactId(input.contactId);
   const savedAt = normalizeTimestamp(input.savedAt, now);
   const contactNickName = normalizeContactNickName(input.contactNickName);
+  const displayName = normalizeDisplayName(input.displayName);
 
-  return ContactRecordSchema.parse({
+  const record = {
     contactId,
     contactNickName,
     conversationId: normalizeConversationId(input.conversationId),
     savedAt,
     lastInteractionAt: normalizeTimestamp(input.lastInteractionAt, savedAt),
-  });
+  };
+  if (displayName) record.displayName = displayName;
+  return ContactRecordSchema.parse(record);
 }
 
 /**

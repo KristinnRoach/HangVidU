@@ -228,6 +228,7 @@ describe('contact request handshake', () => {
       expect(bobContacts.contacts).toContainEqual(
         expect.objectContaining({
           contactId: 'alice',
+          displayName: 'Alice',
           conversationId: accepted.conversationId,
         }),
       );
