@@ -326,6 +326,30 @@ export function contactUpsert(
     );
 }
 
+function contactConnectUpsert(
+  db: D1Database,
+  ownerId: string,
+  c: NewContact,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO contacts
+         (owner_id, contact_id, nickname, conversation_id, saved_at, last_interaction_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(owner_id, contact_id) DO UPDATE SET
+         conversation_id     = excluded.conversation_id,
+         last_interaction_at = excluded.last_interaction_at`,
+    )
+    .bind(
+      ownerId,
+      c.contactId,
+      c.nickname,
+      c.conversationId,
+      c.savedAt,
+      c.lastInteractionAt,
+    );
+}
+
 export async function putContact(
   db: D1Database,
   ownerId: string,
@@ -333,6 +357,33 @@ export async function putContact(
   now: number,
 ): Promise<void> {
   await db.batch([ensureUserStub(db, c.contactId, now), contactUpsert(db, ownerId, c)]);
+}
+
+export async function connectUsers(
+  db: D1Database,
+  a: string,
+  b: string,
+  now: number,
+): Promise<string> {
+  // ponytail: eager create now; switch to lazy-on-first-message if contact counts ever grow.
+  const conversationId = await resolveOrCreateDirect(db, a, b, now);
+  await db.batch([
+    contactConnectUpsert(db, a, {
+      contactId: b,
+      nickname: '',
+      conversationId,
+      savedAt: now,
+      lastInteractionAt: now,
+    }),
+    contactConnectUpsert(db, b, {
+      contactId: a,
+      nickname: '',
+      conversationId,
+      savedAt: now,
+      lastInteractionAt: now,
+    }),
+  ]);
+  return conversationId;
 }
 
 export interface ContactPatch {
@@ -450,38 +501,24 @@ export async function acceptRequest(
   toId: string,
   fromId: string,
   now: number,
-): Promise<boolean> {
+): Promise<string | null> {
   const req = await db
     .prepare(
-      `SELECT 1 FROM contact_requests WHERE from_id = ? AND to_id = ?`,
+      `SELECT 1 FROM contact_requests WHERE from_id = ? AND to_id = ? AND status = 'pending'`,
     )
     .bind(fromId, toId)
     .first();
-  if (!req) return false;
+  if (!req) return null;
 
-  await db.batch([
-    db
-      .prepare(
-        `UPDATE contact_requests SET status = 'accepted'
-         WHERE from_id = ? AND to_id = ?`,
-      )
-      .bind(fromId, toId),
-    contactUpsert(db, toId, {
-      contactId: fromId,
-      nickname: '',
-      conversationId: null,
-      savedAt: now,
-      lastInteractionAt: now,
-    }),
-    contactUpsert(db, fromId, {
-      contactId: toId,
-      nickname: '',
-      conversationId: null,
-      savedAt: now,
-      lastInteractionAt: now,
-    }),
-  ]);
-  return true;
+  const conversationId = await connectUsers(db, toId, fromId, now);
+  await db
+    .prepare(
+      `UPDATE contact_requests SET status = 'accepted'
+       WHERE from_id = ? AND to_id = ?`,
+    )
+    .bind(fromId, toId)
+    .run();
+  return conversationId;
 }
 
 export async function declineRequest(

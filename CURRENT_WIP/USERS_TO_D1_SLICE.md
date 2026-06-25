@@ -170,9 +170,10 @@ Plain index, app-level uniqueness, lookup returns an array. See "Keep it soft."
 ## Server (Worker `backend/cloudflare/`)
 
 > **Note (2026-06-25):** the server items below were built against the pre-lock
-> plan. `room_id` cleanup is now done; the remaining locked-model revisions are
-> create-on-accept and `/referrals/connect`. The concrete revise/build sequence
-> lives in [`USERS_TO_D1_TASKLIST.md`](./USERS_TO_D1_TASKLIST.md).
+> plan. Locked-model server revisions (`room_id` cleanup, create-on-accept,
+> `/referrals/connect`) are now done; remaining work is mostly client wiring.
+> The concrete revise/build sequence lives in
+> [`USERS_TO_D1_TASKLIST.md`](./USERS_TO_D1_TASKLIST.md).
 
 - [x] **Migration `migrations/0006_users_profile.sql`**:
   - `ALTER users` add `photo_url`, `username`, `email_hash`, `discoverable`
@@ -186,16 +187,16 @@ Plain index, app-level uniqueness, lookup returns an array. See "Keep it soft."
     **No `room_id`** — the conversation is created at accept, not carried on the
     request. (0006 is dev-only / not yet deployed remotely, so revise it in place
     rather than adding a migration; see tasklist.)
-- [x]⚠ **`data/repo.ts`**: add queries next to the conversation ones —
+- [x] **`data/repo.ts`**: add queries next to the conversation ones —
       contacts CRUD; profile get/upsert; `lookupByHandle`/`lookupByEmailHash`
       (both `AND discoverable = 1`); request create/list-incoming/accept/decline.
-      **Revise (locked):** factor a shared `connectUsers(a, b)` primitive =
+      Done in server cleanup: factor a shared `connectUsers(a, b)` primitive =
       resolve-or-create conversation + upsert both contact rows with
       `conversation_id` stamped (create-on-accept #568). `acceptRequest` =
       verify pending request → `connectUsers` → mark `accepted`. Referral calls
       `connectUsers` directly. `room_id` handling is already removed.
       Keep one repo file; split to `data/user-repo.ts` only if unwieldy.
-- [x]⚠ **`data/handlers.ts` + `src/index.ts`**: add routes on the existing
+- [x] **`data/handlers.ts` + `src/index.ts`**: add routes on the existing
       regex-router + `auth.ts` verify (uid from token = owner; never
       client-supplied):
   - `/users/me/profile` (GET/PUT), `/users/me/discoverable` (PUT)
@@ -203,7 +204,7 @@ Plain index, app-level uniqueness, lookup returns an array. See "Keep it soft."
   - `/users/me/contacts` (GET/POST), `/users/me/contacts/:id` (PATCH/DELETE)
   - `/contact-requests` (POST send, GET list incoming),
     `/contact-requests/:fromId/accept` (POST), `/.../decline` (POST)
-  - **Add (locked):** `/referrals/connect` (POST `{ referrerId }`) — referral
+  - `/referrals/connect` (POST `{ referrerId }`) — referral
     auto-connect, authorized by the joiner's token alone (no pending request).
 - [x] **`UserMailbox` DO**: add a `contact_request` event type pushed to the
       recipient (mirror the call-invite push). Recipient client also fetches

@@ -220,11 +220,23 @@ describe('contact request handshake', () => {
 
       const accept = await req('POST', '/contact-requests/alice/accept', bob);
       expect(accept.status).toBe(200);
+      const accepted = await accept.json() as { conversationId: string };
+      expect(accepted.conversationId).toBeTruthy();
 
       const bobContacts = await (await req('GET', '/users/me/contacts', bob)).json();
       const aliceContacts = await (await req('GET', '/users/me/contacts', alice)).json();
-      expect(bobContacts.contacts.map((c: { contactId: string }) => c.contactId)).toContain('alice');
-      expect(aliceContacts.contacts.map((c: { contactId: string }) => c.contactId)).toContain('bob');
+      expect(bobContacts.contacts).toContainEqual(
+        expect.objectContaining({
+          contactId: 'alice',
+          conversationId: accepted.conversationId,
+        }),
+      );
+      expect(aliceContacts.contacts).toContainEqual(
+        expect.objectContaining({
+          contactId: 'bob',
+          conversationId: accepted.conversationId,
+        }),
+      );
 
       // Request no longer pending for Bob.
       const after = await (await req('GET', '/contact-requests', bob)).json();
@@ -247,5 +259,32 @@ describe('contact request handshake', () => {
     expect(incoming.requests).toHaveLength(0);
     const bobContacts = await (await req('GET', '/users/me/contacts', bob)).json();
     expect(bobContacts.contacts).toHaveLength(0);
+  });
+
+  it('connects referral users without a pending request', async () => {
+    const alice = await signToken('alice');
+    const bob = await signToken('bob');
+
+    const connected = await req('POST', '/referrals/connect', bob, {
+      referrerId: 'alice',
+    });
+    expect(connected.status).toBe(200);
+    const body = await connected.json() as { conversationId: string };
+    expect(body.conversationId).toBeTruthy();
+
+    const bobContacts = await (await req('GET', '/users/me/contacts', bob)).json();
+    const aliceContacts = await (await req('GET', '/users/me/contacts', alice)).json();
+    expect(bobContacts.contacts).toContainEqual(
+      expect.objectContaining({
+        contactId: 'alice',
+        conversationId: body.conversationId,
+      }),
+    );
+    expect(aliceContacts.contacts).toContainEqual(
+      expect.objectContaining({
+        contactId: 'bob',
+        conversationId: body.conversationId,
+      }),
+    );
   });
 });

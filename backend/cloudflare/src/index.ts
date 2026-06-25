@@ -24,6 +24,7 @@ const DATA_PATHS = [
   /^\/users\/me\/contacts\/[^/]+$/,
   /^\/contact-requests$/,
   /^\/contact-requests\/[^/]+\/(?:accept|decline)$/,
+  /^\/referrals\/connect$/,
   /^\/conversations$/,
   /^\/conversations\/resolve-direct$/,
   /^\/conversations\/[^/]+\/(?:messages|ws)$/,

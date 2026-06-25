@@ -13,9 +13,10 @@ locked decisions. Refine tasks only after the flow is verified working.
 
 **Status note:** server + several client pieces were built earlier this session
 against the *pre-lock* plan. The legacy contact/request `room_id` field and
-client contact `roomId` shape are now removed; remaining **revise** work is
-create-on-accept, `/referrals/connect`, and the live-refresh details. Items
-marked **build** are net-new; **verify** is wiring already in place.
+client contact `roomId` shape are now removed; server create-on-accept and
+`/referrals/connect` are now in place. Remaining **revise** work is mostly
+client live-refresh/name fallback. Items marked **build** are net-new; **verify**
+is wiring already in place.
 
 ---
 
@@ -30,22 +31,22 @@ marked **build** are net-new; **verify** is wiring already in place.
   uses (don't-wipe-dev-D1 rule).
 
 ## 2. Server — connect primitive + create-on-accept (revise)
-- `repo.ts`: add `connectUsers(db, a, b, now)` = resolve-or-create conversation
+- [x] `repo.ts`: add `connectUsers(db, a, b, now)` = resolve-or-create conversation
   (reuse `resolveOrCreateDirect`) + upsert both contact rows with the real
   `conversation_id` stamped. `ponytail:` comment — eager create now, lazy later.
-- **Nudge BOTH parties' mailboxes** after connect (do it in the handler that
+- [x] **Nudge BOTH parties' mailboxes** after connect (do it in the handler that
   calls `connectUsers`, where `env.USER_MAILBOX` is available): the non-acting
   side needs a live refresh too — after Alice accepts, *Bob's* tab must update to
   see Alice; after a referral auto-connect, the *referrer's* tab must update to
   see the joiner. Without both nudges the 2nd tab only updates on manual reload
   (will read as a bug in the e2e). Reuse the `contact_request` mailbox event as
   the refresh signal.
-- Rewrite `acceptRequest` = verify pending request → `connectUsers` → mark
+- [x] Rewrite `acceptRequest` = verify pending request → `connectUsers` → mark
   `accepted`. `room_id` handling is already removed from repo + handlers + wire
   shapes.
-- `handlers.ts` + `index.ts`: add `POST /referrals/connect { referrerId }`,
+- [x] `handlers.ts` + `index.ts`: add `POST /referrals/connect { referrerId }`,
   authorized by the caller's (joiner's) token alone; runs `connectUsers`.
-- Update the worker smoke test: accept yields a `conversation_id` on both sides.
+- [x] Update the worker smoke test: accept yields a `conversation_id` on both sides.
 
 ## 3. Client — contacts on D1 (verify + remaining revise)
 - Adapter + `createContactsD1Repository` + `contactsStore` flip already in place

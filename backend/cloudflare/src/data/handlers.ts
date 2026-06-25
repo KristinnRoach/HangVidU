@@ -3,6 +3,7 @@ import { corsHeaders, isAllowedOrigin } from '../cors';
 import type { WorkerEnv } from '../types';
 import {
   acceptRequest,
+  connectUsers,
   createRequest,
   declineRequest,
   getContact,
@@ -403,24 +404,27 @@ export async function handleDataRequest(
       const fromId = decodeURIComponent(reqActionMatch[1]);
       const action = reqActionMatch[2];
       if (action === 'accept') {
-        const ok = await acceptRequest(env.DB, callerId, fromId, now);
-        if (!ok) return json({ error: 'not_found' }, 404, cors);
-        // Nudge the original sender so their contact list refetches and shows
-        // the now-saved contact without a manual reload.
-        try {
-          await env.USER_MAILBOX.getByName(fromId).deliver({
-            t: 'contact_request',
-            fromId: callerId,
-            createdAt: now,
-          });
-        } catch (err) {
-          console.warn('[data] accept nudge failed', { fromId, err });
-        }
-        return json({ ok: true }, 200, cors);
+        const conversationId = await acceptRequest(env.DB, callerId, fromId, now);
+        if (!conversationId) return json({ error: 'not_found' }, 404, cors);
+        await nudgeContactRefresh(env, callerId, fromId, now, 'accept');
+        return json({ ok: true, conversationId }, 200, cors);
       }
       const ok = await declineRequest(env.DB, callerId, fromId);
       if (!ok) return json({ error: 'not_found' }, 404, cors);
       return json({ ok: true }, 200, cors);
+    }
+
+    // POST /referrals/connect { referrerId } — referral is pre-authorized by
+    // the sharer exposing the link and the joiner using it; no pending request.
+    if (request.method === 'POST' && url.pathname === '/referrals/connect') {
+      const referrerId = str((await readJson(request))?.referrerId);
+      if (!referrerId) return json({ error: 'referrerId required' }, 400, cors);
+      if (referrerId === callerId) {
+        return json({ error: 'cannot connect self' }, 400, cors);
+      }
+      const conversationId = await connectUsers(env.DB, callerId, referrerId, now);
+      await nudgeContactRefresh(env, callerId, referrerId, now, 'referral');
+      return json({ ok: true, conversationId }, 200, cors);
     }
 
     // POST /conversations/resolve-direct  { otherUserId } -> { conversationId }
@@ -664,6 +668,31 @@ function toWireRequest(row: ContactRequestRow) {
     fromName: row.from_name ?? null,
     createdAt: row.created_at,
   };
+}
+
+async function nudgeContactRefresh(
+  env: WorkerEnv,
+  a: string,
+  b: string,
+  now: number,
+  reason: string,
+) {
+  try {
+    await Promise.all([
+      env.USER_MAILBOX.getByName(a).deliver({
+        t: 'contact_request',
+        fromId: b,
+        createdAt: now,
+      }),
+      env.USER_MAILBOX.getByName(b).deliver({
+        t: 'contact_request',
+        fromId: a,
+        createdAt: now,
+      }),
+    ]);
+  } catch (err) {
+    console.warn('[data] contact refresh nudge failed', { a, b, reason, err });
+  }
 }
 
 type SendBody =
