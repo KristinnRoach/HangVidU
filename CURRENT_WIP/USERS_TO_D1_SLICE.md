@@ -4,6 +4,14 @@ Move the user-scoped RTDB data onto D1, reusing the existing client adapter seam
 and the existing `hangvidu-data` Worker. Also lands **user search by handle** —
 finding someone already on HangVidU without a referral link. One-session scope.
 
+> **Architecture verdict (locked 2026-06-25).** The core model is sound — opaque
+> `conversationId` + `conversation_members` join + `dm_key` dedup, with the
+> contacts/requests social graph kept separate. That's the proven
+> Discord/Slack/Matrix shape for an in-app-identity app. Build on it as-is; **no
+> redesign.** The locked refinements below (create-on-accept, roomId→conversationId
+> collapse, the conversation_id invariant, the referral/request consent split) are
+> tightening, not reshaping.
+
 ## Scope
 
 **In:** contacts, user profile, directory/discovery (handle search), contact
@@ -90,23 +98,104 @@ us the model is right.
    Idiom: idempotent SQL → `wrangler d1 execute --remote --file`. Prod D1
    `hangvidu-data` `cfac7c1c-cb3c-430d-b33d-6fd12aac48d0`.
 
+## Conversation handle model (locked 2026-06-25)
+
+The pair-of-users link had three competing identifiers (`dm_key`, opaque
+`conversationId`, legacy deterministic `roomId`). Collapse to one and create the
+conversation at accept time — porting the **current (#568)** behavior, not the
+pre-#568 lazy version.
+
+1. **Create-on-accept (#568).** The live `invitations.js` already resolves the
+   opaque `conversationId` (idempotent resolve-or-create) at accept and stores it
+   on the contact. `acceptRequest` must do the same: in one accept operation,
+   resolve-or-create the conversation **and** insert both contact rows with the
+   real `conversation_id` stamped. Do **not** port a lazy/NULL-window version —
+   that's replaced code. (Note: not literally one `db.batch` — resolve needs a
+   read between writes — but idempotent + `dm_key`-UNIQUE-safe, same guarantee.)
+2. **Collapse `roomId` → `conversationId`.** Drop the legacy deterministic
+   `room_id` from `contacts` and `contact_requests`. `conversation_id` is the
+   single pair handle. `getContactByRoomId` → `getContactByConversationId`.
+3. **Keep the UUID-shape guard.** When reading `conversation_id` off a contact,
+   accept only UUID-shaped values; anything else → `null` →
+   `resolveDirectConversationId` fallback. This is the guard that fixed the #568
+   production 404; carry it into the D1 read paths.
+4. **Invariant: `conversation_id` is the only conversation handle.** No code may
+   treat the participant pair, `dm_key`, or `roomId` as a conversation key.
+   Messaging, calls, and files all route through `conversation_id`.
+5. **Eager-create is a deliberate scale tradeoff.** Add a `ponytail:` comment at
+   the accept site: *eager create now; switch to lazy-on-first-message if contact
+   counts ever grow*. `conversation_id` stays nullable so this is reversible with
+   no schema change.
+
+### Referral vs request — two consent models, one primitive
+
+`acceptRequest`'s mutual-insert + create-on-accept is the **shared connect
+primitive**. Both flows call it; they differ only in the consent gate:
+
+- **Search request = unilateral** → keeps the pending-accept gate. The recipient
+  must accept (`POST /contact-requests/:fromId/accept`), which runs the primitive.
+- **Referral link = pre-authorized** (sharer consented by sharing, joiner by
+  clicking) → **auto-accepts, no gate**. On sign-in the joiner calls the primitive
+  directly via a referral entrypoint authorized by the joiner's token alone
+  (net-new server route, e.g. `POST /referrals/connect { referrerId }`).
+
+Retire the `syntheticInvite` hack — referral stops impersonating an invite and
+calls the primitive directly.
+
+**Nudge both parties.** `connectUsers` must fire a `contact_request` mailbox
+nudge to *both* users, not just the request recipient: the non-acting side
+(request sender after accept; referrer after auto-connect) needs a live refresh
+to see the new contact without a manual reload.
+
+### Handle stays soft (unchanged)
+
+Plain index, app-level uniqueness, lookup returns an array. See "Keep it soft."
+
+### Parked follow-ups (do NOT build this slice)
+
+- **Forgeable referral link.** `?ref=<uid>` is a raw, guessable uid. Fix later
+  with an unguessable referral *token*, not an approval gate. (Also resolves the
+  pre-login banner-name gap: `captureReferral()` can't read the referrer's profile
+  pre-auth against the auth-gated worker, so the pre-login banner is generic; the
+  name resolves post-login where auto-connect happens. Cosmetic until the token
+  work lands.)
+- **Auth principal welded to the handle.** Password login's Firebase principal is
+  a synthetic email built from the username, so the handle is the credential
+  (immutable, and the free uniqueness authority). Decoupling needs a stable
+  principal + an account re-key migration (lockout risk) + a pre-auth public
+  resolve endpoint — a separate, higher-risk auth milestone. The D1 `username` is
+  already free to diverge from the login credential later with **no migration**;
+  that's the enabling step this slice delivers. Out of scope here.
+
 ## Server (Worker `backend/cloudflare/`)
 
-- [ ] **Migration `migrations/0006_users_profile.sql`**:
+> **Note (2026-06-25):** the server items below were built against the pre-lock
+> plan and need the revisions in the locked model above (drop `room_id`,
+> create-on-accept, `/referrals/connect`). The concrete revise/build sequence
+> lives in [`USERS_TO_D1_TASKLIST.md`](./USERS_TO_D1_TASKLIST.md).
+
+- [x] **Migration `migrations/0006_users_profile.sql`**:
   - `ALTER users` add `photo_url`, `username`, `email_hash`, `discoverable`
     (DEFAULT 1), `registered_at`; plain index on `username` (not UNIQUE —
     first pass), UNIQUE index on `email_hash`.
-  - `contacts(owner_id, contact_id, nickname, room_id, conversation_id,
-    saved_at, last_interaction_at, PRIMARY KEY(owner_id, contact_id))` — columns
-    mirror `ContactRecordSchema` in `src/storage/contacts/contact-schema.js`.
-  - `contact_requests(from_id, to_id, status TEXT, room_id, created_at,
+  - `contacts(owner_id, contact_id, nickname, conversation_id, saved_at,
+    last_interaction_at, PRIMARY KEY(owner_id, contact_id))` — **no `room_id`**
+    (roomId→conversationId collapse). `conversation_id` nullable (reversibility).
+  - `contact_requests(from_id, to_id, status TEXT, created_at,
     PRIMARY KEY(from_id, to_id))` — `status` in `pending|accepted|declined`.
-- [ ] **`data/repo.ts`**: add queries next to the conversation ones —
+    **No `room_id`** — the conversation is created at accept, not carried on the
+    request. (0006 is dev-only / not yet deployed remotely, so revise it in place
+    rather than adding a migration; see tasklist.)
+- [x]⚠ **`data/repo.ts`**: add queries next to the conversation ones —
       contacts CRUD; profile get/upsert; `lookupByHandle`/`lookupByEmailHash`
       (both `AND discoverable = 1`); request create/list-incoming/accept/decline.
-      Accept = tx: insert `contacts` row for both sides + set request `accepted`.
+      **Revise (locked):** factor a shared `connectUsers(a, b)` primitive =
+      resolve-or-create conversation + upsert both contact rows with
+      `conversation_id` stamped (create-on-accept #568). `acceptRequest` =
+      verify pending request → `connectUsers` → mark `accepted`. Referral calls
+      `connectUsers` directly. Drop all `room_id` handling.
       Keep one repo file; split to `data/user-repo.ts` only if unwieldy.
-- [ ] **`data/handlers.ts` + `src/index.ts`**: add routes on the existing
+- [x]⚠ **`data/handlers.ts` + `src/index.ts`**: add routes on the existing
       regex-router + `auth.ts` verify (uid from token = owner; never
       client-supplied):
   - `/users/me/profile` (GET/PUT), `/users/me/discoverable` (PUT)
@@ -114,10 +203,12 @@ us the model is right.
   - `/users/me/contacts` (GET/POST), `/users/me/contacts/:id` (PATCH/DELETE)
   - `/contact-requests` (POST send, GET list incoming),
     `/contact-requests/:fromId/accept` (POST), `/.../decline` (POST)
-- [ ] **`UserMailbox` DO**: add a `contact_request` event type pushed to the
+  - **Add (locked):** `/referrals/connect` (POST `{ referrerId }`) — referral
+    auto-connect, authorized by the joiner's token alone (no pending request).
+- [x] **`UserMailbox` DO**: add a `contact_request` event type pushed to the
       recipient (mirror the call-invite push). Recipient client also fetches
       pending on load from D1, so the push is a nudge, not the source of truth.
-- [ ] Worker tests in `test/` mirroring `data-worker.test.ts`.
+- [x] Worker tests in `test/` mirroring `data-worker.test.ts`.
 
 ## Client (`src/storage/`)
 
@@ -129,7 +220,10 @@ changes.
       implementing `ContactsDBInterface` (get/list/put/patch/remove) against the
       Worker. Add `createContactsD1Repository(options)` to
       `src/storage/contacts/index.js`. Switch `src/stores/contactsStore.ts` from
-      `createContactsRTDBRepository`.
+      `createContactsRTDBRepository`. **Locked:** drop `roomId` from the contact
+      shape; rename `getContactByRoomId` → `getContactByConversationId`; apply the
+      UUID-shape guard when reading `conversation_id` (non-UUID → `null` →
+      `resolveDirectConversationId` fallback).
 - [ ] **Profile**: `src/storage/user/user-profile-d1-adapter.js`; wire it in
       `src/storage/user/index.js`. Add `discoverable` + `username` to
       `UserProfileSchema`.
@@ -141,8 +235,12 @@ changes.
 - [ ] **Contact requests**: replace `invitations.js` +
       `invite-listener.js` with calls to `/contact-requests*`; subscribe to the
       `UserMailbox` `contact_request` event instead of the two RTDB
-      `onChildAdded` listeners. Re-point `referral-handler.js` to the
-      accept-request path (or direct contact insert for referral auto-accept).
+      `onChildAdded` listeners.
+      **Referral (locked 2026-06-25): auto-accept, not a pending request.**
+      Re-point `referral-handler.js` to call `/referrals/connect` on sign-in
+      (the shared connect primitive); retire the `syntheticInvite` hack. Search
+      requests keep the pending-accept gate. (Supersedes the earlier Option-B /
+      pending-request lean.)
 - [ ] Reuse zod schemas in `src/storage/user/schema.js` / `contact-schema.js`
       for response parsing.
 
@@ -162,8 +260,9 @@ changes.
 - [ ] Backfill prod D1.
 - [ ] Flip client factories to D1 repositories; mount handle-claim prompt.
 - [ ] Smoke: search by handle → send request → accept on other account → both
-      sides see contact; edit profile; toggle discoverable (off = not found);
-      add/edit/remove contact; referral link still adds a contact.
+      sides connected **with a live `conversation_id`** (open chat immediately);
+      edit profile; toggle discoverable (off = not found); add/edit/remove
+      contact; referral link → open → sign in → **auto-connected** (no gate).
 - [ ] Leave RTDB nodes in place (no destructive delete) until verified in prod;
       sweep later.
 

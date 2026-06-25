@@ -1,9 +1,13 @@
 import { createStore, produce } from 'solid-js/store';
-import { getIsLoggedIn, getLoggedInUserId } from '../auth/index.js';
-import { rtdb } from '../infra/firebase-rtdb.js';
+import {
+  getIsLoggedIn,
+  getLoggedInUserId,
+  getLoggedInUserToken,
+} from '../auth/index.js';
+import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 import {
   createContactsLocalStorageRepository,
-  createContactsRTDBRepository,
+  createContactsD1Repository,
 } from '../storage/contacts/index.js';
 
 type Contact = any;
@@ -24,9 +28,11 @@ function getScopeKey(ownerId: string | null = getLoggedInUserId()): string {
 
 function getRepo(ownerId: string | null = getLoggedInUserId()) {
   if (ownerId) {
-    return createContactsRTDBRepository({
-      database: rtdb,
-      getOwnerId: () => ownerId,
+    // Owner is derived server-side from the bearer token; the D1 adapter needs
+    // no getOwnerId. ownerId only gates logged-in vs guest here.
+    return createContactsD1Repository({
+      baseUrl: getHangViduApiBaseUrl(),
+      getToken: getLoggedInUserToken,
     });
   }
   return createContactsLocalStorageRepository({ storageKey: 'contacts' });

@@ -2,18 +2,36 @@ import { authenticate, authenticateWebSocket } from '../auth';
 import { corsHeaders, isAllowedOrigin } from '../cors';
 import type { WorkerEnv } from '../types';
 import {
+  acceptRequest,
+  createRequest,
+  declineRequest,
+  getContact,
   getConversation,
   getMembers,
+  getProfile,
   insertMessage,
+  isHandleTaken,
   isMember,
+  listContacts,
   listConversations,
+  listIncomingRequests,
   loadMessages,
+  lookupByEmailHash,
+  lookupByHandle,
+  patchContact,
+  putContact,
+  removeContact,
   resolveOrCreateDirect,
+  setDiscoverable,
   setMyReaction,
+  updateProfile,
   upsertUser,
   RECENT_MESSAGES_WINDOW,
+  type ContactRow,
+  type ContactRequestRow,
   type MessageWithAttachments,
   type NewAttachment,
+  type UserProfileRow,
 } from './repo';
 import type {
   ConversationServerEvent,
@@ -208,6 +226,206 @@ export async function handleDataRequest(
       return json({ ok: true }, 200, cors);
     }
 
+    // --- users: profile + directory ----------------------------------------
+
+    // GET/PUT /users/me/profile — the caller's own profile (display name, photo,
+    // handle). Handle uniqueness is a SOFT app-level check (no DB UNIQUE this
+    // pass): a soft collision returns 409 so the client can re-suggest.
+    if (url.pathname === '/users/me/profile') {
+      if (request.method === 'GET') {
+        const profile = await getProfile(env.DB, callerId);
+        return json({ profile: profile ? toWireProfile(profile) : null }, 200, cors);
+      }
+      if (request.method === 'PUT') {
+        const body = await readJson(request);
+        const username = str(body?.username);
+        if (username && (await isHandleTaken(env.DB, username, callerId))) {
+          return json({ error: 'handle_taken' }, 409, cors);
+        }
+        const updated = await updateProfile(
+          env.DB,
+          callerId,
+          {
+            displayName: str(body?.userName),
+            photoUrl: str(body?.photoURL),
+            username,
+            emailHash: str(body?.emailHash),
+          },
+          now,
+        );
+        return json({ profile: updated ? toWireProfile(updated) : null }, 200, cors);
+      }
+    }
+
+    // GET /users/:id/profile — public read of another user by KNOWN uid (no
+    // discoverable gate; not an enumeration surface since uids are opaque, and
+    // it mirrors how conversation members already expose display names). Used by
+    // referral-handler to name the referrer. The /users/me/profile block above
+    // already returned for the self case.
+    const userProfileMatch = url.pathname.match(/^\/users\/([^/]+)\/profile$/);
+    if (request.method === 'GET' && userProfileMatch) {
+      const targetId = decodeURIComponent(userProfileMatch[1]);
+      const profile = await getProfile(env.DB, targetId);
+      return json(
+        { profile: profile ? toPublicProfile(profile) : null },
+        200,
+        cors,
+      );
+    }
+
+    // PUT /users/me/discoverable  { discoverable: bool } — directory opt-in/out.
+    if (request.method === 'PUT' && url.pathname === '/users/me/discoverable') {
+      const body = await readJson(request);
+      if (typeof body?.discoverable !== 'boolean') {
+        return json({ error: 'discoverable must be a boolean' }, 400, cors);
+      }
+      await setDiscoverable(env.DB, callerId, body.discoverable);
+      return json({ ok: true }, 200, cors);
+    }
+
+    // GET /users/lookup?handle= | ?emailHash= — exact directory lookup. Returns
+    // an ARRAY (identifier-agnostic contract; soft-unique handle yields ≤1 today).
+    if (request.method === 'GET' && url.pathname === '/users/lookup') {
+      const handle = str(url.searchParams.get('handle'));
+      const emailHash = str(url.searchParams.get('emailHash'));
+      let rows: UserProfileRow[];
+      if (handle) rows = await lookupByHandle(env.DB, handle);
+      else if (emailHash) rows = await lookupByEmailHash(env.DB, emailHash);
+      else return json({ error: 'handle or emailHash required' }, 400, cors);
+      // Don't surface the caller in their own search results.
+      return json(
+        { users: rows.filter((r) => r.id !== callerId).map(toDirectoryEntry) },
+        200,
+        cors,
+      );
+    }
+
+    // --- contacts -----------------------------------------------------------
+
+    // GET list / POST upsert  /users/me/contacts
+    if (url.pathname === '/users/me/contacts') {
+      if (request.method === 'GET') {
+        const rows = await listContacts(env.DB, callerId);
+        return json({ contacts: rows.map(toWireContact) }, 200, cors);
+      }
+      if (request.method === 'POST') {
+        const body = await readJson(request);
+        const contactId = str(body?.contactId);
+        if (!contactId) return json({ error: 'contactId required' }, 400, cors);
+        await putContact(
+          env.DB,
+          callerId,
+          {
+            contactId,
+            nickname:
+              typeof body?.contactNickName === 'string'
+                ? body.contactNickName
+                : '',
+            roomId: str(body?.roomId),
+            conversationId: str(body?.conversationId),
+            savedAt: numOrUndef(body?.savedAt) ?? now,
+            lastInteractionAt: numOrUndef(body?.lastInteractionAt) ?? now,
+          },
+          now,
+        );
+        const stored = await getContact(env.DB, callerId, contactId);
+        return json({ contact: stored ? toWireContact(stored) : null }, 200, cors);
+      }
+    }
+
+    // GET one / PATCH / DELETE  /users/me/contacts/:id
+    const contactMatch = url.pathname.match(/^\/users\/me\/contacts\/([^/]+)$/);
+    if (contactMatch) {
+      const contactId = decodeURIComponent(contactMatch[1]);
+      if (request.method === 'GET') {
+        const row = await getContact(env.DB, callerId, contactId);
+        if (!row) return json({ error: 'not_found' }, 404, cors);
+        return json({ contact: toWireContact(row) }, 200, cors);
+      }
+      if (request.method === 'PATCH') {
+        const body = await readJson(request);
+        const updated = await patchContact(env.DB, callerId, contactId, {
+          nickname:
+            typeof body?.contactNickName === 'string'
+              ? body.contactNickName
+              : undefined,
+          roomId: 'roomId' in (body ?? {}) ? str(body?.roomId) : undefined,
+          conversationId:
+            'conversationId' in (body ?? {})
+              ? str(body?.conversationId)
+              : undefined,
+          lastInteractionAt: numOrUndef(body?.lastInteractionAt),
+        });
+        if (!updated) return json({ error: 'not_found' }, 404, cors);
+        return json({ contact: toWireContact(updated) }, 200, cors);
+      }
+      if (request.method === 'DELETE') {
+        await removeContact(env.DB, callerId, contactId);
+        return json({ ok: true }, 200, cors);
+      }
+    }
+
+    // --- contact requests (the request/accept handshake) --------------------
+
+    // POST send / GET list-incoming  /contact-requests
+    if (url.pathname === '/contact-requests') {
+      if (request.method === 'POST') {
+        const body = await readJson(request);
+        const toId = str(body?.toId);
+        if (!toId) return json({ error: 'toId required' }, 400, cors);
+        if (toId === callerId) {
+          return json({ error: 'cannot request self' }, 400, cors);
+        }
+        const roomId = str(body?.roomId);
+        await createRequest(env.DB, callerId, toId, roomId, now);
+        // Live nudge to the recipient (fire-and-forget; D1 is source of truth).
+        try {
+          const me = await getProfile(env.DB, callerId);
+          await env.USER_MAILBOX.getByName(toId).deliver({
+            t: 'contact_request',
+            fromId: callerId,
+            fromName: me?.display_name ?? undefined,
+            createdAt: now,
+          });
+        } catch (err) {
+          console.warn('[data] contact_request nudge failed', { toId, err });
+        }
+        return json({ ok: true }, 200, cors);
+      }
+      if (request.method === 'GET') {
+        const rows = await listIncomingRequests(env.DB, callerId);
+        return json({ requests: rows.map(toWireRequest) }, 200, cors);
+      }
+    }
+
+    // POST /contact-requests/:fromId/accept | /decline
+    const reqActionMatch = url.pathname.match(
+      /^\/contact-requests\/([^/]+)\/(accept|decline)$/,
+    );
+    if (request.method === 'POST' && reqActionMatch) {
+      const fromId = decodeURIComponent(reqActionMatch[1]);
+      const action = reqActionMatch[2];
+      if (action === 'accept') {
+        const ok = await acceptRequest(env.DB, callerId, fromId, now);
+        if (!ok) return json({ error: 'not_found' }, 404, cors);
+        // Nudge the original sender so their contact list refetches and shows
+        // the now-saved contact without a manual reload.
+        try {
+          await env.USER_MAILBOX.getByName(fromId).deliver({
+            t: 'contact_request',
+            fromId: callerId,
+            createdAt: now,
+          });
+        } catch (err) {
+          console.warn('[data] accept nudge failed', { fromId, err });
+        }
+        return json({ ok: true }, 200, cors);
+      }
+      const ok = await declineRequest(env.DB, callerId, fromId);
+      if (!ok) return json({ error: 'not_found' }, 404, cors);
+      return json({ ok: true }, 200, cors);
+    }
+
     // POST /conversations/resolve-direct  { otherUserId } -> { conversationId }
     if (request.method === 'POST' && url.pathname === '/conversations/resolve-direct') {
       const otherUserId = (await readJson(request))?.otherUserId;
@@ -396,6 +614,60 @@ function toWireMessage(row: MessageWithAttachments): WireMessage {
       height: a.height,
     })),
     reactions: row.reactions,
+  };
+}
+
+/**
+ * Profile row → wire. `userName` is the display name; `username` is the handle
+ * (matches the client's UserProfileSchema split). email_hash is never returned.
+ */
+function toWireProfile(row: UserProfileRow) {
+  return {
+    userName: row.display_name,
+    photoURL: row.photo_url,
+    username: row.username,
+    discoverable: row.discoverable === 1,
+  };
+}
+
+/** Public profile read by known uid — display fields only, no discoverable. */
+function toPublicProfile(row: UserProfileRow) {
+  return {
+    userName: row.display_name,
+    photoURL: row.photo_url,
+    username: row.username,
+  };
+}
+
+/** Profile row → directory entry (mirrors client DirectoryEntrySchema). */
+function toDirectoryEntry(row: UserProfileRow) {
+  return {
+    uid: row.id,
+    userName: row.display_name ?? 'Anonymous',
+    photoURL: row.photo_url,
+    registeredAt: row.registered_at ?? row.created_at,
+    username: row.username,
+  };
+}
+
+/** Contact row → wire (mirrors client ContactRecordSchema). */
+function toWireContact(row: ContactRow) {
+  return {
+    contactId: row.contact_id,
+    contactNickName: row.nickname,
+    roomId: row.room_id,
+    conversationId: row.conversation_id,
+    savedAt: row.saved_at,
+    lastInteractionAt: row.last_interaction_at,
+  };
+}
+
+function toWireRequest(row: ContactRequestRow) {
+  return {
+    fromId: row.from_id,
+    fromName: row.from_name ?? null,
+    roomId: row.room_id,
+    createdAt: row.created_at,
   };
 }
 

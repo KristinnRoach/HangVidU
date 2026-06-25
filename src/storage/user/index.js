@@ -1,5 +1,3 @@
-import { rtdb } from '../../infra/firebase-rtdb.js';
-
 import {
   UserProfileRepository,
   createUserProfileRepository,
@@ -8,6 +6,10 @@ import {
   UserProfileRTDBAdapter,
   createUserProfileRTDBAdapter,
 } from './user-profile-rtdb-adapter.js';
+import {
+  UserProfileD1Adapter,
+  createUserProfileD1Adapter,
+} from './user-profile-d1-adapter.js';
 
 export {
   UserProfileSchema,
@@ -18,26 +20,13 @@ export {
   parseDirectoryEntry,
 } from './schema.js';
 
-export { registerUserInDirectory } from './user-discovery.js';
+export { createUserDiscovery } from './user-discovery.js';
 
-// TODO: possibly move the below into services
-
-const userProfileRepo = createUserProfileRepository(
-  createUserProfileRTDBAdapter({ database: rtdb }),
-);
-
-/**
- * @param {string} userId
- * @returns {Promise<{ userName?: string|null, photoURL?: string|null }|null>}
- */
-export function getUserProfile(userId) {
-  return userProfileRepo.getUserProfile(userId);
-}
-
-/**
- * @param {{ uid: string, userName?: string|null, photoURL?: string|null }} user
- * @returns {Promise<void>}
- */
-export function saveUserProfile(user) {
-  return userProfileRepo.saveUserProfile(user);
-}
+export {
+  UserProfileRepository,
+  createUserProfileRepository,
+  UserProfileRTDBAdapter,
+  createUserProfileRTDBAdapter,
+  UserProfileD1Adapter,
+  createUserProfileD1Adapter,
+};
