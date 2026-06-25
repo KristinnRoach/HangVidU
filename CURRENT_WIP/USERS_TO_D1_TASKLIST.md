@@ -82,6 +82,8 @@ is wiring already in place.
   name/email; `PUT /users/me/profile`; on 409 re-suggest.
 
 ## 9. Smoke e2e on dev (two accounts)
+- Not run yet in this session. Current verification is targeted automated checks
+  only; do this before calling the slice manually complete.
 - Click through the full happy path above end to end.
 - **Sequence note:** backfill is deferred, so no dev account has a handle until
   claimed. To test search, the *target* account must claim a handle first (step
