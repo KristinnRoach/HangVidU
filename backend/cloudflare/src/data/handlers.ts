@@ -356,7 +356,8 @@ export async function handleDataRequest(
     if (request.method === 'PATCH') {
       const body = await readJson(request);
       const updated = await patchContact(env.DB, callerId, contactId, {
-        nickname: typeof body?.nickname === 'string' ? body.nickname : undefined,
+        nickname:
+          typeof body?.nickname === 'string' ? body.nickname : undefined,
         conversationId:
           'conversationId' in (body ?? {})
             ? str(body?.conversationId)
@@ -679,9 +680,9 @@ function toDirectoryEntry(row: UserProfileRow) {
 function toWireContact(row: ContactRow) {
   return {
     contactId: row.contact_id,
-    nickname: row.nickname,
-    displayName: row.display_name ?? null,
-    username: row.username ?? null,
+    username: row.username ?? '',
+    displayName: row.display_name ?? '',
+    nickname: row.nickname ?? '',
     conversationId: row.conversation_id,
     savedAt: row.saved_at,
     lastInteractionAt: row.last_interaction_at,

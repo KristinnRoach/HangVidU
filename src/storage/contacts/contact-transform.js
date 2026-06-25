@@ -13,28 +13,12 @@ export function assertContactId(contactId) {
   return ContactIdSchema.parse(contactId);
 }
 
-function getTrimmedString(value) {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function normalizeNickname(nickname) {
-  if (nickname == null) {
-    return '';
+function normalizeLabel(value, fieldName) {
+  if (value == null) return '';
+  if (typeof value !== 'string') {
+    throw new TypeError(`${fieldName} must be a string`);
   }
-  if (typeof nickname !== 'string') {
-    throw new TypeError('nickname must be a string');
-  }
-  return nickname.trim();
-}
-
-function normalizeDisplayName(displayName) {
-  if (displayName == null) {
-    return null;
-  }
-  if (typeof displayName !== 'string') {
-    throw new TypeError('displayName must be a string or null');
-  }
-  return displayName.trim() || null;
+  return value.trim();
 }
 
 const UUID_RE =
@@ -78,19 +62,20 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
 
   const contactId = assertContactId(input.contactId);
   const savedAt = normalizeTimestamp(input.savedAt, now);
-  const nickname = normalizeNickname(input.nickname ?? input.contactNickName);
-  const displayName = normalizeDisplayName(input.displayName);
-  const username = normalizeDisplayName(input.username);
 
   const record = {
     contactId,
-    nickname,
+    nickname: normalizeLabel(
+      input.nickname ?? input.contactNickName,
+      'nickname',
+    ),
+    displayName: normalizeLabel(input.displayName, 'displayName'),
+    username: normalizeLabel(input.username, 'username'),
     conversationId: normalizeConversationId(input.conversationId),
     savedAt,
     lastInteractionAt: normalizeTimestamp(input.lastInteractionAt, savedAt),
   };
-  if (displayName) record.displayName = displayName;
-  if (username) record.username = username;
+
   return ContactRecordSchema.parse(record);
 }
 
@@ -108,7 +93,7 @@ export function normalizeContactPatch(patch) {
 
   for (const [key, value] of Object.entries(patch)) {
     if (key === 'nickname') {
-      next.nickname = normalizeNickname(value);
+      next.nickname = normalizeLabel(value, 'nickname');
       continue;
     }
 

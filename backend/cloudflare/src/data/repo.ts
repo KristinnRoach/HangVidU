@@ -235,9 +235,7 @@ export async function lookupByHandle(
   username: string,
 ): Promise<UserProfileRow[]> {
   const { results } = await db
-    .prepare(
-      `SELECT * FROM users WHERE username = ? AND discoverable = 1`,
-    )
+    .prepare(`SELECT * FROM users WHERE username = ? AND discoverable = 1`)
     .bind(username)
     .all<UserProfileRow>();
   return results ?? [];
@@ -248,9 +246,7 @@ export async function lookupByEmailHash(
   emailHash: string,
 ): Promise<UserProfileRow[]> {
   const { results } = await db
-    .prepare(
-      `SELECT * FROM users WHERE email_hash = ? AND discoverable = 1`,
-    )
+    .prepare(`SELECT * FROM users WHERE email_hash = ? AND discoverable = 1`)
     .bind(emailHash)
     .all<UserProfileRow>();
   return results ?? [];
@@ -261,12 +257,12 @@ export async function lookupByEmailHash(
 export interface ContactRow {
   owner_id: string;
   contact_id: string;
+  username: string | null;
+  display_name: string | null;
   nickname: string;
   conversation_id: string | null;
   saved_at: number;
   last_interaction_at: number;
-  display_name?: string | null;
-  username?: string | null;
 }
 
 const CONTACT_SELECT = `SELECT c.*, u.display_name AS display_name, u.username AS username
@@ -289,9 +285,7 @@ export async function listContacts(
   ownerId: string,
 ): Promise<ContactRow[]> {
   const { results } = await db
-    .prepare(
-      `${CONTACT_SELECT} WHERE c.owner_id = ? ORDER BY c.saved_at ASC`,
-    )
+    .prepare(`${CONTACT_SELECT} WHERE c.owner_id = ? ORDER BY c.saved_at ASC`)
     .bind(ownerId)
     .all<ContactRow>();
   return results ?? [];
@@ -362,7 +356,10 @@ export async function putContact(
   c: NewContact,
   now: number,
 ): Promise<void> {
-  await db.batch([ensureUserStub(db, c.contactId, now), contactUpsert(db, ownerId, c)]);
+  await db.batch([
+    ensureUserStub(db, c.contactId, now),
+    contactUpsert(db, ownerId, c),
+  ]);
 }
 
 export async function connectUsers(
@@ -752,7 +749,9 @@ export async function setMyReaction(
 
   if (reactionKey === null) {
     await db
-      .prepare(`DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?`)
+      .prepare(
+        `DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?`,
+      )
       .bind(messageId, userId)
       .run();
   } else {

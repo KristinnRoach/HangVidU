@@ -38,6 +38,8 @@ describe('ContactsLocalAdapter', () => {
     expect(result).toEqual({
       contactId: 'u1',
       nickname: 'Alice',
+      displayName: '',
+      username: '',
       conversationId: '11111111-1111-4111-8111-111111111111',
       savedAt: 10,
       lastInteractionAt: 30,
@@ -84,6 +86,8 @@ describe('ContactsLocalAdapter', () => {
     await expect(legacyAdapter.get('u2')).resolves.toEqual({
       contactId: 'u2',
       nickname: '',
+      displayName: '',
+      username: '',
       conversationId: '22222222-2222-4222-8222-222222222222',
       savedAt: 11,
       lastInteractionAt: 22,

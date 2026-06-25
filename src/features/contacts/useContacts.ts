@@ -7,10 +7,11 @@ import {
   getLastReadAt,
   startConversationActivity,
 } from '../../stores/conversation-activity';
+import { getContactLabel } from '../../storage/contacts/index.js';
 
 type ContactRow = {
   id: string;
-  name: string | null;
+  label: string | null;
   hasUnread: boolean;
 };
 
@@ -36,20 +37,22 @@ export function useContacts() {
             act.latestSenderId !== null &&
             act.latestSenderId !== me &&
             act.latestSentAt > lastReadAt;
-          const name = c.nickname || c.displayName || c.username || null;
+
+          const label = getContactLabel(c);
+
           return {
             id: contactId,
-            name,
+            label,
             hasUnread,
             _sortKey: act?.latestSentAt || c?.savedAt || 0,
-            _name: (name || '').toLowerCase(),
+            _label: (label || '').toLowerCase(),
           };
         })
         .sort((a, b) => {
           if (a._sortKey !== b._sortKey) return b._sortKey - a._sortKey;
-          return a._name.localeCompare(b._name);
+          return a._label.localeCompare(b._label);
         })
-        .map(({ _sortKey, _name, ...row }) => row);
+        .map(({ _sortKey, _label, ...row }) => row);
 
       setContacts(
         produce((arr: ContactRow[]) => {

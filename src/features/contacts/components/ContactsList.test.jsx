@@ -90,8 +90,8 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
     vi.clearAllMocks();
     mocks.subscriptions.clear();
     mocks.contacts = [
-      { id: 'contact-1', name: 'Alice', hasUnread: false },
-      { id: 'contact-2', name: 'Bob', hasUnread: false },
+      { id: 'contact-1', label: 'Alice', hasUnread: false },
+      { id: 'contact-2', label: 'Bob', hasUnread: false },
     ];
     mocks.isLoading = false;
   });

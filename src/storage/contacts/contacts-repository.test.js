@@ -21,6 +21,8 @@ describe('ContactsRepository', () => {
     adapter.patch.mockResolvedValue({
       contactId: 'u1',
       nickname: 'Alice',
+      displayName: '',
+      username: '',
       conversationId: '11111111-1111-4111-8111-111111111111',
       savedAt: 10,
       lastInteractionAt: 20,
@@ -38,6 +40,8 @@ describe('ContactsRepository', () => {
     expect(result).toEqual({
       contactId: 'u1',
       nickname: 'Alice',
+      displayName: '',
+      username: '',
       conversationId: '11111111-1111-4111-8111-111111111111',
       savedAt: 10,
       lastInteractionAt: 20,
