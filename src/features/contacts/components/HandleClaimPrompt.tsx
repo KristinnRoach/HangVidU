@@ -5,6 +5,7 @@ import { useI18n } from '../../../shared/i18n';
 import {
   claimUsername,
   getPublicUserProfile,
+  suggestHandle,
 } from '../../../stores/userDirectoryStore.js';
 import styles from './HandleClaimPrompt.module.css';
 
@@ -17,16 +18,6 @@ type UserLike = {
 
 function storageKey(uid: string) {
   return `handle-claim-dismissed:${uid}`;
-}
-
-function suggestHandle(user: UserLike, suffix = '') {
-  const source = user.userName || user.email?.split('@')[0] || user.uid || '';
-  const base = source
-    .toLowerCase()
-    .replace(/[^a-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, Math.max(3, 20 - suffix.length));
-  return `${(base || 'user').padEnd(3, '_')}${suffix}`.slice(0, 20);
 }
 
 export default function HandleClaimPrompt(props: { user: UserLike | null }) {
@@ -43,16 +34,15 @@ export default function HandleClaimPrompt(props: { user: UserLike | null }) {
         setOpen(false);
         setMessage('');
         if (!uid || localStorage.getItem(storageKey(uid))) return;
-        // Email accounts are already discoverable by email-hash, so a public
-        // @handle is OPT-IN (claimed from settings), not a forced onboarding
-        // step. Only auto-prompt accounts whose sole identity would be a handle
-        // — i.e. no email. (Those are username/password accounts, which already
-        // have a handle, so in practice this rarely fires; the guard is the
-        // policy.) The component is still openable on demand for the opt-in path.
-        if (props.user?.email) return;
+        // Every account already has a handle (auto-assigned at login). This is
+        // the one-time "pick a nicer @handle" customizer: open once per account
+        // (localStorage-gated), prefilled with the current handle, so Save
+        // customizes and Dismiss keeps the default.
+        // ponytail: shown once for EVERY account, so a user who chose their
+        // handle at signup also gets one prefilled confirm. Upgrade path if that
+        // annoys: mark auto-assigned handles and only prompt those.
         const profile = await getPublicUserProfile(uid);
-        if (profile?.username) return;
-        setHandle(suggestHandle(props.user ?? {}));
+        setHandle(profile?.username || suggestHandle(props.user ?? {}));
         setOpen(true);
       },
     ),
@@ -72,6 +62,7 @@ export default function HandleClaimPrompt(props: { user: UserLike | null }) {
     setMessage('');
     try {
       await claimUsername(user, next);
+      localStorage.setItem(storageKey(user.uid), '1');
       setOpen(false);
     } catch (error) {
       if ((error as { status?: number })?.status === 409) {

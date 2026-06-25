@@ -61,6 +61,49 @@ export async function claimUsername(user, username) {
   return profile ?? null;
 }
 
+/**
+ * Derive a default handle from the user's display name / email / uid, normalized
+ * to the handle charset (lowercase, 3–20 of [a-z0-9_]). `suffix` is appended for
+ * collision retries. Shared by the login auto-assign and the claim prompt.
+ * @param {{ userName?: string|null, email?: string|null, uid?: string }} user
+ * @param {string} [suffix]
+ */
+export function suggestHandle(user, suffix = '') {
+  const source = user?.userName || user?.email?.split('@')[0] || user?.uid || '';
+  const base = source
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, Math.max(3, 20 - String(suffix).length));
+  return `${(base || 'user').padEnd(3, '_')}${suffix}`.slice(0, 20);
+}
+
+/**
+ * Guarantee the account has a handle (the "username always required" invariant).
+ * No-op when one already exists (password accounts, returning users). Otherwise
+ * derive a default and claim it, retrying with a random suffix on a soft
+ * collision (409). Returns the resulting handle, or null if none could be set.
+ * @param {{ uid?: string, userName?: string|null, email?: string|null, photoURL?: string|null }} user
+ * @returns {Promise<{ handle: string|null, assigned: boolean }>}
+ */
+export async function ensureHandle(user) {
+  if (!user?.uid) return { handle: null, assigned: false };
+  const profile = await getPublicUserProfile(user.uid);
+  if (profile?.username) return { handle: profile.username, assigned: false };
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const suffix =
+      attempt === 0 ? '' : String(Math.floor(Math.random() * 90 + 10));
+    try {
+      const saved = await claimUsername(user, suggestHandle(user, suffix));
+      return { handle: saved?.username ?? null, assigned: true };
+    } catch (error) {
+      if (error?.status !== 409) throw error;
+    }
+  }
+  return { handle: null, assigned: false };
+}
+
 export async function registerInUserDirectory(user, opts) {
   // D1 directory: powers authed handle search + email-hash discovery (the new
   // path consumed by manual-invite / google-import).

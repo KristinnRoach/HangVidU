@@ -4,7 +4,7 @@ import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import {
   savePublicUserProfile,
   registerInUserDirectory,
-  getPublicUserProfile,
+  ensureHandle,
 } from '../stores/userDirectoryStore.js';
 import { setupInviteListener } from '../features/contacts/invites/invite-listener.js';
 import { processReferral } from '../features/contacts/referrals/referral-handler.js';
@@ -165,24 +165,19 @@ export function wireAuthReactions() {
 
             const user = state?.user;
             if (user) {
-              savePublicUserProfile(user).catch((e) =>
-                console.warn('[AUTH] Failed to save user profile:', e),
-              );
-              // Directory entry is the email→account index; skip when the
-              // user has no email (e.g. username-only password accounts).
-              if (user.email) {
-                getPublicUserProfile(user.uid)
-                  .then((profile) =>
-                    registerInUserDirectory(user, {
-                      username: profile?.username ?? null,
-                    }),
-                  )
-                  .catch((e) =>
-                    console.warn(
-                      '[AUTH] Failed to register user in directory:',
-                      e,
-                    ),
-                  );
+              try {
+                // Serialize: write the profile row, guarantee a handle exists
+                // (auto-assign for accounts without one), then index the
+                // email→account entry with that handle. Each is non-fatal.
+                await savePublicUserProfile(user);
+                const { handle } = await ensureHandle(user);
+                // Directory entry is the email→account index; skip when the
+                // user has no email (e.g. username-only password accounts).
+                if (user.email) {
+                  await registerInUserDirectory(user, { username: handle });
+                }
+              } catch (e) {
+                console.warn('[AUTH] Failed to save profile / ensure handle:', e);
               }
             }
 
