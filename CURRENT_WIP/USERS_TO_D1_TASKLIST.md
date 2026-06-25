@@ -78,7 +78,7 @@ is wiring already in place.
   `syntheticInvite` hack. Keep the `?ref=<uid>` capture as-is for now.
 
 ## 8. Handle-claim prompt (build)
-- One-time prompt for accounts with no handle; default suggestion from
+- [x] One-time prompt for accounts with no handle; default suggestion from
   name/email; `PUT /users/me/profile`; on 409 re-suggest.
 
 ## 9. Smoke e2e on dev (two accounts)

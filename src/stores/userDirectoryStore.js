@@ -49,6 +49,18 @@ export function savePublicUserProfile(user) {
   return getProfileRepo().saveUserProfile(user);
 }
 
+export async function claimUsername(user, username) {
+  if (!user?.uid) throw new Error('user required');
+  const body = {
+    userName: user.userName || null,
+    photoURL: user.photoURL || null,
+    username,
+  };
+  if (user.email) body.emailHash = hashEmail(user.email);
+  const { profile } = await getRequest()('PUT', '/users/me/profile', body);
+  return profile ?? null;
+}
+
 export async function registerInUserDirectory(user, opts) {
   // D1 directory: powers authed handle search + email-hash discovery (the new
   // path consumed by manual-invite / google-import).
