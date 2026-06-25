@@ -34,7 +34,7 @@ function dispatchPath(path: string) {
       conversationId,
       remoteParticipantIds: contactId ? [contactId] : [],
       displayUI: true,
-      contactNickName: contact?.contactNickName ?? undefined,
+      nickname: contact?.nickname ?? undefined,
     });
     return;
   }
@@ -46,7 +46,7 @@ function dispatchPath(path: string) {
   const contact = getContactById(contactId);
   void openDirectConversation(contactId, {
     displayUI: true,
-    contactNickName: contact?.contactNickName ?? undefined,
+    nickname: contact?.nickname ?? undefined,
   });
 }
 

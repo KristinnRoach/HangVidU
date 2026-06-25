@@ -10,7 +10,7 @@ describe('ContactsLocalAdapter', () => {
     let raw = JSON.stringify({
       u1: {
         contactId: 'u1',
-        contactNickName: 'Alice',
+        nickname: 'Alice',
         conversationId: '11111111-1111-4111-8111-111111111111',
         savedAt: 10,
         lastInteractionAt: 20,
@@ -37,7 +37,7 @@ describe('ContactsLocalAdapter', () => {
 
     expect(result).toEqual({
       contactId: 'u1',
-      contactNickName: 'Alice',
+      nickname: 'Alice',
       conversationId: '11111111-1111-4111-8111-111111111111',
       savedAt: 10,
       lastInteractionAt: 30,
@@ -64,7 +64,7 @@ describe('ContactsLocalAdapter', () => {
         lastInteractionAt: 22,
       },
       u3: {
-        contactNickName: 'Legacy No Id',
+        nickname: 'Legacy No Id',
         conversationId: '33333333-3333-4333-8333-333333333333',
         savedAt: 13,
         lastInteractionAt: 23,
@@ -83,7 +83,7 @@ describe('ContactsLocalAdapter', () => {
 
     await expect(legacyAdapter.get('u2')).resolves.toEqual({
       contactId: 'u2',
-      contactNickName: '',
+      nickname: '',
       conversationId: '22222222-2222-4222-8222-222222222222',
       savedAt: 11,
       lastInteractionAt: 22,

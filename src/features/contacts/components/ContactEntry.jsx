@@ -27,7 +27,9 @@ export default function ContactEntry(props) {
   const { t } = useI18n();
   let rootEl;
 
-  const displayName = () => props.name || t('call.unknown_caller');
+  console.warn({ ...props });
+
+  const displayName = () => props.name || t('shared.unknown');
   const editLabel = () => t('contact.action.edit');
 
   const onOpenConversation = () => {
@@ -36,7 +38,7 @@ export default function ContactEntry(props) {
     // store (resolve-or-create) — see openDirectConversation.
     void openDirectConversation(props.id, {
       displayUI: true,
-      contactNickName: displayName(),
+      nickname: displayName(),
     });
   };
 

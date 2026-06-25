@@ -266,9 +266,10 @@ export interface ContactRow {
   saved_at: number;
   last_interaction_at: number;
   display_name?: string | null;
+  username?: string | null;
 }
 
-const CONTACT_SELECT = `SELECT c.*, u.display_name AS display_name
+const CONTACT_SELECT = `SELECT c.*, u.display_name AS display_name, u.username AS username
   FROM contacts c
   LEFT JOIN users u ON u.id = c.contact_id`;
 

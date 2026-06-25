@@ -604,7 +604,7 @@ export class PushNotifications {
     if (!callerName) {
       try {
         const contact = getContactByConversationId(roomId);
-        callerLabel = contact?.contactNickName || callerId || 'Unknown caller';
+        callerLabel = contact?.nickname || callerId || 'Unknown caller';
       } catch (error) {
         console.warn(
           '[Push Notifications] Failed to resolve caller name:',

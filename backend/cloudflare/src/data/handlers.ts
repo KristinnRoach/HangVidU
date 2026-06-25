@@ -46,552 +46,576 @@ export async function handleDataRequest(
   request: Request,
   env: WorkerEnv,
 ): Promise<Response> {
-    const origin = request.headers.get('Origin');
-    const cors = corsHeaders(origin, env);
+  const origin = request.headers.get('Origin');
+  const cors = corsHeaders(origin, env);
 
-    // CORS preflight.
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: cors });
+  // CORS preflight.
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: cors });
+  }
+
+  const url = new URL(request.url);
+
+  // Health check — no auth, for local-dev / uptime verification.
+  if (request.method === 'GET' && url.pathname === '/health') {
+    return json({ ok: true }, 200, cors);
+  }
+
+  // WebSocket live-push channel. Auth rides in the subprotocol (browsers
+  // can't set headers on a WS handshake), so this is handled before the
+  // Bearer-header auth block below.
+  const wsMatch = url.pathname.match(/^\/conversations\/([^/]+)\/ws$/);
+  if (wsMatch) {
+    if (request.headers.get('Upgrade') !== 'websocket') {
+      return new Response('Expected WebSocket upgrade', { status: 426 });
     }
-
-    const url = new URL(request.url);
-
-    // Health check — no auth, for local-dev / uptime verification.
-    if (request.method === 'GET' && url.pathname === '/health') {
-      return json({ ok: true }, 200, cors);
+    // Origin allowlist — defense-in-depth on top of token auth; stops other
+    // web origins from driving the channel with a user's token.
+    if (!isAllowedOrigin(origin, env)) {
+      return new Response('Forbidden origin', { status: 403 });
     }
+    const identity = await authenticateWebSocket(request, env);
+    if (!identity) return new Response('Unauthorized', { status: 401 });
 
-    // WebSocket live-push channel. Auth rides in the subprotocol (browsers
-    // can't set headers on a WS handshake), so this is handled before the
-    // Bearer-header auth block below.
-    const wsMatch = url.pathname.match(/^\/conversations\/([^/]+)\/ws$/);
-    if (wsMatch) {
-      if (request.headers.get('Upgrade') !== 'websocket') {
-        return new Response('Expected WebSocket upgrade', { status: 426 });
-      }
-      // Origin allowlist — defense-in-depth on top of token auth; stops other
-      // web origins from driving the channel with a user's token.
-      if (!isAllowedOrigin(origin, env)) {
-        return new Response('Forbidden origin', { status: 403 });
-      }
-      const identity = await authenticateWebSocket(request, env);
-      if (!identity) return new Response('Unauthorized', { status: 401 });
-
-      const conversationId = decodeURIComponent(wsMatch[1]);
-      if (!(await isMember(env.DB, conversationId, identity.userId))) {
-        // 404 (not 403) so non-members can't probe which ids exist.
-        return new Response('Not found', { status: 404 });
-      }
-      const stub = env.CONVERSATION_CHANNEL.getByName(conversationId);
-      return stub.fetch(request);
+    const conversationId = decodeURIComponent(wsMatch[1]);
+    if (!(await isMember(env.DB, conversationId, identity.userId))) {
+      // 404 (not 403) so non-members can't probe which ids exist.
+      return new Response('Not found', { status: 404 });
     }
+    const stub = env.CONVERSATION_CHANNEL.getByName(conversationId);
+    return stub.fetch(request);
+  }
 
-    // Per-user call-invite mailbox WS. You can only open your OWN mailbox, so no
-    // D1 check here — identity IS the key. Same subprotocol auth as above.
-    if (url.pathname === '/users/me/mailbox/ws') {
-      if (request.headers.get('Upgrade') !== 'websocket') {
-        return new Response('Expected WebSocket upgrade', { status: 426 });
-      }
-      if (!isAllowedOrigin(origin, env)) {
-        return new Response('Forbidden origin', { status: 403 });
-      }
-      const identity = await authenticateWebSocket(request, env);
-      if (!identity) return new Response('Unauthorized', { status: 401 });
-      return env.USER_MAILBOX.getByName(identity.userId).fetch(request);
+  // Per-user call-invite mailbox WS. You can only open your OWN mailbox, so no
+  // D1 check here — identity IS the key. Same subprotocol auth as above.
+  if (url.pathname === '/users/me/mailbox/ws') {
+    if (request.headers.get('Upgrade') !== 'websocket') {
+      return new Response('Expected WebSocket upgrade', { status: 426 });
     }
-
-    // Everything below requires authentication.
-    const identity = await authenticate(request, env);
-    if (!identity) return json({ error: 'unauthorized' }, 401, cors);
-    const callerId = identity.userId;
-    const now = Date.now();
-
-    // Record/refresh the caller. `name` query param optionally seeds display_name.
-    await upsertUser(env.DB, callerId, url.searchParams.get('name'), now);
-
-    // Identity echo — exercises the Bearer auth seam end-to-end.
-    if (request.method === 'GET' && url.pathname === '/me') {
-      return json({ userId: callerId }, 200, cors);
+    if (!isAllowedOrigin(origin, env)) {
+      return new Response('Forbidden origin', { status: 403 });
     }
+    const identity = await authenticateWebSocket(request, env);
+    if (!identity) return new Response('Unauthorized', { status: 401 });
+    return env.USER_MAILBOX.getByName(identity.userId).fetch(request);
+  }
 
-    // Call-invite mailbox sends. Receiving is the WS above; these REST endpoints
-    // are the writes. Authz is authoritative here: the authenticated sender AND
-    // the target user must both be members of the conversation, then the envelope
-    // is delivered to the target's mailbox DO. roomId === conversationId.
-    if (request.method === 'POST' && url.pathname === '/calls/invite') {
-      const body = await readJson(request);
-      const conversationId = str(body?.conversationId);
-      const calleeId = str(body?.calleeId);
-      if (!conversationId || !calleeId) {
-        return json({ error: 'conversationId and calleeId required' }, 400, cors);
-      }
-      if (
-        !(await isMember(env.DB, conversationId, callerId)) ||
-        !(await isMember(env.DB, conversationId, calleeId))
-      ) {
-        return json({ error: 'not_found' }, 404, cors);
-      }
-      const startedAt = now;
-      const expiresAt =
-        numOrUndef(body?.expiresAt) ?? startedAt + CALLING_TTL_MS;
-      await env.USER_MAILBOX.getByName(calleeId).deliver({
-        t: 'invite',
-        invite: {
-          roomId: conversationId,
-          callerId,
-          calleeId,
-          callerName: str(body?.callerName) ?? undefined,
-          audioOnly: body?.audioOnly === true,
-          startedAt,
-          expiresAt,
-        },
-      });
-      return json({ ok: true }, 200, cors);
+  // Everything below requires authentication.
+  const identity = await authenticate(request, env);
+  if (!identity) return json({ error: 'unauthorized' }, 401, cors);
+  const callerId = identity.userId;
+  const now = Date.now();
+
+  // Record/refresh the caller. `name` query param optionally seeds display_name.
+  await upsertUser(env.DB, callerId, url.searchParams.get('name'), now);
+
+  // Identity echo — exercises the Bearer auth seam end-to-end.
+  if (request.method === 'GET' && url.pathname === '/me') {
+    return json({ userId: callerId }, 200, cors);
+  }
+
+  // Call-invite mailbox sends. Receiving is the WS above; these REST endpoints
+  // are the writes. Authz is authoritative here: the authenticated sender AND
+  // the target user must both be members of the conversation, then the envelope
+  // is delivered to the target's mailbox DO. roomId === conversationId.
+  if (request.method === 'POST' && url.pathname === '/calls/invite') {
+    const body = await readJson(request);
+    const conversationId = str(body?.conversationId);
+    const calleeId = str(body?.calleeId);
+    if (!conversationId || !calleeId) {
+      return json({ error: 'conversationId and calleeId required' }, 400, cors);
     }
-
-    if (request.method === 'POST' && url.pathname === '/calls/response') {
-      const body = await readJson(request);
-      const conversationId = str(body?.conversationId);
-      const targetCallerId = str(body?.callerId);
-      const responseType = str(body?.responseType);
-      if (
-        !conversationId ||
-        !targetCallerId ||
-        (responseType !== 'accepted' &&
-          responseType !== 'rejected' &&
-          responseType !== 'busy')
-      ) {
-        return json({ error: 'invalid response' }, 400, cors);
-      }
-      const members = await getMembers(env.DB, conversationId);
-      if (!members.some((member) => member.user_id === callerId)) {
-        return json({ error: 'not_found' }, 404, cors);
-      }
-      const otherMember =
-        members.length === 2
-          ? members.find((member) => member.user_id !== callerId)?.user_id ??
-            null
-          : null;
-      if (otherMember !== targetCallerId) {
-        return json({ error: 'not_found' }, 404, cors);
-      }
-      // Retire this invite on the responder's OWN other sockets (other tabs/
-      // devices still ringing): `handled` both clears the retained invite and
-      // fans a dismiss to them. `by` is the responder who handled it.
-      await env.USER_MAILBOX.getByName(callerId).deliver({
-        t: 'handled',
+    if (
+      !(await isMember(env.DB, conversationId, callerId)) ||
+      !(await isMember(env.DB, conversationId, calleeId))
+    ) {
+      return json({ error: 'not_found' }, 404, cors);
+    }
+    const startedAt = now;
+    const expiresAt = numOrUndef(body?.expiresAt) ?? startedAt + CALLING_TTL_MS;
+    await env.USER_MAILBOX.getByName(calleeId).deliver({
+      t: 'invite',
+      invite: {
         roomId: conversationId,
-        by: callerId,
-      });
-      await env.USER_MAILBOX.getByName(targetCallerId).deliver({
-        t: 'response',
-        response: {
-          roomId: conversationId,
-          responseType,
-          by: callerId,
-          respondedAt: now,
-          expiresAt: numOrUndef(body?.expiresAt),
-        },
-      });
-      return json({ ok: true }, 200, cors);
-    }
+        callerId,
+        calleeId,
+        callerName: str(body?.callerName) ?? undefined,
+        audioOnly: body?.audioOnly === true,
+        startedAt,
+        expiresAt,
+      },
+    });
+    return json({ ok: true }, 200, cors);
+  }
 
-    if (request.method === 'POST' && url.pathname === '/calls/response/ack') {
-      const conversationId = str((await readJson(request))?.conversationId);
-      if (!conversationId) return json({ error: 'conversationId required' }, 400, cors);
-      if (!(await isMember(env.DB, conversationId, callerId))) {
-        return json({ error: 'not_found' }, 404, cors);
-      }
-      await env.USER_MAILBOX.getByName(callerId).clearPendingResponse(conversationId);
-      return json({ ok: true }, 200, cors);
+  if (request.method === 'POST' && url.pathname === '/calls/response') {
+    const body = await readJson(request);
+    const conversationId = str(body?.conversationId);
+    const targetCallerId = str(body?.callerId);
+    const responseType = str(body?.responseType);
+    if (
+      !conversationId ||
+      !targetCallerId ||
+      (responseType !== 'accepted' &&
+        responseType !== 'rejected' &&
+        responseType !== 'busy')
+    ) {
+      return json({ error: 'invalid response' }, 400, cors);
     }
-
-    if (request.method === 'POST' && url.pathname === '/calls/cancel') {
-      const body = await readJson(request);
-      const conversationId = str(body?.conversationId);
-      const calleeId = str(body?.calleeId);
-      if (!conversationId || !calleeId) {
-        return json({ error: 'conversationId and calleeId required' }, 400, cors);
-      }
-      if (
-        !(await isMember(env.DB, conversationId, callerId)) ||
-        !(await isMember(env.DB, conversationId, calleeId))
-      ) {
-        return json({ error: 'not_found' }, 404, cors);
-      }
-      await env.USER_MAILBOX.getByName(calleeId).deliver({
-        t: 'cancel',
+    const members = await getMembers(env.DB, conversationId);
+    if (!members.some((member) => member.user_id === callerId)) {
+      return json({ error: 'not_found' }, 404, cors);
+    }
+    const otherMember =
+      members.length === 2
+        ? (members.find((member) => member.user_id !== callerId)?.user_id ??
+          null)
+        : null;
+    if (otherMember !== targetCallerId) {
+      return json({ error: 'not_found' }, 404, cors);
+    }
+    // Retire this invite on the responder's OWN other sockets (other tabs/
+    // devices still ringing): `handled` both clears the retained invite and
+    // fans a dismiss to them. `by` is the responder who handled it.
+    await env.USER_MAILBOX.getByName(callerId).deliver({
+      t: 'handled',
+      roomId: conversationId,
+      by: callerId,
+    });
+    await env.USER_MAILBOX.getByName(targetCallerId).deliver({
+      t: 'response',
+      response: {
         roomId: conversationId,
+        responseType,
         by: callerId,
-      });
-      return json({ ok: true }, 200, cors);
+        respondedAt: now,
+        expiresAt: numOrUndef(body?.expiresAt),
+      },
+    });
+    return json({ ok: true }, 200, cors);
+  }
+
+  if (request.method === 'POST' && url.pathname === '/calls/response/ack') {
+    const conversationId = str((await readJson(request))?.conversationId);
+    if (!conversationId)
+      return json({ error: 'conversationId required' }, 400, cors);
+    if (!(await isMember(env.DB, conversationId, callerId))) {
+      return json({ error: 'not_found' }, 404, cors);
     }
-
-    // --- users: profile + directory ----------------------------------------
-
-    // GET/PUT /users/me/profile — the caller's own profile (display name, photo,
-    // handle). Handle uniqueness is a SOFT app-level check (no DB UNIQUE this
-    // pass): a soft collision returns 409 so the client can re-suggest.
-    if (url.pathname === '/users/me/profile') {
-      if (request.method === 'GET') {
-        const profile = await getProfile(env.DB, callerId);
-        return json({ profile: profile ? toWireProfile(profile) : null }, 200, cors);
-      }
-      if (request.method === 'PUT') {
-        const body = await readJson(request);
-        const username = str(body?.username);
-        if (username && (await isHandleTaken(env.DB, username, callerId))) {
-          return json({ error: 'handle_taken' }, 409, cors);
-        }
-        const updated = await updateProfile(
-          env.DB,
-          callerId,
-          {
-            displayName: str(body?.displayName),
-            photoUrl: str(body?.photoURL),
-            username,
-            emailHash: str(body?.emailHash),
-          },
-          now,
-        );
-        return json({ profile: updated ? toWireProfile(updated) : null }, 200, cors);
-      }
-    }
-
-    // GET /users/:id/profile — public read of another user by KNOWN uid (no
-    // discoverable gate; not an enumeration surface since uids are opaque, and
-    // it mirrors how conversation members already expose display names). Used by
-    // referral-handler to name the referrer. The /users/me/profile block above
-    // already returned for the self case.
-    const userProfileMatch = url.pathname.match(/^\/users\/([^/]+)\/profile$/);
-    if (request.method === 'GET' && userProfileMatch) {
-      const targetId = decodeURIComponent(userProfileMatch[1]);
-      const profile = await getProfile(env.DB, targetId);
-      return json(
-        { profile: profile ? toPublicProfile(profile) : null },
-        200,
-        cors,
-      );
-    }
-
-    // PUT /users/me/discoverable  { discoverable: bool } — directory opt-in/out.
-    if (request.method === 'PUT' && url.pathname === '/users/me/discoverable') {
-      const body = await readJson(request);
-      if (typeof body?.discoverable !== 'boolean') {
-        return json({ error: 'discoverable must be a boolean' }, 400, cors);
-      }
-      await setDiscoverable(env.DB, callerId, body.discoverable);
-      return json({ ok: true }, 200, cors);
-    }
-
-    // GET /users/lookup?handle= | ?emailHash= — exact directory lookup. Returns
-    // an ARRAY (identifier-agnostic contract; soft-unique handle yields ≤1 today).
-    if (request.method === 'GET' && url.pathname === '/users/lookup') {
-      const handle = str(url.searchParams.get('handle'));
-      const emailHash = str(url.searchParams.get('emailHash'));
-      let rows: UserProfileRow[];
-      if (handle) rows = await lookupByHandle(env.DB, handle);
-      else if (emailHash) rows = await lookupByEmailHash(env.DB, emailHash);
-      else return json({ error: 'handle or emailHash required' }, 400, cors);
-      // Don't surface the caller in their own search results.
-      return json(
-        { users: rows.filter((r) => r.id !== callerId).map(toDirectoryEntry) },
-        200,
-        cors,
-      );
-    }
-
-    // --- contacts -----------------------------------------------------------
-
-    // GET list / POST upsert  /users/me/contacts
-    if (url.pathname === '/users/me/contacts') {
-      if (request.method === 'GET') {
-        const rows = await listContacts(env.DB, callerId);
-        return json({ contacts: rows.map(toWireContact) }, 200, cors);
-      }
-      if (request.method === 'POST') {
-        const body = await readJson(request);
-        const contactId = str(body?.contactId);
-        if (!contactId) return json({ error: 'contactId required' }, 400, cors);
-        await putContact(
-          env.DB,
-          callerId,
-          {
-            contactId,
-            nickname:
-              typeof body?.contactNickName === 'string'
-                ? body.contactNickName
-                : '',
-            conversationId: str(body?.conversationId),
-            savedAt: numOrUndef(body?.savedAt) ?? now,
-            lastInteractionAt: numOrUndef(body?.lastInteractionAt) ?? now,
-          },
-          now,
-        );
-        const stored = await getContact(env.DB, callerId, contactId);
-        return json({ contact: stored ? toWireContact(stored) : null }, 200, cors);
-      }
-    }
-
-    // GET one / PATCH / DELETE  /users/me/contacts/:id
-    const contactMatch = url.pathname.match(/^\/users\/me\/contacts\/([^/]+)$/);
-    if (contactMatch) {
-      const contactId = decodeURIComponent(contactMatch[1]);
-      if (request.method === 'GET') {
-        const row = await getContact(env.DB, callerId, contactId);
-        if (!row) return json({ error: 'not_found' }, 404, cors);
-        return json({ contact: toWireContact(row) }, 200, cors);
-      }
-      if (request.method === 'PATCH') {
-        const body = await readJson(request);
-        const updated = await patchContact(env.DB, callerId, contactId, {
-          nickname:
-            typeof body?.contactNickName === 'string'
-              ? body.contactNickName
-              : undefined,
-          conversationId:
-            'conversationId' in (body ?? {})
-              ? str(body?.conversationId)
-              : undefined,
-          lastInteractionAt: numOrUndef(body?.lastInteractionAt),
-        });
-        if (!updated) return json({ error: 'not_found' }, 404, cors);
-        return json({ contact: toWireContact(updated) }, 200, cors);
-      }
-      if (request.method === 'DELETE') {
-        await removeContact(env.DB, callerId, contactId);
-        return json({ ok: true }, 200, cors);
-      }
-    }
-
-    // --- contact requests (the request/accept handshake) --------------------
-
-    // POST send / GET list-incoming  /contact-requests
-    if (url.pathname === '/contact-requests') {
-      if (request.method === 'POST') {
-        const body = await readJson(request);
-        const toId = str(body?.toId);
-        if (!toId) return json({ error: 'toId required' }, 400, cors);
-        if (toId === callerId) {
-          return json({ error: 'cannot request self' }, 400, cors);
-        }
-        await createRequest(env.DB, callerId, toId, now);
-        // Live nudge to the recipient (fire-and-forget; D1 is source of truth).
-        try {
-          const me = await getProfile(env.DB, callerId);
-          await env.USER_MAILBOX.getByName(toId).deliver({
-            t: 'contact_request',
-            fromId: callerId,
-            fromName: me?.display_name ?? undefined,
-            createdAt: now,
-          });
-        } catch (err) {
-          console.warn('[data] contact_request nudge failed', { toId, err });
-        }
-        return json({ ok: true }, 200, cors);
-      }
-      if (request.method === 'GET') {
-        const rows = await listIncomingRequests(env.DB, callerId);
-        return json({ requests: rows.map(toWireRequest) }, 200, cors);
-      }
-    }
-
-    // POST /contact-requests/:fromId/accept | /decline
-    const reqActionMatch = url.pathname.match(
-      /^\/contact-requests\/([^/]+)\/(accept|decline)$/,
+    await env.USER_MAILBOX.getByName(callerId).clearPendingResponse(
+      conversationId,
     );
-    if (request.method === 'POST' && reqActionMatch) {
-      const fromId = decodeURIComponent(reqActionMatch[1]);
-      const action = reqActionMatch[2];
-      if (action === 'accept') {
-        const conversationId = await acceptRequest(env.DB, callerId, fromId, now);
-        if (!conversationId) return json({ error: 'not_found' }, 404, cors);
-        await nudgeContactRefresh(env, callerId, fromId, now, 'accept');
-        return json({ ok: true, conversationId }, 200, cors);
-      }
-      const ok = await declineRequest(env.DB, callerId, fromId);
-      if (!ok) return json({ error: 'not_found' }, 404, cors);
-      return json({ ok: true }, 200, cors);
-    }
+    return json({ ok: true }, 200, cors);
+  }
 
-    // POST /referrals/connect { referrerId } — referral is pre-authorized by
-    // the sharer exposing the link and the joiner using it; no pending request.
-    if (request.method === 'POST' && url.pathname === '/referrals/connect') {
-      const referrerId = str((await readJson(request))?.referrerId);
-      if (!referrerId) return json({ error: 'referrerId required' }, 400, cors);
-      if (referrerId === callerId) {
-        return json({ error: 'cannot connect self' }, 400, cors);
-      }
-      const conversationId = await connectUsers(env.DB, callerId, referrerId, now);
-      await nudgeContactRefresh(env, callerId, referrerId, now, 'referral');
-      return json({ ok: true, conversationId }, 200, cors);
+  if (request.method === 'POST' && url.pathname === '/calls/cancel') {
+    const body = await readJson(request);
+    const conversationId = str(body?.conversationId);
+    const calleeId = str(body?.calleeId);
+    if (!conversationId || !calleeId) {
+      return json({ error: 'conversationId and calleeId required' }, 400, cors);
     }
+    if (
+      !(await isMember(env.DB, conversationId, callerId)) ||
+      !(await isMember(env.DB, conversationId, calleeId))
+    ) {
+      return json({ error: 'not_found' }, 404, cors);
+    }
+    await env.USER_MAILBOX.getByName(calleeId).deliver({
+      t: 'cancel',
+      roomId: conversationId,
+      by: callerId,
+    });
+    return json({ ok: true }, 200, cors);
+  }
 
-    // POST /conversations/resolve-direct  { otherUserId } -> { conversationId }
-    if (request.method === 'POST' && url.pathname === '/conversations/resolve-direct') {
-      const otherUserId = (await readJson(request))?.otherUserId;
-      if (typeof otherUserId !== 'string' || !otherUserId.trim()) {
-        return json({ error: 'otherUserId required' }, 400, cors);
+  // --- users: profile + directory ----------------------------------------
+
+  // GET/PUT /users/me/profile — the caller's own profile (display name, photo,
+  // handle). Handle uniqueness is a SOFT app-level check (no DB UNIQUE this
+  // pass): a soft collision returns 409 so the client can re-suggest.
+  if (url.pathname === '/users/me/profile') {
+    if (request.method === 'GET') {
+      const profile = await getProfile(env.DB, callerId);
+      return json(
+        { profile: profile ? toWireProfile(profile) : null },
+        200,
+        cors,
+      );
+    }
+    if (request.method === 'PUT') {
+      const body = await readJson(request);
+      const username = str(body?.username);
+      if (username && (await isHandleTaken(env.DB, username, callerId))) {
+        return json({ error: 'handle_taken' }, 409, cors);
       }
-      const trimmedOtherUserId = otherUserId.trim();
-      if (trimmedOtherUserId === callerId) {
-        return json({ error: 'cannot open a direct conversation with self' }, 400, cors);
-      }
-      const conversationId = await resolveOrCreateDirect(
+      const updated = await updateProfile(
         env.DB,
         callerId,
-        trimmedOtherUserId,
+        {
+          displayName: str(body?.displayName),
+          photoUrl: str(body?.photoURL),
+          username,
+          emailHash: str(body?.emailHash),
+        },
         now,
       );
-      return json({ conversationId }, 200, cors);
+      return json(
+        { profile: updated ? toWireProfile(updated) : null },
+        200,
+        cors,
+      );
     }
+  }
 
-    // GET /conversations -> caller's conversations (each with members)
-    if (request.method === 'GET' && url.pathname === '/conversations') {
-      const conversations = await listConversations(env.DB, callerId);
-      return json({ conversations }, 200, cors);
-    }
-
-    // GET /conversations/:id -> conversation + members (membership-guarded)
-    const convoMatch = url.pathname.match(/^\/conversations\/([^/]+)$/);
-    if (request.method === 'GET' && convoMatch) {
-      const conversationId = decodeURIComponent(convoMatch[1]);
-      if (!(await isMember(env.DB, conversationId, callerId))) {
-        // 404 (not 403) so non-members can't probe which ids exist.
-        return json({ error: 'not_found' }, 404, cors);
-      }
-      const conversation = await getConversation(env.DB, conversationId);
-      if (!conversation) return json({ error: 'not_found' }, 404, cors);
-      const members = await getMembers(env.DB, conversationId);
-      return json({ conversation, members }, 200, cors);
-    }
-
-    const reactionMatch = url.pathname.match(
-      /^\/conversations\/([^/]+)\/messages\/([^/]+)\/reaction$/,
+  // GET /users/:id/profile — public read of another user by KNOWN uid (no
+  // discoverable gate; not an enumeration surface since uids are opaque, and
+  // it mirrors how conversation members already expose display names). Used by
+  // referral-handler to name the referrer. The /users/me/profile block above
+  // already returned for the self case.
+  const userProfileMatch = url.pathname.match(/^\/users\/([^/]+)\/profile$/);
+  if (request.method === 'GET' && userProfileMatch) {
+    const targetId = decodeURIComponent(userProfileMatch[1]);
+    const profile = await getProfile(env.DB, targetId);
+    return json(
+      { profile: profile ? toPublicProfile(profile) : null },
+      200,
+      cors,
     );
-    if (request.method === 'PUT' && reactionMatch) {
-      const conversationId = decodeURIComponent(reactionMatch[1]);
-      const messageId = decodeURIComponent(reactionMatch[2]);
-      if (!(await isMember(env.DB, conversationId, callerId))) {
-        return json({ error: 'not_found' }, 404, cors);
-      }
+  }
 
-      const reactionKey = parseReactionKey((await readJson(request))?.reactionKey);
-      if (reactionKey === undefined) {
-        return json({ error: 'reactionKey must be null or 1-64 characters' }, 400, cors);
-      }
-      const reactions = await setMyReaction(
+  // PUT /users/me/discoverable  { discoverable: bool } — directory opt-in/out.
+  if (request.method === 'PUT' && url.pathname === '/users/me/discoverable') {
+    const body = await readJson(request);
+    if (typeof body?.discoverable !== 'boolean') {
+      return json({ error: 'discoverable must be a boolean' }, 400, cors);
+    }
+    await setDiscoverable(env.DB, callerId, body.discoverable);
+    return json({ ok: true }, 200, cors);
+  }
+
+  // GET /users/lookup?handle= | ?emailHash= — exact directory lookup. Returns
+  // an ARRAY (identifier-agnostic contract; soft-unique handle yields ≤1 today).
+  if (request.method === 'GET' && url.pathname === '/users/lookup') {
+    const handle = str(url.searchParams.get('handle'));
+    const emailHash = str(url.searchParams.get('emailHash'));
+    let rows: UserProfileRow[];
+    if (handle) rows = await lookupByHandle(env.DB, handle);
+    else if (emailHash) rows = await lookupByEmailHash(env.DB, emailHash);
+    else return json({ error: 'handle or emailHash required' }, 400, cors);
+    // Don't surface the caller in their own search results.
+    return json(
+      { users: rows.filter((r) => r.id !== callerId).map(toDirectoryEntry) },
+      200,
+      cors,
+    );
+  }
+
+  // --- contacts -----------------------------------------------------------
+
+  // GET list / POST upsert  /users/me/contacts
+  if (url.pathname === '/users/me/contacts') {
+    if (request.method === 'GET') {
+      const rows = await listContacts(env.DB, callerId);
+      return json({ contacts: rows.map(toWireContact) }, 200, cors);
+    }
+    if (request.method === 'POST') {
+      const body = await readJson(request);
+      const contactId = str(body?.contactId);
+      if (!contactId) return json({ error: 'contactId required' }, 400, cors);
+      await putContact(
         env.DB,
+        callerId,
+        {
+          contactId,
+          nickname: typeof body?.nickname === 'string' ? body.nickname : '',
+          conversationId: str(body?.conversationId),
+          savedAt: numOrUndef(body?.savedAt) ?? now,
+          lastInteractionAt: numOrUndef(body?.lastInteractionAt) ?? now,
+        },
+        now,
+      );
+      const stored = await getContact(env.DB, callerId, contactId);
+      return json(
+        { contact: stored ? toWireContact(stored) : null },
+        200,
+        cors,
+      );
+    }
+  }
+
+  // GET one / PATCH / DELETE  /users/me/contacts/:id
+  const contactMatch = url.pathname.match(/^\/users\/me\/contacts\/([^/]+)$/);
+  if (contactMatch) {
+    const contactId = decodeURIComponent(contactMatch[1]);
+    if (request.method === 'GET') {
+      const row = await getContact(env.DB, callerId, contactId);
+      if (!row) return json({ error: 'not_found' }, 404, cors);
+      return json({ contact: toWireContact(row) }, 200, cors);
+    }
+    if (request.method === 'PATCH') {
+      const body = await readJson(request);
+      const updated = await patchContact(env.DB, callerId, contactId, {
+        nickname: typeof body?.nickname === 'string' ? body.nickname : undefined,
+        conversationId:
+          'conversationId' in (body ?? {})
+            ? str(body?.conversationId)
+            : undefined,
+        lastInteractionAt: numOrUndef(body?.lastInteractionAt),
+      });
+      if (!updated) return json({ error: 'not_found' }, 404, cors);
+      return json({ contact: toWireContact(updated) }, 200, cors);
+    }
+    if (request.method === 'DELETE') {
+      await removeContact(env.DB, callerId, contactId);
+      return json({ ok: true }, 200, cors);
+    }
+  }
+
+  // --- contact requests (the request/accept handshake) --------------------
+
+  // POST send / GET list-incoming  /contact-requests
+  if (url.pathname === '/contact-requests') {
+    if (request.method === 'POST') {
+      const body = await readJson(request);
+      const toId = str(body?.toId);
+      if (!toId) return json({ error: 'toId required' }, 400, cors);
+      if (toId === callerId) {
+        return json({ error: 'cannot request self' }, 400, cors);
+      }
+      await createRequest(env.DB, callerId, toId, now);
+      // Live nudge to the recipient (fire-and-forget; D1 is source of truth).
+      try {
+        const me = await getProfile(env.DB, callerId);
+        await env.USER_MAILBOX.getByName(toId).deliver({
+          t: 'contact_request',
+          fromId: callerId,
+          fromName: me?.display_name ?? undefined,
+          createdAt: now,
+        });
+      } catch (err) {
+        console.warn('[data] contact_request nudge failed', { toId, err });
+      }
+      return json({ ok: true }, 200, cors);
+    }
+    if (request.method === 'GET') {
+      const rows = await listIncomingRequests(env.DB, callerId);
+      return json({ requests: rows.map(toWireRequest) }, 200, cors);
+    }
+  }
+
+  // POST /contact-requests/:fromId/accept | /decline
+  const reqActionMatch = url.pathname.match(
+    /^\/contact-requests\/([^/]+)\/(accept|decline)$/,
+  );
+  if (request.method === 'POST' && reqActionMatch) {
+    const fromId = decodeURIComponent(reqActionMatch[1]);
+    const action = reqActionMatch[2];
+    if (action === 'accept') {
+      const conversationId = await acceptRequest(env.DB, callerId, fromId, now);
+      if (!conversationId) return json({ error: 'not_found' }, 404, cors);
+      await nudgeContactRefresh(env, callerId, fromId, now, 'accept');
+      return json({ ok: true, conversationId }, 200, cors);
+    }
+    const ok = await declineRequest(env.DB, callerId, fromId);
+    if (!ok) return json({ error: 'not_found' }, 404, cors);
+    return json({ ok: true }, 200, cors);
+  }
+
+  // POST /referrals/connect { referrerId } — referral is pre-authorized by
+  // the sharer exposing the link and the joiner using it; no pending request.
+  if (request.method === 'POST' && url.pathname === '/referrals/connect') {
+    const referrerId = str((await readJson(request))?.referrerId);
+    if (!referrerId) return json({ error: 'referrerId required' }, 400, cors);
+    if (referrerId === callerId) {
+      return json({ error: 'cannot connect self' }, 400, cors);
+    }
+    const conversationId = await connectUsers(
+      env.DB,
+      callerId,
+      referrerId,
+      now,
+    );
+    await nudgeContactRefresh(env, callerId, referrerId, now, 'referral');
+    return json({ ok: true, conversationId }, 200, cors);
+  }
+
+  // POST /conversations/resolve-direct  { otherUserId } -> { conversationId }
+  if (
+    request.method === 'POST' &&
+    url.pathname === '/conversations/resolve-direct'
+  ) {
+    const otherUserId = (await readJson(request))?.otherUserId;
+    if (typeof otherUserId !== 'string' || !otherUserId.trim()) {
+      return json({ error: 'otherUserId required' }, 400, cors);
+    }
+    const trimmedOtherUserId = otherUserId.trim();
+    if (trimmedOtherUserId === callerId) {
+      return json(
+        { error: 'cannot open a direct conversation with self' },
+        400,
+        cors,
+      );
+    }
+    const conversationId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      trimmedOtherUserId,
+      now,
+    );
+    return json({ conversationId }, 200, cors);
+  }
+
+  // GET /conversations -> caller's conversations (each with members)
+  if (request.method === 'GET' && url.pathname === '/conversations') {
+    const conversations = await listConversations(env.DB, callerId);
+    return json({ conversations }, 200, cors);
+  }
+
+  // GET /conversations/:id -> conversation + members (membership-guarded)
+  const convoMatch = url.pathname.match(/^\/conversations\/([^/]+)$/);
+  if (request.method === 'GET' && convoMatch) {
+    const conversationId = decodeURIComponent(convoMatch[1]);
+    if (!(await isMember(env.DB, conversationId, callerId))) {
+      // 404 (not 403) so non-members can't probe which ids exist.
+      return json({ error: 'not_found' }, 404, cors);
+    }
+    const conversation = await getConversation(env.DB, conversationId);
+    if (!conversation) return json({ error: 'not_found' }, 404, cors);
+    const members = await getMembers(env.DB, conversationId);
+    return json({ conversation, members }, 200, cors);
+  }
+
+  const reactionMatch = url.pathname.match(
+    /^\/conversations\/([^/]+)\/messages\/([^/]+)\/reaction$/,
+  );
+  if (request.method === 'PUT' && reactionMatch) {
+    const conversationId = decodeURIComponent(reactionMatch[1]);
+    const messageId = decodeURIComponent(reactionMatch[2]);
+    if (!(await isMember(env.DB, conversationId, callerId))) {
+      return json({ error: 'not_found' }, 404, cors);
+    }
+
+    const reactionKey = parseReactionKey(
+      (await readJson(request))?.reactionKey,
+    );
+    if (reactionKey === undefined) {
+      return json(
+        { error: 'reactionKey must be null or 1-64 characters' },
+        400,
+        cors,
+      );
+    }
+    const reactions = await setMyReaction(
+      env.DB,
+      conversationId,
+      messageId,
+      callerId,
+      reactionKey,
+    );
+    if (!reactions) return json({ error: 'not_found' }, 404, cors);
+
+    const event: ConversationServerEvent = {
+      t: 'reaction',
+      messageId,
+      actorUserId: callerId,
+      actorReactionKey: reactionKey,
+      reactions: reactions.map(({ key, count }) => ({ key, count })),
+    };
+    try {
+      await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(event);
+    } catch (err) {
+      console.warn('[data] reaction broadcast failed', {
         conversationId,
         messageId,
-        callerId,
-        reactionKey,
-      );
-      if (!reactions) return json({ error: 'not_found' }, 404, cors);
+        err,
+      });
+    }
+    return json({ messageId, reactions }, 200, cors);
+  }
 
-      const event: ConversationServerEvent = {
-        t: 'reaction',
-        messageId,
-        actorUserId: callerId,
-        actorReactionKey: reactionKey,
-        reactions: reactions.map(({ key, count }) => ({ key, count })),
-      };
+  // GET /conversations/:id/messages -> recent messages (membership-guarded)
+  const messagesMatch = url.pathname.match(
+    /^\/conversations\/([^/]+)\/messages$/,
+  );
+  if (messagesMatch) {
+    const conversationId = decodeURIComponent(messagesMatch[1]);
+    if (!(await isMember(env.DB, conversationId, callerId))) {
+      return json({ error: 'not_found' }, 404, cors);
+    }
+
+    if (request.method === 'GET') {
+      const rows = await loadMessages(
+        env.DB,
+        conversationId,
+        RECENT_MESSAGES_WINDOW,
+        callerId,
+      );
+      return json({ messages: rows.map(toWireMessage) }, 200, cors);
+    }
+
+    // POST -> send a text or file message; server allocates id + timestamp.
+    if (request.method === 'POST') {
+      const payload = await readJson(request);
+      const parsed = parseSendBody(payload);
+      if ('error' in parsed) {
+        return json({ error: parsed.error }, 400, cors);
+      }
+      const stored = await insertMessage(
+        env.DB,
+        conversationId,
+        parsed.messageId,
+        callerId,
+        parsed.kind,
+        parsed.body,
+        parsed.attachment,
+        now,
+      );
+      if (!stored) {
+        return json({ error: 'insert_failed' }, 500, cors);
+      }
+      const wire = toWireMessage(stored);
+      // DO notification pattern: after successful write, notify the Durable Object
+      // to broadcast the event. Uses hibernation RPC (direct method invocation) —
+      // the DO trusts the worker since they share the same process and the worker
+      // already authenticated + validated the write. The DO broadcasts to all
+      // connected members, including the sender (client deduplicates by message id).
+      const event: ConversationServerEvent = { t: 'message', message: wire };
+      // Best-effort live push: the message is already committed, so a transient
+      // DO failure must not fail the send (would cause client retry / dup). The
+      // sender renders optimistically; peers reconcile on next load if missed.
       try {
         await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(
           event,
         );
       } catch (err) {
-        console.warn('[data] reaction broadcast failed', {
-          conversationId,
-          messageId,
-          err,
-        });
+        console.warn('[data] live broadcast failed', { conversationId, err });
       }
-      return json({ messageId, reactions }, 200, cors);
-    }
-
-    // GET /conversations/:id/messages -> recent messages (membership-guarded)
-    const messagesMatch = url.pathname.match(
-      /^\/conversations\/([^/]+)\/messages$/,
-    );
-    if (messagesMatch) {
-      const conversationId = decodeURIComponent(messagesMatch[1]);
-      if (!(await isMember(env.DB, conversationId, callerId))) {
-        return json({ error: 'not_found' }, 404, cors);
-      }
-
-      if (request.method === 'GET') {
-        const rows = await loadMessages(
-          env.DB,
-          conversationId,
-          RECENT_MESSAGES_WINDOW,
-          callerId,
+      // Per-user activity push: ping every other member's mailbox so their
+      // conversation list reorders + badges without the conversation open.
+      // Best-effort, fire-and-forget (not persisted in the mailbox).
+      try {
+        const members = await getMembers(env.DB, conversationId);
+        await Promise.all(
+          members
+            .filter((m) => m.user_id !== callerId)
+            .map((m) =>
+              env.USER_MAILBOX.getByName(m.user_id).deliver({
+                t: 'activity',
+                conversationId,
+                senderId: callerId,
+                sentAt: now,
+              }),
+            ),
         );
-        return json({ messages: rows.map(toWireMessage) }, 200, cors);
+      } catch (err) {
+        console.warn('[data] activity fan-out failed', { conversationId, err });
       }
-
-      // POST -> send a text or file message; server allocates id + timestamp.
-      if (request.method === 'POST') {
-        const payload = await readJson(request);
-        const parsed = parseSendBody(payload);
-        if ('error' in parsed) {
-          return json({ error: parsed.error }, 400, cors);
-        }
-        const stored = await insertMessage(
-          env.DB,
-          conversationId,
-          parsed.messageId,
-          callerId,
-          parsed.kind,
-          parsed.body,
-          parsed.attachment,
-          now,
-        );
-        if (!stored) {
-          return json({ error: 'insert_failed' }, 500, cors);
-        }
-        const wire = toWireMessage(stored);
-        // DO notification pattern: after successful write, notify the Durable Object
-        // to broadcast the event. Uses hibernation RPC (direct method invocation) —
-        // the DO trusts the worker since they share the same process and the worker
-        // already authenticated + validated the write. The DO broadcasts to all
-        // connected members, including the sender (client deduplicates by message id).
-        const event: ConversationServerEvent = { t: 'message', message: wire };
-        // Best-effort live push: the message is already committed, so a transient
-        // DO failure must not fail the send (would cause client retry / dup). The
-        // sender renders optimistically; peers reconcile on next load if missed.
-        try {
-          await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(
-            event,
-          );
-        } catch (err) {
-          console.warn('[data] live broadcast failed', { conversationId, err });
-        }
-        // Per-user activity push: ping every other member's mailbox so their
-        // conversation list reorders + badges without the conversation open.
-        // Best-effort, fire-and-forget (not persisted in the mailbox).
-        try {
-          const members = await getMembers(env.DB, conversationId);
-          await Promise.all(
-            members
-              .filter((m) => m.user_id !== callerId)
-              .map((m) =>
-                env.USER_MAILBOX.getByName(m.user_id).deliver({
-                  t: 'activity',
-                  conversationId,
-                  senderId: callerId,
-                  sentAt: now,
-                }),
-              ),
-          );
-        } catch (err) {
-          console.warn('[data] activity fan-out failed', { conversationId, err });
-        }
-        return json({ message: wire }, 200, cors);
-      }
+      return json({ message: wire }, 200, cors);
     }
+  }
 
-    return json({ error: 'not_found' }, 404, cors);
+  return json({ error: 'not_found' }, 404, cors);
 }
 
 /** D1 row (snake_case) -> wire envelope (camelCase) shared with the client. */
@@ -655,8 +679,9 @@ function toDirectoryEntry(row: UserProfileRow) {
 function toWireContact(row: ContactRow) {
   return {
     contactId: row.contact_id,
-    contactNickName: row.nickname,
+    nickname: row.nickname,
     displayName: row.display_name ?? null,
+    username: row.username ?? null,
     conversationId: row.conversation_id,
     savedAt: row.saved_at,
     lastInteractionAt: row.last_interaction_at,
@@ -787,7 +812,9 @@ function str(value: unknown): string | null {
 
 /** Finite number, or undefined (for optional payload fields). */
 function numOrUndef(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 function parseReactionKey(value: unknown): string | null | undefined {

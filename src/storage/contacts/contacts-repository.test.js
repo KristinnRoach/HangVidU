@@ -20,24 +20,24 @@ describe('ContactsRepository', () => {
   it('delegates patch() to the adapter with a normalized patch', async () => {
     adapter.patch.mockResolvedValue({
       contactId: 'u1',
-      contactNickName: 'Alice',
+      nickname: 'Alice',
       conversationId: '11111111-1111-4111-8111-111111111111',
       savedAt: 10,
       lastInteractionAt: 20,
     });
 
     const result = await store.patch('u1', {
-      contactNickName: '  Alice  ',
+      nickname: '  Alice  ',
       conversationId: ' 11111111-1111-4111-8111-111111111111 ',
     });
 
     expect(adapter.patch).toHaveBeenCalledWith('u1', {
-      contactNickName: 'Alice',
+      nickname: 'Alice',
       conversationId: '11111111-1111-4111-8111-111111111111',
     });
     expect(result).toEqual({
       contactId: 'u1',
-      contactNickName: 'Alice',
+      nickname: 'Alice',
       conversationId: '11111111-1111-4111-8111-111111111111',
       savedAt: 10,
       lastInteractionAt: 20,

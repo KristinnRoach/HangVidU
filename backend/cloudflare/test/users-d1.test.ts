@@ -22,7 +22,8 @@ function b64urlFromString(s: string): string {
 function b64urlFromBytes(buf: ArrayBuffer): string {
   let binary = '';
   const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i++)
+    binary += String.fromCharCode(bytes[i]);
   return b64urlFromString(binary);
 }
 function validClaims(sub: string): Record<string, unknown> {
@@ -36,7 +37,9 @@ function validClaims(sub: string): Record<string, unknown> {
   };
 }
 async function signToken(sub: string): Promise<string> {
-  const headerB64 = b64urlFromString(JSON.stringify({ alg: 'RS256', kid: KID }));
+  const headerB64 = b64urlFromString(
+    JSON.stringify({ alg: 'RS256', kid: KID }),
+  );
   const payloadB64 = b64urlFromString(JSON.stringify(validClaims(sub)));
   const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
   const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, data);
@@ -146,13 +149,21 @@ describe('profile + directory', () => {
 
     // Bob finds Alice by handle.
     const bob = await signToken('bob');
-    const found = await (await req('GET', '/users/lookup?handle=alice99', bob)).json();
+    const found = await (
+      await req('GET', '/users/lookup?handle=alice99', bob)
+    ).json();
     expect(found.users).toHaveLength(1);
-    expect(found.users[0]).toMatchObject({ uid: 'alice', displayName: 'Alice', username: 'alice99' });
+    expect(found.users[0]).toMatchObject({
+      uid: 'alice',
+      displayName: 'Alice',
+      username: 'alice99',
+    });
 
     // Alice opts out → no longer findable.
     await req('PUT', '/users/me/discoverable', alice, { discoverable: false });
-    const gone = await (await req('GET', '/users/lookup?handle=alice99', bob)).json();
+    const gone = await (
+      await req('GET', '/users/lookup?handle=alice99', bob)
+    ).json();
     expect(gone.users).toHaveLength(0);
   });
 
@@ -160,14 +171,18 @@ describe('profile + directory', () => {
     const alice = await signToken('alice');
     const bob = await signToken('bob');
     await req('PUT', '/users/me/profile', alice, { username: 'shared' });
-    const res = await req('PUT', '/users/me/profile', bob, { username: 'shared' });
+    const res = await req('PUT', '/users/me/profile', bob, {
+      username: 'shared',
+    });
     expect(res.status).toBe(409);
   });
 
   it('lookup returns an array and excludes the caller', async () => {
     const alice = await signToken('alice');
     await req('PUT', '/users/me/profile', alice, { username: 'alice99' });
-    const self = await (await req('GET', '/users/lookup?handle=alice99', alice)).json();
+    const self = await (
+      await req('GET', '/users/lookup?handle=alice99', alice)
+    ).json();
     expect(Array.isArray(self.users)).toBe(true);
     expect(self.users).toHaveLength(0);
   });
@@ -178,7 +193,7 @@ describe('contacts CRUD', () => {
     const alice = await signToken('alice');
     await req('POST', '/users/me/contacts', alice, {
       contactId: 'bob',
-      contactNickName: 'Bob',
+      nickname: 'Bob',
       conversationId: '11111111-1111-4111-8111-111111111111',
     });
 
@@ -186,13 +201,13 @@ describe('contacts CRUD', () => {
     expect(list.contacts).toHaveLength(1);
     expect(list.contacts[0]).toMatchObject({
       contactId: 'bob',
-      contactNickName: 'Bob',
+      nickname: 'Bob',
       conversationId: '11111111-1111-4111-8111-111111111111',
     });
 
-    await req('PATCH', '/users/me/contacts/bob', alice, { contactNickName: 'Bobby' });
+    await req('PATCH', '/users/me/contacts/bob', alice, { nickname: 'Bobby' });
     list = await (await req('GET', '/users/me/contacts', alice)).json();
-    expect(list.contacts[0].contactNickName).toBe('Bobby');
+    expect(list.contacts[0].nickname).toBe('Bobby');
 
     await req('DELETE', '/users/me/contacts/bob', alice);
     list = await (await req('GET', '/users/me/contacts', alice)).json();
@@ -208,23 +223,38 @@ describe('contact request handshake', () => {
 
     const bobMailbox = await connectMailbox(bob);
     try {
-      const res = await req('POST', '/contact-requests', alice, { toId: 'bob' });
+      const res = await req('POST', '/contact-requests', alice, {
+        toId: 'bob',
+      });
       expect(res.status).toBe(200);
 
       const nudge = await bobMailbox.next();
-      expect(nudge).toMatchObject({ t: 'contact_request', fromId: 'alice', fromName: 'Alice' });
+      expect(nudge).toMatchObject({
+        t: 'contact_request',
+        fromId: 'alice',
+        fromName: 'Alice',
+      });
 
-      const incoming = await (await req('GET', '/contact-requests', bob)).json();
+      const incoming = await (
+        await req('GET', '/contact-requests', bob)
+      ).json();
       expect(incoming.requests).toHaveLength(1);
-      expect(incoming.requests[0]).toMatchObject({ fromId: 'alice', fromName: 'Alice' });
+      expect(incoming.requests[0]).toMatchObject({
+        fromId: 'alice',
+        fromName: 'Alice',
+      });
 
       const accept = await req('POST', '/contact-requests/alice/accept', bob);
       expect(accept.status).toBe(200);
-      const accepted = await accept.json() as { conversationId: string };
+      const accepted = (await accept.json()) as { conversationId: string };
       expect(accepted.conversationId).toBeTruthy();
 
-      const bobContacts = await (await req('GET', '/users/me/contacts', bob)).json();
-      const aliceContacts = await (await req('GET', '/users/me/contacts', alice)).json();
+      const bobContacts = await (
+        await req('GET', '/users/me/contacts', bob)
+      ).json();
+      const aliceContacts = await (
+        await req('GET', '/users/me/contacts', alice)
+      ).json();
       expect(bobContacts.contacts).toContainEqual(
         expect.objectContaining({
           contactId: 'alice',
@@ -258,7 +288,9 @@ describe('contact request handshake', () => {
 
     const incoming = await (await req('GET', '/contact-requests', bob)).json();
     expect(incoming.requests).toHaveLength(0);
-    const bobContacts = await (await req('GET', '/users/me/contacts', bob)).json();
+    const bobContacts = await (
+      await req('GET', '/users/me/contacts', bob)
+    ).json();
     expect(bobContacts.contacts).toHaveLength(0);
   });
 
@@ -270,11 +302,15 @@ describe('contact request handshake', () => {
       referrerId: 'alice',
     });
     expect(connected.status).toBe(200);
-    const body = await connected.json() as { conversationId: string };
+    const body = (await connected.json()) as { conversationId: string };
     expect(body.conversationId).toBeTruthy();
 
-    const bobContacts = await (await req('GET', '/users/me/contacts', bob)).json();
-    const aliceContacts = await (await req('GET', '/users/me/contacts', alice)).json();
+    const bobContacts = await (
+      await req('GET', '/users/me/contacts', bob)
+    ).json();
+    const aliceContacts = await (
+      await req('GET', '/users/me/contacts', alice)
+    ).json();
     expect(bobContacts.contacts).toContainEqual(
       expect.objectContaining({
         contactId: 'alice',

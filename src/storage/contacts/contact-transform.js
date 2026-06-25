@@ -17,14 +17,14 @@ function getTrimmedString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizeContactNickName(contactNickName) {
-  if (contactNickName == null) {
+function normalizeNickname(nickname) {
+  if (nickname == null) {
     return '';
   }
-  if (typeof contactNickName !== 'string') {
-    throw new TypeError('contactNickName must be a string');
+  if (typeof nickname !== 'string') {
+    throw new TypeError('nickname must be a string');
   }
-  return contactNickName.trim();
+  return nickname.trim();
 }
 
 function normalizeDisplayName(displayName) {
@@ -78,17 +78,19 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
 
   const contactId = assertContactId(input.contactId);
   const savedAt = normalizeTimestamp(input.savedAt, now);
-  const contactNickName = normalizeContactNickName(input.contactNickName);
+  const nickname = normalizeNickname(input.nickname ?? input.contactNickName);
   const displayName = normalizeDisplayName(input.displayName);
+  const username = normalizeDisplayName(input.username);
 
   const record = {
     contactId,
-    contactNickName,
+    nickname,
     conversationId: normalizeConversationId(input.conversationId),
     savedAt,
     lastInteractionAt: normalizeTimestamp(input.lastInteractionAt, savedAt),
   };
   if (displayName) record.displayName = displayName;
+  if (username) record.username = username;
   return ContactRecordSchema.parse(record);
 }
 
@@ -105,8 +107,8 @@ export function normalizeContactPatch(patch) {
   const next = {};
 
   for (const [key, value] of Object.entries(patch)) {
-    if (key === 'contactNickName') {
-      next.contactNickName = normalizeContactNickName(value);
+    if (key === 'nickname') {
+      next.nickname = normalizeNickname(value);
       continue;
     }
 

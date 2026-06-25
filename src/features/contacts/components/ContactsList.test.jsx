@@ -152,7 +152,7 @@ describe('SolidJS ContactsList PoC', { timeout: 60000 }, () => {
 
     expect(mocks.openDirectConversation).toHaveBeenCalledWith('contact-1', {
       displayUI: true,
-      contactNickName: 'Alice',
+      nickname: 'Alice',
     });
 
     unmount();

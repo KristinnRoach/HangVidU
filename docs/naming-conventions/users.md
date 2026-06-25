@@ -12,7 +12,7 @@ Define clear naming for user identity vs local contact aliases.
 - Scope: Global per user profile.
 - Example: User B sets `username` to `"B"`.
 
-### `contactNickName`
+### `nickname`
 
 - Meaning: Local alias/nickname one user saves for another user in Contacts.
 - Scope: Local to the contact owner.
@@ -22,12 +22,12 @@ Define clear naming for user identity vs local contact aliases.
 
 - Meaning: Name shown in messaging UI for a conversation.
 - Resolution order:
-  1. `contactNickName`
+  1. `nickname`
   2. `username`
   3. fallback placeholder
 
 ## Rule of Thumb
 
 - Use `username` for profile identity.
-- Use `contactNickName` for local overrides.
+- Use `nickname` for local overrides.
 - Use `conversationDisplayName` only for computed UI output, not persisted identity.

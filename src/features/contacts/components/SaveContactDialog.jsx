@@ -4,14 +4,12 @@ import { saveContact } from '../../../stores/contactsStore.js';
 
 export default function SaveContactDialog(props) {
   const { t } = useI18n();
-  const [name, setName] = createSignal('');
+  const [nickname, setNickname] = createSignal('');
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [error, setError] = createSignal(null);
 
   let dialogEl;
   let inputEl;
-
-  const trimmedName = () => name().trim();
 
   const close = (value) => {
     props.onClose(value);
@@ -25,10 +23,15 @@ export default function SaveContactDialog(props) {
 
     try {
       setError(null);
-      const nextName = trimmedName() || props.contactId;
+      const effectiveNickname =
+        nickname().trim() ||
+        props.displayName ||
+        props.username ||
+        t('contact.no_name');
+
       const savedContact = await saveContact(
         props.contactId,
-        nextName,
+        effectiveNickname,
         props.conversationId,
       );
 
@@ -78,9 +81,9 @@ export default function SaveContactDialog(props) {
           <input
             ref={inputEl}
             type='text'
-            value={name()}
+            value={nickname()}
             autofocus
-            onInput={(event) => setName(event.currentTarget.value)}
+            onInput={(event) => setNickname(event.currentTarget.value)}
           />
         </label>
         {

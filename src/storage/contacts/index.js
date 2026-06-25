@@ -17,7 +17,7 @@ export {
 export {
   ContactIdSchema,
   ContactConversationIdSchema,
-  ContactNickNameSchema,
+  ContactNicknameSchema,
   ContactPatchSchema,
   ContactRecordSchema,
   ContactTimestampSchema,

@@ -5,8 +5,9 @@ import { z } from 'zod';
  * `contactId` is the remote user's UID and must match the storage key for the record.
  * @typedef {Object} ContactRecord
  * @property {string} contactId
- * @property {string} contactNickName
+ * @property {string} nickname
  * @property {string|null} [displayName]
+ * @property {string|null} [username]
  * @property {string|null} conversationId
  * @property {number} savedAt
  * @property {number} lastInteractionAt
@@ -15,7 +16,7 @@ import { z } from 'zod';
 /**
  * Partial update shape for persisted contacts.
  * @typedef {Object} ContactPatch
- * @property {string} [contactNickName]
+ * @property {string} [nickname]
  * @property {string|null} [conversationId]
  * @property {number} [savedAt]
  * @property {number} [lastInteractionAt]
@@ -32,7 +33,7 @@ export const ContactIdSchema = z.preprocess(
 );
 
 /** @type {import('zod').ZodType<string>} */
-export const ContactNickNameSchema = z.preprocess(
+export const ContactNicknameSchema = z.preprocess(
   (value) => (typeof value === 'string' ? value.trim() : ''),
   z.string(),
 );
@@ -52,16 +53,14 @@ export const ContactConversationIdSchema = z.preprocess((value) => {
 }, z.string().min(1).nullable());
 
 /** @type {import('zod').ZodType<number>} */
-export const ContactTimestampSchema = z
-  .number()
-  .finite()
-  .nonnegative();
+export const ContactTimestampSchema = z.number().finite().nonnegative();
 
 /** @type {import('zod').ZodType<ContactRecord>} */
 export const ContactRecordSchema = z.object({
   contactId: ContactIdSchema,
-  contactNickName: ContactNickNameSchema,
-  displayName: ContactNickNameSchema.nullable().optional(),
+  nickname: ContactNicknameSchema,
+  displayName: ContactNicknameSchema.nullable().optional(),
+  username: ContactNicknameSchema.nullable().optional(),
   conversationId: ContactConversationIdSchema,
   savedAt: ContactTimestampSchema,
   lastInteractionAt: ContactTimestampSchema,
@@ -70,7 +69,7 @@ export const ContactRecordSchema = z.object({
 /** @type {import('zod').ZodType<ContactPatch>} */
 export const ContactPatchSchema = z
   .object({
-    contactNickName: ContactNickNameSchema.optional(),
+    nickname: ContactNicknameSchema.optional(),
     conversationId: ContactConversationIdSchema.optional(),
     savedAt: ContactTimestampSchema.optional(),
     lastInteractionAt: ContactTimestampSchema.optional(),

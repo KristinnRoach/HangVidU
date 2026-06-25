@@ -78,7 +78,7 @@ export function getContactsIsHydrated(): boolean {
 
 export async function saveContact(
   contactId: string,
-  contactNickName: string,
+  nickname: string,
   conversationId: string | null | undefined = null,
 ) {
   try {
@@ -89,7 +89,7 @@ export async function saveContact(
 
     const contact = await repo.put({
       contactId,
-      contactNickName,
+      nickname,
       conversationId: conversationId ?? existing?.conversationId ?? null,
       savedAt: existing?.savedAt ?? now,
       lastInteractionAt: existing?.lastInteractionAt ?? now,
@@ -108,13 +108,13 @@ export async function saveContact(
 
 export async function updateContact(
   contactId: string,
-  contactNickName: string,
+  nickname: string,
 ) {
   try {
     const repo = getRepo();
     const existing = await repo.get(contactId);
     if (!existing) return null;
-    const updated = await repo.patch(contactId, { contactNickName });
+    const updated = await repo.patch(contactId, { nickname });
     if (!updated) return null;
     setState('byId', contactId, updated);
     return updated;

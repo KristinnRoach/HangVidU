@@ -36,7 +36,7 @@ export function useContacts() {
             act.latestSenderId !== null &&
             act.latestSenderId !== me &&
             act.latestSentAt > lastReadAt;
-          const name = c.contactNickName || c.displayName || null;
+          const name = c.nickname || c.displayName || c.username || null;
           return {
             id: contactId,
             name,
