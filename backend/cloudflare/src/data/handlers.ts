@@ -430,7 +430,7 @@ export async function handleDataRequest(
       await nudgeContactRefresh(env, callerId, fromId, now, 'accept');
       return json({ ok: true, conversationId }, 200, cors);
     }
-    const ok = await declineRequest(env.DB, callerId, fromId);
+    const ok = await declineRequest(env.DB, callerId, fromId, now);
     if (!ok) return json({ error: 'not_found' }, 404, cors);
     return json({ ok: true }, 200, cors);
   }

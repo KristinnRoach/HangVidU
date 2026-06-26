@@ -37,9 +37,10 @@ CREATE TABLE contacts (
 CREATE TABLE contact_requests (
   from_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   to_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  status     TEXT NOT NULL DEFAULT 'pending'
-               CHECK (status IN ('pending', 'accepted', 'declined')),
-  created_at INTEGER NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending', 'accepted', 'declined')),
+  created_at  INTEGER NOT NULL,
+  resolved_at INTEGER,  -- set when status leaves 'pending'; NULL while pending
   CHECK (from_id != to_id),
   PRIMARY KEY (from_id, to_id)
 );

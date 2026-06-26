@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",
     "migrate:local": "wrangler d1 migrations apply hangvidu-data --local --persist-to .wrangler/state",
-    "migrate:remote": "wrangler d1 migrations apply hangvidu-data --remote"
+    "migrate:remote": "wrangler d1 migrations apply hangvidu-data --remote",
+    "view:local": "find .wrangler/state/v3/d1/miniflare-D1DatabaseObject -maxdepth 1 -type f -name '*.sqlite' ! -name 'metadata.sqlite' -exec open {} \\;",
+    "view:remote": "open https://dash.cloudflare.com/a9d78083083154be83f36552c213a269/workers/d1/databases/cfac7c1c-cb3c-430d-b33d-6fd12aac48d0"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.16.11",

@@ -62,6 +62,24 @@ export async function claimUsername(user, username) {
 }
 
 /**
+ * Romanize to ASCII so accented/Icelandic names produce readable handles instead
+ * of underscore soup (Davíð → david, Hafrún → hafrun, þór → thor). NFD strips
+ * combining accents (á→a, ö→o); the explicit map covers letters with no Unicode
+ * decomposition (ð, þ, æ, ø). KEEP IN SYNC with the backfill script's
+ * slugifyHandle (backend/cloudflare/scripts/backfill-users-to-d1.mjs) — both must
+ * produce the same slug so login and backfill never diverge on the same account.
+ */
+function transliterate(source) {
+  return String(source ?? '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // combining diacritics from NFD
+    .replace(/[ðÐ]/g, 'd') // ð Ð
+    .replace(/[þÞ]/g, 'th') // þ Þ
+    .replace(/[æÆ]/g, 'ae') // æ Æ
+    .replace(/[øØ]/g, 'o'); // ø Ø
+}
+
+/**
  * Derive a default handle from the user's display name / email / uid, normalized
  * to the handle charset (lowercase, 3–20 of [a-z0-9_]). `suffix` is appended for
  * collision retries. Shared by the login auto-assign and the claim prompt.
@@ -70,7 +88,7 @@ export async function claimUsername(user, username) {
  */
 export function suggestHandle(user, suffix = '') {
   const source = user?.displayName || user?.email?.split('@')[0] || user?.uid || '';
-  const base = source
+  const base = transliterate(source)
     .toLowerCase()
     .replace(/[^a-z0-9_]+/g, '_')
     .replace(/^_+|_+$/g, '')

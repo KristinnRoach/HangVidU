@@ -33,6 +33,8 @@
     "check:deployment": "if curl -s -o /dev/null -w '%{http_code}' -X POST https://europe-west1-vidu-aae11.cloudfunctions.net/sendCallNotification | grep -E '400|401|405' -q; then echo '✅ Cloud Function is ready'; else echo '❌ Cloud Function not ready'; exit 1; fi",
     "check:prod-routing": "bash scripts/check-production-routing.sh",
     "check:prod-routing:strict": "STRICT_IPV4=1 bash scripts/check-production-routing.sh",
+    "d1:view:local": "pnpm -C backend/cloudflare view:local",
+    "d1:view:remote": "pnpm -C backend/cloudflare view:remote",
     "migrate:local": "pnpm -C backend/cloudflare run migrate:local",
     "migrate:clean:local": "rm -rf backend/cloudflare/.wrangler/state/v3/d1 && pnpm migrate:local",
     "migrate:rtdb-files:r2:dry": "node scripts/migrate-rtdb-files-to-r2.js",

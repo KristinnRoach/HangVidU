@@ -140,11 +140,30 @@ to see the new contact without a manual reload.
   work lands.)
 - **Auth principal welded to the handle.** Password login's Firebase principal is
   a synthetic email built from the username, so the handle is the credential
-  (immutable, and the free uniqueness authority). Decoupling needs a stable
-  principal + an account re-key migration (lockout risk) + a pre-auth public
-  resolve endpoint — a separate, higher-risk auth milestone. The D1 `username` is
+  (immutable, and the free uniqueness authority). The D1 `username` is
   already free to diverge from the login credential later with **no migration**;
   that's the enabling step this slice delivers. Out of scope here.
+
+  **Deferral verdict (2026-06-26): defer to the handle-editor / settings slice,
+  and ship the two together.** Deploying this slice first is harmless:
+  - It does **not** touch Firebase Auth, so password login is unchanged — no
+    lockout vector is introduced.
+  - It backfills password users' D1 `username = their existing handle` (login ==
+    handle initially); the decoupling only *adds* the ability to change a handle,
+    it never has to undo this.
+  - The only divergence vector — *editing* a handle — is not in this slice. The
+    auto-claim customizer is gated by `if (profile?.username) return`, so it never
+    fires for password users (they already have a handle). They cannot diverge yet.
+
+  **Target shape (lower-risk than the re-key implied above):** keep `uid` as the
+  stable id; **freeze the synthetic email at signup as an opaque login key** (stop
+  treating its local-part as the handle); `users.username` is the mutable public
+  @handle; add a **pre-auth resolve index** `handle → uid` (mirror `usersByEmail`,
+  token-less) so `signInWithUsernameOrEmail` resolves by lookup instead of
+  templating. Handle edits touch D1 + that index only — **never Firebase Auth**, so
+  no re-key and no lockout. Migration is one-shot (backfill the `handle → uid`
+  index). **Rule:** do not ship a handle editor for password users without this
+  resolve index, or a renamed user keeps logging in only by their old name.
 
 ## Server (Worker `backend/cloudflare/`)
 

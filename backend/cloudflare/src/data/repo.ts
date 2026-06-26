@@ -468,9 +468,11 @@ export async function createRequest(
         `INSERT INTO contact_requests (from_id, to_id, status, created_at)
          VALUES (?, ?, 'pending', ?)
          ON CONFLICT(from_id, to_id) DO UPDATE SET
-           status     = CASE WHEN contact_requests.status = 'accepted'
-                             THEN 'accepted' ELSE 'pending' END,
-           created_at = excluded.created_at`,
+           status      = CASE WHEN contact_requests.status = 'accepted'
+                              THEN 'accepted' ELSE 'pending' END,
+           resolved_at = CASE WHEN contact_requests.status = 'accepted'
+                              THEN contact_requests.resolved_at ELSE NULL END,
+           created_at  = excluded.created_at`,
       )
       .bind(fromId, toId, now),
   ]);
@@ -536,10 +538,10 @@ export async function acceptRequest(
   const conversationId = await connectUsers(db, toId, fromId, now);
   await db
     .prepare(
-      `UPDATE contact_requests SET status = 'accepted'
+      `UPDATE contact_requests SET status = 'accepted', resolved_at = ?
        WHERE from_id = ? AND to_id = ?`,
     )
-    .bind(fromId, toId)
+    .bind(now, fromId, toId)
     .run();
   return conversationId;
 }
@@ -548,13 +550,14 @@ export async function declineRequest(
   db: D1Database,
   toId: string,
   fromId: string,
+  now: number,
 ): Promise<boolean> {
   const res = await db
     .prepare(
-      `UPDATE contact_requests SET status = 'declined'
+      `UPDATE contact_requests SET status = 'declined', resolved_at = ?
        WHERE from_id = ? AND to_id = ? AND status = 'pending'`,
     )
-    .bind(fromId, toId)
+    .bind(now, fromId, toId)
     .run();
   return (res.meta.changes ?? 0) > 0;
 }
