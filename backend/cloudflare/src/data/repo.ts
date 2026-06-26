@@ -320,6 +320,27 @@ export interface NewContact {
   lastInteractionAt: number;
 }
 
+/**
+ * Validate a client-supplied conversation_id before it is persisted on a contact.
+ * Returns the id only if a conversation with that id exists AND its dm_key is the
+ * caller↔contact pair — otherwise null. Without this, a caller could write any
+ * conversation_id (incl. one they are not in) onto their contact and route their
+ * chat into another pair's conversation. Mirrors the backfill's membership guard.
+ */
+async function memberConversationId(
+  db: D1Database,
+  ownerId: string,
+  contactId: string,
+  candidate: string | null | undefined,
+): Promise<string | null> {
+  if (!candidate) return null;
+  const row = await db
+    .prepare(`SELECT 1 FROM conversations WHERE id = ? AND dm_key = ?`)
+    .bind(candidate, directDmKey(ownerId, contactId))
+    .first();
+  return row ? candidate : null;
+}
+
 /** Insert-or-replace one contact owned by `ownerId`. */
 export function contactUpsert(
   db: D1Database,
@@ -333,7 +354,7 @@ export function contactUpsert(
        VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(owner_id, contact_id) DO UPDATE SET
          nickname            = excluded.nickname,
-         conversation_id     = excluded.conversation_id,
+         conversation_id     = COALESCE(excluded.conversation_id, contacts.conversation_id),
          saved_at            = excluded.saved_at,
          last_interaction_at = excluded.last_interaction_at`,
     )
@@ -377,9 +398,15 @@ export async function putContact(
   c: NewContact,
   now: number,
 ): Promise<void> {
+  const conversationId = await memberConversationId(
+    db,
+    ownerId,
+    c.contactId,
+    c.conversationId,
+  );
   await db.batch([
     ensureUserStub(db, c.contactId, now),
-    contactUpsert(db, ownerId, c),
+    contactUpsert(db, ownerId, { ...c, conversationId }),
   ]);
 }
 
@@ -428,6 +455,12 @@ export async function patchContact(
     .bind(ownerId, contactId)
     .first();
   if (!exists) return null;
+  const conversationId = await memberConversationId(
+    db,
+    ownerId,
+    contactId,
+    patch.conversationId,
+  );
   await db
     .prepare(
       `UPDATE contacts SET
@@ -438,7 +471,7 @@ export async function patchContact(
     )
     .bind(
       patch.nickname ?? null,
-      patch.conversationId ?? null,
+      conversationId,
       patch.lastInteractionAt ?? null,
       ownerId,
       contactId,

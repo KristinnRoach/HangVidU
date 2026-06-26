@@ -307,19 +307,21 @@ Branch `users-D1`, PR #575. Local D1 fully backfilled + verified; **remote not
 touched yet**. Read the PR comments — these are the non-obvious bits from this
 session not already in the PR/doc:
 
-- **Two open CodeRabbit Major findings, both confirmed VALID — fix before merge:**
-  1. **`handlers.ts` POST `/users/me/contacts` (~line 341) stores
-     `body.conversationId` verbatim.** A caller can link a contact to a
-     conversation they are not a member of → opening it routes to another pair's
-     chat (privacy) and reintroduces the #568 404 path. This is the **live-API twin
-     of the `dm_key` membership guard** already added to the backfill script — fix
-     it the same way: verify `callerId`+`contactId` are both members of the
-     referenced conversation, or drop the field and resolve server-side by `dm_key`.
-  2. **`repo.ts` `createRequest`/`acceptRequest` only reason about the exact
-     `(from_id,to_id)` row.** Mutual requests leave the reverse row `pending` after
-     connect (stale incoming); re-requesting an existing contact isn't
-     short-circuited. Collapse the pair: short-circuit when already contacts,
-     consume the reverse pending row on accept.
+- **CodeRabbit Major #1 — FIXED this session.** Client-supplied `conversationId`
+  on contact writes is now validated in `repo.ts`: new `memberConversationId()`
+  accepts the id only if a conversation with that id exists AND its `dm_key` is the
+  caller↔contact pair, else null; applied in `putContact` + `patchContact`, and
+  `contactUpsert` now `COALESCE`s so an invalid/absent id can't wipe the canonical
+  one. Legit stamp-back (`contactsStore.ts:147`) still works. tsc + 71 tests green.
+  **Follow-up not done:** add a worker test asserting a foreign `conversationId` is
+  rejected (nulled) — `test/users-d1.test.ts` "contacts CRUD" is the spot.
+- **CodeRabbit Major #2 — STILL OPEN (deferred, needs a product call).**
+  `repo.ts` `createRequest`/`acceptRequest` only reason about the exact
+  `(from_id,to_id)` row. Mutual requests leave the reverse row `pending` after
+  connect (stale incoming); re-requesting an existing contact isn't
+  short-circuited. Collapse the pair: short-circuit when already contacts,
+  consume the reverse pending row on accept. Left open because the re-request
+  behavior (reject vs no-op) is a small API-contract decision.
 - **CodeRabbit auto-review is PAUSED** (branch under active dev) — latest commits
   are unreviewed. `@coderabbitai review` to re-trigger after the next push.
 - **Remote run order matters:** apply `0006` remote → **backfill remote (before
@@ -330,3 +332,7 @@ session not already in the PR/doc:
   no-op. Backfill is idempotent + non-destructive.
 - Backfill `transliterate` is a deliberate inline mirror of
   `shared/utils/transliteration.ts` (Node can't import the `.ts`) — keep in sync.
+- **Re-run local backfill:** `CURRENT_WIP/backfill-local.sh` (after
+  `pnpm migrate:clean:local`). It dumps `/users` + `/usersByEmail`, generates SQL,
+  applies to local. The generated `users.json` / `usersByEmail.json` /
+  `backfill-users.sql` are one-off artifacts — do not commit them.
