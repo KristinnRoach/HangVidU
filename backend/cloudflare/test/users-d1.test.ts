@@ -191,10 +191,16 @@ describe('profile + directory', () => {
 describe('contacts CRUD', () => {
   it('upserts, lists, patches, and removes a contact', async () => {
     const alice = await signToken('alice');
+    const resolved = await (
+      await req('POST', '/conversations/resolve-direct', alice, {
+        otherUserId: 'bob',
+      })
+    ).json<{ conversationId: string }>();
+
     await req('POST', '/users/me/contacts', alice, {
       contactId: 'bob',
       nickname: 'Bob',
-      conversationId: '11111111-1111-4111-8111-111111111111',
+      conversationId: resolved.conversationId,
     });
 
     let list = await (await req('GET', '/users/me/contacts', alice)).json();
@@ -202,7 +208,7 @@ describe('contacts CRUD', () => {
     expect(list.contacts[0]).toMatchObject({
       contactId: 'bob',
       nickname: 'Bob',
-      conversationId: '11111111-1111-4111-8111-111111111111',
+      conversationId: resolved.conversationId,
     });
 
     await req('PATCH', '/users/me/contacts/bob', alice, { nickname: 'Bobby' });
