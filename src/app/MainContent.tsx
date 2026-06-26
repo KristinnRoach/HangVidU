@@ -19,7 +19,6 @@ import PublicHomepage from '../components/app/PublicHomepage';
 // features/realtime, which the lobby needs.
 import CallLobby from '../features/call/components/CallLobby';
 import ContactsList from '../features/contacts/components/ContactsList';
-import HandleClaimPrompt from '../features/contacts/components/HandleClaimPrompt';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/messaging-next/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs';
@@ -149,8 +148,6 @@ export default function MainContent() {
           </Show>
 
           <Show when={showAuthenticatedUi()}>
-            <HandleClaimPrompt user={user() ?? null} />
-
             <div
               hidden={activeView() !== 'contacts'}
               class={mainStyles.activeViewContainer + ' ' + mainStyles.contacts}
