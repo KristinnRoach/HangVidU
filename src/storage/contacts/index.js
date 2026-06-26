@@ -49,5 +49,3 @@ export function createContactsD1Repository(options) {
 export function createContactsLocalStorageRepository(options) {
   return new ContactsRepository(new ContactsLocalAdapter(options));
 }
-
-export { getContactLabel } from './contact-label.js';

@@ -1,19 +1,28 @@
+import { t } from '@shared/i18n';
 import { createEffect, onMount } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
 import { getLoggedInUserId } from '../../auth/index.js';
-import { getContactsStore } from '../../stores/contactsStore.js';
+import { getContactsStore, type Contact } from '../../stores/contactsStore.js';
 import {
   conversationActivity,
   getLastReadAt,
   startConversationActivity,
 } from '../../stores/conversation-activity';
-import { getContactLabel } from '../../storage/contacts/index.js';
 
 type ContactRow = {
   id: string;
   label: string | null;
   hasUnread: boolean;
 };
+
+function getContactLabel(contact: Contact) {
+  return (
+    contact?.nickname ||
+    contact?.displayName ||
+    contact?.username ||
+    t('shared.unknown')
+  );
+}
 
 export function useContacts() {
   const contactsState = getContactsStore();
@@ -27,7 +36,7 @@ export function useContacts() {
       const activity = conversationActivity(); // reactive: participant uid -> activity
 
       const rows: ContactRow[] = Object.values(contactsState.byId)
-        .map((c: any) => {
+        .map((c: Contact) => {
           const contactId: string = c.contactId ?? '';
           const act = activity.get(contactId);
           const lastReadAt = act ? getLastReadAt(act.conversationId) : 0;

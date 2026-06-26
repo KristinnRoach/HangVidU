@@ -10,7 +10,19 @@ import {
   createContactsD1Repository,
 } from '../storage/contacts/index.js';
 
-type Contact = any;
+/* TODO: Once storage/contacts/* is converted to typescript: 
+         import schema from storage and avoid drift (if should stay identical) => export type Contact = z.infer<typeof ContactRecordSchema>;*/
+
+export type Contact = {
+  contactId: string;
+  nickname: string;
+  displayName: string;
+  username: string;
+  conversationId: string | null;
+  savedAt: number;
+  lastInteractionAt: number;
+};
+
 type ContactsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 const [state, setState] = createStore<{
@@ -106,10 +118,7 @@ export async function saveContact(
   }
 }
 
-export async function updateContact(
-  contactId: string,
-  nickname: string,
-) {
+export async function updateContact(contactId: string, nickname: string) {
   try {
     const repo = getRepo();
     const existing = await repo.get(contactId);
