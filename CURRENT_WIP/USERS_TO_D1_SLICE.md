@@ -300,3 +300,33 @@ outcome; the Google half (no handle, auto-claim on login) is unaffected.
 ## Out-of-scope reminders left on RTDB
 
 `presence/`, push subscription store, `firebase-room-signaling.js`. Do not touch.
+
+## Session handoff (2026-06-26)
+
+Branch `users-D1`, PR #575. Local D1 fully backfilled + verified; **remote not
+touched yet**. Read the PR comments — these are the non-obvious bits from this
+session not already in the PR/doc:
+
+- **Two open CodeRabbit Major findings, both confirmed VALID — fix before merge:**
+  1. **`handlers.ts` POST `/users/me/contacts` (~line 341) stores
+     `body.conversationId` verbatim.** A caller can link a contact to a
+     conversation they are not a member of → opening it routes to another pair's
+     chat (privacy) and reintroduces the #568 404 path. This is the **live-API twin
+     of the `dm_key` membership guard** already added to the backfill script — fix
+     it the same way: verify `callerId`+`contactId` are both members of the
+     referenced conversation, or drop the field and resolve server-side by `dm_key`.
+  2. **`repo.ts` `createRequest`/`acceptRequest` only reason about the exact
+     `(from_id,to_id)` row.** Mutual requests leave the reverse row `pending` after
+     connect (stale incoming); re-requesting an existing contact isn't
+     short-circuited. Collapse the pair: short-circuit when already contacts,
+     consume the reverse pending row on accept.
+- **CodeRabbit auto-review is PAUSED** (branch under active dev) — latest commits
+  are unreviewed. `@coderabbitai review` to re-trigger after the next push.
+- **Remote run order matters:** apply `0006` remote → **backfill remote (before
+  deploy)** → `deploy:cf` → `deploy:fb`. Deploying hosting before the backfill =
+  existing users see empty contacts until they re-login. Generate SQL with both
+  inputs: `--input users.json --emails usersByEmail.json`. On remote the
+  `conversation_id` links actually fill (prod `conversations` exist); locally they
+  no-op. Backfill is idempotent + non-destructive.
+- Backfill `transliterate` is a deliberate inline mirror of
+  `shared/utils/transliteration.ts` (Node can't import the `.ts`) — keep in sync.
