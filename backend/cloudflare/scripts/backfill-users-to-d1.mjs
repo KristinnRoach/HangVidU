@@ -65,15 +65,22 @@ function trimmed(value) {
 // romanize -> lowercase -> [a-z0-9_] -> strip edge underscores -> 3-20 chars ->
 // pad to 3 -> 'user' fallback. Backfill front-loads the handle the next login
 // would have assigned, so Google accounts are discoverable in prod without each
-// user logging in first. KEEP IN SYNC with suggestHandle/transliterate there.
+// user logging in first.
+//
+// transliterate is an inline copy of shared/utils/transliteration.ts
+// (convertToEnglishLetters) — this standalone Node script can't import the .ts
+// without a loader. KEEP IN SYNC with that file; it is the source of truth.
+const CHAR_MAP = {
+  þ: 'th', Þ: 'Th', ð: 'd', Ð: 'D', æ: 'ae', Æ: 'Ae', ö: 'o', Ö: 'O',
+  á: 'a', Á: 'A', é: 'e', É: 'E', í: 'i', Í: 'I', ó: 'o', Ó: 'O',
+  ú: 'u', Ú: 'U', ý: 'y', Ý: 'Y', ø: 'o', Ø: 'O', å: 'a', Å: 'A',
+  ä: 'a', Ä: 'A', ü: 'u', Ü: 'U', ß: 'ss', ç: 'c', Ç: 'C', ñ: 'n', Ñ: 'N',
+  à: 'a', À: 'A', è: 'e', È: 'E', ù: 'u', Ù: 'U', â: 'a', Â: 'A',
+  ê: 'e', Ê: 'E', î: 'i', Î: 'I', ô: 'o', Ô: 'O', û: 'u', Û: 'U',
+};
+const CHAR_RE = new RegExp(Object.keys(CHAR_MAP).join('|'), 'g');
 function transliterate(source) {
-  return String(source ?? '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // combining diacritics from NFD
-    .replace(/[ðÐ]/g, 'd') // ð Ð
-    .replace(/[þÞ]/g, 'th') // þ Þ
-    .replace(/[æÆ]/g, 'ae') // æ Æ
-    .replace(/[øØ]/g, 'o'); // ø Ø
+  return String(source ?? '').replace(CHAR_RE, (c) => CHAR_MAP[c]);
 }
 function slugifyHandle(source) {
   const base = transliterate(source)

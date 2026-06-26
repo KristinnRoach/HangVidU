@@ -44,15 +44,19 @@ invites). That removes both RTDB listeners. The only genuinely new capability is
 
 ## Discovery model (decided)
 
-**Search by unique username handle, exact match, gated by a visibility flag.**
-Proven minimal model (Signal/Telegram): no full-text search, no ranking, no
-enumeration surface.
+**Search by username handle, partial (substring) match, gated by a visibility
+flag.** Substring search over handles — a name alone rarely lets you guess
+someone's exact handle, so exact-only made real people undiscoverable. No
+full-text search, no ranking; results are capped to keep the surface small.
 
 - `users.username` — the unique searchable public handle.
 - `users.discoverable` — `BOOLEAN DEFAULT 1`. Opt-out = `0`; user is then
   unfindable by handle but still addable via referral link (existing path).
-- Lookup = `SELECT … FROM users WHERE username = ? AND discoverable = 1` (one
-  indexed read). Email-hash lookup stays as a second exact-match path.
+- Lookup = `SELECT … FROM users WHERE lower(username) LIKE '%q%' AND
+  discoverable = 1 ORDER BY username LIMIT 10`. The substring `LIKE` accepts a
+  small, capped enumeration surface in exchange for findability (and skips the
+  username index — fine at this scale). Query is transliterated + LIKE-escaped.
+  Email-hash lookup stays as a parallel exact path.
 
 **Handle flow:** accounts auto-claim a valid handle on login when missing one.
 A one-time prompt lets the user keep or customize it. Existing users become

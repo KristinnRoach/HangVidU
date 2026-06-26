@@ -1,6 +1,8 @@
 // D1 data access for the conversation-centric core. Pure SQL behind small typed
 // functions; the worker router (index.ts) is the only caller.
 
+import { convertToEnglishLetters } from '../../../../shared/utils/transliteration';
+
 export interface ConversationRow {
   id: string;
   kind: 'direct' | 'group';
@@ -248,39 +250,12 @@ export async function lookupByHandle(
 }
 
 function normalizeHandleSearch(value: string): string {
-  return replaceIcelandicLetters(value)
+  // Same romanization the client uses to generate handles, so search matches.
+  return convertToEnglishLetters(value)
     .trim()
     .replace(/^@+/, '')
     .toLowerCase()
     .replace(/\s+/g, '_');
-}
-
-function replaceIcelandicLetters(value: string): string {
-  return value.replace(/[ÁáÐðÉéÍíÓóÚúÝýÞþÆæÖö]/g, (letter) => {
-    const replacements: Record<string, string> = {
-      Á: 'A',
-      á: 'a',
-      Ð: 'D',
-      ð: 'd',
-      É: 'E',
-      é: 'e',
-      Í: 'I',
-      í: 'i',
-      Ó: 'O',
-      ó: 'o',
-      Ú: 'U',
-      ú: 'u',
-      Ý: 'Y',
-      ý: 'y',
-      Þ: 'Th',
-      þ: 'th',
-      Æ: 'Ae',
-      æ: 'ae',
-      Ö: 'O',
-      ö: 'o',
-    };
-    return replacements[letter] ?? letter;
-  });
 }
 
 function escapeLike(value: string): string {
