@@ -250,17 +250,25 @@ export async function handleDataRequest(
       if (username && (await isHandleTaken(env.DB, username, callerId))) {
         return json({ error: 'handle_taken' }, 409, cors);
       }
-      const updated = await updateProfile(
-        env.DB,
-        callerId,
-        {
-          displayName: str(body?.displayName),
-          photoUrl: str(body?.photoURL),
-          username,
-          emailHash: str(body?.emailHash),
-        },
-        now,
-      );
+      let updated: UserProfileRow | null;
+      try {
+        updated = await updateProfile(
+          env.DB,
+          callerId,
+          {
+            displayName: str(body?.displayName),
+            photoUrl: str(body?.photoURL),
+            username,
+            emailHash: str(body?.emailHash),
+          },
+          now,
+        );
+      } catch (error) {
+        if (isUniqueUsernameConstraint(error)) {
+          return json({ error: 'handle_taken' }, 409, cors);
+        }
+        throw error;
+      }
       return json(
         { profile: updated ? toWireProfile(updated) : null },
         200,
@@ -822,6 +830,19 @@ function numOrUndef(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+function isUniqueUsernameConstraint(error: unknown): boolean {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : '';
+  return (
+    message.includes('UNIQUE constraint failed') &&
+    message.includes('users.username')
+  );
 }
 
 function parseReactionKey(value: unknown): string | null | undefined {

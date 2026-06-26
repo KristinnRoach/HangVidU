@@ -2,9 +2,7 @@
 -- into the profile + directory of record, and add the contacts / contact-requests
 -- tables that replace the RTDB user-scoped nodes.
 --
--- Handle stays SOFT this pass: `username` gets a PLAIN index, NOT a UNIQUE
--- constraint. Uniqueness is a best-effort app-level check at claim time so the
--- identifier model can change after real usage with one follow-up migration.
+-- `username` is the unique public handle used by exact-match directory search.
 -- `email_hash` IS unique (it's a stable derived key, not a user-chosen handle).
 
 ALTER TABLE users ADD COLUMN photo_url     TEXT;
@@ -14,8 +12,10 @@ ALTER TABLE users ADD COLUMN discoverable  INTEGER NOT NULL DEFAULT 1
   CHECK (discoverable IN (0, 1));
 ALTER TABLE users ADD COLUMN registered_at INTEGER;
 
--- Plain (non-unique) index: directory lookup by handle, soft on purpose.
-CREATE INDEX idx_users_username ON users(username);
+-- Unique: username is the one-account-per-handle directory key.
+CREATE UNIQUE INDEX idx_users_username
+  ON users(username)
+  WHERE username IS NOT NULL;
 -- Unique: email-hash is the one-account-per-email key (replaces usersByEmail/{hash}).
 CREATE UNIQUE INDEX idx_users_email_hash ON users(email_hash);
 
