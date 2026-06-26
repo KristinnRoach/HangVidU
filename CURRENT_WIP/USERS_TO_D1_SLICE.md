@@ -226,14 +226,40 @@ changes.
 
 ## Backfill
 
-- [ ] Script `backend/cloudflare/scripts/backfill-users-to-d1.mjs`: read RTDB
-      (`users/{uid}/profile`, `users/{uid}/contacts`, `usersByEmail`,
-      `incomingInvites`/`acceptedInvites`) → idempotent
-      `INSERT … ON CONFLICT DO UPDATE` → `wrangler d1 execute --remote --file`.
-      Dry-run default, `--limit=N` to validate one row first (mirrors
-      `scripts/migrate-d1-attachment-keys.mjs`). Existing pending invites map to
-      `contact_requests(status='pending')`. `discoverable` defaults to 1;
-      handle-less users auto-claim a generated handle on next login.
+`backend/cloudflare/scripts/backfill-users-to-d1.mjs` exists and is the idiom
+(RTDB `/users` JSON dump → idempotent SQL → `wrangler d1 execute`). **Status: WIP,
+not final** — verified applying to **local** D1 only; not yet exercised end-to-end
+via `dev:local`, and the cohort/identity model is still under review (see open
+question below). Currently covers **users + contacts**:
+
+- **Users.** Rich rows for the Google cohort (`userName`, no handle →
+  `display_name` + `photo_url`, `username` NULL) and handle accounts
+  (`username` present → `display_name` + `username`). Deleted / identity-less
+  nodes get a bare FK stub only if a contact edge references them. `email_hash`
+  NULL (not in RTDB) and `username` for Google users are both filled on next
+  login (`registerInUserDirectory` / `ensureHandle`). `discoverable` → DB
+  default 1. Fill-only UPSERT (`COALESCE` existing first) so it never clobbers
+  data a live login already wrote.
+- **Contacts.** One row per `users/{owner}/contacts/{contactId}` edge;
+  `contact_id` is the map key. `conversation_id` is set **NULL on purpose** —
+  the canonical id resolves by `dm_key` on first chat open (the RTDB
+  `conversationId` is not the D1 id), and a standalone contacts backfill has no
+  `conversations` rows for the FK. Nickname empty → `''` (NOT NULL).
+
+Still TODO before this is "done": exercise via `dev:local`; decide
+preserve-vs-prune for contacts pointing at deleted/stub users; pending invites →
+`contact_requests(status='pending')`; a `--limit=N`/dry-run ergonomics pass if
+wanted for the remote run.
+
+**Open question (under research, may reshape the user/handle model).** Whether to
+internally **decouple the public `@handle` from the non-email username-login
+credential**. Today password login's Firebase principal is a synthetic email
+built from the username, so the login name *is* the handle. The D1 `username` is
+already free to diverge with no migration (see "Auth principal welded to the
+handle" parked follow-up), but the cleanest long-term shape — and how comparable
+apps separate login identity from a mutable public handle — is still being
+looked at. The handle-account half of the backfill may change depending on that
+outcome; the Google half (no handle, auto-claim on login) is unaffected.
 
 ## Cutover
 
