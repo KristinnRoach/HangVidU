@@ -217,7 +217,7 @@ Seam exists — repositories wrap a `*DBInterface` adapter via a factory in each
 `index.js`. Add D1 adapters parallel to the RTDB ones; no domain/repository
 changes.
 
-- [ ] **Contacts**: `src/storage/contacts/adapters/contacts-d1-adapter.js`
+- [x] **Contacts**: `src/storage/contacts/adapters/contacts-d1-adapter.js`
       implementing `ContactsDBInterface` (get/list/put/patch/remove) against the
       Worker. Add `createContactsD1Repository(options)` to
       `src/storage/contacts/index.js`. Switch `src/stores/contactsStore.ts` from
@@ -225,15 +225,15 @@ changes.
       contact shape; rename `getContactByRoomId` → `getContactByConversationId`;
       apply the UUID-shape guard when reading `conversation_id` (non-UUID →
       `null` → `resolveDirectConversationId` fallback).
-- [ ] **Profile**: `src/storage/user/user-profile-d1-adapter.js`; wire it in
+- [x] **Profile**: `src/storage/user/user-profile-d1-adapter.js`; wire it in
       `src/storage/user/index.js`. Add `discoverable` + `username` to
       `UserProfileSchema`.
-- [ ] **Discovery**: port `user-discovery.js` to call `/users/lookup`. Keep
+- [x] **Discovery**: port `user-discovery.js` to call `/users/lookup`. Keep
       `hashEmail` client-side. Add a `searchByHandle(handle)` call. New UI: a
       search box that resolves a handle → "send request" button.
-- [ ] **Handle claim**: one-time prompt component; suggest default from
+- [x] **Handle claim**: one-time prompt component; suggest default from
       name/email; PUT to `/users/me/profile`, handle 409 (taken) by re-suggesting.
-- [ ] **Contact requests**: replace `invitations.js` +
+- [x] **Contact requests**: replace `invitations.js` +
       `invite-listener.js` with calls to `/contact-requests*`; subscribe to the
       `UserMailbox` `contact_request` event instead of the two RTDB
       `onChildAdded` listeners.
@@ -259,11 +259,13 @@ changes.
 ## Cutover
 
 - [ ] Backfill prod D1.
-- [ ] Flip client factories to D1 repositories; mount handle-claim prompt.
+- [x] Flip client factories to D1 repositories; mount handle-claim prompt.
 - [ ] Smoke: search by handle → send request → accept on other account → both
       sides connected **with a live `conversation_id`** (open chat immediately);
-      edit profile; toggle discoverable (off = not found); add/edit/remove
-      contact; referral link → open → sign in → **auto-connected** (no gate).
+      referral link → open → sign in → **auto-connected** (no gate). Verified on
+      `dev:local` 2026-06-26.
+- [ ] Follow-up, not this PR: scaffold account settings UI for editing profile,
+      handle, and discoverability; add contact edit/delete UI.
 - [ ] Leave RTDB nodes in place (no destructive delete) until verified in prod;
       sweep later.
 

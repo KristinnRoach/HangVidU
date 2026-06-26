@@ -1,4 +1,4 @@
-Updated: March 27th (v1)
+Updated: 2026-06-26
 
 ## Guidelines
 
@@ -11,10 +11,23 @@ Updated: March 27th (v1)
 - Maintain a stable clearly and explicitly defined public API (AFTER this pattern gets standardized and used by more than one module (currently only in src/features/contacts/ ))
 - Ensure markdown files in this directory are not stale, misleading or ambigous.
 
-## Roadmap ... (not needed?)
+## Current state
+
+- Contacts now use the storage repository/adapter seam with a D1 adapter in the
+  app path.
+- Canonical contact fields are `contactId`, `nickname`, `displayName`,
+  `username`, `conversationId`, `savedAt`, and `lastInteractionAt`.
+- `nickname`, `displayName`, and `username` are normalized to strings at the
+  storage boundary; missing labels become `''`, not `null`.
+- UI display text should use `getContactLabel(contact)` instead of re-creating
+  fallback chains.
+- RTDB contacts remain only as legacy/deferred code until production cutover is
+  verified.
 
 ## Notes
 
+- Defer profile/account settings UI and contact edit/delete UI polish to a
+  follow-up PR.
 - Consider splitting `contact-transform.js` if it grows enough to justify clearer boundaries, or ambiguous responsibilites are noticable when using.
 - Revisit whether adapter selection helpers belong in storage entrypoints or one level above.
 - Revisit storage-specific migration concerns only when guest/auth persistence rules are ready.

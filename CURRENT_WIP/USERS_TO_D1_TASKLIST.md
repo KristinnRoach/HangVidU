@@ -11,12 +11,10 @@ locked decisions. Refine tasks only after the flow is verified working.
 - referral link → open → sign in → **auto-connected** (no gate)
 - handle-claim prompt for accounts with no handle
 
-**Status note:** server + several client pieces were built earlier this session
-against the *pre-lock* plan. The legacy contact/request `room_id` field and
-client contact `roomId` shape are now removed; server create-on-accept and
-`/referrals/connect` are now in place. Remaining **revise** work is mostly
-client live-refresh/name fallback. Items marked **build** are net-new; **verify**
-is wiring already in place.
+**Status note (2026-06-26):** request and referral flows were manually verified
+with `dev:local`. The slice is ready for PR review, but remote cutover still
+requires applying D1 migration `0006`, backfilling RTDB users/contacts into remote
+D1, then running `deploy:cf` and `deploy:fb`.
 
 **Review (2026-06-25):** codepath traced for both scenarios. Server verified
 correct (connectUsers + create-on-accept + both-party nudge + `/referrals/connect`).
@@ -25,7 +23,7 @@ correct (connectUsers + create-on-accept + both-party nudge + `/referrals/connec
 newly-connected contact never appeared on an already-loaded tab (both-party live
 update was broken on every path: accept, post-accept nudge, referral). Added
 `reloadContacts()` (guard-bypassing force re-list) and repointed `invite-listener`
-(accept + nudge-sync) and `referral-handler`. Only remaining item is step 9.
+(accept + nudge-sync) and `referral-handler`.
 
 ---
 
@@ -94,20 +92,24 @@ update was broken on every path: accept, post-accept nudge, referral). Added
   name/email; `PUT /users/me/profile`; on 409 re-suggest.
 
 ## 9. Smoke e2e on dev (two accounts)
-- Not run yet in this session. Current verification is targeted automated checks
-  only; do this before calling the slice manually complete.
-- Click through the full happy path above end to end.
+- [x] Clicked through request and referral flows on `dev:local`.
 - **Sequence note:** backfill is deferred, so no dev account has a handle until
   claimed. To test search, the *target* account must claim a handle first (step
   8), then the other account searches it.
-- Assert both sides see the other's **name** (not blank), can **open chat
+- Verified both sides see the other's **name** (not blank), can **open chat
   immediately** (live `conversation_id`), and that the **non-acting tab refreshes
   via the mailbox nudge** without a manual reload.
 
 ---
 
-## Deferred until manual e2e verified (do NOT expand)
-- Prod D1 backfill script + cutover.
+## Remaining before merge/deploy
+- Remote D1 migration `0006_users_profile.sql` has **not** been applied yet.
+- Prod D1 backfill from RTDB users/profiles/contacts/invites is still required.
+- Deploy order after merge/backfill: `deploy:cf`, then `deploy:fb`.
+
+## Deferred follow-ups (do NOT expand in this PR)
+- Profile/account settings UI for editing profile, handle, and discoverability.
+- Contact delete/edit UI polish.
 - Tests beyond the worker smoke check (edge cases, client unit tests).
 - Decline / request-cleanup / notification polish.
 - Edge cases (re-send after decline, self-request, stale nudges, etc.).

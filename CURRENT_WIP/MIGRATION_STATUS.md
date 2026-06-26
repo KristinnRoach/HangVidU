@@ -2,7 +2,7 @@
 
 > Migration from Firebase-coupled code to backend-agnostic interfaces with
 > Cloudflare implementations (D1 / R2 / Durable Objects), keyed by an opaque
-> `conversationId`. Last updated: 2026-06-21.
+> `conversationId`. Last updated: 2026-06-26.
 
 > Server side is now a **single Cloudflare Worker** at `backend/cloudflare/`
 > (deployed script name `hangvidu-data`), organized by capability folder
@@ -22,7 +22,7 @@
 | Live message push | Durable Object (`ConversationChannel`) | ✅ Live (PR #536) |
 | Per-user mailbox | Durable Object (`UserMailbox`, `realtime/mailbox-channel.ts`) | ✅ Live (PRs #553, #565) — carries call events and conversation activity; replaced the RTDB `users/{uid}/calls/*` mailbox |
 | Conversation metadata | Firebase RTDB | ⬜ To migrate (Slice C) — `messaging-runtime.ts` still uses `createRTDBConversationRepository` |
-| Contacts, user profiles | Firebase RTDB | ⬜ To migrate (later, lowest priority) |
+| Contacts, user profiles, directory, contact requests | D1 slice built on branch | 🟡 Ready for PR review — dev:local request/referral flows manually verified; remote D1 `0006_users_profile.sql` is not applied yet |
 | Auth | Firebase Auth | Stays for now (workers verify ID tokens via a swappable `auth.ts` seam) |
 
 The shared mechanism every consumer needs — "open conversation → resolve-or-create
@@ -121,7 +121,9 @@ bundle into the messages slice:
 
 ## End state
 
-RTDB remains only for contacts/user-directory (and auth stays Firebase Auth behind
-the worker `auth.ts` seam). Everything conversation-shaped — messages, files, calls,
-presence, sync — hangs off the opaque `conversationId` spine: D1 for relational
-persistence, R2 for blobs, one DO room per conversation for realtime.
+RTDB remains for global presence, push subscription storage, and deferred cleanup
+only. Auth stays Firebase Auth behind the worker `auth.ts` seam. Everything
+conversation-shaped — messages, files, calls, contact-created direct
+conversations, and contact requests — hangs off the opaque `conversationId`
+spine: D1 for relational persistence, R2 for blobs, one DO room per conversation
+for realtime.
