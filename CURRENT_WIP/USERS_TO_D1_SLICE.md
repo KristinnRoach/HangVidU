@@ -48,8 +48,7 @@ invites). That removes both RTDB listeners. The only genuinely new capability is
 Proven minimal model (Signal/Telegram): no full-text search, no ranking, no
 enumeration surface.
 
-- `users.username` — the searchable handle. **First pass: plain index, NOT a
-  UNIQUE constraint** (see "Keep it soft" below).
+- `users.username` — the unique searchable public handle.
 - `users.discoverable` — `BOOLEAN DEFAULT 1`. Opt-out = `0`; user is then
   unfindable by handle but still addable via referral link (existing path).
 - Lookup = `SELECT … FROM users WHERE username = ? AND discoverable = 1` (one
@@ -61,37 +60,23 @@ need to claim one. One-time prompt, default suggestion derived from name/email.
 Until claimed, a user is simply not handle-searchable — no hard block on the rest
 of the app.
 
-### Keep it soft (first pass)
+### Username uniqueness
 
-Don't cement the handle model before real e2e usage — we may find exact-unique
-handles aren't convenient (want display-name fallback, allow duplicates, change
-the identifier entirely). So the first pass deliberately stays loose, in a way
-that's *minimal code to tighten later*, not extra code now:
-
-- **No DB `UNIQUE` on `username`** — plain index only. Uniqueness is a
-  best-effort app-level check at claim time (query-then-insert; tolerate the
-  rare race). Adding the constraint later is one migration.
-- **Lookup endpoint stays identifier-agnostic** — `/users/lookup?handle=` returns
-  an array, not a single user. Costs nothing now; lets us add a second match path
-  (or return multiple matches) without changing the contract.
-- **Claim flow re-suggests but doesn't hard-reject** on a soft collision — UX
-  nudge, not a wall.
-
-Lock it in (DB `UNIQUE`, secured claim, single-result contract) once usage tells
-us the model is right.
+`users.username` is enforced unique in D1. The claim flow still returns
+`handle_taken` so the client can re-suggest. `/users/lookup?handle=` keeps
+returning an array to preserve the existing identifier-agnostic response shape.
 
 ## Decisions (settled)
 
 1. **`users` table: extend, don't add.** D1 already has
    `users(id, display_name, created_at)`, populated as a side-effect of
-   conversations (`repo.ts`). Add: `photo_url`, `username` (plain index, not
-   UNIQUE — see "Keep it soft"), `email_hash` (UNIQUE), `discoverable`
-   (DEFAULT 1), `registered_at`.
+   conversations (`repo.ts`). Add: `photo_url`, `username` (UNIQUE),
+   `email_hash` (UNIQUE), `discoverable` (DEFAULT 1), `registered_at`.
 2. **Directory = indexed lookup on `users`**, not a separate node. Keep the
    `emailHash` indirection (store hash, never raw email). Replaces RTDB
    `usersByEmail/{hash}`.
-3. **Handle uniqueness: soft for now** — app-level best-effort check at claim,
-   no DB constraint. Tighten to DB UNIQUE after real usage.
+3. **Handle uniqueness is DB-enforced** — `users.username` is the one-account-per-handle
+   directory key.
 4. **Requests = one `contact_requests` table**, replacing the dual
    `incomingInvites`/`acceptedInvites` mirror. Live nudge via `UserMailbox` DO.
 5. **Backfill, not lazy-migrate.** Tiny user base → one-shot script, no dual-read.
@@ -147,10 +132,6 @@ nudge to *both* users, not just the request recipient: the non-acting side
 (request sender after accept; referrer after auto-connect) needs a live refresh
 to see the new contact without a manual reload.
 
-### Handle stays soft (unchanged)
-
-Plain index, app-level uniqueness, lookup returns an array. See "Keep it soft."
-
 ### Parked follow-ups (do NOT build this slice)
 
 - **Forgeable referral link.** `?ref=<uid>` is a raw, guessable uid. Fix later
@@ -177,8 +158,7 @@ Plain index, app-level uniqueness, lookup returns an array. See "Keep it soft."
 
 - [x] **Migration `migrations/0006_users_profile.sql`**:
   - `ALTER users` add `photo_url`, `username`, `email_hash`, `discoverable`
-    (DEFAULT 1), `registered_at`; plain index on `username` (not UNIQUE —
-    first pass), UNIQUE index on `email_hash`.
+    (DEFAULT 1), `registered_at`; UNIQUE indexes on `username` and `email_hash`.
   - `contacts(owner_id, contact_id, nickname, conversation_id, saved_at,
     last_interaction_at, PRIMARY KEY(owner_id, contact_id))` — **no `room_id`**
     (roomId→conversationId collapse). `conversation_id` nullable (reversibility).
