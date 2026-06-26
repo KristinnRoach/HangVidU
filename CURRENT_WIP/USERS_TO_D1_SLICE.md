@@ -54,11 +54,9 @@ enumeration surface.
 - Lookup = `SELECT … FROM users WHERE username = ? AND discoverable = 1` (one
   indexed read). Email-hash lookup stays as a second exact-match path.
 
-**Handle-claim flow (the one real build cost):** today only password-auth users
-have a handle; Google-auth users have only a display name. To be searchable they
-need to claim one. One-time prompt, default suggestion derived from name/email.
-Until claimed, a user is simply not handle-searchable — no hard block on the rest
-of the app.
+**Handle flow:** accounts auto-claim a valid handle on login when missing one.
+A one-time prompt lets the user keep or customize it. Existing users become
+handle-searchable after that login/claim path runs.
 
 ### Username uniqueness
 
@@ -165,7 +163,7 @@ to see the new contact without a manual reload.
   - `contact_requests(from_id, to_id, status TEXT, created_at,
     PRIMARY KEY(from_id, to_id))` — `status` in `pending|accepted|declined`.
     **No `room_id`** — the conversation is created at accept, not carried on the
-    request. (0006 is dev-only / not yet deployed remotely, so revise it in place
+    request. (0006 has not been applied to remote D1 yet, so revise it in place
     rather than adding a migration; see tasklist.)
 - [x] **`data/repo.ts`**: add queries next to the conversation ones —
       contacts CRUD; profile get/upsert; `lookupByHandle`/`lookupByEmailHash`
@@ -211,8 +209,9 @@ changes.
 - [x] **Discovery**: port `user-discovery.js` to call `/users/lookup`. Keep
       `hashEmail` client-side. Add a `searchByHandle(handle)` call. New UI: a
       search box that resolves a handle → "send request" button.
-- [x] **Handle claim**: one-time prompt component; suggest default from
-      name/email; PUT to `/users/me/profile`, handle 409 (taken) by re-suggesting.
+- [x] **Handle customizer**: auto-claim a valid handle when missing; one-time
+      prompt lets the user keep or customize it. PUT to `/users/me/profile`,
+      handle 409 (taken) by re-suggesting.
 - [x] **Contact requests**: replace `invitations.js` +
       `invite-listener.js` with calls to `/contact-requests*`; subscribe to the
       `UserMailbox` `contact_request` event instead of the two RTDB
@@ -233,13 +232,13 @@ changes.
       `INSERT … ON CONFLICT DO UPDATE` → `wrangler d1 execute --remote --file`.
       Dry-run default, `--limit=N` to validate one row first (mirrors
       `scripts/migrate-d1-attachment-keys.mjs`). Existing pending invites map to
-      `contact_requests(status='pending')`. `discoverable` defaults to 1; no
-      handle is invented for handle-less users — they claim on next sign-in.
+      `contact_requests(status='pending')`. `discoverable` defaults to 1;
+      handle-less users auto-claim a generated handle on next login.
 
 ## Cutover
 
 - [ ] Backfill prod D1.
-- [x] Flip client factories to D1 repositories; mount handle-claim prompt.
+- [x] Flip client factories to D1 repositories; mount handle customizer.
 - [ ] Smoke: search by handle → send request → accept on other account → both
       sides connected **with a live `conversation_id`** (open chat immediately);
       referral link → open → sign in → **auto-connected** (no gate). Verified on

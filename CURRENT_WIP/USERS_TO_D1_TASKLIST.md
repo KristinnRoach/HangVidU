@@ -9,7 +9,7 @@ locked decisions. Refine tasks only after the flow is verified working.
 - search by handle → send request → accept on a 2nd account → both sides
   connected **with a live `conversation_id`** (chat opens immediately)
 - referral link → open → sign in → **auto-connected** (no gate)
-- handle-claim prompt for accounts with no handle
+- one-time handle customizer after auto-claim
 
 **Status note (2026-06-26):** request and referral flows were manually verified
 with `dev:local`. The slice is ready for PR review, but remote cutover still
@@ -30,12 +30,9 @@ update was broken on every path: accept, post-accept nudge, referral). Added
 ## 1. Schema — migration `0006`
 - [x] Drop `room_id` from `contacts` and `contact_requests`. Keep
   `conversation_id` on `contacts`, nullable.
-- 0006 is dev-only / not deployed remotely → edit in place. To re-apply: drop
-  ONLY the new (empty) `contacts` + `contact_requests` tables and the added
-  `users` columns (`photo_url`, `username`, `email_hash`, `discoverable`,
-  `registered_at`) + their indexes, then re-run `migrate:local`. **Never** reset
-  the shared `conversations` / `messages` / `users` rows that `pnpm dev:data`
-  uses (don't-wipe-dev-D1 rule).
+- 0006 has not been applied to remote D1 yet, so it can still be revised in
+  place for this PR. For local D1, use `pnpm migrate:clean:local` to reset the
+  local D1 files and reapply the current migrations.
 
 ## 2. Server — connect primitive + create-on-accept (revise)
 - [x] `repo.ts`: add `connectUsers(db, a, b, now)` = resolve-or-create conversation
@@ -87,15 +84,16 @@ update was broken on every path: accept, post-accept nudge, referral). Added
 - [x] `referral-handler.js`: on sign-in call `/referrals/connect`; retire the
   `syntheticInvite` hack. Keep the `?ref=<uid>` capture as-is for now.
 
-## 8. Handle-claim prompt (build)
-- [x] One-time prompt for accounts with no handle; default suggestion from
-  name/email; `PUT /users/me/profile`; on 409 re-suggest.
+## 8. Handle customizer (build)
+- [x] Accounts auto-claim a valid handle on login when missing one. A one-time
+  prompt lets the user keep or customize it; `PUT /users/me/profile`; on 409
+  re-suggest.
 
 ## 9. Smoke e2e on dev (two accounts)
 - [x] Clicked through request and referral flows on `dev:local`.
-- **Sequence note:** backfill is deferred, so no dev account has a handle until
-  claimed. To test search, the *target* account must claim a handle first (step
-  8), then the other account searches it.
+- **Sequence note:** backfill is deferred, so existing accounts get a handle on
+  next login if they do not already have one. To test search, the *target*
+  account must have completed that login/claim path first.
 - Verified both sides see the other's **name** (not blank), can **open chat
   immediately** (live `conversation_id`), and that the **non-acting tab refreshes
   via the mailbox nudge** without a manual reload.
