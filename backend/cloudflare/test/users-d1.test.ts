@@ -1,7 +1,7 @@
 import { env, SELF } from 'cloudflare:test';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-// Coverage for the Users → D1 slice: profile, soft-handle directory lookup,
+// Coverage for the Users → D1 slice: profile, handle directory lookup,
 // contacts CRUD, and the request/accept handshake (incl. the mailbox nudge).
 // Auth harness (mocked JWKS + locally signed RS256 tokens) mirrors
 // data-worker.test.ts.
@@ -167,7 +167,43 @@ describe('profile + directory', () => {
     expect(gone.users).toHaveLength(0);
   });
 
-  it('rejects a soft-colliding handle with 409', async () => {
+  it('looks up handles by partial, case-insensitive query', async () => {
+    const alice = await signToken('alice');
+    await req('PUT', '/users/me/profile', alice, {
+      displayName: 'Alice Smith',
+      username: 'alice_smith',
+    });
+
+    const bob = await signToken('bob');
+    const found = await (
+      await req('GET', '/users/lookup?handle=Alice%20Sm', bob)
+    ).json();
+    expect(found.users).toHaveLength(1);
+    expect(found.users[0]).toMatchObject({
+      uid: 'alice',
+      username: 'alice_smith',
+    });
+  });
+
+  it('matches Icelandic letters against romanized handles', async () => {
+    const david = await signToken('david');
+    await req('PUT', '/users/me/profile', david, {
+      displayName: 'David',
+      username: 'david',
+    });
+
+    const bob = await signToken('bob');
+    const found = await (
+      await req('GET', '/users/lookup?handle=Dav%C3%AD%C3%B0', bob)
+    ).json();
+    expect(found.users).toHaveLength(1);
+    expect(found.users[0]).toMatchObject({
+      uid: 'david',
+      username: 'david',
+    });
+  });
+
+  it('rejects a colliding handle with 409', async () => {
     const alice = await signToken('alice');
     const bob = await signToken('bob');
     await req('PUT', '/users/me/profile', alice, { username: 'shared' });

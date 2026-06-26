@@ -1,7 +1,7 @@
 // User discovery — find other users via the hangvidu-data Worker's directory
 // (the D1 `users` table). Replaces the RTDB `usersByEmail` index. Email is never
 // sent to the server: `hashEmail` stays client-side and only the hash is queried
-// (mirrors the old indirection). Handle search is the new exact-match path.
+// (mirrors the old indirection). Handle search is the username lookup path.
 //
 // Factory shape (not a module singleton) so storage stays boundary-clean: the
 // bearer token arrives via an injected `getToken`. The wiring + public function
@@ -90,8 +90,7 @@ export function createUserDiscovery({ baseUrl, getToken }) {
   }
 
   /**
-   * Exact handle search — the new "find someone on HangVidU without a referral"
-   * path. Returns directory entries (≤1 today under the soft-unique handle).
+   * Handle search — the new "find someone on HangVidU without a referral" path.
    * @param {string} handle
    * @returns {Promise<Object[]>}
    */

@@ -209,9 +209,8 @@ export async function setDiscoverable(
 }
 
 /**
- * Best-effort handle-collision check (soft, app-level — username has no DB
- * UNIQUE this pass). Returns true if a *different* user already claims it.
- * Tolerates the rare claim race; tighten to a DB UNIQUE after real usage.
+ * Best-effort preflight for the DB-enforced unique handle. Returns true if a
+ * *different* user already claims it; the UNIQUE index still catches races.
  */
 export async function isHandleTaken(
   db: D1Database,
@@ -227,18 +226,65 @@ export async function isHandleTaken(
 
 /**
  * Directory lookup. Returns an ARRAY (identifier-agnostic contract — keep it
- * even though the soft-unique handle yields at most one today) of discoverable
- * users matching the exact handle. Email-hash lookup is the parallel path.
+ * because partial handle search can yield multiple users) of discoverable
+ * users matching the handle query. Email-hash lookup is the parallel exact path.
  */
 export async function lookupByHandle(
   db: D1Database,
   username: string,
 ): Promise<UserProfileRow[]> {
+  const query = normalizeHandleSearch(username);
+  if (!query) return [];
   const { results } = await db
-    .prepare(`SELECT * FROM users WHERE username = ? AND discoverable = 1`)
-    .bind(username)
+    .prepare(
+      `SELECT * FROM users
+       WHERE lower(username) LIKE ? ESCAPE '\\' AND discoverable = 1
+       ORDER BY username
+       LIMIT 10`,
+    )
+    .bind(`%${escapeLike(query)}%`)
     .all<UserProfileRow>();
   return results ?? [];
+}
+
+function normalizeHandleSearch(value: string): string {
+  return replaceIcelandicLetters(value)
+    .trim()
+    .replace(/^@+/, '')
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+}
+
+function replaceIcelandicLetters(value: string): string {
+  return value.replace(/[ÁáÐðÉéÍíÓóÚúÝýÞþÆæÖö]/g, (letter) => {
+    const replacements: Record<string, string> = {
+      Á: 'A',
+      á: 'a',
+      Ð: 'D',
+      ð: 'd',
+      É: 'E',
+      é: 'e',
+      Í: 'I',
+      í: 'i',
+      Ó: 'O',
+      ó: 'o',
+      Ú: 'U',
+      ú: 'u',
+      Ý: 'Y',
+      ý: 'y',
+      Þ: 'Th',
+      þ: 'th',
+      Æ: 'Ae',
+      æ: 'ae',
+      Ö: 'O',
+      ö: 'o',
+    };
+    return replacements[letter] ?? letter;
+  });
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
 }
 
 export async function lookupByEmailHash(

@@ -152,7 +152,7 @@ export function findRegisteredUsersByEmails(emails) {
   return getDiscovery().findByEmails(emails);
 }
 
-/** Exact handle search — the new directory search box's data source. */
+/** Handle search — the new directory search box's data source. */
 export function searchUsersByHandle(handle) {
   return getDiscovery().searchByHandle(handle);
 }

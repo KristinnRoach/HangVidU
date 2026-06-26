@@ -233,8 +233,8 @@ export async function handleDataRequest(
   // --- users: profile + directory ----------------------------------------
 
   // GET/PUT /users/me/profile — the caller's own profile (display name, photo,
-  // handle). Handle uniqueness is a SOFT app-level check (no DB UNIQUE this
-  // pass): a soft collision returns 409 so the client can re-suggest.
+  // handle). Handle uniqueness is DB-enforced; the preflight check keeps the
+  // common collision path friendly, and the UNIQUE catch handles races.
   if (url.pathname === '/users/me/profile') {
     if (request.method === 'GET') {
       const profile = await getProfile(env.DB, callerId);
@@ -303,8 +303,8 @@ export async function handleDataRequest(
     return json({ ok: true }, 200, cors);
   }
 
-  // GET /users/lookup?handle= | ?emailHash= — exact directory lookup. Returns
-  // an ARRAY (identifier-agnostic contract; soft-unique handle yields ≤1 today).
+  // GET /users/lookup?handle= | ?emailHash= — directory lookup. Handle search is
+  // partial; email-hash search stays exact. Always returns an array.
   if (request.method === 'GET' && url.pathname === '/users/lookup') {
     const handle = str(url.searchParams.get('handle'));
     const emailHash = str(url.searchParams.get('emailHash'));
