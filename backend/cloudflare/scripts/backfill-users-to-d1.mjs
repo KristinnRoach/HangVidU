@@ -176,17 +176,20 @@ function build(users, backfillTs, emailByUid = new Map()) {
       stats.contacts += 1;
 
       // Preserve the existing canonical conversation link. Guarded so it is
-      // FK-safe and self-correcting: fills only when the D1 conversations row
-      // exists and the contact is still unlinked; otherwise stays NULL and
-      // resolves by dm_key on first chat open. UUID-shape guard rejects legacy
-      // roomIds. Locally (empty conversations) this is a no-op by design.
+      // FK-safe, membership-correct, and self-correcting: fills only when the D1
+      // conversations row exists AND its dm_key matches this exact pair AND the
+      // contact is still unlinked. A wrong/stale RTDB conversationId (pointing at
+      // another pair's conversation) fails the dm_key check, stays NULL, and
+      // resolves correctly by dm_key on first chat open. UUID-shape guard rejects
+      // legacy roomIds. Locally (empty conversations) this is a no-op by design.
       const convId = UUID_RE.test(r.conversationId) ? r.conversationId : null;
       if (convId) {
         stats.convLinks += 1;
+        const dmKey = [uid, contactId].sort().join(':'); // mirrors directDmKey() in repo.ts
         convRows.push(
           `UPDATE contacts SET conversation_id = ${s(convId)}\n` +
             `  WHERE owner_id = ${s(uid)} AND contact_id = ${s(contactId)} AND conversation_id IS NULL\n` +
-            `    AND EXISTS (SELECT 1 FROM conversations WHERE id = ${s(convId)});`,
+            `    AND EXISTS (SELECT 1 FROM conversations WHERE id = ${s(convId)} AND dm_key = ${s(dmKey)});`,
         );
       }
     }
@@ -251,7 +254,7 @@ function selftest() {
   assert(contactRows[0].includes('conversation_id'), 'shape');
   // only the UUID conversationId links; the legacy roomId edge does not.
   assert(stats.convLinks === 1 && convRows.length === 1, 'conv link count');
-  assert(convRows[0].includes(uuid) && convRows[0].includes('EXISTS (SELECT 1 FROM conversations'), 'conv guard');
+  assert(convRows[0].includes(uuid) && convRows[0].includes("dm_key = 'g:h'"), 'conv guard (membership)');
   assert(stats.emailHashes === 1 && emailRows[0].includes("'aGFzaA==-'") && emailRows[0].includes("id = 'g'"), 'email hash');
   console.error('selftest OK');
 }
