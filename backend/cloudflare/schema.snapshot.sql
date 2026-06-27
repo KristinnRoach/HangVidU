@@ -1,6 +1,7 @@
--- HangVidU — Cloudflare D1 schema (production database: hangvidu-data,
+-- HangVidU — Cloudflare D1 target schema after 0006_users_profile.sql
+-- (production database: hangvidu-data,
 -- id cfac7c1c-cb3c-430d-b33d-6fd12aac48d0). SQLite dialect, served by D1.
--- Schema only, no data. Generated from the live DB after applying migrations:
+-- Schema only, no data. Generated locally after applying migrations:
 --   0001_init.sql, 0002_messages.sql, 0003_drop_member_status.sql, 0004_drop_member_role.sql, 0005_message_reactions.sql, 0006_users_profile.sql
 -- D1 enforces FOREIGN KEY constraints. Engine pragmas/AUTOINCREMENT are D1-managed.
 

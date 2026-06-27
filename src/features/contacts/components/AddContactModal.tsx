@@ -376,10 +376,10 @@ export default function AddContactModal(props: Props) {
 
   async function handleSearchByHandle() {
     const handle = handleInput().trim().replace(/^@+/, '');
-    if (!handle) return;
-    setHandleSearching(true);
     setHandleResults([]);
     setStatus({ text: '', type: '' });
+    if (!handle) return;
+    setHandleSearching(true);
     try {
       await hydrateContacts().catch((error) => {
         console.warn('[AddContactModal] Contact hydration before search failed:', error);

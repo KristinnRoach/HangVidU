@@ -11,7 +11,10 @@ export function getInviteAppOrigin() {
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     return window.location.origin;
   }
-  return import.meta.env.VITE_APP_URL || window.location.origin;
+  return (
+    import.meta.env.VITE_APP_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : '')
+  );
 }
 
 /**

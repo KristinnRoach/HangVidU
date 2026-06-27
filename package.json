@@ -36,7 +36,7 @@
     "d1:view:local": "pnpm -C backend/cloudflare view:local",
     "d1:view:remote": "pnpm -C backend/cloudflare view:remote",
     "migrate:local": "pnpm -C backend/cloudflare run migrate:local",
-    "migrate:clean:local": "rm -rf backend/cloudflare/.wrangler/state/v3/d1 && pnpm migrate:local",
+    "migrate:clean:local": "node -e \"require('node:fs').rmSync('backend/cloudflare/.wrangler/state/v3/d1',{recursive:true,force:true})\" && pnpm migrate:local",
     "migrate:rtdb-files:r2:dry": "node scripts/migrate-rtdb-files-to-r2.js",
     "migrate:rtdb-files:r2": "node scripts/migrate-rtdb-files-to-r2.js --write",
     "migrate:rtdb-files:r2:rewrite-legacy:dry": "node scripts/migrate-rtdb-files-to-r2.js --rewrite-legacy-keys",

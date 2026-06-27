@@ -1,10 +1,11 @@
 /**
  * Converts non-English Latin characters (primarily Icelandic, but including
  * common European accents) into their standard English equivalents.
- * Does not perform any other text normalization or formatting.
+ * Does not perform any other text formatting.
  */
 export function convertToEnglishLetters(input: string): string {
   if (!input) return '';
+  const normalized = input.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
 
   // Mapping of non-English characters to their English equivalents
   const charMap: Record<string, string> = {
@@ -68,5 +69,5 @@ export function convertToEnglishLetters(input: string): string {
 
   const targetRegex = new RegExp(Object.keys(charMap).join('|'), 'g');
 
-  return input.replace(targetRegex, (matched) => charMap[matched]);
+  return normalized.replace(targetRegex, (matched) => charMap[matched]);
 }

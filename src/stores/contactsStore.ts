@@ -121,8 +121,6 @@ export async function saveContact(
 export async function updateContact(contactId: string, nickname: string) {
   try {
     const repo = getRepo();
-    const existing = await repo.get(contactId);
-    if (!existing) return null;
     const updated = await repo.patch(contactId, { nickname });
     if (!updated) return null;
     setState('byId', contactId, updated);

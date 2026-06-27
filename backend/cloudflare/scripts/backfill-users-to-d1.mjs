@@ -80,7 +80,10 @@ const CHAR_MAP = {
 };
 const CHAR_RE = new RegExp(Object.keys(CHAR_MAP).join('|'), 'g');
 function transliterate(source) {
-  return String(source ?? '').replace(CHAR_RE, (c) => CHAR_MAP[c]);
+  return String(source ?? '')
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(CHAR_RE, (c) => CHAR_MAP[c]);
 }
 function slugifyHandle(source) {
   const base = transliterate(source)

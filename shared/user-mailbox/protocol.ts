@@ -89,7 +89,11 @@ export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {
     );
   }
   if (e.t === 'contact_request') {
-    return typeof e.fromId === 'string' && typeof e.createdAt === 'number';
+    return (
+      typeof e.fromId === 'string' &&
+      typeof e.createdAt === 'number' &&
+      (e.fromName === undefined || typeof e.fromName === 'string')
+    );
   }
   return false;
 }

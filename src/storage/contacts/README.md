@@ -41,6 +41,8 @@ This keeps normal control flow simple while still making real failures visible.
 {
   contactId: string,
   nickname: string,
+  displayName: string,
+  username: string,
   conversationId: string | null,
   savedAt: number,
   lastInteractionAt: number

@@ -41,9 +41,13 @@ export default function HandleClaimPrompt(props: { user: UserLike | null }) {
         // ponytail: shown once for EVERY account, so a user who chose their
         // handle at signup also gets one prefilled confirm. Upgrade path if that
         // annoys: mark auto-assigned handles and only prompt those.
-        const profile = await getPublicUserProfile(uid);
-        setHandle(profile?.username || suggestHandle(props.user ?? {}));
-        setOpen(true);
+        try {
+          const profile = await getPublicUserProfile(uid);
+          setHandle(profile?.username || suggestHandle(props.user ?? {}));
+          setOpen(true);
+        } catch (error) {
+          console.warn('[HandleClaimPrompt] profile lookup failed:', error);
+        }
       },
     ),
   );
