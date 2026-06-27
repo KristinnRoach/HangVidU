@@ -68,6 +68,7 @@ export class ContactsRepository {
 
   /**
    * Persist one complete contact record.
+   * Adapters write only; the repository returns the normalized record.
    * @param {unknown} contact
    * @returns {Promise<import('./contact-schema.js').ContactRecord>}
    */

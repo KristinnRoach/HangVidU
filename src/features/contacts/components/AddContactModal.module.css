@@ -28,6 +28,33 @@
   gap: 0.5rem;
 }
 
+.handleResults {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.handleResult {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  font-size: 0.9rem;
+
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    margin-left: 0.35rem;
+    color: var(--text-secondary);
+  }
+}
+
 .sharePresetBtn {
   display: inline-flex;
   align-items: center;

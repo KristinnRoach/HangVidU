@@ -5,7 +5,7 @@ import {
   dispatchCommand,
   subscribe,
 } from '../../shared/events/index.js';
-import { getContactByRoomId } from '../../stores/contactsStore.js';
+import { getContactByConversationId } from '../../stores/contactsStore.js';
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
 const AUTH_CLOUD_FUNCTION_COMMAND = 'cmd:auth:cloud-function:call';
@@ -603,8 +603,8 @@ export class PushNotifications {
 
     if (!callerName) {
       try {
-        const contact = getContactByRoomId(roomId);
-        callerLabel = contact?.contactNickName || callerId || 'Unknown caller';
+        const contact = getContactByConversationId(roomId);
+        callerLabel = contact?.nickname || callerId || 'Unknown caller';
       } catch (error) {
         console.warn(
           '[Push Notifications] Failed to resolve caller name:',

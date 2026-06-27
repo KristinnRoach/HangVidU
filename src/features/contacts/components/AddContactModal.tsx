@@ -4,7 +4,14 @@
 // The import-contacts section is mounted as a vanilla JS island via ref.
 // TODO: Port import-contacts-component.js to SolidJS (ImportContactsSection.tsx)
 
-import { createSignal, createEffect, For, onMount, onCleanup } from 'solid-js';
+import {
+  createSignal,
+  createEffect,
+  For,
+  Show,
+  onMount,
+  onCleanup,
+} from 'solid-js';
 import Modal from '../../../components/dialogs/Modal.js';
 import styles from './AddContactModal.module.css';
 import { Share2, Copy } from 'lucide-solid';
@@ -25,6 +32,15 @@ import {
 } from '../../../auth/index.js';
 import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
 import { sendContactInvite } from '../invites/send-contact-invite.js';
+import {
+  getAllContacts,
+  hydrateContacts,
+} from '../../../stores/contactsStore.js';
+import {
+  listIncomingContactRequests,
+  listOutgoingContactRequests,
+  searchUsersByHandle,
+} from '../../../stores/userDirectoryStore.js';
 import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
 import { filterImportableContacts } from '../import/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
@@ -35,9 +51,17 @@ import {
   showSuccessToast,
 } from '../../../components/base-legacy/toast.js';
 
-const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
-
 type StatusState = { text: string; type: string };
+type DirectoryUser = {
+  uid: string;
+  displayName: string;
+  username?: string | null;
+};
+type HandleInviteStatus =
+  | 'already_saved'
+  | 'already_invited'
+  | 'incoming_pending'
+  | 'sent';
 
 type Props = {
   open: boolean;
@@ -48,9 +72,9 @@ function openEmailComposeFallback(
   contacts: { email: string }[],
   userId: string,
 ) {
-  const referralLink = buildReferralLink(userId, APP_ORIGIN);
+  const referralLink = buildReferralLink(userId);
   const currentUser = getUser();
-  const senderName = currentUser?.userName || 'A friend';
+  const senderName = currentUser?.displayName || 'A friend';
   const subject = encodeURIComponent(t_('contact.invite.subject'));
   const body = encodeURIComponent(
     t_('contact.invite.body', { name: senderName, link: referralLink }),
@@ -78,6 +102,15 @@ export default function AddContactModal(props: Props) {
 
   const [emailInput, setEmailInput] = createSignal('');
   const [emailSending, setEmailSending] = createSignal(false);
+  const [handleInput, setHandleInput] = createSignal('');
+  const [handleSearching, setHandleSearching] = createSignal(false);
+  const [handleResults, setHandleResults] = createSignal<DirectoryUser[]>([]);
+  const [handleInviteStatuses, setHandleInviteStatuses] = createSignal<
+    Record<string, HandleInviteStatus>
+  >({});
+  const [requestingUserId, setRequestingUserId] = createSignal<string | null>(
+    null,
+  );
   const [status, setStatus] = createSignal<StatusState>({ text: '', type: '' });
   const [sharePending, setSharePending] = createSignal(false);
 
@@ -97,7 +130,7 @@ export default function AddContactModal(props: Props) {
         );
       },
       onInviteContact: async (contact: any) => {
-        return sendContactInvite(contact.user.uid, contact.user.userName);
+        return sendContactInvite(contact.user.uid, contact.user.displayName);
       },
       onInviteSelected: async (contacts: any[]) => {
         let count = 0;
@@ -105,7 +138,7 @@ export default function AddContactModal(props: Props) {
         for (const contact of contacts) {
           const result = await sendContactInvite(
             contact.user.uid,
-            contact.user.userName,
+            contact.user.displayName,
           );
           if (result.status === 'sent') {
             count++;
@@ -137,12 +170,9 @@ export default function AddContactModal(props: Props) {
       onEmailSelected: async (contacts: any[]) => {
         try {
           const accessToken = await requestGmailSendAccess();
-          const referralLink = buildReferralLink(
-            getLoggedInUserId(),
-            APP_ORIGIN,
-          );
+          const referralLink = buildReferralLink(getLoggedInUserId());
           const currentUser = getUser();
-          const senderName = currentUser?.userName || 'A friend';
+          const senderName = currentUser?.displayName || 'A friend';
           const subject = t('contact.invite.subject');
           const body = t('contact.invite.body', {
             name: senderName,
@@ -191,6 +221,10 @@ export default function AddContactModal(props: Props) {
     if (!props.open) {
       importComponent?.reset?.();
       allContacts = [];
+      setHandleInput('');
+      setHandleResults([]);
+      setHandleInviteStatuses({});
+      setStatus({ text: '', type: '' });
     }
   });
 
@@ -217,7 +251,7 @@ export default function AddContactModal(props: Props) {
     setStatus({ text: t('contact.invite.share.opening'), type: 'loading' });
     const currentUser = getUser();
     const result = await shareInvite({
-      senderName: currentUser?.userName,
+      senderName: currentUser?.displayName,
       userId: getLoggedInUserId(),
     });
     const statusConfig: Record<
@@ -252,7 +286,7 @@ export default function AddContactModal(props: Props) {
     const currentUser = getUser();
     const result = await shareInviteViaProvider({
       providerId: providerId as 'whatsapp' | 'telegram',
-      senderName: currentUser?.userName,
+      senderName: currentUser?.displayName,
       userId: getLoggedInUserId(),
     });
     if (result.status === 'opened') {
@@ -345,6 +379,92 @@ export default function AddContactModal(props: Props) {
     setEmailSending(false);
   }
 
+  async function handleSearchByHandle() {
+    const handle = handleInput().trim().replace(/^@+/, '');
+    setHandleResults([]);
+    setStatus({ text: '', type: '' });
+    if (!handle) return;
+    setHandleSearching(true);
+    try {
+      await hydrateContacts().catch((error) => {
+        console.warn('[AddContactModal] Contact hydration before search failed:', error);
+      });
+      const [users, outgoingRequests, incomingRequests] = await Promise.all([
+        searchUsersByHandle(handle),
+        listOutgoingContactRequests().catch((error) => {
+          console.warn('[AddContactModal] Outgoing contact requests lookup failed:', error);
+          return [];
+        }),
+        listIncomingContactRequests().catch((error) => {
+          console.warn('[AddContactModal] Incoming contact requests lookup failed:', error);
+          return [];
+        }),
+      ]);
+      const contacts = getAllContacts();
+      const outgoingIds = new Set(outgoingRequests.map((request) => request.toId));
+      const incomingIds = new Set(incomingRequests.map((request) => request.fromId));
+      setHandleResults(users as DirectoryUser[]);
+      setHandleInviteStatuses(
+        Object.fromEntries(
+          users.flatMap((user: DirectoryUser) => {
+            if (contacts?.[user.uid]) return [[user.uid, 'already_saved']];
+            if (incomingIds.has(user.uid)) return [[user.uid, 'incoming_pending']];
+            if (outgoingIds.has(user.uid)) return [[user.uid, 'already_invited']];
+            return [];
+          }),
+        ),
+      );
+      if (users.length === 0) {
+        setStatus({ text: t('contact.add.handle_not_found'), type: 'info' });
+      }
+    } catch (error) {
+      console.error('[AddContactModal] Handle search error:', error);
+      setStatus({ text: t('contact.add.lookup_error'), type: 'error' });
+    } finally {
+      setHandleSearching(false);
+    }
+  }
+
+  async function handleSendRequest(user: DirectoryUser) {
+    if (!user?.uid || requestingUserId()) return;
+    if (user.uid === getLoggedInUserId()) {
+      setStatus({ text: t('contact.add.self_error'), type: 'error' });
+      return;
+    }
+    setRequestingUserId(user.uid);
+    setStatus({ text: '', type: '' });
+    try {
+      if (handleInviteStatuses()[user.uid] === 'already_saved') {
+        setStatus({ text: t('contact.add.already_saved'), type: 'info' });
+        return;
+      }
+      const result = await sendContactInvite(user.uid, user.displayName);
+      if (result.status === 'already_invited') {
+        setHandleInviteStatuses((statuses) => ({
+          ...statuses,
+          [user.uid]: 'already_invited',
+        }));
+        setStatus({ text: t('contact.add.already_invited'), type: 'info' });
+        return;
+      }
+      if (result.status !== 'sent') {
+        setStatus({ text: t('contact.add.email_error'), type: 'error' });
+        return;
+      }
+      setHandleInviteStatuses((statuses) => ({
+        ...statuses,
+        [user.uid]: 'sent',
+      }));
+      showSuccessToast(t('contact.invite.sent_one'));
+      setStatus({ text: `✓ ${t('contact.invite.sent_one')}`, type: 'success' });
+    } catch (error) {
+      console.error('[AddContactModal] Contact request error:', error);
+      setStatus({ text: t('contact.add.email_error'), type: 'error' });
+    } finally {
+      setRequestingUserId(null);
+    }
+  }
+
   // --- Google contacts import ---
 
   async function handleGoogleContactsImport() {
@@ -406,6 +526,74 @@ export default function AddContactModal(props: Props) {
       title={t('contact.add.title')}
     >
       <div class={styles.directActions}>
+        <div class={styles.manualEmailRow}>
+          <input
+            type='text'
+            value={handleInput()}
+            onInput={(e) => setHandleInput(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !handleSearching())
+                handleSearchByHandle();
+            }}
+            placeholder={t('contact.add.enter_handle')}
+            aria-label={t('contact.add.enter_handle')}
+            autocomplete='off'
+            autocapitalize='none'
+          />
+          <button
+            type='button'
+            class={styles.sharePresetBtn}
+            disabled={handleSearching()}
+            onClick={handleSearchByHandle}
+          >
+            {handleSearching() ? t('shared.searching') : t('shared.search')}
+          </button>
+        </div>
+
+        <Show when={handleResults().length > 0}>
+          <div class={styles.handleResults}>
+            <For each={handleResults()}>
+              {(user) => {
+                const inviteStatus = () => handleInviteStatuses()[user.uid];
+                const inviteLabel = () => {
+                  if (requestingUserId() === user.uid)
+                    return t('shared.sending');
+                  if (inviteStatus() === 'already_saved')
+                    return t('contact.add.already_saved');
+                  if (inviteStatus() === 'already_invited')
+                    return t('contact.add.already_invited');
+                  if (inviteStatus() === 'incoming_pending')
+                    return t('contact.add.invited_you');
+                  if (inviteStatus() === 'sent')
+                    return `✓ ${t('contact.invite.sent_one')}`;
+                  return t('contact.invite');
+                };
+                return (
+                  <div class={styles.handleResult}>
+                    <span>
+                      {user.displayName}
+                      <Show when={user.username}>
+                        <small>@{user.username}</small>
+                      </Show>
+                    </span>
+                    <button
+                      type='button'
+                      class={styles.sharePresetBtn}
+                      disabled={
+                        requestingUserId() === user.uid ||
+                        Boolean(inviteStatus())
+                      }
+                      onClick={() => handleSendRequest(user)}
+                    >
+                      {inviteLabel()}
+                    </button>
+                  </div>
+                );
+              }}
+            </For>
+          </div>
+        </Show>
+
         <div class={styles.manualEmailRow}>
           <input
             type='email'

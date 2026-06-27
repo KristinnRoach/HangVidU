@@ -14,15 +14,19 @@ Provide a minimal, explicit storage boundary for the contacts domain:
 - no sorting or lookup helpers
 - no hidden auth or backend selection inside the store contract
 
-### Public API
+### Repository API
 
-The public store API is intentionally small:
+The public repository API is intentionally small:
 
 - `get(contactId) -> Promise<ContactRecord | null>`
 - `list() -> Promise<ContactRecord[]>`
 - `put(contact) -> Promise<ContactRecord>`
 - `patch(contactId, patch) -> Promise<ContactRecord | null>`
 - `remove(contactId) -> Promise<boolean>`
+
+Adapters are lower-level IO shims. They return records only for reads and
+patches; `put()` and `remove()` return `void`, and the repository owns the
+normalized return value / missing-record policy above.
 
 ### Error Policy
 
@@ -40,8 +44,10 @@ This keeps normal control flow simple while still making real failures visible.
 ```js
 {
   contactId: string,
-  contactNickName: string,
-  roomId: string | null,
+  nickname: string,
+  displayName: string,
+  username: string,
+  conversationId: string | null,
   savedAt: number,
   lastInteractionAt: number
 }
@@ -64,7 +70,7 @@ separate service-layer schema, not a second copy of the storage record schema.
 - auth readiness policy
 - backend selection policy
 - result envelopes
-- query helpers like "get by room id"
+- query helpers like "get by conversation id"
 - sorting helpers
 - migration between guest/local and authenticated/RTDB storage
 

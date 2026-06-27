@@ -12,7 +12,7 @@ import { LogOut } from 'lucide-solid';
 
 import styles from './AuthControls.module.css';
 
-function smartTruncateName(fullName, maxLength = 20) {
+function smartTruncateName(fullName, maxLength = 10) {
   if (!fullName || fullName.length <= maxLength) {
     return fullName;
   }
@@ -39,7 +39,11 @@ export default function AuthControls() {
 
   // TODO: Decide whether to show name, for now just showing avatar
   const displayName = createMemo(() => {
-    const name = user()?.userName || user()?.email || t('auth.guest_user');
+    const name =
+      user()?.displayName ||
+      user()?.username ||
+      user()?.email ||
+      t('auth.guest_user');
     return smartTruncateName(name);
   });
 
@@ -98,7 +102,7 @@ export default function AuthControls() {
           </Show>
 
           {/* TODO: Decide whether to keep name */}
-          {/* <span class={styles.userName}>{displayName()}</span> */}
+          <span class={styles.displayName}>{displayName()}</span>
         </div>
         <button
           id='goog-logout-btn'

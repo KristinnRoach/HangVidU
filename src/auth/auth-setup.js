@@ -17,7 +17,10 @@ import { setupAuthCommandHandlers } from './auth-command-handlers.js';
 import { getLocale, onLocaleChange } from '../shared/i18n/index.js';
 import { logAuthError } from './shared/auth-error-logging.js';
 import { getLoggedInUserToken } from './shared/auth-token.js';
-import { isSyntheticEmail } from './shared/synthetic-email.js';
+import {
+  extractUsernameFromSyntheticEmail,
+  isSyntheticEmail,
+} from './shared/synthetic-email.js';
 
 // Sync Firebase Auth popup language with app locale
 auth.languageCode = getLocale();
@@ -144,8 +147,15 @@ function normalizeUser(firebaseUser) {
   const email = isSyntheticEmail(rawEmail) ? null : rawEmail;
   return {
     uid: firebaseUser.uid,
-    userName: firebaseUser.displayName,
+    displayName: firebaseUser.displayName,
     email,
     photoURL: firebaseUser.photoURL,
+    // Login handle for username (password) accounts — recovered from the
+    // synthetic email principal. null for Google accounts (they have no handle
+    // until they claim one). Carried so the on-login profile save writes it to
+    // D1 (`users.username`), making these accounts handle-searchable without a
+    // separate claim step. null is COALESCEd server-side, so Google users keep
+    // any previously-claimed handle.
+    username: extractUsernameFromSyntheticEmail(rawEmail),
   };
 }

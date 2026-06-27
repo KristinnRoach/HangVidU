@@ -33,16 +33,14 @@ import { sendContactInvite } from '../invites/send-contact-invite.js';
 
 // ! Note - vanilla js icons currently missing
 
-const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
-
 /**
  * Open Gmail compose (preferred) or mailto: as fallback for emailing invite links.
  */
 function openEmailComposeFallback(contacts) {
-  const referralLink = buildReferralLink(getLoggedInUserId(), APP_ORIGIN);
+  const referralLink = buildReferralLink(getLoggedInUserId());
 
   const currentUser = getUser();
-  const senderName = currentUser?.userName || 'A friend';
+  const senderName = currentUser?.displayName || 'A friend';
 
   const subject = encodeURIComponent(t('contact.invite.subject'));
   const body = encodeURIComponent(
@@ -159,7 +157,7 @@ export async function showAddContactModal() {
         );
       },
       onInviteContact: async (contact) => {
-        return await sendContactInvite(contact.user.uid, contact.user.userName);
+        return await sendContactInvite(contact.user.uid, contact.user.displayName);
       },
       onInviteSelected: async (contacts) => {
         let count = 0;
@@ -168,7 +166,7 @@ export async function showAddContactModal() {
         for (const contact of contacts) {
           const result = await sendContactInvite(
             contact.user.uid,
-            contact.user.userName,
+            contact.user.displayName,
           );
 
           if (result.status === 'sent') {
@@ -211,12 +209,9 @@ export async function showAddContactModal() {
       onEmailSelected: async (contacts) => {
         try {
           const accessToken = await requestGmailSendAccess();
-          const referralLink = buildReferralLink(
-            getLoggedInUserId(),
-            APP_ORIGIN,
-          );
+          const referralLink = buildReferralLink(getLoggedInUserId());
           const currentUser = getUser();
-          const senderName = currentUser?.userName || 'A friend';
+          const senderName = currentUser?.displayName || 'A friend';
           const subject = t('contact.invite.subject');
           const body = t('contact.invite.body', {
             name: senderName,
@@ -360,7 +355,7 @@ export async function showAddContactModal() {
       const currentUser = getUser();
 
       const result = await shareInvite({
-        senderName: currentUser?.userName,
+        senderName: currentUser?.displayName,
         userId: getLoggedInUserId(),
       });
 
@@ -403,7 +398,7 @@ export async function showAddContactModal() {
       const currentUser = getUser();
       const result = await shareInviteViaProvider({
         providerId,
-        senderName: currentUser?.userName,
+        senderName: currentUser?.displayName,
         userId: getLoggedInUserId(),
       });
 

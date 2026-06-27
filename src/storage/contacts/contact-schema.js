@@ -4,19 +4,20 @@ import { z } from 'zod';
  * Canonical contact record shape for the storage layer.
  * `contactId` is the remote user's UID and must match the storage key for the record.
  * @typedef {Object} ContactRecord
- * @property {string} contactId
- * @property {string} contactNickName
- * @property {string|null} roomId
- * @property {string|null} conversationId
+ * @property {string} contactId // TODO: rename to userId for consistency?
+ * @property {string} nickname
+ * @property {string} displayName
+ * @property {string} username
+ * @property {string|null} conversationId // TODO: required?
  * @property {number} savedAt
  * @property {number} lastInteractionAt
  */
 
 /**
+ * TODO: revisit
  * Partial update shape for persisted contacts.
  * @typedef {Object} ContactPatch
- * @property {string} [contactNickName]
- * @property {string|null} [roomId]
+ * @property {string} [nickname]
  * @property {string|null} [conversationId]
  * @property {number} [savedAt]
  * @property {number} [lastInteractionAt]
@@ -33,13 +34,13 @@ export const ContactIdSchema = z.preprocess(
 );
 
 /** @type {import('zod').ZodType<string>} */
-export const ContactNickNameSchema = z.preprocess(
+export const ContactNicknameSchema = z.preprocess(
   (value) => (typeof value === 'string' ? value.trim() : ''),
   z.string(),
 );
 
 /** @type {import('zod').ZodType<string|null>} */
-export const ContactRoomIdSchema = z.preprocess((value) => {
+export const ContactConversationIdSchema = z.preprocess((value) => {
   if (value == null) {
     return null;
   }
@@ -52,20 +53,22 @@ export const ContactRoomIdSchema = z.preprocess((value) => {
   return normalized || null;
 }, z.string().min(1).nullable());
 
-/** @type {import('zod').ZodType<string|null>} */
-export const ContactConversationIdSchema = ContactRoomIdSchema;
-
 /** @type {import('zod').ZodType<number>} */
-export const ContactTimestampSchema = z
-  .number()
-  .finite()
-  .nonnegative();
+export const ContactTimestampSchema = z.number().finite().nonnegative();
+
+// TODO: Consider removing if redundant to keep both nickname and label. Keeping until users deployed on D1 and stable.
+/** @type {import('zod').ZodType<string>} */
+export const ContactLabelSchema = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim() : ''),
+  z.string(),
+);
 
 /** @type {import('zod').ZodType<ContactRecord>} */
 export const ContactRecordSchema = z.object({
   contactId: ContactIdSchema,
-  contactNickName: ContactNickNameSchema,
-  roomId: ContactRoomIdSchema,
+  nickname: ContactLabelSchema,
+  displayName: ContactLabelSchema,
+  username: ContactLabelSchema,
   conversationId: ContactConversationIdSchema,
   savedAt: ContactTimestampSchema,
   lastInteractionAt: ContactTimestampSchema,
@@ -74,8 +77,7 @@ export const ContactRecordSchema = z.object({
 /** @type {import('zod').ZodType<ContactPatch>} */
 export const ContactPatchSchema = z
   .object({
-    contactNickName: ContactNickNameSchema.optional(),
-    roomId: ContactRoomIdSchema.optional(),
+    nickname: ContactNicknameSchema.optional(),
     conversationId: ContactConversationIdSchema.optional(),
     savedAt: ContactTimestampSchema.optional(),
     lastInteractionAt: ContactTimestampSchema.optional(),

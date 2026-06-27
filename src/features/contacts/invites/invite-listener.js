@@ -1,106 +1,114 @@
-import {
-  listenForInvites,
-  listenForAcceptedInvites,
-  acceptInvite,
-  declineInvite,
-} from './invitations.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '../../../auth/index.js';
+import { showErrorToast, showSuccessToast } from '../../../components/base-legacy/toast.js';
+import { getHangViduApiBaseUrl } from '../../../infra/hangvidu-api-url.js';
+import { subscribeToUserMailbox } from '../../../realtime/user-mailbox';
 import { dispatchCommand } from '../../../shared/events/index.js';
+import { reloadContacts } from '../../../stores/contactsStore.js';
 import {
-  showSuccessToast,
-  showErrorToast,
-} from '../../../components/base-legacy/toast.js';
+  acceptContactRequest,
+  declineContactRequest,
+  listIncomingContactRequests,
+} from '../../../stores/userDirectoryStore.js';
 
-// TODO: WIP decoupling considerations:
-// createInviteNotification, inAppNotificationManager, showSuccessToast/showErrorToast
-// — these are all notification/UI presentation concerns.
-// Consider publishing events (publish('contact:invite:received', ...),
-// publish('contact:invite:accepted', ...)) and let a notification-side listener
-// handle the presentation.
+const pendingNotificationIds = new Set();
 
-// Queue for incoming invites (can be used by notification system later)
-const pendingInvites = [];
-let isProcessingInvite = false;
-
-/**
- * Process the next invite in the queue.
- * Shows invite notification in the notification list.
- */
-async function processNextInvite() {
-  if (isProcessingInvite || pendingInvites.length === 0) return;
-
-  isProcessingInvite = true;
-  const { fromUserId, inviteData } = pendingInvites.shift();
-
-  try {
-    const notificationId = `invite-${fromUserId}`;
-
-    dispatchCommand('cmd:app-notifications:invite:add', {
-      notificationId,
-      fromUserId,
-      inviteData,
-      onAccept: async () => {
-        try {
-          await acceptInvite(fromUserId, inviteData);
-          console.log('[INVITATIONS] Contact added:', inviteData.fromName);
-          showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
-
-          // Remove notification after successful accept
-          dispatchCommand('cmd:app-notifications:invite:remove', {
-            notificationId,
-          });
-        } catch (e) {
-          console.error('[INVITATIONS] Failed to accept invite:', e);
-          showErrorToast('Failed to add contact. Please try again.');
-          // Keep notification visible on error
-        } finally {
-          isProcessingInvite = false;
-          processNextInvite();
-        }
-      },
-      onDecline: async () => {
-        try {
-          await declineInvite(fromUserId);
-          console.log('[INVITATIONS] Invite declined');
-
-          // Remove notification after decline
-          dispatchCommand('cmd:app-notifications:invite:remove', {
-            notificationId,
-          });
-        } catch (e) {
-          console.error('[INVITATIONS] Failed to decline invite:', e);
-        } finally {
-          isProcessingInvite = false;
-          processNextInvite();
-        }
-      },
-    });
-  } catch (error) {
-    console.error('[INVITATIONS] Failed to process invite:', error);
-    isProcessingInvite = false;
-    processNextInvite();
-  }
+function inviteDataFromRequest(request) {
+  return {
+    fromUserId: request.fromId,
+    fromName: request.fromName || 'User',
+    timestamp: request.createdAt,
+    status: 'pending',
+  };
 }
 
-/**
- * Set up listener for incoming contact invitations.
- * Queues invites and processes them one at a time.
- */
+async function showRequestNotification(request) {
+  const fromUserId = request?.fromId;
+  if (!fromUserId) return;
+  const notificationId = `invite-${fromUserId}`;
+  if (pendingNotificationIds.has(notificationId)) return;
+  pendingNotificationIds.add(notificationId);
+  const inviteData = inviteDataFromRequest(request);
+
+  dispatchCommand('cmd:app-notifications:invite:add', {
+    notificationId,
+    fromUserId,
+    inviteData,
+    onAccept: async () => {
+      try {
+        await acceptContactRequest(fromUserId);
+        await reloadContacts();
+        showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
+        dispatchCommand('cmd:app-notifications:invite:remove', {
+          notificationId,
+        });
+      } catch (error) {
+        console.error('[CONTACT REQUESTS] Failed to accept request:', error);
+        showErrorToast('Failed to add contact. Please try again.');
+      } finally {
+        pendingNotificationIds.delete(notificationId);
+      }
+    },
+    onDecline: async () => {
+      try {
+        await declineContactRequest(fromUserId);
+        dispatchCommand('cmd:app-notifications:invite:remove', {
+          notificationId,
+        });
+      } catch (error) {
+        console.error('[CONTACT REQUESTS] Failed to decline request:', error);
+      } finally {
+        pendingNotificationIds.delete(notificationId);
+      }
+    },
+  });
+}
+
+async function syncIncomingRequests() {
+  const requests = await listIncomingContactRequests();
+  const activeNotificationIds = new Set();
+  for (const request of requests) {
+    if (request?.fromId) activeNotificationIds.add(`invite-${request.fromId}`);
+    await showRequestNotification(request);
+  }
+  for (const notificationId of pendingNotificationIds) {
+    if (activeNotificationIds.has(notificationId)) continue;
+    dispatchCommand('cmd:app-notifications:invite:remove', { notificationId });
+    pendingNotificationIds.delete(notificationId);
+  }
+  await reloadContacts();
+}
+
 export function setupInviteListener() {
-  listenForInvites((fromUserId, inviteData) => {
-    pendingInvites.push({ fromUserId, inviteData });
-    processNextInvite();
-  });
+  void syncIncomingRequests().catch((error) =>
+    console.warn('[CONTACT REQUESTS] Initial sync failed:', error),
+  );
 
-  // Listen for accepted invites (when someone accepts your invite)
-  listenForAcceptedInvites(async (acceptedByUserId, acceptData) => {
-    console.log(
-      '[INVITATIONS] Your invite was accepted by:',
-      acceptData.acceptedByName,
-    );
+  const unsubscribe = subscribeToUserMailbox(
+    {
+      localUID: getLoggedInUserId(),
+      baseUrl: getHangViduApiBaseUrl(),
+      getToken: getLoggedInUserToken,
+    },
+    (envelope) => {
+      if (envelope.t !== 'contact_request') return;
+      void syncIncomingRequests().catch((error) =>
+        console.warn('[CONTACT REQUESTS] Live sync failed:', error),
+      );
+    },
+  );
 
-    // Show success toast
-    showSuccessToast(
-      `✅ ${acceptData.acceptedByName} is now in your contacts!`,
-    );
-  });
+  return () => {
+    try {
+      unsubscribe();
+    } finally {
+      // Dismiss still-pending invite notifications so their accept/decline
+      // callbacks can't fire under the next session (logout / account switch).
+      for (const notificationId of pendingNotificationIds) {
+        dispatchCommand('cmd:app-notifications:invite:remove', {
+          notificationId,
+        });
+      }
+      pendingNotificationIds.clear();
+    }
+  };
 }

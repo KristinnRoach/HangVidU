@@ -74,7 +74,7 @@ describe('inviteContactByEmail', () => {
   it('checks duplicates after contacts hydration', async () => {
     mocks.lookupRegisteredUserByEmail.mockResolvedValue({
       status: 'found',
-      user: { uid: 'user-1', userName: 'Alice' },
+      user: { uid: 'user-1', displayName: 'Alice' },
     });
     mocks.getAllContacts.mockReturnValue({
       'user-1': { contactId: 'user-1' },

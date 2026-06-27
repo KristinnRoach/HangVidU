@@ -167,7 +167,9 @@ export class CallHandshakeController {
     });
 
     const { calleeId, calleeName, audioOnly } = details;
-    const callerName = getUser()?.userName || 'Unknown';
+    const currentUser = getUser();
+    const callerName =
+      currentUser?.displayName || currentUser?.username || 'Unknown';
     let roomId: string;
     try {
       roomId = await this.resolveCallRoomId(calleeId);

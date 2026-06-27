@@ -1,7 +1,8 @@
+import { t } from '@shared/i18n';
 import { createEffect, onMount } from 'solid-js';
 import { createStore, produce } from 'solid-js/store';
 import { getLoggedInUserId } from '../../auth/index.js';
-import { getContactsStore } from '../../stores/contactsStore.js';
+import { getContactsStore, type Contact } from '../../stores/contactsStore.js';
 import {
   conversationActivity,
   getLastReadAt,
@@ -10,9 +11,18 @@ import {
 
 type ContactRow = {
   id: string;
-  name: string | null;
+  label: string | null;
   hasUnread: boolean;
 };
+
+function getContactLabel(contact: Contact) {
+  return (
+    contact?.nickname ||
+    contact?.displayName ||
+    contact?.username ||
+    t('shared.unknown')
+  );
+}
 
 export function useContacts() {
   const contactsState = getContactsStore();
@@ -26,7 +36,7 @@ export function useContacts() {
       const activity = conversationActivity(); // reactive: participant uid -> activity
 
       const rows: ContactRow[] = Object.values(contactsState.byId)
-        .map((c: any) => {
+        .map((c: Contact) => {
           const contactId: string = c.contactId ?? '';
           const act = activity.get(contactId);
           const lastReadAt = act ? getLastReadAt(act.conversationId) : 0;
@@ -36,19 +46,22 @@ export function useContacts() {
             act.latestSenderId !== null &&
             act.latestSenderId !== me &&
             act.latestSentAt > lastReadAt;
+
+          const label = getContactLabel(c);
+
           return {
             id: contactId,
-            name: c.contactNickName ?? null,
+            label,
             hasUnread,
             _sortKey: act?.latestSentAt || c?.savedAt || 0,
-            _name: (c?.contactNickName || '').toLowerCase(),
+            _label: (label || '').toLowerCase(),
           };
         })
         .sort((a, b) => {
           if (a._sortKey !== b._sortKey) return b._sortKey - a._sortKey;
-          return a._name.localeCompare(b._name);
+          return a._label.localeCompare(b._label);
         })
-        .map(({ _sortKey, _name, ...row }) => row);
+        .map(({ _sortKey, _label, ...row }) => row);
 
       setContacts(
         produce((arr: ContactRow[]) => {

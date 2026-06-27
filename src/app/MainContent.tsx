@@ -277,7 +277,7 @@ function TopBar(props: TopBarProps) {
                       audioOnly={false}
                       calleeId={resolvedCalleeId()}
                       calleeName={
-                        props?.selectedConversation?.contactNickName ||
+                        props?.selectedConversation?.nickname ||
                         undefined
                       }
                     />
@@ -287,7 +287,7 @@ function TopBar(props: TopBarProps) {
                       audioOnly={true}
                       calleeId={resolvedCalleeId()}
                       calleeName={
-                        props?.selectedConversation?.contactNickName ||
+                        props?.selectedConversation?.nickname ||
                         undefined
                       }
                     /> */}

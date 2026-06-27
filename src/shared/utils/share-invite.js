@@ -7,7 +7,15 @@ import { copyToClipboard } from '@lib/utils/clipboard.js';
 
 const DEFAULT_SENDER_NAME = 'A friend';
 
-const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
+export function getInviteAppOrigin() {
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return (
+    import.meta.env.VITE_APP_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : '')
+  );
+}
 
 /**
  * Build HangVidU referral link for invites.
@@ -17,7 +25,7 @@ const APP_ORIGIN = import.meta.env.VITE_APP_URL || window.location.origin;
  * @param {string} [origin]
  * @returns {string}
  */
-export function buildReferralLink(userId, origin = APP_ORIGIN) {
+export function buildReferralLink(userId, origin = getInviteAppOrigin()) {
   const base = typeof origin === 'string' && origin.trim() ? origin.trim() : '';
   if (!userId || typeof userId !== 'string' || !userId.trim()) {
     return base;
@@ -60,7 +68,7 @@ export function buildInviteText({ senderName, link }) {
 export async function shareInvite({
   senderName,
   userId,
-  origin = APP_ORIGIN,
+  origin = getInviteAppOrigin(),
   shareImpl = typeof navigator !== 'undefined' &&
   typeof navigator.share === 'function'
     ? navigator.share.bind(navigator)
@@ -111,7 +119,7 @@ export async function shareInvite({
  */
 export async function copyInviteLink({
   userId,
-  origin = APP_ORIGIN,
+  origin = getInviteAppOrigin(),
   copyImpl = copyToClipboard,
 } = {}) {
   const link = buildReferralLink(userId, origin);

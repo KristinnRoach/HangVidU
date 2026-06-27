@@ -13,31 +13,12 @@ export function assertContactId(contactId) {
   return ContactIdSchema.parse(contactId);
 }
 
-function getTrimmedString(value) {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
-function normalizeContactNickName(contactNickName) {
-  if (contactNickName == null) {
-    return '';
+function normalizeLabel(value, fieldName) {
+  if (value == null) return '';
+  if (typeof value !== 'string') {
+    throw new TypeError(`${fieldName} must be a string`);
   }
-  if (typeof contactNickName !== 'string') {
-    throw new TypeError('contactNickName must be a string');
-  }
-  return contactNickName.trim();
-}
-
-function normalizeRoomId(roomId) {
-  if (roomId == null) {
-    return null;
-  }
-
-  if (typeof roomId !== 'string') {
-    throw new TypeError('roomId must be a string or null');
-  }
-
-  const normalized = roomId.trim();
-  return normalized || null;
+  return value.trim();
 }
 
 const UUID_RE =
@@ -81,16 +62,21 @@ export function normalizeContactRecord(input, { now = Date.now() } = {}) {
 
   const contactId = assertContactId(input.contactId);
   const savedAt = normalizeTimestamp(input.savedAt, now);
-  const contactNickName = normalizeContactNickName(input.contactNickName);
 
-  return ContactRecordSchema.parse({
+  const record = {
     contactId,
-    contactNickName,
-    roomId: normalizeRoomId(input.roomId),
+    nickname: normalizeLabel(
+      input.nickname ?? input.contactNickName,
+      'nickname',
+    ),
+    displayName: normalizeLabel(input.displayName, 'displayName'),
+    username: normalizeLabel(input.username, 'username'),
     conversationId: normalizeConversationId(input.conversationId),
     savedAt,
     lastInteractionAt: normalizeTimestamp(input.lastInteractionAt, savedAt),
-  });
+  };
+
+  return ContactRecordSchema.parse(record);
 }
 
 /**
@@ -106,13 +92,8 @@ export function normalizeContactPatch(patch) {
   const next = {};
 
   for (const [key, value] of Object.entries(patch)) {
-    if (key === 'contactNickName') {
-      next.contactNickName = normalizeContactNickName(value);
-      continue;
-    }
-
-    if (key === 'roomId') {
-      next.roomId = normalizeRoomId(value);
+    if (key === 'nickname') {
+      next.nickname = normalizeLabel(value, 'nickname');
       continue;
     }
 

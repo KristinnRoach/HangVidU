@@ -17,7 +17,7 @@ export default function ContactsList() {
               {(row) => (
                 <ContactEntry
                   id={row.id}
-                  name={row.name}
+                  label={row.label}
                   hasUnread={row.hasUnread}
                 />
               )}

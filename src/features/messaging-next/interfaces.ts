@@ -166,7 +166,7 @@ export type MessageAttachment = {
 export type ConversationSelection = {
   conversationId: ConversationId;
   remoteParticipantIds?: UserId[];
-  contactNickName?: string | null;
+  nickname?: string | null;
   displayUI?: boolean;
 };
 

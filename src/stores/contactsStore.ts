@@ -1,12 +1,28 @@
-import { createStore, produce } from 'solid-js/store';
-import { getIsLoggedIn, getLoggedInUserId } from '../auth/index.js';
-import { rtdb } from '../infra/firebase-rtdb.js';
+import { createStore } from 'solid-js/store';
+import {
+  getIsLoggedIn,
+  getLoggedInUserId,
+  getLoggedInUserToken,
+} from '../auth/index.js';
+import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 import {
   createContactsLocalStorageRepository,
-  createContactsRTDBRepository,
+  createContactsD1Repository,
 } from '../storage/contacts/index.js';
 
-type Contact = any;
+/* TODO: Once storage/contacts/* is converted to typescript: 
+         import schema from storage and avoid drift (if should stay identical) => export type Contact = z.infer<typeof ContactRecordSchema>;*/
+
+export type Contact = {
+  contactId: string;
+  nickname: string;
+  displayName: string;
+  username: string;
+  conversationId: string | null;
+  savedAt: number;
+  lastInteractionAt: number;
+};
+
 type ContactsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 const [state, setState] = createStore<{
@@ -24,9 +40,11 @@ function getScopeKey(ownerId: string | null = getLoggedInUserId()): string {
 
 function getRepo(ownerId: string | null = getLoggedInUserId()) {
   if (ownerId) {
-    return createContactsRTDBRepository({
-      database: rtdb,
-      getOwnerId: () => ownerId,
+    // Owner is derived server-side from the bearer token; the D1 adapter needs
+    // no getOwnerId. ownerId only gates logged-in vs guest here.
+    return createContactsD1Repository({
+      baseUrl: getHangViduApiBaseUrl(),
+      getToken: getLoggedInUserToken,
     });
   }
   return createContactsLocalStorageRepository({ storageKey: 'contacts' });
@@ -54,12 +72,12 @@ export function getContactById(contactId: string): Contact | null {
   return state.byId[contactId] ?? null;
 }
 
-export function getContactByRoomId(
-  roomId: string | null | undefined,
+export function getContactByConversationId(
+  conversationId: string | null | undefined,
 ): Contact | null {
-  if (!roomId) return null;
+  if (!conversationId) return null;
   for (const contact of Object.values(state.byId)) {
-    if (contact?.roomId === roomId) return contact;
+    if (contact?.conversationId === conversationId) return contact;
   }
   return null;
 }
@@ -70,50 +88,15 @@ export function getContactsIsHydrated(): boolean {
 
 // ---------- mutations ----------
 
-export async function saveContact(
-  contactId: string,
-  contactNickName: string,
-  roomId: string | null | undefined,
-  conversationId: string | null | undefined = null,
-) {
-  try {
-    const ownerId = getLoggedInUserId();
-    const repo = getRepo(ownerId);
-    const existing = await repo.get(contactId);
-    const now = Date.now();
-
-    const contact = await repo.put({
-      contactId,
-      contactNickName,
-      roomId,
-      conversationId: conversationId ?? existing?.conversationId ?? null,
-      savedAt: existing?.savedAt ?? now,
-      lastInteractionAt: existing?.lastInteractionAt ?? now,
-    });
-
-    setState('byId', contactId, contact);
-    return contact;
-  } catch (error) {
-    logFailure('saveContact', error, { contactId, roomId: roomId ?? null });
-    return null;
-  }
-}
-
-export async function updateContact(
-  contactId: string,
-  contactNickName: string,
-  roomId: string | null | undefined,
-) {
+export async function updateContact(contactId: string, nickname: string) {
   try {
     const repo = getRepo();
-    const existing = await repo.get(contactId);
-    if (!existing) return null;
-    const updated = await repo.patch(contactId, { contactNickName, roomId });
+    const updated = await repo.patch(contactId, { nickname });
     if (!updated) return null;
     setState('byId', contactId, updated);
     return updated;
   } catch (error) {
-    logFailure('updateContact', error, { contactId, roomId: roomId ?? null });
+    logFailure('updateContact', error, { contactId });
     return null;
   }
 }
@@ -136,43 +119,34 @@ export async function cacheContactConversationId(
   }
 }
 
-export async function deleteContact(contactId: string): Promise<boolean> {
+export async function handleHangUp(
+  contactUserId: string,
+  conversationId: string,
+) {
+  if (!getIsLoggedIn()) {
+    return { action: 'skip' as const, reason: 'not-logged-in' };
+  }
+
   try {
-    const deleted = await getRepo().remove(contactId);
-    if (!deleted) return false;
-    setState(
-      'byId',
-      produce((byId: Record<string, Contact>) => {
-        delete byId[contactId];
-      }),
-    );
-    return true;
+    await hydrateContacts();
   } catch (error) {
-    logFailure('deleteContact', error, { contactId });
-    return false;
-  }
-}
-
-export async function handleHangUp(contactUserId: string, roomId: string) {
-  if (getIsLoggedIn() && state.status !== 'ready') {
-    try {
-      await hydrateContacts();
-    } catch (error) {
-      logFailure('handleHangUp.hydrate', error, { contactUserId, roomId });
-      return { action: 'skip' as const, reason: 'contacts-not-ready' };
-    }
-  }
-
-  const entry = state.byId[contactUserId];
-  if (entry) {
-    if (entry.roomId !== roomId) {
-      await updateContact(contactUserId, entry.contactNickName, roomId);
-    }
-    return { action: 'existing' as const };
+    logFailure('handleHangUp.hydrate', error, {
+      contactUserId,
+      conversationId,
+    });
+    return { action: 'skip' as const, reason: 'contacts-not-ready' };
   }
 
   if (!getIsLoggedIn()) {
     return { action: 'skip' as const, reason: 'not-logged-in' };
+  }
+
+  const entry = state.byId[contactUserId];
+  if (entry) {
+    if (entry.conversationId !== conversationId) {
+      await cacheContactConversationId(contactUserId, conversationId);
+    }
+    return { action: 'existing' as const };
   }
 
   return { action: 'prompt-save' as const };
@@ -190,7 +164,7 @@ export async function hydrateContacts(): Promise<void> {
   const requestId = ++hydrationRequestId;
   setState({ status: 'loading' });
 
-  hydrationPromise = (async () => {
+  const promise = Promise.resolve().then(async () => {
     try {
       const records = await getRepo(ownerId).list();
       if (requestId !== hydrationRequestId) return;
@@ -205,11 +179,40 @@ export async function hydrateContacts(): Promise<void> {
       logFailure('hydrateContacts', error);
       throw error;
     } finally {
-      if (requestId === hydrationRequestId) hydrationPromise = null;
+      if (hydrationPromise === promise) hydrationPromise = null;
     }
-  })();
+  });
 
-  return hydrationPromise;
+  hydrationPromise = promise;
+  return promise;
+}
+
+/**
+ * Force a re-list from storage, bypassing the `ready` short-circuit in
+ * `hydrateContacts`. This is the live-refresh path after a connect (request
+ * accept / referral auto-connect): the new contact must appear on an
+ * already-hydrated tab without a manual reload. No `loading` flip — the current
+ * list stays visible to avoid a flicker. Bumps the request id so any in-flight
+ * hydrate bails out in favor of this fresher read.
+ */
+export async function reloadContacts(): Promise<void> {
+  const ownerId = getLoggedInUserId();
+  const scopeKey = getScopeKey(ownerId);
+  const requestId = ++hydrationRequestId;
+  hydrationPromise = null;
+  try {
+    const records = await getRepo(ownerId).list();
+    if (requestId !== hydrationRequestId) return;
+    const byId: Record<string, Contact> = {};
+    for (const record of records) {
+      if (record?.contactId) byId[record.contactId] = record;
+    }
+    hydratedScopeKey = scopeKey;
+    setState({ byId, status: 'ready' });
+  } catch (error) {
+    if (requestId === hydrationRequestId) hydrationPromise = null;
+    logFailure('reloadContacts', error);
+  }
 }
 
 export function resetContacts(): void {

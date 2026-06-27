@@ -1,17 +1,18 @@
 // referral-handler.js - Handle referral links and auto-add contacts
-// Reuses the existing invitation system for consistency
 
 import {
   signInWithAccountSelection,
   getLoggedInUserId,
 } from '../../../auth/index.js';
-import { acceptInvite } from '../invites/invitations.js';
-import { getDeterministicRoomId } from '../../../shared/utils/room-id.js';
+import { reloadContacts } from '../../../stores/contactsStore.js';
 import {
   showInfoToast,
   showSuccessToast,
 } from '../../../components/base-legacy/toast.js';
-import { getPublicUserProfile } from '../../../stores/userDirectoryStore.js';
+import {
+  connectReferral,
+  getPublicUserProfile,
+} from '../../../stores/userDirectoryStore.js';
 import { dispatchCommand } from '../../../shared/events/index.js';
 import { t } from '../../../shared/i18n/index.js';
 
@@ -33,9 +34,8 @@ export async function captureReferral() {
     url.searchParams.delete('ref');
     window.history.replaceState({}, '', url.toString());
 
-    // Fetch referrer profile (world-readable, no auth needed)
     const profile = await getPublicUserProfile(referrerId);
-    const name = profile?.userName || null;
+    const name = profile?.displayName || null;
     const photoURL = profile?.photoURL || null;
 
     // Clickable toast (ephemeral)
@@ -59,7 +59,7 @@ export async function captureReferral() {
 
 /**
  * Process referral after user signs in.
- * Uses the same mutual contact-add flow as "Invite Selected".
+ * Uses the D1 referral connect endpoint for the current raw-referrer-id flow.
  * Called after successful authentication.
  */
 export async function processReferral() {
@@ -82,28 +82,9 @@ export async function processReferral() {
 
     // Fetch referrer profile (may not exist yet for older users)
     const profile = await getPublicUserProfile(referrerId);
-    const referrerName = profile?.userName?.trim() || t('contact.no_name');
-    const referrerPhotoURL = profile?.photoURL || null;
-
-    // Generate deterministic room ID
-    const roomId = getDeterministicRoomId(myUserId, referrerId);
-
-    // Create a synthetic invite data object (same format as real invites)
-    const syntheticInvite = {
-      fromUserId: referrerId,
-      fromName: referrerName,
-      fromEmail: '',
-      fromPhotoURL: referrerPhotoURL,
-      roomId: roomId,
-      timestamp: Date.now(),
-      status: 'pending',
-    };
-
-    // Use the existing acceptInvite flow - this will:
-    // 1. Save referrer to my contacts
-    // 2. Notify referrer (via acceptedInvites)
-    // 3. Auto-save me to referrer's contacts (via listenForAcceptedInvites)
-    await acceptInvite(referrerId, syntheticInvite);
+    const referrerName = profile?.displayName?.trim() || t('contact.no_name');
+    await connectReferral(referrerId);
+    await reloadContacts();
 
     console.log(
       `[REFERRAL] ✅ Connected with ${referrerName} via referral link!`,

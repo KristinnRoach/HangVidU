@@ -36,7 +36,7 @@ describe('SWNavigation', () => {
     const [isHydrated, updateHydrated] = createSignal(false);
     setHydrated = updateHydrated;
     mocks.getContactsIsHydrated.mockImplementation(() => isHydrated());
-    mocks.getContactById.mockReturnValue({ contactNickName: 'Sender' });
+    mocks.getContactById.mockReturnValue({ nickname: 'Sender' });
 
     const descriptor = Object.getOwnPropertyDescriptor(
       globalThis.navigator,
@@ -44,7 +44,11 @@ describe('SWNavigation', () => {
     );
     restoreServiceWorker = () => {
       if (descriptor) {
-        Object.defineProperty(globalThis.navigator, 'serviceWorker', descriptor);
+        Object.defineProperty(
+          globalThis.navigator,
+          'serviceWorker',
+          descriptor,
+        );
       } else {
         delete globalThis.navigator.serviceWorker;
       }
@@ -91,7 +95,7 @@ describe('SWNavigation', () => {
     await waitFor(() => {
       expect(mocks.openDirectConversation).toHaveBeenCalledWith('sender-1', {
         displayUI: true,
-        contactNickName: 'Sender',
+        nickname: 'Sender',
       });
     });
 

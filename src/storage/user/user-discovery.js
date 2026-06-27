@@ -1,158 +1,104 @@
-// User discovery system - allows users to find each other by email
+// User discovery — find other users via the hangvidu-data Worker's directory
+// (the D1 `users` table). Replaces the RTDB `usersByEmail` index. Email is never
+// sent to the server: `hashEmail` stays client-side and only the hash is queried
+// (mirrors the old indirection). Handle search is the username lookup path.
+//
+// Factory shape (not a module singleton) so storage stays boundary-clean: the
+// bearer token arrives via an injected `getToken`. The wiring + public function
+// names live in src/stores/userDirectoryStore.js.
 
-import { ref, set, get, remove } from 'firebase/database';
-import { rtdb } from '../../infra/firebase-rtdb.js';
 import { hashEmail } from '@lib/utils/email-hash.js';
+import { createWorkerRequest } from '../worker-request.js';
 
-function canonicalizeDirectoryUser(userData) {
-  if (!userData || typeof userData !== 'object') {
-    return null;
-  }
-
-  const userName =
-    typeof userData.userName === 'string' && userData.userName.trim()
-      ? userData.userName.trim()
-      : typeof userData.displayName === 'string' && userData.displayName.trim()
-        ? userData.displayName.trim()
-        : 'Anonymous';
-
-  return {
-    ...userData,
-    userName,
-  };
+function canonicalizeDirectoryUser(entry) {
+  if (!entry || typeof entry !== 'object') return null;
+  const displayName =
+    typeof entry.displayName === 'string' && entry.displayName.trim()
+      ? entry.displayName.trim()
+      : 'Anonymous';
+  return { ...entry, displayName };
 }
 
 /**
- * Register a user in the public directory for discovery by email.
- * Called after successful sign-in for any user that has an email.
- *
- * @param {Object} user - Firebase user object
- * @param {string} user.uid - User ID
- * @param {string} user.email - User email
- * @param {string} user.userName - User display name
- * @param {string} [user.photoURL] - User photo URL
- * @param {Object} [extra]
- * @param {string|null} [extra.username] - Unique login handle, when the user
- *   has one. Stored so email-based password sign-in can resolve back to the
- *   handle that is the Firebase Auth principal.
- * @returns {Promise<void>}
+ * @param {{ baseUrl: string, getToken: () => Promise<string|null> }} options
  */
-export async function registerUserInDirectory(user, { username = null } = {}) {
-  if (!user || !user.uid || !user.email) {
-    throw new Error('Invalid user: must have uid and email');
+export function createUserDiscovery({ baseUrl, getToken }) {
+  const request = createWorkerRequest({ baseUrl, getToken });
+
+  /** Exact directory lookup; always returns an array (identifier-agnostic). */
+  async function lookup(queryString) {
+    const { users } = await request('GET', `/users/lookup?${queryString}`);
+    return users ?? [];
   }
 
-  const emailHash = hashEmail(user.email);
-  const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
-
-  const userData = {
-    uid: user.uid,
-    userName: user.userName || 'Anonymous',
-    photoURL: user.photoURL || null,
-    registeredAt: Date.now(),
-  };
-  if (username) userData.username = username;
-
-  try {
-    await set(userRef, userData);
-  } catch (error) {
-    console.error('[USER DISCOVERY] Failed to register user:', error);
-    throw error;
-  }
-}
-
-/**
- * Lookup a user by email address with explicit outcome typing.
- * @param {string} email - Email address to search for
- * @returns {Promise<{status: 'found' | 'not_found' | 'lookup_error', user: Object | null, error?: unknown}>}
- */
-export async function lookupUserByEmail(email) {
-  if (!email || typeof email !== 'string') {
-    return { status: 'not_found', user: null };
+  /**
+   * Register/refresh the caller's directory fields (email hash + optional
+   * handle). The D1 directory IS the `users` row, so this is a profile write;
+   * the worker stamps registered_at once and COALESCEs unset fields.
+   * @param {{ uid: string, email: string, displayName?: string, photoURL?: string|null }} user
+   * @param {{ username?: string|null }} [opts]
+   */
+  async function register(user, { username = null } = {}) {
+    if (!user || !user.uid || !user.email) {
+      throw new Error('Invalid user: must have uid and email');
+    }
+    await request('PUT', '/users/me/profile', {
+      displayName: user.displayName || 'Anonymous',
+      photoURL: user.photoURL || null,
+      username: username || null,
+      emailHash: hashEmail(user.email),
+    });
   }
 
-  const trimmedEmail = email.trim();
-  if (!trimmedEmail) {
-    return { status: 'not_found', user: null };
-  }
-
-  try {
-    const emailHash = hashEmail(trimmedEmail);
-    const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
-    const snapshot = await get(userRef);
-
-    if (!snapshot.exists()) {
+  /**
+   * @param {string} email
+   * @returns {Promise<{status: 'found'|'not_found'|'lookup_error', user: Object|null, error?: unknown}>}
+   */
+  async function lookupByEmail(email) {
+    if (!email || typeof email !== 'string' || !email.trim()) {
       return { status: 'not_found', user: null };
     }
-
-    const user = canonicalizeDirectoryUser(snapshot.val());
-    if (!user) {
-      return { status: 'not_found', user: null };
+    try {
+      const hash = hashEmail(email.trim());
+      const users = await lookup(`emailHash=${encodeURIComponent(hash)}`);
+      const user = users.length ? canonicalizeDirectoryUser(users[0]) : null;
+      return user
+        ? { status: 'found', user }
+        : { status: 'not_found', user: null };
+    } catch (error) {
+      console.error('[USER DISCOVERY] Failed to find user by email:', error);
+      return { status: 'lookup_error', user: null, error };
     }
-
-    return { status: 'found', user };
-  } catch (error) {
-    console.error('[USER DISCOVERY] Failed to find user by email:', error);
-    return { status: 'lookup_error', user: null, error };
-  }
-}
-
-/**
- * Find a user by email address.
- * @param {string} email - Email address to search for
- * @returns {Promise<Object|null>} - User data if found, null otherwise
- */
-export async function findUserByEmail(email) {
-  const result = await lookupUserByEmail(email);
-  if (result.status !== 'found') {
-    return null;
-  }
-  return result.user;
-}
-
-/**
- * Find multiple users by email addresses (batch lookup).
- * @param {string[]} emails - Array of email addresses
- * @returns {Promise<Object>} - Map of email to user data { email: userData | null }
- */
-export async function findUsersByEmails(emails) {
-  if (!Array.isArray(emails)) {
-    throw new Error('Invalid emails: must be an array');
   }
 
-  const results = {};
-
-  // Perform lookups in parallel
-  const promises = emails.map(async (email) => {
-    const userData = await findUserByEmail(email);
-    results[email] = userData;
-  });
-
-  await Promise.all(promises);
-
-  return results;
-}
-
-/**
- * Remove a user from the 'usersByEmail' discovery directory.
- *
- * @param {string} email - Email address to remove
- * @returns {Promise<void>}
- */
-export async function removeFromUserByEmailDirectory(email) {
-  if (!email || typeof email !== 'string') {
-    throw new Error('Invalid email: must be a non-empty string');
-  }
-
-  try {
-    const emailHash = hashEmail(email);
-    const userRef = ref(rtdb, `usersByEmail/${emailHash}`);
-    await remove(userRef);
-  } catch (error) {
-    console.error(
-      '[USER DISCOVERY] Failed to remove user from directory:',
-      error,
+  /**
+   * @param {string[]} emails
+   * @returns {Promise<Record<string, Object|null>>}
+   */
+  async function findByEmails(emails) {
+    if (!Array.isArray(emails)) {
+      throw new Error('Invalid emails: must be an array');
+    }
+    const results = {};
+    await Promise.all(
+      emails.map(async (email) => {
+        const r = await lookupByEmail(email);
+        results[email] = r.status === 'found' ? r.user : null;
+      }),
     );
-    throw error;
+    return results;
   }
+
+  /**
+   * Handle search — the new "find someone on HangVidU without a referral" path.
+   * @param {string} handle
+   * @returns {Promise<Object[]>}
+   */
+  async function searchByHandle(handle) {
+    if (!handle || typeof handle !== 'string' || !handle.trim()) return [];
+    const users = await lookup(`handle=${encodeURIComponent(handle.trim())}`);
+    return users.map(canonicalizeDirectoryUser).filter(Boolean);
+  }
+
+  return { register, lookupByEmail, findByEmails, searchByHandle };
 }

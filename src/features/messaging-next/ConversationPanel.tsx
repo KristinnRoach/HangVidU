@@ -533,7 +533,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
             ) {
               void cacheContactConversationId(contactId, null).then(() =>
                 openDirectConversation(contactId, {
-                  contactNickName: selection.contactNickName,
+                  nickname: selection.nickname,
                   displayUI: selection.displayUI,
                 }),
               );

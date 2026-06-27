@@ -20,15 +20,15 @@ function shortName(name) {
  *
  * Props (reactive; read via `props.x` not destructuring to preserve reactivity):
  *   id: string
- *   name: string|null
+ *   label: string
  *   hasUnread: boolean
  */
 export default function ContactEntry(props) {
   const { t } = useI18n();
   let rootEl;
 
-  const displayName = () => props.name || t('call.unknown_caller');
-  const editLabel = () => t('contact.action.edit');
+  const contactLabel = () => props.label;
+  const editMenuTitle = () => t('contact.action.edit');
 
   const onOpenConversation = () => {
     if (!props.id) return;
@@ -36,7 +36,7 @@ export default function ContactEntry(props) {
     // store (resolve-or-create) — see openDirectConversation.
     void openDirectConversation(props.id, {
       displayUI: true,
-      contactNickName: displayName(),
+      nickname: contactLabel(),
     });
   };
 
@@ -44,7 +44,7 @@ export default function ContactEntry(props) {
     if (!props.id) return;
     dispatchCommand('cmd:dialog:contact-edit:open', {
       contactId: props.id,
-      currentName: props.name ?? '',
+      currentName: props.label ?? '',
     });
   };
 
@@ -60,7 +60,7 @@ export default function ContactEntry(props) {
 
       <StartCallButton
         calleeId={props.id}
-        calleeName={displayName()}
+        calleeName={contactLabel()}
         audioOnly={false}
       />
       <button
@@ -68,9 +68,9 @@ export default function ContactEntry(props) {
         class='contact-name'
         data-contact-id={props.id}
         onClick={onOpenConversation}
-        aria-label={displayName()}
+        aria-label={contactLabel()}
       >
-        {shortName(displayName())}
+        {shortName(contactLabel())}
       </button>
       <Show when={props.hasUnread}>
         <span
@@ -88,8 +88,8 @@ export default function ContactEntry(props) {
         class='contact-edit-btn'
         type='button'
         onClick={onEdit}
-        title={editLabel()}
-        aria-label={editLabel()}
+        title={editMenuTitle()}
+        aria-label={editMenuTitle()}
       >
         ⋮
       </button> */}

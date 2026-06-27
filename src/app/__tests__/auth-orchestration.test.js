@@ -11,13 +11,13 @@ const mocks = vi.hoisted(() => {
         return () => handlers.delete(eventName);
       }),
     },
-    cleanupInviteListeners: vi.fn(),
     setupInviteListener: vi.fn(),
     processReferral: vi.fn(() => Promise.resolve()),
     hydrateContacts: vi.fn(() => Promise.resolve()),
     resetContacts: vi.fn(),
     savePublicUserProfile: vi.fn(() => Promise.resolve()),
     getPublicUserProfile: vi.fn(() => Promise.resolve(null)),
+    ensureHandle: vi.fn(() => Promise.resolve({ handle: null, assigned: false })),
     registerInUserDirectory: vi.fn(() => Promise.resolve()),
     devDebug: vi.fn(),
     stopConversationActivity: vi.fn(),
@@ -35,6 +35,7 @@ vi.mock('../../auth/index.js', () => ({
 vi.mock('../../stores/userDirectoryStore.js', () => ({
   savePublicUserProfile: mocks.savePublicUserProfile,
   getPublicUserProfile: mocks.getPublicUserProfile,
+  ensureHandle: mocks.ensureHandle,
   registerInUserDirectory: mocks.registerInUserDirectory,
 }));
 
@@ -42,9 +43,6 @@ vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
   devDebug: mocks.devDebug,
 }));
 
-vi.mock('../../features/contacts/invites/invitations.js', () => ({
-  cleanupInviteListeners: mocks.cleanupInviteListeners,
-}));
 vi.mock('../../features/contacts/invites/invite-listener.js', () => ({
   setupInviteListener: mocks.setupInviteListener,
 }));
@@ -69,6 +67,7 @@ describe('wireAuthReactions', () => {
     vi.clearAllMocks();
     mocks.handlers.clear();
     mocks.hydrateContacts.mockResolvedValue();
+    mocks.setupInviteListener.mockReturnValue(undefined);
     localStorageData = new Map();
     localStorageRef = {
       get length() {
@@ -111,11 +110,11 @@ describe('wireAuthReactions', () => {
     const lobbyElement = { id: 'lobby' };
     const user = {
       uid: 'user-1',
-      userName: 'Ada',
+      displayName: 'Ada',
       email: 'ada@example.com',
       photoURL: null,
     };
-    mocks.getPublicUserProfile.mockResolvedValue({ username: 'ada' });
+    mocks.ensureHandle.mockResolvedValue({ handle: 'ada', assigned: false });
 
     const teardown = await wireAuthReactions({ lobbyElement });
 
@@ -127,7 +126,9 @@ describe('wireAuthReactions', () => {
     expect(mocks.processReferral).toHaveBeenCalled();
     expect(mocks.hydrateContacts).toHaveBeenCalled();
     expect(mocks.savePublicUserProfile).toHaveBeenCalledWith(user);
-    expect(mocks.getPublicUserProfile).toHaveBeenCalledWith('user-1');
+    // Login guarantees a handle via ensureHandle, then indexes the email→account
+    // entry with that handle (replaces the old getPublicUserProfile read).
+    expect(mocks.ensureHandle).toHaveBeenCalledWith(user);
     expect(mocks.registerInUserDirectory).toHaveBeenCalledWith(user, {
       username: 'ada',
     });
@@ -145,7 +146,6 @@ describe('wireAuthReactions', () => {
     await mocks.handlers.get('evt:auth:session:logged-out')({});
 
     expect(mocks.resetContacts).toHaveBeenCalled();
-    expect(mocks.cleanupInviteListeners).toHaveBeenCalled();
     expect(mocks.stopConversationActivity).toHaveBeenCalledOnce();
     expect(localStorageClearSpy).toHaveBeenCalled();
 

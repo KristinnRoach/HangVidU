@@ -1,6 +1,8 @@
 // D1 data access for the conversation-centric core. Pure SQL behind small typed
 // functions; the worker router (index.ts) is the only caller.
 
+import { convertToEnglishLetters } from '../../../../shared/utils/transliteration';
+
 export interface ConversationRow {
   id: string;
   kind: 'direct' | 'group';
@@ -32,6 +34,24 @@ export async function upsertUser(
     )
     .bind(userId, displayName, now)
     .run();
+}
+
+/**
+ * Stub a `users` row if absent (display_name backfilled on that user's login).
+ * Mirrors resolveOrCreateDirect — lets contacts/requests reference a user who
+ * hasn't hit this worker yet without tripping the FK.
+ */
+function ensureUserStub(
+  db: D1Database,
+  userId: string,
+  now: number,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO users (id, display_name, created_at) VALUES (?, NULL, ?)
+       ON CONFLICT(id) DO NOTHING`,
+    )
+    .bind(userId, now);
 }
 
 /** Sorted pair key — the DM-dedup rule, demoted from identity to a lookup key. */
@@ -112,6 +132,497 @@ function memberInsert(
        ON CONFLICT(conversation_id, user_id) DO NOTHING`,
     )
     .bind(conversationId, userId, now);
+}
+
+// --- users: profile + directory ---------------------------------------------
+
+export interface UserProfileRow {
+  id: string;
+  display_name: string | null;
+  photo_url: string | null;
+  username: string | null;
+  email_hash: string | null;
+  discoverable: number; // 0 | 1 (SQLite has no bool)
+  registered_at: number | null;
+  created_at: number;
+}
+
+export async function getProfile(
+  db: D1Database,
+  userId: string,
+): Promise<UserProfileRow | null> {
+  return db
+    .prepare(`SELECT * FROM users WHERE id = ?`)
+    .bind(userId)
+    .first<UserProfileRow>();
+}
+
+export interface ProfilePatch {
+  displayName?: string | null;
+  photoUrl?: string | null;
+  username?: string | null;
+  emailHash?: string | null;
+}
+
+/**
+ * Update the caller's own profile columns. Only provided fields are touched
+ * (COALESCE keeps the existing value when the bind is null-sentinel). The row is
+ * guaranteed to exist — handlers upsertUser the caller first. `registered_at` is
+ * stamped once on the first profile write (the D1 equivalent of the old RTDB
+ * registerUserInDirectory) and preserved thereafter.
+ */
+export async function updateProfile(
+  db: D1Database,
+  userId: string,
+  patch: ProfilePatch,
+  now: number,
+): Promise<UserProfileRow | null> {
+  await db
+    .prepare(
+      `UPDATE users SET
+         display_name  = COALESCE(?, display_name),
+         photo_url     = COALESCE(?, photo_url),
+         username      = COALESCE(?, username),
+         email_hash    = COALESCE(?, email_hash),
+         registered_at = COALESCE(registered_at, ?)
+       WHERE id = ?`,
+    )
+    .bind(
+      patch.displayName ?? null,
+      patch.photoUrl ?? null,
+      patch.username ?? null,
+      patch.emailHash ?? null,
+      now,
+      userId,
+    )
+    .run();
+  return getProfile(db, userId);
+}
+
+export async function setDiscoverable(
+  db: D1Database,
+  userId: string,
+  discoverable: boolean,
+): Promise<void> {
+  await db
+    .prepare(`UPDATE users SET discoverable = ? WHERE id = ?`)
+    .bind(discoverable ? 1 : 0, userId)
+    .run();
+}
+
+/**
+ * Best-effort preflight for the DB-enforced unique handle. Returns true if a
+ * *different* user already claims it; the UNIQUE index still catches races.
+ */
+export async function isHandleTaken(
+  db: D1Database,
+  username: string,
+  exceptUserId: string,
+): Promise<boolean> {
+  const row = await db
+    .prepare(`SELECT 1 FROM users WHERE username = ? AND id != ? LIMIT 1`)
+    .bind(username, exceptUserId)
+    .first();
+  return row != null;
+}
+
+/**
+ * Directory lookup. Returns an ARRAY (identifier-agnostic contract — keep it
+ * because partial handle search can yield multiple users) of discoverable
+ * users matching the handle query. Email-hash lookup is the parallel exact path.
+ */
+export async function lookupByHandle(
+  db: D1Database,
+  username: string,
+): Promise<UserProfileRow[]> {
+  const query = normalizeHandleSearch(username);
+  if (!query) return [];
+  const { results } = await db
+    .prepare(
+      `SELECT * FROM users
+       WHERE lower(username) LIKE ? ESCAPE '\\' AND discoverable = 1
+       ORDER BY username
+       LIMIT 10`,
+    )
+    .bind(`%${escapeLike(query)}%`)
+    .all<UserProfileRow>();
+  return results ?? [];
+}
+
+function normalizeHandleSearch(value: string): string {
+  // Same romanization the client uses to generate handles, so search matches.
+  return convertToEnglishLetters(value)
+    .trim()
+    .replace(/^@+/, '')
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
+export async function lookupByEmailHash(
+  db: D1Database,
+  emailHash: string,
+): Promise<UserProfileRow[]> {
+  const { results } = await db
+    .prepare(`SELECT * FROM users WHERE email_hash = ? AND discoverable = 1`)
+    .bind(emailHash)
+    .all<UserProfileRow>();
+  return results ?? [];
+}
+
+// --- contacts ---------------------------------------------------------------
+
+export interface ContactRow {
+  owner_id: string;
+  contact_id: string;
+  username: string | null;
+  display_name: string | null;
+  nickname: string;
+  conversation_id: string | null;
+  saved_at: number;
+  last_interaction_at: number;
+}
+
+const CONTACT_SELECT = `SELECT c.*, u.display_name AS display_name, u.username AS username
+  FROM contacts c
+  LEFT JOIN users u ON u.id = c.contact_id`;
+
+export async function getContact(
+  db: D1Database,
+  ownerId: string,
+  contactId: string,
+): Promise<ContactRow | null> {
+  return db
+    .prepare(`${CONTACT_SELECT} WHERE c.owner_id = ? AND c.contact_id = ?`)
+    .bind(ownerId, contactId)
+    .first<ContactRow>();
+}
+
+export async function listContacts(
+  db: D1Database,
+  ownerId: string,
+): Promise<ContactRow[]> {
+  const { results } = await db
+    .prepare(`${CONTACT_SELECT} WHERE c.owner_id = ? ORDER BY c.saved_at ASC`)
+    .bind(ownerId)
+    .all<ContactRow>();
+  return results ?? [];
+}
+
+export interface NewContact {
+  contactId: string;
+  nickname: string;
+  conversationId: string | null;
+  savedAt: number;
+  lastInteractionAt: number;
+}
+
+/**
+ * Validate a client-supplied conversation_id before it is persisted on a contact.
+ * Returns the id only if a conversation with that id exists AND its dm_key is the
+ * caller↔contact pair — otherwise null. Without this, a caller could write any
+ * conversation_id (incl. one they are not in) onto their contact and route their
+ * chat into another pair's conversation. Mirrors the backfill's membership guard.
+ */
+async function memberConversationId(
+  db: D1Database,
+  ownerId: string,
+  contactId: string,
+  candidate: string | null | undefined,
+): Promise<string | null> {
+  if (!candidate) return null;
+  const row = await db
+    .prepare(`SELECT 1 FROM conversations WHERE id = ? AND dm_key = ?`)
+    .bind(candidate, directDmKey(ownerId, contactId))
+    .first();
+  return row ? candidate : null;
+}
+
+/** Insert-or-replace one contact owned by `ownerId`. */
+export function contactUpsert(
+  db: D1Database,
+  ownerId: string,
+  c: NewContact,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO contacts
+         (owner_id, contact_id, nickname, conversation_id, saved_at, last_interaction_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(owner_id, contact_id) DO UPDATE SET
+         nickname            = excluded.nickname,
+         conversation_id     = COALESCE(excluded.conversation_id, contacts.conversation_id),
+         saved_at            = excluded.saved_at,
+         last_interaction_at = excluded.last_interaction_at`,
+    )
+    .bind(
+      ownerId,
+      c.contactId,
+      c.nickname,
+      c.conversationId,
+      c.savedAt,
+      c.lastInteractionAt,
+    );
+}
+
+function contactConnectUpsert(
+  db: D1Database,
+  ownerId: string,
+  c: NewContact,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO contacts
+         (owner_id, contact_id, nickname, conversation_id, saved_at, last_interaction_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(owner_id, contact_id) DO UPDATE SET
+         conversation_id     = excluded.conversation_id,
+         last_interaction_at = excluded.last_interaction_at`,
+    )
+    .bind(
+      ownerId,
+      c.contactId,
+      c.nickname,
+      c.conversationId,
+      c.savedAt,
+      c.lastInteractionAt,
+    );
+}
+
+export async function putContact(
+  db: D1Database,
+  ownerId: string,
+  c: NewContact,
+  now: number,
+): Promise<void> {
+  const conversationId = await memberConversationId(
+    db,
+    ownerId,
+    c.contactId,
+    c.conversationId,
+  );
+  await db.batch([
+    ensureUserStub(db, c.contactId, now),
+    contactUpsert(db, ownerId, { ...c, conversationId }),
+  ]);
+}
+
+export async function connectUsers(
+  db: D1Database,
+  a: string,
+  b: string,
+  now: number,
+): Promise<string> {
+  // ponytail: eager create now; switch to lazy-on-first-message if contact counts ever grow.
+  const conversationId = await resolveOrCreateDirect(db, a, b, now);
+  await db.batch([
+    contactConnectUpsert(db, a, {
+      contactId: b,
+      nickname: '',
+      conversationId,
+      savedAt: now,
+      lastInteractionAt: now,
+    }),
+    contactConnectUpsert(db, b, {
+      contactId: a,
+      nickname: '',
+      conversationId,
+      savedAt: now,
+      lastInteractionAt: now,
+    }),
+  ]);
+  return conversationId;
+}
+
+export interface ContactPatch {
+  nickname?: string;
+  conversationId?: string | null;
+  lastInteractionAt?: number;
+}
+
+/** Partial update; null sentinel via COALESCE leaves unprovided fields intact. */
+export async function patchContact(
+  db: D1Database,
+  ownerId: string,
+  contactId: string,
+  patch: ContactPatch,
+): Promise<ContactRow | null> {
+  const exists = await db
+    .prepare(`SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?`)
+    .bind(ownerId, contactId)
+    .first();
+  if (!exists) return null;
+  const conversationId = await memberConversationId(
+    db,
+    ownerId,
+    contactId,
+    patch.conversationId,
+  );
+  await db
+    .prepare(
+      `UPDATE contacts SET
+         nickname            = COALESCE(?, nickname),
+         conversation_id     = COALESCE(?, conversation_id),
+         last_interaction_at = COALESCE(?, last_interaction_at)
+       WHERE owner_id = ? AND contact_id = ?`,
+    )
+    .bind(
+      patch.nickname ?? null,
+      conversationId,
+      patch.lastInteractionAt ?? null,
+      ownerId,
+      contactId,
+    )
+    .run();
+  return db
+    .prepare(`${CONTACT_SELECT} WHERE c.owner_id = ? AND c.contact_id = ?`)
+    .bind(ownerId, contactId)
+    .first<ContactRow>();
+}
+
+export async function removeContact(
+  db: D1Database,
+  ownerId: string,
+  contactId: string,
+): Promise<void> {
+  await db
+    .prepare(`DELETE FROM contacts WHERE owner_id = ? AND contact_id = ?`)
+    .bind(ownerId, contactId)
+    .run();
+}
+
+// --- contact requests (the request/accept handshake) ------------------------
+
+export interface ContactRequestRow {
+  from_id: string;
+  to_id: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: number;
+  from_name?: string | null; // joined in list queries
+  to_name?: string | null; // joined in list queries
+}
+
+/**
+ * Create (or re-open) a pending request. ON CONFLICT resets to pending so a
+ * re-send after a decline or deleted contact works. Short-circuits when the
+ * sender already has the recipient as a contact (no request needed).
+ */
+export async function createRequest(
+  db: D1Database,
+  fromId: string,
+  toId: string,
+  now: number,
+): Promise<'created' | 'already_contacts'> {
+  const alreadyContacts = await db
+    .prepare(`SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?`)
+    .bind(fromId, toId)
+    .first();
+  if (alreadyContacts) return 'already_contacts';
+
+  await db.batch([
+    ensureUserStub(db, toId, now),
+    db
+      .prepare(
+        `INSERT INTO contact_requests (from_id, to_id, status, created_at)
+         VALUES (?, ?, 'pending', ?)
+         ON CONFLICT(from_id, to_id) DO UPDATE SET
+           status      = 'pending',
+           resolved_at = NULL,
+           created_at  = excluded.created_at`,
+      )
+      .bind(fromId, toId, now),
+  ]);
+  return 'created';
+}
+
+/** Pending requests addressed to `toId`, newest first, with sender name. */
+export async function listIncomingRequests(
+  db: D1Database,
+  toId: string,
+): Promise<ContactRequestRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT r.from_id, r.to_id, r.status, r.created_at,
+              u.display_name AS from_name
+       FROM contact_requests r
+       JOIN users u ON u.id = r.from_id
+       WHERE r.to_id = ? AND r.status = 'pending'
+       ORDER BY r.created_at DESC`,
+    )
+    .bind(toId)
+    .all<ContactRequestRow>();
+  return results ?? [];
+}
+
+/** Pending requests sent by `fromId`, newest first, with recipient name. */
+export async function listOutgoingRequests(
+  db: D1Database,
+  fromId: string,
+): Promise<ContactRequestRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT r.from_id, r.to_id, r.status, r.created_at,
+              u.display_name AS to_name
+       FROM contact_requests r
+       JOIN users u ON u.id = r.to_id
+       WHERE r.from_id = ? AND r.status = 'pending'
+       ORDER BY r.created_at DESC`,
+    )
+    .bind(fromId)
+    .all<ContactRequestRow>();
+  return results ?? [];
+}
+
+/**
+ * Accept the request `fromId → toId`: mark it accepted and save the contact on
+ * BOTH sides in one batch (the handshake's whole point). Idempotent re-accept is
+ * a no-op overwrite. Returns false if no such pending/accepted request exists.
+ */
+export async function acceptRequest(
+  db: D1Database,
+  toId: string,
+  fromId: string,
+  now: number,
+): Promise<string | null> {
+  const req = await db
+    .prepare(
+      `SELECT 1 FROM contact_requests WHERE from_id = ? AND to_id = ? AND status = 'pending'`,
+    )
+    .bind(fromId, toId)
+    .first();
+  if (!req) return null;
+
+  const conversationId = await connectUsers(db, toId, fromId, now);
+  // Resolve the accepted request AND any reverse pending row (mutual requests),
+  // so the now-connected pair never sees a stale incoming request.
+  await db
+    .prepare(
+      `UPDATE contact_requests SET status = 'accepted', resolved_at = ?
+       WHERE status = 'pending'
+         AND ((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?))`,
+    )
+    .bind(now, fromId, toId, toId, fromId)
+    .run();
+  return conversationId;
+}
+
+export async function declineRequest(
+  db: D1Database,
+  toId: string,
+  fromId: string,
+  now: number,
+): Promise<boolean> {
+  const res = await db
+    .prepare(
+      `UPDATE contact_requests SET status = 'declined', resolved_at = ?
+       WHERE from_id = ? AND to_id = ? AND status = 'pending'`,
+    )
+    .bind(now, fromId, toId)
+    .run();
+  return (res.meta.changes ?? 0) > 0;
 }
 
 // --- messages (text + file) -------------------------------------------------
@@ -324,7 +835,9 @@ export async function setMyReaction(
 
   if (reactionKey === null) {
     await db
-      .prepare(`DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?`)
+      .prepare(
+        `DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?`,
+      )
       .bind(messageId, userId)
       .run();
   } else {

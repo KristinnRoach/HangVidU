@@ -113,7 +113,7 @@ export async function signUpWithUsername({
     }
 
     // Firebase Auth `displayName` is the canonical source for the display
-    // name (`authState.user.userName`); `username` is the unique login handle.
+    // name (`authState.user.displayName`); `username` is the unique login handle.
     await updateFirebaseProfile(cred.user, {
       displayName: resolvedDisplayName,
     });
@@ -132,7 +132,7 @@ export async function signUpWithUsername({
       // in auth-orchestration.js skips them.
       await set(ref(rtdb, `usersByEmail/${hashEmail(trimmedEmail)}`), {
         uid: cred.user.uid,
-        userName: resolvedDisplayName,
+        displayName: resolvedDisplayName,
         photoURL: null,
         registeredAt: Date.now(),
         username: handle,

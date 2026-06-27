@@ -5,6 +5,9 @@ import {
   normalizeContactRecord,
 } from '../contact-transform.js';
 
+// NOTE: Only kept temporarily for reference.
+// Not used since 25. june 2026 - Likely needs updating to align correctly with current records if reused.
+
 function assertGetOwnerId(getOwnerId) {
   if (typeof getOwnerId !== 'function') {
     throw new TypeError('getOwnerId must be a function');
