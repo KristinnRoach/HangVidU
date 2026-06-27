@@ -34,7 +34,6 @@ export async function captureReferral() {
     url.searchParams.delete('ref');
     window.history.replaceState({}, '', url.toString());
 
-    // Fetch referrer profile (world-readable, no auth needed)
     const profile = await getPublicUserProfile(referrerId);
     const name = profile?.displayName || null;
     const photoURL = profile?.photoURL || null;
@@ -60,8 +59,7 @@ export async function captureReferral() {
 
 /**
  * Process referral after user signs in.
- * Uses the D1 referral connect endpoint. Referral links are pre-authorized:
- * the sharer consented by sharing, and the joiner consented by clicking.
+ * Uses the D1 referral connect endpoint for the current raw-referrer-id flow.
  * Called after successful authentication.
  */
 export async function processReferral() {

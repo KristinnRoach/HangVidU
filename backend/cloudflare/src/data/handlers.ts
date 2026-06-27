@@ -438,8 +438,8 @@ export async function handleDataRequest(
     return json({ ok: true }, 200, cors);
   }
 
-  // POST /referrals/connect { referrerId } — referral is pre-authorized by
-  // the sharer exposing the link and the joiner using it; no pending request.
+  // POST /referrals/connect { referrerId } — current raw-referrer-id referral
+  // path auto-connects without creating a pending request.
   if (request.method === 'POST' && url.pathname === '/referrals/connect') {
     const referrerId = str((await readJson(request))?.referrerId);
     if (!referrerId) return json({ error: 'referrerId required' }, 400, cors);

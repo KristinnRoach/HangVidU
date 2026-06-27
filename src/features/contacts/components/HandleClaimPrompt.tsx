@@ -34,13 +34,7 @@ export default function HandleClaimPrompt(props: { user: UserLike | null }) {
         setOpen(false);
         setMessage('');
         if (!uid || localStorage.getItem(storageKey(uid))) return;
-        // Every account already has a handle (auto-assigned at login). This is
-        // the one-time "pick a nicer @handle" customizer: open once per account
-        // (localStorage-gated), prefilled with the current handle, so Save
-        // customizes and Dismiss keeps the default.
-        // ponytail: shown once for EVERY account, so a user who chose their
-        // handle at signup also gets one prefilled confirm. Upgrade path if that
-        // annoys: mark auto-assigned handles and only prompt those.
+        // Dormant settings-slice candidate; not mounted in the current app.
         try {
           const profile = await getPublicUserProfile(uid);
           setHandle(profile?.username || suggestHandle(props.user ?? {}));

@@ -9,7 +9,7 @@ locked decisions. Refine tasks only after the flow is verified working.
 - search by handle → send request → accept on a 2nd account → both sides
   connected **with a live `conversation_id`** (chat opens immediately)
 - referral link → open → sign in → **auto-connected** (no gate)
-- one-time handle customizer after auto-claim
+- auto-claimed handles on login
 
 **Status note (2026-06-26):** request and referral flows were manually verified
 with `dev:local`. The slice is ready for PR review, but remote cutover still
@@ -48,8 +48,8 @@ update was broken on every path: accept, post-accept nudge, referral). Added
 - [x] Rewrite `acceptRequest` = verify pending request → `connectUsers` → mark
   `accepted`. `room_id` handling is already removed from repo + handlers + wire
   shapes.
-- [x] `handlers.ts` + `index.ts`: add `POST /referrals/connect { referrerId }`,
-  authorized by the caller's (joiner's) token alone; runs `connectUsers`.
+- [x] `handlers.ts` + `index.ts`: add `POST /referrals/connect { referrerId }`;
+  current raw-referrer-id flow runs `connectUsers`.
 - [x] Update the worker smoke test: accept yields a `conversation_id` on both sides.
 
 ## 3. Client — contacts on D1 (verify + remaining revise)
@@ -84,10 +84,9 @@ update was broken on every path: accept, post-accept nudge, referral). Added
 - [x] `referral-handler.js`: on sign-in call `/referrals/connect`; retire the
   `syntheticInvite` hack. Keep the `?ref=<uid>` capture as-is for now.
 
-## 8. Handle customizer (build)
-- [x] Accounts auto-claim a valid handle on login when missing one. A one-time
-  prompt lets the user keep or customize it; `PUT /users/me/profile`; on 409
-  re-suggest.
+## 8. Handle auto-claim (build)
+- [x] Accounts auto-claim a valid handle on login when missing one.
+  Handle customization/privacy is deferred to the settings slice.
 
 ## 9. Smoke e2e on dev (two accounts)
 - [x] Clicked through request and referral flows on `dev:local`.
@@ -102,14 +101,13 @@ update was broken on every path: accept, post-accept nudge, referral). Added
 
 ## Remaining before merge/deploy
 - Remote D1 migration `0006_users_profile.sql` has **not** been applied yet.
-- Prod D1 backfill from RTDB users/profiles/contacts/invites is still required.
+- Prod D1 backfill from RTDB users/profiles/contacts is still required.
 - Deploy order after merge/backfill: `deploy:cf`, then `deploy:fb`.
 
 ## Deferred follow-ups (do NOT expand in this PR)
 - Profile/account settings UI for editing profile, handle, and discoverability.
 - Contact delete/edit UI polish.
-- Tests beyond the worker smoke check (edge cases, client unit tests).
+- Broader edge-case and client test coverage.
 - Decline / request-cleanup / notification polish.
-- Edge cases (re-send after decline, self-request, stale nudges, etc.).
 - Parked follow-ups: unguessable referral token (replaces forgeable `?ref=<uid>`
   + fixes pre-login banner name); auth-principal/handle decouple.

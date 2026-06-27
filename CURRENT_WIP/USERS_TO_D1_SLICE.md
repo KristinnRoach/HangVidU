@@ -60,8 +60,8 @@ discoverable = 1 ORDER BY username LIMIT 10`. The substring `LIKE` accepts a
   Email-hash lookup stays as a parallel exact path.
 
 **Handle flow:** accounts auto-claim a valid handle on login when missing one.
-A one-time prompt lets the user keep or customize it. Existing users become
-handle-searchable after that login/claim path runs.
+Existing users become handle-searchable after that login path runs. Handle
+customization/privacy is deferred to the settings slice.
 
 ### Username uniqueness
 
@@ -122,10 +122,9 @@ primitive**. Both flows call it; they differ only in the consent gate:
 
 - **Search request = unilateral** → keeps the pending-accept gate. The recipient
   must accept (`POST /contact-requests/:fromId/accept`), which runs the primitive.
-- **Referral link = pre-authorized** (sharer consented by sharing, joiner by
-  clicking) → **auto-accepts, no gate**. On sign-in the joiner calls the primitive
-  directly via a referral entrypoint authorized by the joiner's token alone
-  (net-new server route, e.g. `POST /referrals/connect { referrerId }`).
+- **Referral link = raw-referrer-id auto-connect** (current trusted-link
+  tradeoff) → **auto-accepts, no gate**. On sign-in the joiner calls the
+  primitive directly via `POST /referrals/connect { referrerId }`.
 
 Retire the `syntheticInvite` hack — referral stops impersonating an invite and
 calls the primitive directly.
@@ -157,8 +156,8 @@ to see the new contact without a manual reload.
     handle initially); the decoupling only _adds_ the ability to change a handle,
     it never has to undo this.
   - The only divergence vector — _editing_ a handle — is not in this slice. The
-    auto-claim customizer is gated by `if (profile?.username) return`, so it never
-    fires for password users (they already have a handle). They cannot diverge yet.
+    auto-claim path is gated by `if (profile?.username) return`, so it never fires
+    for password users (they already have a handle). They cannot diverge yet.
 
   **Target shape (lower-risk than the re-key implied above):** keep `uid` as the
   stable id; **freeze the synthetic email at signup as an opaque login key** (stop
@@ -174,7 +173,7 @@ to see the new contact without a manual reload.
 
 > **Note (2026-06-25):** the server items below were built against the pre-lock
 > plan. Locked-model server revisions (`room_id` cleanup, create-on-accept,
-> `/referrals/connect`) are now done; remaining work is mostly client wiring.
+> `/referrals/connect`) are now done.
 > The concrete revise/build sequence lives in
 > [`USERS_TO_D1_TASKLIST.md`](./USERS_TO_D1_TASKLIST.md).
 
@@ -184,7 +183,7 @@ to see the new contact without a manual reload.
   - `contacts(owner_id, contact_id, nickname, conversation_id, saved_at,
 last_interaction_at, PRIMARY KEY(owner_id, contact_id))` — **no `room_id`**
     (roomId→conversationId collapse). `conversation_id` nullable (reversibility).
-  - `contact_requests(from_id, to_id, status TEXT, created_at,
+  - `contact_requests(from_id, to_id, status TEXT, created_at, resolved_at,
 PRIMARY KEY(from_id, to_id))` — `status` in `pending|accepted|declined`.
     **No `room_id`** — the conversation is created at accept, not carried on the
     request. (0006 has not been applied to remote D1 yet, so revise it in place
@@ -202,12 +201,13 @@ PRIMARY KEY(from_id, to_id))` — `status` in `pending|accepted|declined`.
       regex-router + `auth.ts` verify (uid from token = owner; never
       client-supplied):
   - `/users/me/profile` (GET/PUT), `/users/me/discoverable` (PUT)
-  - `/users/lookup?handle=` and `/users/lookup?emailHash=` (GET, exact)
+  - `/users/lookup?handle=` (GET, partial) and `/users/lookup?emailHash=`
+    (GET, exact)
   - `/users/me/contacts` (GET/POST), `/users/me/contacts/:id` (PATCH/DELETE)
   - `/contact-requests` (POST send, GET list incoming),
     `/contact-requests/:fromId/accept` (POST), `/.../decline` (POST)
-  - `/referrals/connect` (POST `{ referrerId }`) — referral
-    auto-connect, authorized by the joiner's token alone (no pending request).
+  - `/referrals/connect` (POST `{ referrerId }`) — raw-referrer-id
+    auto-connect; no pending request.
 - [x] **`UserMailbox` DO**: add a `contact_request` event type pushed to the
       recipient (mirror the call-invite push). Recipient client also fetches
       pending on load from D1, so the push is a nudge, not the source of truth.
@@ -233,9 +233,8 @@ changes.
 - [x] **Discovery**: port `user-discovery.js` to call `/users/lookup`. Keep
       `hashEmail` client-side. Add a `searchByHandle(handle)` call. New UI: a
       search box that resolves a handle → "send request" button.
-- [x] **Handle customizer**: auto-claim a valid handle when missing; one-time
-      prompt lets the user keep or customize it. PUT to `/users/me/profile`,
-      handle 409 (taken) by re-suggesting.
+- [x] **Handle auto-claim**: auto-claim a valid handle when missing. Handle
+      customization/privacy is deferred to the settings slice.
 - [x] **Contact requests**: replace `invitations.js` +
       `invite-listener.js` with calls to `/contact-requests*`; subscribe to the
       `UserMailbox` `contact_request` event instead of the two RTDB
@@ -289,8 +288,8 @@ outcome.
 ## Cutover
 
 - [ ] Backfill prod D1.
-- [x] Flip client factories to D1 repositories; mount handle customizer.
-- [ ] Smoke: search by handle → send request → accept on other account → both
+- [x] Flip client factories to D1 repositories; auto-claim handles on login.
+- [x] Smoke: search by handle → send request → accept on other account → both
       sides connected **with a live `conversation_id`** (open chat immediately);
       referral link → open → sign in → **auto-connected** (no gate). Verified on
       `dev:local` 2026-06-26.
@@ -325,8 +324,6 @@ session not already in the PR/doc:
   outgoing/`already_invited` pattern + `listIncomingContactRequests`), disabling the
   send button with "Invited you — see requests" so you accept instead of sending a
   redundant reverse request.
-- **CodeRabbit auto-review is PAUSED** (branch under active dev) — latest commits
-  are unreviewed. `@coderabbitai review` to re-trigger after the next push.
 - **Remote run order matters:** apply `0006` remote → **backfill remote (before
   deploy)** → `deploy:cf` → `deploy:fb`. Deploying hosting before the backfill =
   existing users see empty contacts until they re-login. Generate SQL with both
