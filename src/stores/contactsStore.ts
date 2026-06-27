@@ -123,16 +123,22 @@ export async function handleHangUp(
   contactUserId: string,
   conversationId: string,
 ) {
-  if (getIsLoggedIn() && state.status !== 'ready') {
-    try {
-      await hydrateContacts();
-    } catch (error) {
-      logFailure('handleHangUp.hydrate', error, {
-        contactUserId,
-        conversationId,
-      });
-      return { action: 'skip' as const, reason: 'contacts-not-ready' };
-    }
+  if (!getIsLoggedIn()) {
+    return { action: 'skip' as const, reason: 'not-logged-in' };
+  }
+
+  try {
+    await hydrateContacts();
+  } catch (error) {
+    logFailure('handleHangUp.hydrate', error, {
+      contactUserId,
+      conversationId,
+    });
+    return { action: 'skip' as const, reason: 'contacts-not-ready' };
+  }
+
+  if (!getIsLoggedIn()) {
+    return { action: 'skip' as const, reason: 'not-logged-in' };
   }
 
   const entry = state.byId[contactUserId];
@@ -141,10 +147,6 @@ export async function handleHangUp(
       await cacheContactConversationId(contactUserId, conversationId);
     }
     return { action: 'existing' as const };
-  }
-
-  if (!getIsLoggedIn()) {
-    return { action: 'skip' as const, reason: 'not-logged-in' };
   }
 
   return { action: 'prompt-save' as const };
@@ -162,7 +164,7 @@ export async function hydrateContacts(): Promise<void> {
   const requestId = ++hydrationRequestId;
   setState({ status: 'loading' });
 
-  hydrationPromise = (async () => {
+  const promise = Promise.resolve().then(async () => {
     try {
       const records = await getRepo(ownerId).list();
       if (requestId !== hydrationRequestId) return;
@@ -177,11 +179,12 @@ export async function hydrateContacts(): Promise<void> {
       logFailure('hydrateContacts', error);
       throw error;
     } finally {
-      if (requestId === hydrationRequestId) hydrationPromise = null;
+      if (hydrationPromise === promise) hydrationPromise = null;
     }
-  })();
+  });
 
-  return hydrationPromise;
+  hydrationPromise = promise;
+  return promise;
 }
 
 /**
@@ -196,6 +199,7 @@ export async function reloadContacts(): Promise<void> {
   const ownerId = getLoggedInUserId();
   const scopeKey = getScopeKey(ownerId);
   const requestId = ++hydrationRequestId;
+  hydrationPromise = null;
   try {
     const records = await getRepo(ownerId).list();
     if (requestId !== hydrationRequestId) return;
