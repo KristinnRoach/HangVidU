@@ -249,30 +249,30 @@ changes.
 
 ## Backfill
 
-`backend/cloudflare/scripts/backfill-users-to-d1.mjs` exists and is the idiom
-(RTDB `/users` JSON dump → idempotent SQL → `wrangler d1 execute`). **Status: WIP,
-not final** — verified applying to **local** D1 only; not yet exercised end-to-end
-via `dev:local`, and the cohort/identity model is still under review (see open
-question below). Currently covers **users + contacts**:
+`backend/cloudflare/scripts/backfill-users-to-d1.mjs` is the idiom (RTDB `/users`
++ `/usersByEmail` JSON dumps → idempotent SQL → `wrangler d1 execute`; see
+`CURRENT_WIP/backfill-local.sh`). Verified on **local** D1; remote not yet run.
+Covers **users + handles + email_hash + contacts + conversation_id links**:
 
-- **Users.** Rich rows for the Google cohort (`userName`, no handle →
-  `display_name` + `photo_url`, `username` NULL) and handle accounts
-  (`username` present → `display_name` + `username`). Deleted / identity-less
-  nodes get a bare FK stub only if a contact edge references them. `email_hash`
-  NULL (not in RTDB) and `username` for Google users are both filled on next
-  login (`registerInUserDirectory` / `ensureHandle`). `discoverable` → DB
-  default 1. Fill-only UPSERT (`COALESCE` existing first) so it never clobbers
-  data a live login already wrote.
-- **Contacts.** One row per `users/{owner}/contacts/{contactId}` edge;
-  `contact_id` is the map key. `conversation_id` is set **NULL on purpose** —
-  the canonical id resolves by `dm_key` on first chat open (the RTDB
-  `conversationId` is not the D1 id), and a standalone contacts backfill has no
-  `conversations` rows for the FK. Nickname empty → `''` (NOT NULL).
+- **Users.** Google cohort (`userName`, no handle) → `display_name` + `photo_url`
+  + an **auto-assigned handle** slugified from the display name (same
+  `convertToEnglishLetters` rule as login; warn + skip on collision → `username`
+  NULL, claimed on next login). Handle accounts (`username` present) →
+  `display_name` + `username`. Deleted / identity-less nodes get a bare FK stub
+  only if a contact edge references them. `discoverable` → DB default 1. Fill-only
+  UPSERT (`COALESCE` existing first) so it never clobbers a live login's writes.
+- **email_hash.** Backfilled from `/usersByEmail` (its key *is* `hashEmail(email)`)
+  via `--emails`; fill-only. Powers email discovery without a re-login.
+- **Contacts.** One row per `users/{owner}/contacts/{contactId}` edge; `contact_id`
+  is the map key; nickname empty → `''`. `conversation_id` is filled by a
+  **membership-guarded UPDATE** — set only when a D1 `conversations` row with that
+  id exists AND its `dm_key` is the pair; otherwise NULL → `dm_key` resolve on
+  first chat open. Locally (no matching conversations) this no-ops; on remote it
+  fills. UUID-shape guard rejects legacy `roomId`s.
 
-Still TODO before this is "done": exercise via `dev:local`; decide
-preserve-vs-prune for contacts pointing at deleted/stub users; pending invites →
-`contact_requests(status='pending')`; a `--limit=N`/dry-run ergonomics pass if
-wanted for the remote run.
+Still TODO: decide preserve-vs-prune for contacts pointing at deleted/stub users
+(currently preserve; all carry nicknames so none render blank); pending invites
+are intentionally skipped.
 
 **Open question (under research, may reshape the user/handle model).** Whether to
 internally **decouple the public `@handle` from the non-email username-login
