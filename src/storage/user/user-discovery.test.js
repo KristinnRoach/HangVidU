@@ -18,14 +18,18 @@ function jsonResponse(body, status = 200) {
 
 let discovery;
 let fetchMock;
+let originalFetch;
 
 beforeEach(() => {
+  originalFetch = globalThis.fetch;
   fetchMock = vi.fn();
   globalThis.fetch = fetchMock;
   discovery = createUserDiscovery({ baseUrl: BASE, getToken });
 });
 
 afterEach(() => {
+  if (originalFetch) globalThis.fetch = originalFetch;
+  else delete globalThis.fetch;
   vi.restoreAllMocks();
 });
 

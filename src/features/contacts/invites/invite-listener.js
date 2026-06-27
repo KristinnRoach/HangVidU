@@ -98,7 +98,17 @@ export function setupInviteListener() {
   );
 
   return () => {
-    unsubscribe();
-    pendingNotificationIds.clear();
+    try {
+      unsubscribe();
+    } finally {
+      // Dismiss still-pending invite notifications so their accept/decline
+      // callbacks can't fire under the next session (logout / account switch).
+      for (const notificationId of pendingNotificationIds) {
+        dispatchCommand('cmd:app-notifications:invite:remove', {
+          notificationId,
+        });
+      }
+      pendingNotificationIds.clear();
+    }
   };
 }
