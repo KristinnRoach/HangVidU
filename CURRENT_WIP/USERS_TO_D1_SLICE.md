@@ -315,13 +315,15 @@ session not already in the PR/doc:
   one. Legit stamp-back (`contactsStore.ts:147`) still works. tsc + 71 tests green.
   **Follow-up not done:** add a worker test asserting a foreign `conversationId` is
   rejected (nulled) — `test/users-d1.test.ts` "contacts CRUD" is the spot.
-- **CodeRabbit Major #2 — STILL OPEN (deferred, needs a product call).**
-  `repo.ts` `createRequest`/`acceptRequest` only reason about the exact
-  `(from_id,to_id)` row. Mutual requests leave the reverse row `pending` after
-  connect (stale incoming); re-requesting an existing contact isn't
-  short-circuited. Collapse the pair: short-circuit when already contacts,
-  consume the reverse pending row on accept. Left open because the re-request
-  behavior (reject vs no-op) is a small API-contract decision.
+- **CodeRabbit Major #2 — FIXED.** `createRequest` short-circuits when the pair
+  are already contacts (returns `already_contacts`; handler responds
+  `{ ok, alreadyContacts: true }` and skips the nudge). `acceptRequest` now
+  resolves BOTH directions' pending rows, so a mutual request leaves no stale
+  incoming after connect. Worker tests cover both. Plus a UI guard: the add-contact
+  handle search now marks a searched user `incoming_pending` (reusing the
+  outgoing/`already_invited` pattern + `listIncomingContactRequests`), disabling the
+  send button with "Invited you — see requests" so you accept instead of sending a
+  redundant reverse request.
 - **CodeRabbit auto-review is PAUSED** (branch under active dev) — latest commits
   are unreviewed. `@coderabbitai review` to re-trigger after the next push.
 - **Remote run order matters:** apply `0006` remote → **backfill remote (before

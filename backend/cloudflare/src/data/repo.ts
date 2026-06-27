@@ -508,13 +508,20 @@ export interface ContactRequestRow {
 /**
  * Create (or re-open) a pending request. ON CONFLICT resets to pending so a
  * re-send after a decline works; an already-accepted pair is left accepted.
+ * Short-circuits when the pair are already contacts (no request needed).
  */
 export async function createRequest(
   db: D1Database,
   fromId: string,
   toId: string,
   now: number,
-): Promise<void> {
+): Promise<'created' | 'already_contacts'> {
+  const alreadyContacts = await db
+    .prepare(`SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?`)
+    .bind(fromId, toId)
+    .first();
+  if (alreadyContacts) return 'already_contacts';
+
   await db.batch([
     ensureUserStub(db, toId, now),
     db
@@ -530,6 +537,7 @@ export async function createRequest(
       )
       .bind(fromId, toId, now),
   ]);
+  return 'created';
 }
 
 /** Pending requests addressed to `toId`, newest first, with sender name. */
@@ -590,12 +598,15 @@ export async function acceptRequest(
   if (!req) return null;
 
   const conversationId = await connectUsers(db, toId, fromId, now);
+  // Resolve the accepted request AND any reverse pending row (mutual requests),
+  // so the now-connected pair never sees a stale incoming request.
   await db
     .prepare(
       `UPDATE contact_requests SET status = 'accepted', resolved_at = ?
-       WHERE from_id = ? AND to_id = ?`,
+       WHERE status = 'pending'
+         AND ((from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?))`,
     )
-    .bind(now, fromId, toId)
+    .bind(now, fromId, toId, toId, fromId)
     .run();
   return conversationId;
 }

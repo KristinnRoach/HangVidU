@@ -345,6 +345,43 @@ describe('contact request handshake', () => {
     expect(bobContacts.contacts).toHaveLength(0);
   });
 
+  it('accepting clears the reverse pending request (mutual requests)', async () => {
+    const alice = await signToken('alice');
+    const bob = await signToken('bob');
+
+    // Both sides send a request to each other before either accepts.
+    await req('POST', '/contact-requests', alice, { toId: 'bob' });
+    await req('POST', '/contact-requests', bob, { toId: 'alice' });
+
+    // Bob accepts Alice's request.
+    const accept = await req('POST', '/contact-requests/alice/accept', bob);
+    expect(accept.status).toBe(200);
+
+    // Neither side has a stale incoming request afterwards.
+    const bobIncoming = await (await req('GET', '/contact-requests', bob)).json();
+    const aliceIncoming = await (
+      await req('GET', '/contact-requests', alice)
+    ).json();
+    expect(bobIncoming.requests).toHaveLength(0);
+    expect(aliceIncoming.requests).toHaveLength(0);
+  });
+
+  it('does not create a request when the pair are already contacts', async () => {
+    const alice = await signToken('alice');
+    const bob = await signToken('bob');
+    await req('POST', '/contact-requests', alice, { toId: 'bob' });
+    await req('POST', '/contact-requests/alice/accept', bob);
+
+    // Alice tries to request Bob again after they're connected.
+    const res = await req('POST', '/contact-requests', alice, { toId: 'bob' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ alreadyContacts: true });
+
+    // Bob sees no new incoming request.
+    const bobIncoming = await (await req('GET', '/contact-requests', bob)).json();
+    expect(bobIncoming.requests).toHaveLength(0);
+  });
+
   it('connects referral users without a pending request', async () => {
     const alice = await signToken('alice');
     const bob = await signToken('bob');

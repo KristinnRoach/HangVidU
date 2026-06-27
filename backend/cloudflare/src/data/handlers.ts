@@ -393,7 +393,10 @@ export async function handleDataRequest(
       if (toId === callerId) {
         return json({ error: 'cannot request self' }, 400, cors);
       }
-      await createRequest(env.DB, callerId, toId, now);
+      const result = await createRequest(env.DB, callerId, toId, now);
+      if (result === 'already_contacts') {
+        return json({ ok: true, alreadyContacts: true }, 200, cors);
+      }
       // Live nudge to the recipient (fire-and-forget; D1 is source of truth).
       try {
         const me = await getProfile(env.DB, callerId);

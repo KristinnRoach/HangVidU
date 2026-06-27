@@ -49,6 +49,7 @@
   "contact.add.already_saved": "Þegar í tengiliðum þínum",
   "contact.add.not_found_emailing": "Ekki á HangVidU ennþá — opna tölvupóst til að bjóða",
   "contact.add.already_invited": "Boð þegar sent",
+  "contact.add.invited_you": "Bauð þér — sjá beiðnir",
   "contact.add.lookup_error": "Ekki tókst að staðfesta þetta netfang núna. Reyndu aftur.",
   "contact.add.email_error": "Eitthvað fór úrskeiðis, reyndu aftur",
   "contact.add.handle_not_found": "Ekkert notandanafn fannst",

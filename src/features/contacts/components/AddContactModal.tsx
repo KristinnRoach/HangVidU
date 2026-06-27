@@ -37,6 +37,7 @@ import {
   hydrateContacts,
 } from '../../../stores/contactsStore.js';
 import {
+  listIncomingContactRequests,
   listOutgoingContactRequests,
   searchUsersByHandle,
 } from '../../../stores/userDirectoryStore.js';
@@ -56,7 +57,11 @@ type DirectoryUser = {
   displayName: string;
   username?: string | null;
 };
-type HandleInviteStatus = 'already_saved' | 'already_invited' | 'sent';
+type HandleInviteStatus =
+  | 'already_saved'
+  | 'already_invited'
+  | 'incoming_pending'
+  | 'sent';
 
 type Props = {
   open: boolean;
@@ -384,20 +389,26 @@ export default function AddContactModal(props: Props) {
       await hydrateContacts().catch((error) => {
         console.warn('[AddContactModal] Contact hydration before search failed:', error);
       });
-      const [users, outgoingRequests] = await Promise.all([
+      const [users, outgoingRequests, incomingRequests] = await Promise.all([
         searchUsersByHandle(handle),
         listOutgoingContactRequests().catch((error) => {
           console.warn('[AddContactModal] Outgoing contact requests lookup failed:', error);
           return [];
         }),
+        listIncomingContactRequests().catch((error) => {
+          console.warn('[AddContactModal] Incoming contact requests lookup failed:', error);
+          return [];
+        }),
       ]);
       const contacts = getAllContacts();
       const outgoingIds = new Set(outgoingRequests.map((request) => request.toId));
+      const incomingIds = new Set(incomingRequests.map((request) => request.fromId));
       setHandleResults(users as DirectoryUser[]);
       setHandleInviteStatuses(
         Object.fromEntries(
           users.flatMap((user: DirectoryUser) => {
             if (contacts?.[user.uid]) return [[user.uid, 'already_saved']];
+            if (incomingIds.has(user.uid)) return [[user.uid, 'incoming_pending']];
             if (outgoingIds.has(user.uid)) return [[user.uid, 'already_invited']];
             return [];
           }),
@@ -551,6 +562,8 @@ export default function AddContactModal(props: Props) {
                     return t('contact.add.already_saved');
                   if (inviteStatus() === 'already_invited')
                     return t('contact.add.already_invited');
+                  if (inviteStatus() === 'incoming_pending')
+                    return t('contact.add.invited_you');
                   if (inviteStatus() === 'sent')
                     return `✓ ${t('contact.invite.sent_one')}`;
                   return t('contact.invite');

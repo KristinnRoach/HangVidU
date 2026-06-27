@@ -49,6 +49,7 @@
   "contact.add.already_saved": "Already in your contacts",
   "contact.add.not_found_emailing": "Not on HangVidU yet — opening email to invite",
   "contact.add.already_invited": "Invite already sent",
+  "contact.add.invited_you": "Invited you — see requests",
   "contact.add.lookup_error": "Couldn't verify this email right now. Try again.",
   "contact.add.email_error": "Something went wrong, try again",
   "contact.add.handle_not_found": "No matching username found",
