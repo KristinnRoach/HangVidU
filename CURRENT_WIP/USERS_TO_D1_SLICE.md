@@ -312,9 +312,8 @@ session not already in the PR/doc:
   accepts the id only if a conversation with that id exists AND its `dm_key` is the
   caller↔contact pair, else null; applied in `putContact` + `patchContact`, and
   `contactUpsert` now `COALESCE`s so an invalid/absent id can't wipe the canonical
-  one. Legit stamp-back (`contactsStore.ts:147`) still works. tsc + 71 tests green.
-  **Follow-up not done:** add a worker test asserting a foreign `conversationId` is
-  rejected (nulled) — `test/users-d1.test.ts` "contacts CRUD" is the spot.
+  one. Legit stamp-back (`contactsStore.ts:147`) still works. Worker test covers a
+  foreign `conversationId` being rejected (nulled).
 - **CodeRabbit Major #2 — FIXED.** `createRequest` short-circuits when the pair
   are already contacts (returns `already_contacts`; handler responds
   `{ ok, alreadyContacts: true }` and skips the nudge). `acceptRequest` now

@@ -255,6 +255,17 @@ describe('contacts CRUD', () => {
     list = await (await req('GET', '/users/me/contacts', alice)).json();
     expect(list.contacts).toHaveLength(0);
   });
+
+  it('rejects a conversationId the caller is not a member of', async () => {
+    const alice = await signToken('alice');
+    await req('POST', '/users/me/contacts', alice, {
+      contactId: 'bob',
+      nickname: 'Bob',
+      conversationId: '00000000-0000-4000-8000-000000000000',
+    });
+    const list = await (await req('GET', '/users/me/contacts', alice)).json();
+    expect(list.contacts[0].conversationId).toBeNull();
+  });
 });
 
 describe('contact request handshake', () => {
