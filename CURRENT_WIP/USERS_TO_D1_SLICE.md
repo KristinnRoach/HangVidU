@@ -17,6 +17,7 @@ finding someone already on HangVidU without a referral link. One-session scope.
 **In:** contacts, user profile, directory/discovery (handle search), contact
 requests (the request/accept handshake).
 **Explicitly out:**
+
 - **Presence** — `onDisconnect` has no D1 equivalent. Stays on RTDB. If ever
   moved it belongs on a DO (WS hibernation + alarm TTL), not D1.
 - **Push subscription store** — coupled to Firebase Functions push (admin SDK
@@ -53,7 +54,7 @@ full-text search, no ranking; results are capped to keep the surface small.
 - `users.discoverable` — `BOOLEAN DEFAULT 1`. Opt-out = `0`; user is then
   unfindable by handle but still addable via referral link (existing path).
 - Lookup = `SELECT … FROM users WHERE lower(username) LIKE '%q%' AND
-  discoverable = 1 ORDER BY username LIMIT 10`. The substring `LIKE` accepts a
+discoverable = 1 ORDER BY username LIMIT 10`. The substring `LIKE` accepts a
   small, capped enumeration surface in exchange for findability (and skips the
   username index — fine at this scale). Query is transliterated + LIKE-escaped.
   Email-hash lookup stays as a parallel exact path.
@@ -110,8 +111,8 @@ pre-#568 lazy version.
    treat the participant pair, `dm_key`, or `roomId` as a conversation key.
    Messaging, calls, and files all route through `conversation_id`.
 5. **Eager-create is a deliberate scale tradeoff.** Add a `ponytail:` comment at
-   the accept site: *eager create now; switch to lazy-on-first-message if contact
-   counts ever grow*. `conversation_id` stays nullable so this is reversible with
+   the accept site: _eager create now; switch to lazy-on-first-message if contact
+   counts ever grow_. `conversation_id` stays nullable so this is reversible with
    no schema change.
 
 ### Referral vs request — two consent models, one primitive
@@ -130,14 +131,14 @@ Retire the `syntheticInvite` hack — referral stops impersonating an invite and
 calls the primitive directly.
 
 **Nudge both parties.** `connectUsers` must fire a `contact_request` mailbox
-nudge to *both* users, not just the request recipient: the non-acting side
+nudge to _both_ users, not just the request recipient: the non-acting side
 (request sender after accept; referrer after auto-connect) needs a live refresh
 to see the new contact without a manual reload.
 
 ### Parked follow-ups (do NOT build this slice)
 
 - **Forgeable referral link.** `?ref=<uid>` is a raw, guessable uid. Fix later
-  with an unguessable referral *token*, not an approval gate. (Also resolves the
+  with an unguessable referral _token_, not an approval gate. (Also resolves the
   pre-login banner-name gap: `captureReferral()` can't read the referrer's profile
   pre-auth against the auth-gated worker, so the pre-login banner is generic; the
   name resolves post-login where auto-connect happens. Cosmetic until the token
@@ -153,9 +154,9 @@ to see the new contact without a manual reload.
   - It does **not** touch Firebase Auth, so password login is unchanged — no
     lockout vector is introduced.
   - It backfills password users' D1 `username = their existing handle` (login ==
-    handle initially); the decoupling only *adds* the ability to change a handle,
+    handle initially); the decoupling only _adds_ the ability to change a handle,
     it never has to undo this.
-  - The only divergence vector — *editing* a handle — is not in this slice. The
+  - The only divergence vector — _editing_ a handle — is not in this slice. The
     auto-claim customizer is gated by `if (profile?.username) return`, so it never
     fires for password users (they already have a handle). They cannot diverge yet.
 
@@ -181,10 +182,10 @@ to see the new contact without a manual reload.
   - `ALTER users` add `photo_url`, `username`, `email_hash`, `discoverable`
     (DEFAULT 1), `registered_at`; UNIQUE indexes on `username` and `email_hash`.
   - `contacts(owner_id, contact_id, nickname, conversation_id, saved_at,
-    last_interaction_at, PRIMARY KEY(owner_id, contact_id))` — **no `room_id`**
+last_interaction_at, PRIMARY KEY(owner_id, contact_id))` — **no `room_id`**
     (roomId→conversationId collapse). `conversation_id` nullable (reversibility).
   - `contact_requests(from_id, to_id, status TEXT, created_at,
-    PRIMARY KEY(from_id, to_id))` — `status` in `pending|accepted|declined`.
+PRIMARY KEY(from_id, to_id))` — `status` in `pending|accepted|declined`.
     **No `room_id`** — the conversation is created at accept, not carried on the
     request. (0006 has not been applied to remote D1 yet, so revise it in place
     rather than adding a migration; see tasklist.)
@@ -250,20 +251,21 @@ changes.
 ## Backfill
 
 `backend/cloudflare/scripts/backfill-users-to-d1.mjs` is the idiom (RTDB `/users`
-+ `/usersByEmail` JSON dumps → idempotent SQL → `wrangler d1 execute`; see
-`CURRENT_WIP/backfill-local.sh`). Verified on **local** D1; remote not yet run.
-Covers **users + handles + email_hash + contacts + conversation_id links**:
 
-- **Users.** Google cohort (`userName`, no handle) → `display_name` + `photo_url`
-  + an **auto-assigned handle** slugified from the display name (same
-  `convertToEnglishLetters` rule as login; warn + skip on collision → `username`
-  NULL, claimed on next login). Handle accounts (`username` present) →
-  `display_name` + `username`. Deleted / identity-less nodes get a bare FK stub
-  only if a contact edge references them. `discoverable` → DB default 1. Fill-only
-  UPSERT (`COALESCE` existing first) so it never clobbers a live login's writes.
-- **email_hash.** Backfilled from `/usersByEmail` (its key *is* `hashEmail(email)`)
+- `/usersByEmail` JSON dumps → idempotent SQL → `wrangler d1 execute`; see
+  `CURRENT_WIP/backfill-local.sh`). Verified on **local** D1; remote not yet run.
+  Covers **users + handles + email_hash + contacts + conversation_id links**:
+
+* **Users.** Google cohort (`userName`, no handle) → `display_name` + `photo_url`
+  - an **auto-assigned handle** slugified from the display name (same
+    `convertToEnglishLetters` rule as login; warn + skip on collision → `username`
+    NULL, claimed on next login). Handle accounts (`username` present) →
+    `display_name` + `username`. Deleted / identity-less nodes get a bare FK stub
+    only if a contact edge references them. `discoverable` → DB default 1. Fill-only
+    UPSERT (`COALESCE` existing first) so it never clobbers a live login's writes.
+* **email_hash.** Backfilled from `/usersByEmail` (its key _is_ `hashEmail(email)`)
   via `--emails`; fill-only. Powers email discovery without a re-login.
-- **Contacts.** One row per `users/{owner}/contacts/{contactId}` edge; `contact_id`
+* **Contacts.** One row per `users/{owner}/contacts/{contactId}` edge; `contact_id`
   is the map key; nickname empty → `''`. `conversation_id` is filled by a
   **membership-guarded UPDATE** — set only when a D1 `conversations` row with that
   id exists AND its `dm_key` is the pair; otherwise NULL → `dm_key` resolve on
@@ -277,12 +279,12 @@ are intentionally skipped.
 **Open question (under research, may reshape the user/handle model).** Whether to
 internally **decouple the public `@handle` from the non-email username-login
 credential**. Today password login's Firebase principal is a synthetic email
-built from the username, so the login name *is* the handle. The D1 `username` is
+built from the username, so the login name _is_ the handle. The D1 `username` is
 already free to diverge with no migration (see "Auth principal welded to the
 handle" parked follow-up), but the cleanest long-term shape — and how comparable
 apps separate login identity from a mutable public handle — is still being
 looked at. The handle-account half of the backfill may change depending on that
-outcome; the Google half (no handle, auto-claim on login) is unaffected.
+outcome.
 
 ## Cutover
 
