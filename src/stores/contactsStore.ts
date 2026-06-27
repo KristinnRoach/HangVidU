@@ -1,4 +1,4 @@
-import { createStore, produce } from 'solid-js/store';
+import { createStore } from 'solid-js/store';
 import {
   getIsLoggedIn,
   getLoggedInUserId,
@@ -88,36 +88,6 @@ export function getContactsIsHydrated(): boolean {
 
 // ---------- mutations ----------
 
-export async function saveContact(
-  contactId: string,
-  nickname: string,
-  conversationId: string | null | undefined = null,
-) {
-  try {
-    const ownerId = getLoggedInUserId();
-    const repo = getRepo(ownerId);
-    const existing = await repo.get(contactId);
-    const now = Date.now();
-
-    const contact = await repo.put({
-      contactId,
-      nickname,
-      conversationId: conversationId ?? existing?.conversationId ?? null,
-      savedAt: existing?.savedAt ?? now,
-      lastInteractionAt: existing?.lastInteractionAt ?? now,
-    });
-
-    setState('byId', contactId, contact);
-    return contact;
-  } catch (error) {
-    logFailure('saveContact', error, {
-      contactId,
-      conversationId: conversationId ?? null,
-    });
-    return null;
-  }
-}
-
 export async function updateContact(contactId: string, nickname: string) {
   try {
     const repo = getRepo();
@@ -146,23 +116,6 @@ export async function cacheContactConversationId(
     if (updated) setState('byId', contactId, updated);
   } catch (error) {
     logFailure('cacheContactConversationId', error, { contactId });
-  }
-}
-
-export async function deleteContact(contactId: string): Promise<boolean> {
-  try {
-    const deleted = await getRepo().remove(contactId);
-    if (!deleted) return false;
-    setState(
-      'byId',
-      produce((byId: Record<string, Contact>) => {
-        delete byId[contactId];
-      }),
-    );
-    return true;
-  } catch (error) {
-    logFailure('deleteContact', error, { contactId });
-    return false;
   }
 }
 
