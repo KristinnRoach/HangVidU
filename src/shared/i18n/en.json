@@ -175,7 +175,7 @@
   "auth.account_exists": "An account already exists with the same email but different sign-in credentials.",
   "auth.onetap_failed": "One Tap sign-in failed: {error}",
   "auth.logout_failed": "Logout failed. Please try again.",
-  "a11y.add_contact": "Add contact by email",
+  "a11y.add_contact": "Add contact",
   "nav.app_title": "HangVidU",
   "nav.privacy": "View Privacy Policy",
   "nav.privacy.short": "Privacy",

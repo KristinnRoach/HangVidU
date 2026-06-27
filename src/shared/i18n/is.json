@@ -175,7 +175,7 @@
   "auth.account_exists": "Reikningur er nú þegar til staðar með sama netfangið en mismunandi skráningarauðkenni.",
   "auth.onetap_failed": "One Tap skráning mistókst: {error}",
   "auth.logout_failed": "Útskráning mistókst. Reyndu aftur.",
-  "a11y.add_contact": "Bæta tengilið við með netfangi",
+  "a11y.add_contact": "Bæta tengilið",
   "nav.app_title": "HangVidU",
   "nav.privacy": "Skoða persónuverndarstefnu",
   "nav.privacy.short": "Persónuvernd",
