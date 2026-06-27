@@ -14,15 +14,19 @@ Provide a minimal, explicit storage boundary for the contacts domain:
 - no sorting or lookup helpers
 - no hidden auth or backend selection inside the store contract
 
-### Public API
+### Repository API
 
-The public store API is intentionally small:
+The public repository API is intentionally small:
 
 - `get(contactId) -> Promise<ContactRecord | null>`
 - `list() -> Promise<ContactRecord[]>`
 - `put(contact) -> Promise<ContactRecord>`
 - `patch(contactId, patch) -> Promise<ContactRecord | null>`
 - `remove(contactId) -> Promise<boolean>`
+
+Adapters are lower-level IO shims. They return records only for reads and
+patches; `put()` and `remove()` return `void`, and the repository owns the
+normalized return value / missing-record policy above.
 
 ### Error Policy
 

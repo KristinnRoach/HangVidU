@@ -119,20 +119,26 @@ export async function cacheContactConversationId(
   }
 }
 
-export async function handleHangUp(contactUserId: string, roomId: string) {
+export async function handleHangUp(
+  contactUserId: string,
+  conversationId: string,
+) {
   if (getIsLoggedIn() && state.status !== 'ready') {
     try {
       await hydrateContacts();
     } catch (error) {
-      logFailure('handleHangUp.hydrate', error, { contactUserId, roomId });
+      logFailure('handleHangUp.hydrate', error, {
+        contactUserId,
+        conversationId,
+      });
       return { action: 'skip' as const, reason: 'contacts-not-ready' };
     }
   }
 
   const entry = state.byId[contactUserId];
   if (entry) {
-    if (entry.conversationId !== roomId) {
-      await cacheContactConversationId(contactUserId, roomId);
+    if (entry.conversationId !== conversationId) {
+      await cacheContactConversationId(contactUserId, conversationId);
     }
     return { action: 'existing' as const };
   }
