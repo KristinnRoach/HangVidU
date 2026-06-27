@@ -102,7 +102,7 @@ RTDB. RTDB then remains only for the peripheral, explicitly-deferred concerns be
 - Update `docs/WIP_Architecture/D1_R2_MIGRATION.md` to reflect what actually shipped
   (registry-first path, calls as first consumer) or fold it into a fresh doc.
 - Post-cutover: retire the old `hangvidu-files` + `hangvidu-signaling` Workers after
-  the seven-day window (see `BACKEND_CONSOLIDATION_RUNBOOK.md`).
+  the seven-day window — ✅ DONE 2026-06-27 (`wrangler delete`; runbook archived).
 
 ### Future: eager DM creation on connect-accept (contacts→D1 slice)
 Move DM creation from lazy (on first open) to eager (when a connect request is
