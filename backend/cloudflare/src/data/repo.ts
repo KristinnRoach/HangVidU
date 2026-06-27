@@ -507,8 +507,8 @@ export interface ContactRequestRow {
 
 /**
  * Create (or re-open) a pending request. ON CONFLICT resets to pending so a
- * re-send after a decline works; an already-accepted pair is left accepted.
- * Short-circuits when the pair are already contacts (no request needed).
+ * re-send after a decline or deleted contact works. Short-circuits when the
+ * sender already has the recipient as a contact (no request needed).
  */
 export async function createRequest(
   db: D1Database,
@@ -529,10 +529,8 @@ export async function createRequest(
         `INSERT INTO contact_requests (from_id, to_id, status, created_at)
          VALUES (?, ?, 'pending', ?)
          ON CONFLICT(from_id, to_id) DO UPDATE SET
-           status      = CASE WHEN contact_requests.status = 'accepted'
-                              THEN 'accepted' ELSE 'pending' END,
-           resolved_at = CASE WHEN contact_requests.status = 'accepted'
-                              THEN contact_requests.resolved_at ELSE NULL END,
+           status      = 'pending',
+           resolved_at = NULL,
            created_at  = excluded.created_at`,
       )
       .bind(fromId, toId, now),

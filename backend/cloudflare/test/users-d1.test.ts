@@ -383,14 +383,52 @@ describe('contact request handshake', () => {
     await req('POST', '/contact-requests', alice, { toId: 'bob' });
     await req('POST', '/contact-requests/alice/accept', bob);
 
-    // Alice tries to request Bob again after they're connected.
-    const res = await req('POST', '/contact-requests', alice, { toId: 'bob' });
-    expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ alreadyContacts: true });
+    const bobMailbox = await connectMailbox(bob);
+    try {
+      // Alice tries to request Bob again after they're connected.
+      const res = await req('POST', '/contact-requests', alice, {
+        toId: 'bob',
+      });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ alreadyContacts: true });
+      expect(await bobMailbox.next()).toBe(NO_MESSAGE);
 
-    // Bob sees no new incoming request.
-    const bobIncoming = await (await req('GET', '/contact-requests', bob)).json();
-    expect(bobIncoming.requests).toHaveLength(0);
+      // Bob sees no new incoming request.
+      const bobIncoming = await (
+        await req('GET', '/contact-requests', bob)
+      ).json();
+      expect(bobIncoming.requests).toHaveLength(0);
+    } finally {
+      bobMailbox.close();
+    }
+  });
+
+  it('reopens an accepted request after the sender deletes the contact', async () => {
+    const alice = await signToken('alice');
+    const bob = await signToken('bob');
+    await req('POST', '/contact-requests', alice, { toId: 'bob' });
+    await req('POST', '/contact-requests/alice/accept', bob);
+    await req('DELETE', '/users/me/contacts/bob', alice);
+
+    const bobMailbox = await connectMailbox(bob);
+    try {
+      const res = await req('POST', '/contact-requests', alice, {
+        toId: 'bob',
+      });
+      expect(res.status).toBe(200);
+      expect(await bobMailbox.next()).toMatchObject({
+        t: 'contact_request',
+        fromId: 'alice',
+      });
+
+      const bobIncoming = await (
+        await req('GET', '/contact-requests', bob)
+      ).json();
+      expect(bobIncoming.requests).toHaveLength(1);
+      expect(bobIncoming.requests[0]).toMatchObject({ fromId: 'alice' });
+    } finally {
+      bobMailbox.close();
+    }
   });
 
   it('connects referral users without a pending request', async () => {
