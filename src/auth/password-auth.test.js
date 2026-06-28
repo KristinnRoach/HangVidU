@@ -78,6 +78,16 @@ beforeEach(() => {
   mocks.dbSet.mockReset().mockResolvedValue(undefined);
 });
 
+function expectAuthStateRestored() {
+  expect(mocks.setState).toHaveBeenNthCalledWith(1, { status: 'loading' });
+  expect(mocks.setState).toHaveBeenCalledTimes(2);
+  expect(mocks.setState).toHaveBeenLastCalledWith({
+    status: 'unauthenticated',
+    isLoggedIn: false,
+    user: null,
+  });
+}
+
 describe('password auth failure state', () => {
   it('restores unauthenticated state when username sign-in fails', async () => {
     const { signInWithUsernameOrEmail } = await import('./password-auth.js');
@@ -93,13 +103,7 @@ describe('password auth failure state', () => {
       }),
     ).rejects.toBe(error);
 
-    expect(mocks.setState).toHaveBeenNthCalledWith(1, { status: 'loading' });
-    expect(mocks.setState).toHaveBeenCalledTimes(2);
-    expect(mocks.setState).toHaveBeenLastCalledWith({
-      status: 'unauthenticated',
-      isLoggedIn: false,
-      user: null,
-    });
+    expectAuthStateRestored();
     expect(mocks.logAuthError).not.toHaveBeenCalled();
   });
 
@@ -119,13 +123,7 @@ describe('password auth failure state', () => {
       }),
     ).rejects.toThrow('username_taken');
 
-    expect(mocks.setState).toHaveBeenNthCalledWith(1, { status: 'loading' });
-    expect(mocks.setState).toHaveBeenCalledTimes(2);
-    expect(mocks.setState).toHaveBeenLastCalledWith({
-      status: 'unauthenticated',
-      isLoggedIn: false,
-      user: null,
-    });
+    expectAuthStateRestored();
     expect(mocks.logAuthError).not.toHaveBeenCalled();
   });
 
@@ -146,13 +144,7 @@ describe('password auth failure state', () => {
     ).rejects.toBe(error);
 
     expect(mocks.deleteFirebaseUser).toHaveBeenCalledWith(user);
-    expect(mocks.setState).toHaveBeenNthCalledWith(1, { status: 'loading' });
-    expect(mocks.setState).toHaveBeenCalledTimes(2);
-    expect(mocks.setState).toHaveBeenLastCalledWith({
-      status: 'unauthenticated',
-      isLoggedIn: false,
-      user: null,
-    });
+    expectAuthStateRestored();
     expect(mocks.logAuthError).toHaveBeenCalledWith('Sign up (password)', error);
   });
 });
