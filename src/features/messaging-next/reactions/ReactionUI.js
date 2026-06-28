@@ -134,9 +134,7 @@ export class ReactionUI {
       btn.textContent = emoji;
       btn.dataset.reactionType = type;
 
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-
+      btn.addEventListener('click', async () => {
         // Delegate to callback (same pattern as double-tap)
         if (onReactionChange) {
           await onReactionChange(type, messageElement, messageId, 'picker');
