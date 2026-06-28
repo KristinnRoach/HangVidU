@@ -6,7 +6,7 @@ import { callFirebaseCloudFunction } from './adapters/firebase-functions-adapter
 /**
  * Calls a Firebase Cloud Function with Bearer token auth.
  *
- * @param {string} functionName - The exported function name (e.g. 'deleteAccount')
+ * @param {string} functionName - The exported function name (e.g. 'registerPushSubscription')
  * @param {object} [body] - JSON body to send
  * @returns {Promise<{status: number, payload: object}>}
  * @throws {Error} with .status and .payload on non-2xx responses

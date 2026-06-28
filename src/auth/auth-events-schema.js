@@ -3,7 +3,6 @@ import { z } from 'zod';
 export const AUTH_COMMANDS = {
   LOGIN_REQUESTED: 'cmd:auth:session:login-requested',
   LOGOUT_REQUESTED: 'cmd:auth:session:logout-requested',
-  DELETE_ACCOUNT_REQUESTED: 'cmd:auth:account:delete-requested',
   CLOUD_FUNCTION_CALL: 'cmd:auth:cloud-function:call',
 };
 
@@ -17,11 +16,6 @@ export const AuthLogoutRequestedSchema = z.object({
   source: AuthCommandSourceSchema,
 });
 
-export const AuthDeleteAccountRequestedSchema = z.object({
-  source: AuthCommandSourceSchema,
-  scrubMessages: z.boolean(),
-});
-
 export const AuthCloudFunctionCallSchema = z.object({
   functionName: z.string().min(1),
   body: z.unknown().optional(),
@@ -33,10 +27,6 @@ export function parseAuthLoginRequested(data) {
 
 export function parseAuthLogoutRequested(data) {
   return AuthLogoutRequestedSchema.parse(data);
-}
-
-export function parseAuthDeleteAccountRequested(data) {
-  return AuthDeleteAccountRequestedSchema.parse(data);
 }
 
 export function parseAuthCloudFunctionCall(data) {

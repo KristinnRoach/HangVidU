@@ -1,17 +1,16 @@
 // src/realtime/signaling/index.js
 //
-// Room-signaling factory. Selects the realtime backend behind the stable
-// `@kidlib/p2p` `P2PRoomSignaling` port:
-//   - 'do'   → Cloudflare Durable Object worker (default)
-//   - 'rtdb' → legacy Firebase RTDB (fallback during migration)
+// Room-signaling factory behind the stable `@kidlib/p2p` `P2PRoomSignaling`
+// port. WebRTC signaling runs on the Cloudflare Durable Object worker.
 //
-// Controlled by VITE_SIGNALING_BACKEND. Both adapters are kept in tree until
-// the DO path is verified in production; then the RTDB adapter is removed.
+// The legacy RTDB adapter (`firebase-room-signaling.js`) is kept in-tree as a
+// dormant, self-contained reference — it is intentionally NOT imported here.
+// Re-wire it (and re-add the `rooms/{roomId}/p2pSignaling` RTDB rules) only if a
+// fallback is ever needed.
 
-import { createFirebaseRoomSignaling } from './firebase-room-signaling.js';
 import { createDoRoomSignaling } from './do-room-signaling.js';
 
-export { createFirebaseRoomSignaling, createDoRoomSignaling };
+export { createDoRoomSignaling };
 
 /** @typedef {import('@kidlib/p2p').CreateRoomSignalingOptions} CreateRoomSignalingOptions */
 /** @typedef {import('@kidlib/p2p').P2PRoomSignaling} P2PRoomSignaling */
@@ -21,8 +20,5 @@ export { createFirebaseRoomSignaling, createDoRoomSignaling };
  * @returns {P2PRoomSignaling}
  */
 export function createRoomSignaling(options) {
-  const backend = import.meta.env.VITE_SIGNALING_BACKEND ?? 'do';
-  return backend === 'rtdb'
-    ? createFirebaseRoomSignaling(options)
-    : createDoRoomSignaling(options);
+  return createDoRoomSignaling(options);
 }
