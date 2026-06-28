@@ -44,13 +44,15 @@ full RTDB backup:
 - Under each `users/{uid}`: `contacts`, `incomingInvites`, `acceptedInvites`, `calls`.
 - Optional: `rooms` (now unwired — see above).
 
-`users/{uid}/profile` is **write-only-dead**: only `password-auth.js` still writes
-`profile/{username,email}` and nothing reads them. Remove those two `set()` calls
-first, then it joins the deletable set.
+`users/{uid}/profile` is now **dead**: the only writers were two `password-auth.js`
+`set()` calls (removed in this PR) and nothing reads it. It's in the prune set
+below — but ship the client (no more profile writes) **before** pruning.
 
-Trim `database.rules.json` to keep only `usersByEmail`, `rooms` (optional), and
-`users/{uid}/{presence, pushSubscriptions, profile}` + the user create/delete rule;
-`deploy:fb`. Old `a_b` message history is intentionally not backfilled (decision #2).
+Trim `database.rules.json` to keep only `usersByEmail` and
+`users/{uid}/{presence, pushSubscriptions}` + the user create/delete rule;
+`deploy:fb`. (`rooms` is unwired — drop its rule too unless you keep the dormant
+signaling fallback.) Old `a_b` message history is intentionally not backfilled
+(decision #2).
 
 ### 2. Dead client residue
 - `resolveContactIdFromDirectConversationId` (`src/shared/utils/direct-conversation-id.js`)

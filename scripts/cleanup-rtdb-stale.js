@@ -117,7 +117,9 @@ function promptConfirmation(message) {
   });
 }
 
-async function confirmAndApply(label, updates) {
+// `onConfirmed` (optional) runs after the user confirms but before the delete —
+// e.g. to write a backup of exactly what is about to be removed.
+async function confirmAndApply(label, updates, onConfirmed) {
   const paths = Object.keys(updates);
   console.log(`\n[${label}] Paths queued for deletion: ${paths.length}`);
   if (paths.length === 0) return 0;
@@ -143,6 +145,8 @@ async function confirmAndApply(label, updates) {
       return 0;
     }
   }
+
+  if (onConfirmed) await onConfirmed();
 
   await db.ref().update(updates);
   console.log(`[${label}] Deleted ${paths.length} paths.`);
@@ -332,20 +336,22 @@ async function taskMigratedLegacy() {
   );
   console.log('KEEP: usersByEmail, users/*/presence, users/*/pushSubscriptions');
 
-  // Scoped backup of exactly what will be removed — written before deletion so
-  // the prune is fully restorable. Only when actually applying.
-  if (shouldDelete && Object.keys(updates).length > 0) {
+  // Scoped backup of exactly what will be removed — written via the onConfirmed
+  // hook (after the user confirms, before the delete) so the prune is fully
+  // restorable and no backup is left behind on a declined/dry run. Restrictive
+  // perms (0700/0600) since the dump contains prod user data.
+  return confirmAndApply('migrated-legacy', updates, () => {
     const backupDir = path.join(__dirname, '.backups');
-    fs.mkdirSync(backupDir, { recursive: true });
+    fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
     const backupFile = path.join(
       backupDir,
       `migrated-legacy-${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
     );
-    fs.writeFileSync(backupFile, JSON.stringify(backup, null, 2));
+    fs.writeFileSync(backupFile, JSON.stringify(backup, null, 2), {
+      mode: 0o600,
+    });
     console.log(`Scoped backup written: ${backupFile}`);
-  }
-
-  return confirmAndApply('migrated-legacy', updates);
+  });
 }
 
 const TASK_FNS = {
