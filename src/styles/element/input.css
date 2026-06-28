@@ -1,6 +1,15 @@
 /* ===== BASE INPUT STYLES ===== */
 /* Generic input defaults - component-specific styles in components/inputs.css */
 
+@media (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    /* iOS zooms focused controls below 16px. */
+    font-size: max(16px, 1em) !important;
+  }
+}
+
 input[type='text'] {
   padding: var(--spacing-md) var(--spacing-lg);
   border: 1px solid var(--border-primary);
