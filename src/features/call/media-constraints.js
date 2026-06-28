@@ -48,14 +48,14 @@ function getAudioConstraints() {
 // per-peer encoder caps (videoSender.setParameters) for a finer-grained option.
 const desktopVideoConstraints = {
   landscape: {
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
-    frameRate: { min: 10, ideal: 30 },
+    width: { ideal: 1280, max: 1280 },
+    height: { ideal: 720, max: 720 },
+    frameRate: { min: 10, ideal: 30, max: 30 },
   },
   portrait: {
-    width: { ideal: 720 },
-    height: { ideal: 1280 },
-    frameRate: { min: 10, ideal: 30 },
+    width: { ideal: 720, max: 720 },
+    height: { ideal: 1280, max: 1280 },
+    frameRate: { min: 10, ideal: 30, max: 30 },
   },
 };
 
