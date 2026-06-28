@@ -11,6 +11,7 @@ import { get, ref, set } from 'firebase/database';
 import { rtdb } from '../infra/firebase-rtdb.js';
 import {
   createPasswordUser,
+  deleteFirebaseUser,
   signInPassword,
   updateFirebaseProfile,
 } from './adapters/firebase-auth-adapter.js';
@@ -64,6 +65,19 @@ function isExpectedPasswordAuthFailure(error) {
   return EXPECTED_PASSWORD_AUTH_FAILURES.has(error?.code || error?.message);
 }
 
+async function rollbackCreatedPasswordUser(cred, cause) {
+  if (!cred?.user) return;
+  try {
+    await deleteFirebaseUser(cred.user);
+  } catch (rollbackError) {
+    console.warn(
+      '[AUTH] Failed to roll back password user after signup failure:',
+      rollbackError,
+      { cause },
+    );
+  }
+}
+
 /**
  * Sign up with username + password and optional email + optional display name.
  * Username uniqueness is enforced by Firebase Auth (synthetic email is unique).
@@ -112,31 +126,27 @@ export async function signUpWithUsername({
       throw e;
     }
 
-    // Firebase Auth `displayName` is the canonical source for the display
-    // name (`authState.user.displayName`); `username` is the unique login handle.
-    await updateFirebaseProfile(cred.user, {
-      displayName: resolvedDisplayName,
-    });
-    if (trimmedEmail) {
-      // Populate the email lookup index so email-based sign-in and
-      // contact-add-by-email can resolve this account. Mirrors the write in
-      // `registerUserInDirectory` (src/storage/user/user-discovery.js);
-      // inlined here because the auth layer doesn't import from storage,
-      // and authState.user.email is null for password accounts (the
-      // Firebase Auth principal is synthetic), so the post-login registration
-      // in auth-orchestration.js skips them.
-      await set(ref(rtdb, `usersByEmail/${hashEmail(trimmedEmail)}`), {
-        uid: cred.user.uid,
+    try {
+      // Firebase Auth `displayName` is the canonical source for the display
+      // name (`authState.user.displayName`); `username` is the unique login handle.
+      await updateFirebaseProfile(cred.user, {
         displayName: resolvedDisplayName,
-        photoURL: null,
-        registeredAt: Date.now(),
-        username: handle,
-      }).catch((err) =>
-        console.warn(
-          '[AUTH] Failed to register password user in email directory:',
-          err,
-        ),
-      );
+      });
+      if (trimmedEmail) {
+        // Populate the email lookup index so email-based sign-in can resolve
+        // this account before auth. Password accounts use synthetic Firebase
+        // emails, so the post-login directory registration cannot repair this.
+        await set(ref(rtdb, `usersByEmail/${hashEmail(trimmedEmail)}`), {
+          uid: cred.user.uid,
+          displayName: resolvedDisplayName,
+          photoURL: null,
+          registeredAt: Date.now(),
+          username: handle,
+        });
+      }
+    } catch (e) {
+      await rollbackCreatedPasswordUser(cred, e);
+      throw e;
     }
 
     return cred;
