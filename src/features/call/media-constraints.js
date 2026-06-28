@@ -42,16 +42,20 @@ function getAudioConstraints() {
   return userMediaAudioConstraints.default;
 }
 
+// 720p, not 1080p: on a 1:1 call (esp. to a phone) 720p is visually
+// indistinguishable but roughly halves decoded pixels/sec, cutting the
+// receiver's decode battery cost and bitrate. See issue on adaptive
+// per-peer encoder caps (videoSender.setParameters) for a finer-grained option.
 const desktopVideoConstraints = {
   landscape: {
-    width: { ideal: 1920 },
-    height: { ideal: 1080 },
-    frameRate: { min: 10, ideal: 30 },
+    width: { ideal: 1280, max: 1280 },
+    height: { ideal: 720, max: 720 },
+    frameRate: { min: 10, ideal: 30, max: 30 },
   },
   portrait: {
-    width: { ideal: 1080 },
-    height: { ideal: 1920 },
-    frameRate: { min: 10, ideal: 30 },
+    width: { ideal: 720, max: 720 },
+    height: { ideal: 1280, max: 1280 },
+    frameRate: { min: 10, ideal: 30, max: 30 },
   },
 };
 
