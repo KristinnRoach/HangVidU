@@ -119,8 +119,8 @@
 <div class="app">
   <aside class="sidebar">
     <h1>Cloudflare Migration Roadmap</h1>
-    <div class="banner"><b>Decided path</b> (was "Option A") · migrate everything conversation-shaped to Cloudflare, keyed by the opaque <b>conversationId</b> registry. Live message updates require an <b>extra DO push channel</b> — the cost RTDB gave for free.<br><span class="warn">Reflects <code>main</code> as of 2026-06-16 (PRs #533–#536 shipped — messages, files & DO live push live). Source of truth: <code>MIGRATION_STATUS.md</code>.</span></div>
-    <div class="sub">Drag the timeline to watch each data domain flip from Firebase RTDB onto its Cloudflare primitive, forming the <b style="color:var(--spine)">conversationId</b> spine. End-state: RTDB carries only contacts/user-directory (then nothing).</div>
+    <div class="banner"><b>Decided path</b> (was "Option A") · migrate everything conversation-shaped to Cloudflare, keyed by the opaque <b>conversationId</b> registry. Live message updates require an <b>extra DO push channel</b> — the cost RTDB gave for free.<br><span class="warn">Reflects <code>main</code> as of 2026-06-28. Source of truth: <code>CURRENT_WIP/MIGRATION_STATUS.md</code>.</span></div>
+    <div class="sub">Drag the timeline to watch each conversation data domain flip from Firebase RTDB onto its Cloudflare primitive, forming the <b style="color:var(--spine)">conversationId</b> spine. RTDB remains only for the live nodes listed in the status doc.</div>
 
     <div class="group">
       <label>Migration timeline</label>
@@ -204,13 +204,13 @@ const STAGES = [
   { id:'3', name:'Messages + files on opaque ids', status:'done',
     desc:'SHIPPED (PR #536, deployed). One slice — files are file-messages. Message/attachment/reaction tables in migration 0002; D1 message endpoints + adapter; workers/files authz repointed from RTDB to the D1 registry; R2 keys are {conversationId}/{fileId}. Live in prod via VITE_MESSAGE_BACKEND=d1; the legacy RTDB message path is pending retirement (RTDB_MESSAGES_RETIREMENT.md).' },
   { id:'4', name:'Retire derived-id plumbing', status:'todo',
-    desc:'Delete direct-conversation-id.js, resolveContactIdFromDirectConversationId, the group: prefix hack, and legacy fallbacks (MainContent, contactsStore, SWNavigation deep-link). Render the conversation list from conversation_members instead of ID-splitting.' },
-  { id:'5', name:'Call-invite mailbox → DO', status:'todo',
-    desc:'Call invites are ephemeral coordination but still live on RTDB. Move to a DO mailbox via src/realtime/ (reuse the signaling transport + protocol envelope), keyed by the same conversationId. Media-playback-sync follows the same pattern.' },
+    desc:'Delete the remaining direct-conversation fallback once every call-button/open-conversation path carries remoteParticipantIds. The conversation list already reads D1 conversation/member data instead of ID-splitting.' },
+  { id:'5', name:'Call-invite mailbox → DO', status:'done',
+    desc:'SHIPPED (PR #553/#565). Call/activity events moved to the UserMailbox Durable Object, keyed by the same conversationId/user mailbox flow.' },
   { id:'6', name:'Live message push (DO)', status:'done',
-    desc:'SHIPPED (PR #536, deployed). THE EXTRA INFRASTRUCTURE this path requires: a per-conversation Durable Object channel (ConversationChannel) pushes message/read/reaction changes so the app updates without reload. This is what RTDB listeners gave for free.' },
-  { id:'Goal', name:'Goal — conversationId spine everywhere', status:'todo',
-    desc:'conversationId is the single spine across D1 (relational, incl. messages), R2 (files), DO (room: signaling + presence + live push + call). RTDB reduced to contacts/user-directory (migrate or remove last); Firebase Auth stays for identity behind the workers’ auth.ts seam.' },
+    desc:'SHIPPED (PR #536, deployed). THE EXTRA INFRASTRUCTURE this path requires: a per-conversation Durable Object channel (ConversationChannel) pushes message/reaction changes so the app updates without reload. Cross-device read events are tracked separately in #563.' },
+  { id:'Goal', name:'Goal — conversationId spine deployed', status:'done',
+    desc:'conversationId is the single spine across D1 (relational, incl. users, contacts, conversations, messages, members, attachments, reactions), R2 (files), and Durable Objects (ConversationChannel, UserMailbox, SignalingRoom). RTDB remains only for presence, push subscriptions, and usersByEmail; Firebase Auth stays behind the workers’ auth.ts seam.' },
 ];
 
 const BK = {
@@ -339,12 +339,12 @@ function updatePrompt(){
   const s = STAGES[state.stage];
   const migrated = DOMAINS.filter(d=>state.stage>=d.migratedAt);
   const pending = DOMAINS.filter(d=>state.stage<d.migratedAt);
-  let p = `HangVidU Cloudflare migration roadmap (decided path; see MIGRATION_STATUS.md).\nViewing stage "${s.id}: ${s.name}" (${s.status}).\n\n${s.desc}\n\n`;
+  let p = `HangVidU Cloudflare migration roadmap (decided path; see CURRENT_WIP/MIGRATION_STATUS.md).\nViewing stage "${s.id}: ${s.name}" (${s.status}).\n\n${s.desc}\n\n`;
   if (pending.length) {
     p += `Still on Firebase RTDB at this stage: ${pending.map(d=>d.label).join(', ')}.\n`;
     p += `Already on Cloudflare: ${migrated.map(d=>d.label+' ('+d.target.toUpperCase()+')').join(', ')}.\n`;
   } else {
-    p += `RTDB fully eliminated. conversationId is the single spine across D1 (incl. messages), R2 (files), and the DO room. Trade-off: live message updates require the extra DO push worker (Slice E1) that RTDB provided for free.\n`;
+    p += `Conversation-shaped data is on Cloudflare. RTDB remains only for the live nodes listed in CURRENT_WIP/MIGRATION_STATUS.md.\n`;
   }
   if (state.comments.length) { p += `\nNotes on specific domains:\n`; state.comments.forEach(c=> p += `\n• ${c.label} (${c.file}):\n  ${c.text}\n`); }
   $('prompt').textContent = p.trim();
