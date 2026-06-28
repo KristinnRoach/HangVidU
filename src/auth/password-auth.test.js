@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
     isLoggedIn: false,
   },
   createPasswordUser: vi.fn(),
+  deleteFirebaseUser: vi.fn(),
   signInPassword: vi.fn(),
   updateFirebaseProfile: vi.fn(),
   getAuthState: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock('../infra/firebase-rtdb.js', () => ({
 
 vi.mock('./adapters/firebase-auth-adapter.js', () => ({
   createPasswordUser: mocks.createPasswordUser,
+  deleteFirebaseUser: mocks.deleteFirebaseUser,
   signInPassword: mocks.signInPassword,
   updateFirebaseProfile: mocks.updateFirebaseProfile,
 }));
@@ -49,7 +51,7 @@ vi.mock('./shared/auth-error-logging.js', () => ({
   logAuthError: mocks.logAuthError,
 }));
 
-vi.mock('../shared/utils/email-hash.js', () => ({
+vi.mock('@lib/utils/email-hash.js', () => ({
   hashEmail: vi.fn((email) => `hash:${email}`),
 }));
 
@@ -60,8 +62,10 @@ beforeEach(() => {
     isLoggedIn: false,
   };
   mocks.createPasswordUser.mockReset();
+  mocks.deleteFirebaseUser.mockReset().mockResolvedValue(undefined);
   mocks.signInPassword.mockReset();
   mocks.updateFirebaseProfile.mockReset();
+  mocks.updateFirebaseProfile.mockResolvedValue(undefined);
   mocks.getAuthState.mockReset().mockImplementation(() => ({
     ...mocks.previousAuthState,
     user: mocks.previousAuthState.user
@@ -73,6 +77,16 @@ beforeEach(() => {
   mocks.dbGet.mockReset();
   mocks.dbSet.mockReset().mockResolvedValue(undefined);
 });
+
+function expectAuthStateRestored() {
+  expect(mocks.setState).toHaveBeenNthCalledWith(1, { status: 'loading' });
+  expect(mocks.setState).toHaveBeenCalledTimes(2);
+  expect(mocks.setState).toHaveBeenLastCalledWith({
+    status: 'unauthenticated',
+    isLoggedIn: false,
+    user: null,
+  });
+}
 
 describe('password auth failure state', () => {
   it('restores unauthenticated state when username sign-in fails', async () => {
@@ -89,13 +103,7 @@ describe('password auth failure state', () => {
       }),
     ).rejects.toBe(error);
 
-    expect(mocks.setState).toHaveBeenNthCalledWith(1, { status: 'loading' });
-    expect(mocks.setState).toHaveBeenCalledTimes(2);
-    expect(mocks.setState).toHaveBeenLastCalledWith({
-      status: 'unauthenticated',
-      isLoggedIn: false,
-      user: null,
-    });
+    expectAuthStateRestored();
     expect(mocks.logAuthError).not.toHaveBeenCalled();
   });
 
@@ -115,13 +123,28 @@ describe('password auth failure state', () => {
       }),
     ).rejects.toThrow('username_taken');
 
-    expect(mocks.setState).toHaveBeenNthCalledWith(1, { status: 'loading' });
-    expect(mocks.setState).toHaveBeenCalledTimes(2);
-    expect(mocks.setState).toHaveBeenLastCalledWith({
-      status: 'unauthenticated',
-      isLoggedIn: false,
-      user: null,
-    });
+    expectAuthStateRestored();
     expect(mocks.logAuthError).not.toHaveBeenCalled();
+  });
+
+  it('rolls back the created password user when email directory write fails', async () => {
+    const { signUpWithUsername } = await import('./password-auth.js');
+    const user = { uid: 'user-1' };
+    const cred = { user };
+    const error = new Error('directory unavailable');
+    mocks.createPasswordUser.mockResolvedValue(cred);
+    mocks.dbSet.mockRejectedValue(error);
+
+    await expect(
+      signUpWithUsername({
+        username: 'newuser',
+        [PASSWORD_FIELD]: SIGN_UP_TEST_VALUE,
+        email: 'new@example.com',
+      }),
+    ).rejects.toBe(error);
+
+    expect(mocks.deleteFirebaseUser).toHaveBeenCalledWith(user);
+    expectAuthStateRestored();
+    expect(mocks.logAuthError).toHaveBeenCalledWith('Sign up (password)', error);
   });
 });

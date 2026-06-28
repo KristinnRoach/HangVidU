@@ -24,9 +24,6 @@ interface ImportMetaEnv {
 
   // Consolidated HangVidU-owned Cloudflare API
   readonly VITE_HANGVIDU_API_URL: string;
-
-  // Realtime signaling implementation
-  readonly VITE_SIGNALING_BACKEND: 'do' | 'rtdb';
 }
 
 interface ImportMeta {

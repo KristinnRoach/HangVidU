@@ -2,12 +2,10 @@ import { handleCommand } from '../shared/events/index.js';
 import {
   AUTH_COMMANDS,
   parseAuthCloudFunctionCall,
-  parseAuthDeleteAccountRequested,
   parseAuthLoginRequested,
   parseAuthLogoutRequested,
 } from './auth-events-schema.js';
 import {
-  deleteAccount,
   signInWithAccountSelection,
   signOutUser,
 } from './auth-commands.js';
@@ -58,19 +56,6 @@ export function setupAuthCommandHandlers() {
         await signOutUser();
       } catch (e) {
         console.warn('[auth] logout command failed:', e);
-      }
-    },
-    { signal: ac.signal },
-  );
-
-  handleCommand(
-    AUTH_COMMANDS.DELETE_ACCOUNT_REQUESTED,
-    async (payload) => {
-      try {
-        const request = parseAuthDeleteAccountRequested(payload);
-        await deleteAccount({ scrubMessages: request.scrubMessages });
-      } catch (e) {
-        console.warn('[auth] delete-account command failed:', e);
       }
     },
     { signal: ac.signal },

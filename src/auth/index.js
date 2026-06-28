@@ -27,7 +27,6 @@ export { initAuth, getLoggedInUserToken, signInAsGuest } from './auth-setup.js';
 export {
   signInWithAccountSelection,
   signOutUser,
-  deleteAccount,
   isSafariExternalOpenArmed,
   setSafariExternalOpenArmed,
 } from './auth-commands.js';

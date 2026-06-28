@@ -4,6 +4,7 @@
 import {
   browserLocalPersistence,
   createUserWithEmailAndPassword,
+  deleteUser,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
@@ -66,6 +67,10 @@ export function signOutFirebaseUser() {
 
 export function createPasswordUser(email, password) {
   return createUserWithEmailAndPassword(auth, email, password);
+}
+
+export function deleteFirebaseUser(user) {
+  return deleteUser(user);
 }
 
 export function signInPassword(email, password) {

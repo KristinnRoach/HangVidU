@@ -3,9 +3,9 @@
 **Status:** deferred · **Start after:** consolidated `hangvidu-data` is deployed,
 verified, and stable.
 
-This is the source of truth for work deliberately excluded from
-[`BACKEND_CONSOLIDATION_PLAN.md`](./BACKEND_CONSOLIDATION_PLAN.md). Add future
-post-cutover tasks here instead of widening the consolidation implementation.
+This is the source of truth for work deliberately excluded from the (now
+completed) backend consolidation. Add future post-cutover tasks here instead of
+widening the consolidation implementation.
 
 ## Required before adding a second file-storage provider
 

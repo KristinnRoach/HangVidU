@@ -1,4 +1,4 @@
-// src/auth/auth-commands.js — sign-in, sign-out, delete + iOS Safari workarounds
+// src/auth/auth-commands.js — sign-in, sign-out + iOS Safari workarounds
 
 /**
  * TODO(auth commands)
@@ -23,7 +23,6 @@ import {
 } from '../shared/events/index.js';
 import { t } from '../shared/i18n/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
-import { callCloudFunction } from './cloud-functions.js';
 import {
   detectIOSStandalone,
   openInSafariExternal,
@@ -150,45 +149,6 @@ export async function signOutUser() {
     logAuthError('Sign out', error);
     setState(toStableAuthState(previousAuthState));
     // Re-throw the error to allow callers to handle it
-    throw error;
-  }
-}
-
-/**
- * Delete the current user's account and all associated data.
- * Delegates to the deleteAccount Cloud Function which handles all cleanup
- * server-side with Admin SDK (RTDB data, discovery directory, Auth record).
- *
- * @throws {Error} If user is not logged in or deletion fails
- */
-export async function deleteAccount({ scrubMessages = true } = {}) {
-  const user = auth.currentUser;
-  if (!user || !user.uid) {
-    throw new Error('No user logged in, user: ' + user);
-  }
-
-  const previousAuthState = getAuthState();
-  setState({ status: 'loading' });
-
-  try {
-    console.info('[AUTH] Starting account deletion');
-
-    await dispatchCommandAndAwait('cmd:user:presence:set-offline', {
-      userId: user.uid,
-    });
-    clearGISTokenCache();
-
-    await callCloudFunction('deleteAccount', { scrubMessages });
-
-    // Sign out locally — the server deleted the Auth record but the
-    // client's cached token would remain valid until it expires.
-    await signOutFirebaseUser();
-
-    console.info('[AUTH] Account deleted successfully');
-    setTimeout(() => showOneTapSignin(), 1500);
-  } catch (error) {
-    logAuthError('Delete account', error);
-    setState(toStableAuthState(previousAuthState));
     throw error;
   }
 }

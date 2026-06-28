@@ -17,9 +17,6 @@ const {
 const {
   handleSendMessageNotification,
 } = require('./push-notifications/send-message-notification-handler');
-const {
-  handleDeleteAccount,
-} = require('./account/delete-account-handler');
 
 initializeApp();
 
@@ -48,14 +45,6 @@ exports.sendCallNotification = onRequest(
 );
 
 exports.healthCheck = onRequest(handleHealthCheck);
-
-exports.deleteAccount = onRequest(
-  {
-    cors: true,
-    region: REGION,
-  },
-  handleDeleteAccount,
-);
 
 exports.sendMessageNotification = onRequest(
   {
