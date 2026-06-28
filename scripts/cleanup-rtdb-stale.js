@@ -22,7 +22,15 @@
  *                       reverse-index rollout.
  *   notifications       Delete all notifications/*. The path is dead —
  *                       no client reads or writes it.
- *   all                 Run every task above in order.
+ *   migrated-legacy     One-time post Users→D1 prune. Deletes verified-dead
+ *                       nodes: top-level notifications/, conversations/, rooms/,
+ *                       and per-user contacts/incomingInvites/acceptedInvites/
+ *                       calls/profile. KEEPS usersByEmail and each user's
+ *                       presence + pushSubscriptions (still live). Writes a
+ *                       scoped backup of every affected path to scripts/.backups/
+ *                       before deleting. Not included in `all`.
+ *   all                 Run every routine stale task above in order
+ *                       (excludes migrated-legacy).
  *
  * Flags:
  *   --delete            Apply changes. Without this flag, prints what
@@ -55,7 +63,7 @@ const TASKS = [
   'user-convo-index',
   'notifications',
 ];
-const VALID = new Set([...TASKS, 'all']);
+const VALID = new Set([...TASKS, 'all', 'migrated-legacy']);
 
 if (!taskArg || !VALID.has(taskArg)) {
   console.error(`Usage: node ${path.basename(process.argv[1])} <task> [--delete] [--yes]`);
@@ -276,12 +284,77 @@ async function taskNotifications() {
   return confirmAndApply('notifications', updates);
 }
 
+// One-time prune of nodes superseded by the Users→D1 migration. Every path
+// here was verified (2026-06-28) to have zero live readers/writers in the app.
+// KEEP (intentionally absent): usersByEmail (pre-auth email→handle resolver for
+// password accounts), users/*/presence, users/*/pushSubscriptions.
+const MIGRATED_DEAD_TOP_LEVEL = ['notifications', 'conversations', 'rooms'];
+const MIGRATED_DEAD_USER_KEYS = [
+  'contacts',
+  'incomingInvites',
+  'acceptedInvites',
+  'calls',
+  'profile',
+];
+
+async function taskMigratedLegacy() {
+  console.log('\n=== migrated-legacy (post Users→D1 prune) ===');
+
+  const updates = {};
+  const backup = {};
+
+  for (const node of MIGRATED_DEAD_TOP_LEVEL) {
+    const snap = await db.ref(node).once('value');
+    if (snap.exists()) {
+      backup[node] = snap.val();
+      updates[node] = null;
+    }
+  }
+
+  const usersSnap = await db.ref('users').once('value');
+  const users = usersSnap.exists() ? usersSnap.val() : {};
+  let userPaths = 0;
+  for (const [uid, user] of Object.entries(users)) {
+    if (!user || typeof user !== 'object') continue;
+    for (const key of MIGRATED_DEAD_USER_KEYS) {
+      if (user[key] !== undefined) {
+        backup[`users/${uid}/${key}`] = user[key];
+        updates[`users/${uid}/${key}`] = null;
+        userPaths += 1;
+      }
+    }
+  }
+
+  const presentTop = MIGRATED_DEAD_TOP_LEVEL.filter((n) => n in backup);
+  console.log(`Dead top-level nodes present: ${presentTop.join(', ') || '(none)'}`);
+  console.log(
+    `Dead per-user subnodes: ${userPaths} across ${Object.keys(users).length} users`,
+  );
+  console.log('KEEP: usersByEmail, users/*/presence, users/*/pushSubscriptions');
+
+  // Scoped backup of exactly what will be removed — written before deletion so
+  // the prune is fully restorable. Only when actually applying.
+  if (shouldDelete && Object.keys(updates).length > 0) {
+    const backupDir = path.join(__dirname, '.backups');
+    fs.mkdirSync(backupDir, { recursive: true });
+    const backupFile = path.join(
+      backupDir,
+      `migrated-legacy-${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
+    );
+    fs.writeFileSync(backupFile, JSON.stringify(backup, null, 2));
+    console.log(`Scoped backup written: ${backupFile}`);
+  }
+
+  return confirmAndApply('migrated-legacy', updates);
+}
+
 const TASK_FNS = {
   'rooms-legacy': taskRoomsLegacy,
   'rooms-expired': taskRoomsExpired,
   'convo-members': taskConvoMembers,
   'user-convo-index': taskUserConvoIndex,
   notifications: taskNotifications,
+  'migrated-legacy': taskMigratedLegacy,
 };
 
 async function main() {

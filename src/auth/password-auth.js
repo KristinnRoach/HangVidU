@@ -2,10 +2,10 @@
 // Username/email + password sign-in on top of Firebase Auth.
 //
 // The Firebase Auth principal is always a synthetic email
-// `{username}@{SYNTHETIC_DOMAIN}`. Real email (if provided) is stored as
-// profile metadata under `users/{uid}/profile/email`. This keeps username
-// uniqueness enforced by Firebase Auth itself (no separate registry node,
-// no RTDB rules changes).
+// `{username}@{SYNTHETIC_DOMAIN}`, so username uniqueness is enforced by Firebase
+// Auth itself. Real email (if provided) is indexed in `usersByEmail/{hash}` so
+// email-mode sign-in can resolve email→handle pre-auth (D1's `/users/lookup` is
+// token-gated, unusable before sign-in).
 
 import { get, ref, set } from 'firebase/database';
 import { rtdb } from '../infra/firebase-rtdb.js';
@@ -117,12 +117,7 @@ export async function signUpWithUsername({
     await updateFirebaseProfile(cred.user, {
       displayName: resolvedDisplayName,
     });
-    await set(ref(rtdb, `users/${cred.user.uid}/profile/username`), handle);
     if (trimmedEmail) {
-      await set(
-        ref(rtdb, `users/${cred.user.uid}/profile/email`),
-        trimmedEmail,
-      );
       // Populate the email lookup index so email-based sign-in and
       // contact-add-by-email can resolve this account. Mirrors the write in
       // `registerUserInDirectory` (src/storage/user/user-discovery.js);

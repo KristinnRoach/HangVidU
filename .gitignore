@@ -132,3 +132,6 @@ scripts/migrate-usersbyemail-display-name-to-user-name.js
 users.json
 usersByEmail.json
 backend/cloudflare/backfill-users.sql
+
+# RTDB prune scoped backups (contain prod user data)
+scripts/.backups/
