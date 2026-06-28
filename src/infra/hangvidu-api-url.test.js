@@ -28,7 +28,7 @@ describe('HangVidU API URL helper', () => {
     vi.stubEnv('VITE_HANGVIDU_API_URL', '   ');
 
     expect(getHangViduApiBaseUrl()).toBe(
-      'https://hangvidu-data.kristinnroach.workers.dev',
+      'https://api.hangvidu.com',
     );
   });
 });
