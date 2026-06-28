@@ -1,52 +1,14 @@
 {
   "rules": {
-    "rooms": {
-      "$roomId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    },
     "usersByEmail": {
       "$emailHash": {
         ".read": "auth != null",
-        ".write": "auth != null && (newData.child('uid').val() === auth.uid || data.child('uid').val() === auth.uid)"
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.child('uid').val() === auth.uid && (!newData.exists() || newData.child('uid').val() === auth.uid)))"
       }
     },
     "users": {
       "$userId": {
         ".write": "$userId === auth.uid && !newData.exists()",
-        "contacts": {
-          ".read": "$userId === auth.uid",
-          ".write": "$userId === auth.uid"
-        },
-        "incomingInvites": {
-          ".read": "$userId === auth.uid",
-          ".write": "$userId === auth.uid && !newData.exists()",
-          "$fromUserId": {
-            ".write": "auth != null && (($fromUserId === auth.uid && !data.exists()) || ($userId === auth.uid && !newData.exists()))"
-          }
-        },
-        "acceptedInvites": {
-          ".read": "$userId === auth.uid",
-          ".write": "$userId === auth.uid && !newData.exists()",
-          "$acceptedByUserId": {
-            ".write": "auth != null && (($acceptedByUserId === auth.uid && !data.exists()) || ($userId === auth.uid && !newData.exists()))"
-          }
-        },
-        "calls": {
-          "incoming": {
-            ".read": "$userId === auth.uid",
-            ".write": "($userId === auth.uid && !newData.exists()) || (auth != null && !newData.exists() && data.child('callerId').val() === auth.uid) || (auth != null && (!data.exists() || data.child('callerId').val() === auth.uid || (data.child('expiresAt').exists() && data.child('expiresAt').isNumber() && data.child('expiresAt').val() <= now)) && newData.hasChildren(['roomId', 'callerId', 'startedAt']) && newData.child('roomId').isString() && newData.child('callerId').val() === auth.uid && newData.child('startedAt').isNumber() && (!newData.child('calleeId').exists() || newData.child('calleeId').val() === $userId) && newData.child('expiresAt').exists() && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() <= now + 300000 && (!newData.child('callerName').exists() || newData.child('callerName').isString()) && (!newData.child('audioOnly').exists() || newData.child('audioOnly').isBoolean()))"
-          },
-          "response": {
-            ".read": "auth != null",
-            ".write": "$userId === auth.uid && (!newData.exists() || (newData.hasChildren(['roomId', 'responseType', 'by', 'respondedAt']) && newData.child('roomId').isString() && newData.child('by').val() === auth.uid && newData.child('respondedAt').isNumber() && (!newData.child('expiresAt').exists() || newData.child('expiresAt').isNumber()) && (newData.child('responseType').val() === 'accepted' || newData.child('responseType').val() === 'rejected' || newData.child('responseType').val() === 'busy')))"
-          }
-        },
-        "profile": {
-          ".read": true,
-          ".write": "$userId === auth.uid"
-        },
         "presence": {
           ".read": true,
           ".write": "$userId === auth.uid"
@@ -54,28 +16,6 @@
         "pushSubscriptions": {
           ".read": "$userId === auth.uid",
           ".write": "$userId === auth.uid"
-        }
-      }
-    },
-    "notifications": {
-      "$userId": {
-        ".read": "$userId === auth.uid",
-        ".write": "auth != null"
-      }
-    },
-    "conversations": {
-      "$conversationId": {
-        ".read": "auth != null && (data.child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))",
-        "members": {
-          "$uid": {
-            ".write": "auth != null && $uid === auth.uid && (data.exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
-          }
-        },
-        "messages": {
-          ".indexOn": ["from", "sentAt"],
-          "$messageId": {
-            ".write": "auth != null && (root.child('conversations').child($conversationId).child('members').child(auth.uid).exists() || $conversationId.contains(auth.uid + '_') || $conversationId.contains('_' + auth.uid))"
-          }
         }
       }
     }
