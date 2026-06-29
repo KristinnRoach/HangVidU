@@ -7,6 +7,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "routes": [{ "pattern": "api.hangvidu.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
   "d1_databases": [
     {
       "binding": "DB",
