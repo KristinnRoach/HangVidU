@@ -18,6 +18,7 @@ import { fileDrop } from '@shared/utils/ui-utils/fileDrop/onFileDrop.solid.js';
 import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
 import { compressImage } from '@lib/media/image-compress.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
+import { linkifyText } from './utils/linkifyText.jsx';
 import { isIOSOrAndroidDevice } from '@lib/utils/detect-device.js';
 import { keepVirtualKeyboardOpenOnTap } from '@shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.js';
 import { detectDoubleClick } from '@shared/utils/ui-utils/detectDoubleClick.js';
@@ -830,7 +831,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                             [styles.msgFailed]: msg.status === 'failed',
                           }}
                         >
-                          <span class={styles.msgText}>{msg.text}</span>
+                          <span class={styles.msgText}>
+                            {linkifyText(msg.text)}
+                          </span>
                           <Show when={msg.attachment}>
                             {(attachment) => {
                               const file = attachment();

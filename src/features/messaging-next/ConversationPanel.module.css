@@ -173,6 +173,10 @@
 
 .msgText {
   word-break: break-word;
+
+  & a {
+    color: rgb(255, 255, 255);
+  }
 }
 
 .fileMessage {
