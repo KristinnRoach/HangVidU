@@ -6,6 +6,7 @@
   "compatibility_date": "2026-06-02",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  "routes": [{ "pattern": "api.hangvidu.com", "custom_domain": true }],
   "d1_databases": [
     {
       "binding": "DB",
