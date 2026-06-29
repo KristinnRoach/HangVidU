@@ -97,7 +97,7 @@
     "eslint-plugin-boundaries": "^6.0.2",
     "fallow": "^2.103.0",
     "fast-check": "^4.8.0",
-    "firebase-admin": "^13.8.0",
+    "firebase-admin": "^14.1.0",
     "fkill-cli": "~9.0.0",
     "jsdom": "^29.1.1",
     "playwright": "^1.61.1",
