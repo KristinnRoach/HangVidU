@@ -19,6 +19,18 @@ import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
 import { compressImage } from '@lib/media/image-compress.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
 import { linkifyText } from './utils/linkifyText.jsx';
+import { formatTimestamp, TIMESTAMP_THRESHOLD_MS } from './utils/format-timestamp.js';
+import {
+  IMAGE_COMPRESSION_THRESHOLD_BYTES,
+  MAX_R2_FILE_UPLOAD_BYTES,
+  attachmentFileName,
+  displayAttachmentFileName,
+  formatFileSize,
+  isImageAttachment,
+  isImageFile,
+  isR2FileAttachment,
+  readImageDimensions,
+} from './utils/attachments.js';
 import { isIOSOrAndroidDevice } from '@lib/utils/detect-device.js';
 import { keepVirtualKeyboardOpenOnTap } from '@shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.js';
 import { detectDoubleClick } from '@shared/utils/ui-utils/detectDoubleClick.js';
@@ -28,8 +40,8 @@ import {
   uploadConversationFile,
 } from '../../stores/filesStore.js';
 
-import { createMessagingRuntime } from './messaging-runtime.js';
 // Boundary note (spike): feature -> stores import; consolidate in refine pass.
+import { createD1MessageRepositoryFromEnv } from '../../stores/message-repository';
 import {
   markConversationRead,
   recordConversationActivity,
@@ -53,118 +65,8 @@ import type {
 
 import styles from './ConversationPanel.module.css';
 
-const runtime = createMessagingRuntime();
+const messageRepository = createD1MessageRepositoryFromEnv();
 const DRAFT_SAVE_DELAY_MS = 250;
-const TIMESTAMP_THRESHOLD_MS = 5 * 60 * 1000;
-const MAX_R2_FILE_UPLOAD_BYTES = 5 * 1024 * 1024;
-const DISPLAY_ATTACHMENT_FILE_NAME_LENGTH = 24;
-const IMAGE_COMPRESSION_THRESHOLD_BYTES = Math.round(1.5 * 1024 * 1024);
-
-type TimestampFormatters = {
-  time: Intl.DateTimeFormat;
-  day: Intl.DateTimeFormat;
-};
-
-const timestampFormattersByLocale = new Map<string, TimestampFormatters>();
-
-function isImageAttachment(attachment: MessageAttachment) {
-  return attachment.mimeType.trim().toLowerCase().startsWith('image/');
-}
-
-function isR2FileAttachment(attachment: MessageAttachment) {
-  return attachment.storage.provider === 'r2';
-}
-
-function isImageFile(file: File) {
-  return file.type.trim().toLowerCase().startsWith('image/');
-}
-
-// Strip control chars and path separators for a safe optimistic display +
-// download name. Length is the worker's concern (it truncates authoritatively).
-function attachmentFileName(file: File) {
-  return file.name.replace(/[\x00-\x1f\x7f/\\]/g, '_').trim() || 'attachment';
-}
-
-function displayAttachmentFileName(fileName: string) {
-  if (fileName.length <= DISPLAY_ATTACHMENT_FILE_NAME_LENGTH) return fileName;
-
-  const extension = shortFileExtension(fileName);
-  const stemLength = DISPLAY_ATTACHMENT_FILE_NAME_LENGTH - extension.length - 3;
-  return `${fileName.slice(0, Math.max(1, stemLength))}...${extension}`;
-}
-
-function shortFileExtension(fileName: string) {
-  const extensionStart = fileName.lastIndexOf('.');
-  return extensionStart > 0 && fileName.length - extensionStart <= 16
-    ? fileName.slice(extensionStart)
-    : '';
-}
-
-/**
- * Natural pixel dimensions of an image file, captured at send so the receiver's
- * renderer can reserve layout space before the image loads. Best-effort —
- * resolves undefined on decode failure rather than blocking the send.
- */
-async function readImageDimensions(
-  file: File,
-): Promise<{ width: number; height: number } | undefined> {
-  try {
-    const bitmap = await createImageBitmap(file);
-    const { width, height } = bitmap;
-    bitmap.close();
-    return width > 0 && height > 0 ? { width, height } : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function isSameLocalDate(a: Date, b: Date) {
-  return (
-    a.getDate() === b.getDate() &&
-    a.getMonth() === b.getMonth() &&
-    a.getFullYear() === b.getFullYear()
-  );
-}
-
-function getTimestampFormatters(locale: string) {
-  const cached = timestampFormattersByLocale.get(locale);
-  if (cached) return cached;
-
-  const formatters = {
-    time: new Intl.DateTimeFormat(locale, {
-      hour: 'numeric',
-      minute: '2-digit',
-      // Product choice: keep message timestamps in 24-hour time for now.
-      hour12: false,
-    }),
-    day: new Intl.DateTimeFormat(locale, {
-      month: 'short',
-      day: 'numeric',
-    }),
-  };
-
-  timestampFormattersByLocale.set(locale, formatters);
-  return formatters;
-}
-
-function formatTimestamp(timestamp: number, locale: string) {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const formatters = getTimestampFormatters(locale);
-  const time = formatters.time.format(date);
-
-  if (isSameLocalDate(date, now)) return time;
-
-  const day = formatters.day.format(date);
-
-  return `${day} - ${time}`;
-}
 
 function MessageHistorySkeleton() {
   return (
@@ -354,7 +256,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
     markConversationRead(candidate.conversationId, candidate.sentAt);
     void Promise.resolve(
-      runtime.messageRepository.markConversationRead(
+      messageRepository.markConversationRead(
         candidate.conversationId,
         candidate.myUserId,
       ),
@@ -481,7 +383,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
         // length effect, which respects userHasScrolledUp.
         let isInitialLoad = true;
 
-        const result = runtime.messageRepository.watchRecentMessages(
+        const result = messageRepository.watchRecentMessages(
           source.conversationId,
           (messages) => {
             if (source.conversationId !== state.conversationId) return;
@@ -576,7 +478,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   );
 
   const { send } = useConversation({
-    repository: runtime.messageRepository,
+    repository: messageRepository,
     store,
     actions,
     getSenderName: getUserName,
@@ -590,7 +492,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     const conversationId = state.conversationId;
     if (source !== 'persisted' || !conversationId) return;
     void Promise.resolve(
-      runtime.messageRepository.setMyReaction(
+      messageRepository.setMyReaction(
         conversationId,
         change.messageId,
         change.userId as UserId,
