@@ -1,4 +1,3 @@
-// src/messaging/reactions/ReactionManager.test.js
 // Unit tests for ReactionManager
 
 import { describe, it, expect, beforeEach } from 'vitest';

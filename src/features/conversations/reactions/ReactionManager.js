@@ -1,4 +1,3 @@
-// src/messaging/reactions/ReactionManager.js
 // Core reaction state: aggregate counts per message, plus which key (if any)
 // the local actor has selected.
 
