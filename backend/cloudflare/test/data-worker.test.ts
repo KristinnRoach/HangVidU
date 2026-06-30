@@ -332,6 +332,47 @@ describe('auth + membership guard on GET /conversations/:id/messages', () => {
   });
 });
 
+describe('PUT /conversations/:id/read round-trip', () => {
+  it('persists the marker and surfaces it on GET /conversations for the reader only', async () => {
+    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    await insertMessage(env.DB, convoId, 'm1', 'user-b', 'text', 'hi', null, 2000);
+    const aToken = await signToken(validClaims('user-a'));
+    const bToken = await signToken(validClaims('user-b'));
+
+    const put = await jsonPut(`/conversations/${convoId}/read`, aToken, {});
+    expect(put.status).toBe(200);
+    const { lastReadAt } = (await put.json()) as { lastReadAt: number };
+    expect(lastReadAt).toBeGreaterThan(0);
+
+    const listA = await SELF.fetch('https://data/conversations', {
+      headers: { Authorization: `Bearer ${aToken}`, Origin: ORIGIN },
+    });
+    const aBody = (await listA.json()) as {
+      conversations: { id: string; last_read_at: number }[];
+    };
+    expect(aBody.conversations.find((c) => c.id === convoId)?.last_read_at).toBe(
+      lastReadAt,
+    );
+
+    const listB = await SELF.fetch('https://data/conversations', {
+      headers: { Authorization: `Bearer ${bToken}`, Origin: ORIGIN },
+    });
+    const bBody = (await listB.json()) as {
+      conversations: { id: string; last_read_at: number }[];
+    };
+    expect(bBody.conversations.find((c) => c.id === convoId)?.last_read_at).toBe(
+      0,
+    );
+  });
+
+  it('404s a non-member', async () => {
+    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const token = await signToken(validClaims('user-c'));
+    const res = await jsonPut(`/conversations/${convoId}/read`, token, {});
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('call cancel mailbox route', () => {
   it('404s when the caller is not a conversation member', async () => {
     const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
