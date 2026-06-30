@@ -19,7 +19,6 @@ Do not use `push` for in-app notification commands, and do not use
 - `app-notifications`
 - `auth`
 - `dialog`
-- `messaging`
 - `push`
 - `user`
 
@@ -28,7 +27,6 @@ Do not use `push` for in-app notification commands, and do not use
 - `auth`
 - `call`
 - `media`
-- `messaging`
 
 ## Notes
 
