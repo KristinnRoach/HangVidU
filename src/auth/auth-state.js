@@ -135,26 +135,12 @@ export function getIsLoggedIn() {
 }
 
 /**
- * Get a defensive copy of the current authenticated user.
- *
- * @returns {{ uid: string, displayName: string | null, username: string | null, email: string | null, photoURL: string | null } | null}
- */
-export function getUser() {
-  return state.user ? { ...state.user } : null;
-}
-
-/**
  * Returns the authenticated user's UID, or null if not logged in.
  *
  * @returns {string|null}
  */
 export function getLoggedInUserId() {
   return state.user?.uid ?? null;
-}
-
-/** @returns {string|null} */
-export function getUserName() {
-  return state.user?.displayName ?? null;
 }
 
 // --- Wait for first stable resolution ---

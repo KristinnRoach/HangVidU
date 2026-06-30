@@ -10,7 +10,7 @@ import {
   onCleanup,
 } from 'solid-js';
 import { Paperclip, Download } from 'lucide-solid';
-import { getUserName } from '../../auth/index.js';
+import { useAuth } from '../../auth/solid-auth';
 
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
@@ -477,11 +477,12 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     ),
   );
 
+  const { user } = useAuth();
   const { send } = useConversation({
     repository: messageRepository,
     store,
     actions,
-    getSenderName: getUserName,
+    getSenderName: () => user()?.displayName,
     getRecipientIds: () => props.selection?.remoteParticipantIds ?? [],
   });
 

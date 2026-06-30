@@ -20,7 +20,6 @@ const mocks = vi.hoisted(() => ({
   ackCallResponse: vi.fn(),
   getLoggedInUserId: vi.fn(() => 'callee-id'),
   getLoggedInUserToken: vi.fn(async () => 'token'),
-  getUser: vi.fn(() => ({ displayName: 'Callee' })),
   sendIncomingCallPushNotification: vi.fn(),
   sendMissedCallPushNotification: vi.fn(),
   resolveDirectConversationId: vi.fn(),
@@ -35,7 +34,6 @@ vi.mock('./call-service.js', () => ({
 vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: mocks.getLoggedInUserId,
   getLoggedInUserToken: mocks.getLoggedInUserToken,
-  getUser: mocks.getUser,
 }));
 
 vi.mock('./call-notifications.js', () => ({
@@ -96,6 +94,7 @@ describe('CallHandshakeController', () => {
         room: vi.fn(),
       },
       createSignaling: vi.fn(),
+      getCallerName: () => 'Callee',
       onStateChange,
       onCalleeBusy: vi.fn(),
     });
@@ -131,6 +130,7 @@ describe('CallHandshakeController', () => {
     const controller = new CallHandshakeController({
       p2p,
       createSignaling: vi.fn(),
+      getCallerName: () => 'Callee',
       onStateChange: vi.fn(),
       onCalleeBusy: vi.fn(),
     });
@@ -181,6 +181,7 @@ describe('CallHandshakeController', () => {
     const controller = new CallHandshakeController({
       p2p,
       createSignaling: vi.fn(),
+      getCallerName: () => 'Callee',
       onStateChange: vi.fn(),
       onCalleeBusy: vi.fn(),
     });
@@ -218,6 +219,7 @@ describe('CallHandshakeController', () => {
     const controller = new CallHandshakeController({
       p2p,
       createSignaling: vi.fn(),
+      getCallerName: () => 'Callee',
       onStateChange: vi.fn(),
       onCalleeBusy: vi.fn(),
     });

@@ -49,8 +49,6 @@ export {
 export {
   getAuthState,
   getIsLoggedIn,
-  getUser,
   getLoggedInUserId,
-  getUserName,
   waitForAuthReady,
 } from './auth-state.js';

@@ -36,6 +36,7 @@ const CallHandshakeContext = createContext<CallHandshakeContextValue>();
 
 export function CallHandshakeProvider(props: ParentProps) {
   const p2p = useP2PContext();
+  const auth = useAuth();
   const [handshakeState, setHandshakeState] =
     createSignal<CallHandshakeState>(null);
   const [isCalleeBusy, setIsCalleeBusy] = createSignal(false);
@@ -43,6 +44,8 @@ export function CallHandshakeProvider(props: ParentProps) {
   const controller = new CallHandshakeController({
     p2p,
     createSignaling: createRoomSignaling,
+    getCallerName: () =>
+      auth.user()?.displayName || auth.user()?.username || 'Unknown',
     onStateChange: setHandshakeState,
     onCalleeBusy: setIsCalleeBusy,
   });
@@ -108,7 +111,6 @@ export function CallHandshakeProvider(props: ParentProps) {
   // AFTER mount (the listener never attached → no incoming-call dialog until a
   // reload). Keying on the uid avoids tearing down an active call on unrelated
   // auth-state updates (e.g. token refresh) that don't change the user.
-  const auth = useAuth();
   let attachedUid: string | null | undefined;
   createEffect(() => {
     const uid = auth.user()?.uid ?? null;
