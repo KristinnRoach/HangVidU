@@ -86,7 +86,7 @@ export function initializeGoogleOneTap(config) {
 /**
  * Show One Tap prompt.
  *
- * @param {(notification: object) => void} callback
+ * @param {(notification: object) => void} [callback]
  */
 export function promptGoogleOneTap(callback) {
   getGoogleAccountsOrThrow().id.prompt(callback);

@@ -39,6 +39,7 @@ function initializeOneTapClient() {
     itp_support: true,
     cancel_on_tap_outside: false,
     auto_select: true,
+    use_fedcm_for_prompt: true,
     prompt_parent_id: 'onetap-container',
     callback: handleOneTapCredential,
   });
@@ -97,17 +98,7 @@ export function showOneTapSignin() {
 
   notifyOneTapStatus('prompting');
 
-  promptGoogleOneTap((notification) => {
-    const momentType = notification?.getMomentType?.();
-
-    if (momentType === 'skipped') {
-      notifyOneTapStatus('skipped');
-    } else if (momentType === 'dismissed') {
-      notifyOneTapStatus('dismissed');
-    } else if (momentType === 'display') {
-      notifyOneTapStatus('displayed');
-    }
-  });
+  promptGoogleOneTap();
 }
 
 async function handleOneTapCredential(response) {
