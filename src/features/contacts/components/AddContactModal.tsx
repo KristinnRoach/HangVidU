@@ -1,6 +1,5 @@
 // src/features/contacts/components/AddContactModal.tsx
 //
-// Minimal SolidJS port of add-contact-modal.js.
 // The import-contacts section is mounted as a vanilla JS island via ref.
 // TODO: Port import-contacts-component.js to SolidJS (ImportContactsSection.tsx)
 
@@ -115,6 +114,7 @@ export default function AddContactModal(props: Props) {
   const [sharePending, setSharePending] = createSignal(false);
 
   let importContainerRef!: HTMLDivElement;
+  let emailInputRef!: HTMLInputElement;
   let importComponent: ReturnType<typeof createImportContactsComponent> | null =
     null;
   let allContacts: unknown[] = [];
@@ -345,6 +345,11 @@ export default function AddContactModal(props: Props) {
   async function handleManualEmailInvite() {
     const email = emailInput().trim().toLowerCase();
     if (!email) return;
+    setEmailInput(email);
+    if (!emailInputRef.checkValidity()) {
+      emailInputRef.reportValidity();
+      return;
+    }
     setEmailSending(true);
     setStatus({ text: '', type: '' });
 
@@ -611,6 +616,7 @@ export default function AddContactModal(props: Props) {
 
         <div class={styles.manualEmailRow}>
           <input
+            ref={emailInputRef}
             type='email'
             value={emailInput()}
             onInput={(e) => setEmailInput(e.currentTarget.value)}
