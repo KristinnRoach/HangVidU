@@ -4,6 +4,7 @@
 
 import { ref, set } from 'firebase/database';
 import { createSignal } from 'solid-js';
+import { randomInt } from 'crypto';
 import {
   getAuthProviderProfileSeed,
   getAuthState,
@@ -251,7 +252,7 @@ export async function ensureHandle(
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const suffix =
-      attempt === 0 ? '' : String(Math.floor(Math.random() * 90 + 10));
+      attempt === 0 ? '' : String(randomInt(10, 100));
     try {
       const saved = await claimUsername(user, suggestHandle(user, suffix));
       return { handle: saved?.username ?? null, assigned: true };
