@@ -5,7 +5,7 @@ import {
   saveLocalDraft,
 } from '../local-drafts.js';
 
-describe('messaging-next local drafts', () => {
+describe('conversations local drafts', () => {
   afterEach(() => {
     localStorage.clear();
   });

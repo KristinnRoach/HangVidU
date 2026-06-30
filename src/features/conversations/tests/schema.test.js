@@ -5,7 +5,7 @@ import {
   MessageEnvelopeSchema,
 } from '../schema.js';
 
-describe('messaging-next schema', () => {
+describe('conversations schema', () => {
   it('normalizes and rejects blank conversation ids', () => {
     expect(ConversationIdSchema.parse(' conversation-1 ')).toBe('conversation-1');
     expect(() => ConversationIdSchema.parse('   ')).toThrow();

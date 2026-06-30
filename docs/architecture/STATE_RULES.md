@@ -62,7 +62,7 @@ It exposes:
 | --------- | -------------------------------------- | ------------------------------------------------------------------ |
 | auth           | dedicated `auth-state.js`                  | non-Solid consumers subscribe to `evt:auth:session:*`         |
 | contacts       | Solid store in `stores/contactsStore.ts`   | Solid-only consumers; no `evt:contacts:state:changed`         |
-| messaging-next | —                                          |                                                              |
+| conversations  | —                                          |                                                              |
 | call           | —                                          |                                                              |
 
 ## Migration notes

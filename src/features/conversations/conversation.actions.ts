@@ -4,7 +4,6 @@ import type {
   ChatMessage,
   ConversationSelection,
   MessageAction,
-  ReactionSummary,
   TransportMode,
 } from './interfaces.js';
 import type { UserId } from './types.js';
@@ -109,11 +108,7 @@ export function createConversationActions(store: ConversationStateStore) {
     setState('messages', (m) => m.id === tempId, 'status', 'failed');
   }
 
-  function updateReactions(messageId: string, reactions: ReactionSummary[]) {
-    const idx = state.messages.findIndex((m) => m.id === messageId);
-    if (idx !== -1) setState('messages', idx, 'reactions', reactions);
-  }
-
+  // TODO: integrate or remove
   function addSystemMessage(text: string, actions?: MessageAction[]) {
     const id = crypto.randomUUID();
     setState('messages', (msgs) => [
@@ -134,6 +129,7 @@ export function createConversationActions(store: ConversationStateStore) {
     return id;
   }
 
+  // TODO: integrate or remove
   function removeSystemMessage(id: string) {
     setState('messages', (msgs) => msgs.filter((m) => m.id !== id));
   }
@@ -146,6 +142,7 @@ export function createConversationActions(store: ConversationStateStore) {
     setState('isPendingPrivateResponse', v);
   }
 
+  // TODO: integrate or remove
   function markAllRead() {
     setState('unreadCount', 0);
   }
@@ -161,7 +158,6 @@ export function createConversationActions(store: ConversationStateStore) {
     receiveMessage,
     markSent,
     markFailed,
-    updateReactions,
     addSystemMessage,
     removeSystemMessage,
     setTransportMode,

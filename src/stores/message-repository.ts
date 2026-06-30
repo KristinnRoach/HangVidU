@@ -10,8 +10,8 @@ import { createConversationChannel } from '../realtime/conversation-channel';
 import {
   createD1MessageRepository,
   type D1MessageClient,
-} from '../features/messaging-next/adapters/d1';
-import type { MessageRepository } from '../features/messaging-next/interfaces.js';
+} from '../features/conversations/adapters/d1';
+import type { MessageRepository } from '../features/conversations/interfaces.js';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 
 export function createD1MessageRepositoryFromEnv(): MessageRepository {

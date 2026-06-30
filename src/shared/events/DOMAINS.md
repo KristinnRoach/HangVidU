@@ -19,7 +19,6 @@ Do not use `push` for in-app notification commands, and do not use
 - `app-notifications`
 - `auth`
 - `dialog`
-- `messaging`
 - `push`
 - `user`
 
@@ -27,10 +26,3 @@ Do not use `push` for in-app notification commands, and do not use
 
 - `auth`
 - `call`
-- `media`
-- `messaging`
-
-## Notes
-
-- `dialog` is the target domain for app-modal state.
-- `media` is currently used only for local-stream lifecycle facts.

@@ -1,4 +1,3 @@
-// src/messaging/reactions/ReactionConfig.js
 // Configurable reaction types and settings
 
 /**

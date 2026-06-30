@@ -2,7 +2,7 @@
 // One-off: convert an RTDB `conversations` export into an idempotent SQL file
 // that backfills D1 (0001 + 0002 schema). Direct conversations only; lossy by
 // design (legacy inline-file rows and non-R2 attachments are dropped, matching
-// the messaging-next RTDB adapter's `toIncoming`).
+// the conversations RTDB adapter's `toIncoming`).
 //
 // Input  : JSON dump of the RTDB `/conversations` node:
 //            { "<a_b>": { "messages": { "<key>": {...} }, ... }, ... }
@@ -41,7 +41,7 @@ function nonEmptyString(value) {
   return typeof value === 'string' && value.trim() !== '';
 }
 
-// Mirror of the messaging-next RTDB adapter `toIncoming` shape decisions.
+// Mirror of the conversations RTDB adapter `toIncoming` shape decisions.
 function normalizeMessage(raw) {
   if (!raw || typeof raw !== 'object' || !raw.from) return null;
   const from = String(raw.from);
