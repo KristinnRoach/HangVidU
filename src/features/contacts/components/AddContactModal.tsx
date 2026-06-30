@@ -28,7 +28,6 @@ import {
   getLoggedInUserId,
   requestGmailSendAccess,
 } from '../../../auth/index.js';
-import { useAuth } from '../../../auth/solid-auth';
 import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
 import { sendContactInvite } from '../invites/send-contact-invite.js';
 import {
@@ -38,7 +37,9 @@ import {
 import {
   listIncomingContactRequests,
   listOutgoingContactRequests,
+  getLoggedInUserProfile,
   searchUsersByHandle,
+  type UserSearchResult,
 } from '../../../stores/userProfileStore.js';
 import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
 import { filterImportableContacts } from '../import/import-contacts-utils.js';
@@ -51,11 +52,6 @@ import {
 } from '../../../components/base-legacy/toast.js';
 
 type StatusState = { text: string; type: string };
-type DirectoryUser = {
-  uid: string;
-  displayName: string;
-  username?: string | null;
-};
 type HandleInviteStatus =
   | 'already_saved'
   | 'already_invited'
@@ -96,15 +92,14 @@ function openEmailComposeFallback(
 
 export default function AddContactModal(props: Props) {
   const { t } = useI18n();
-  const { user } = useAuth();
   const shareProviders = getInviteShareProviders();
-  const senderName = () => user()?.displayName || 'A friend';
+  const senderName = () => getLoggedInUserProfile()?.displayName || 'A friend';
 
   const [emailInput, setEmailInput] = createSignal('');
   const [emailSending, setEmailSending] = createSignal(false);
   const [handleInput, setHandleInput] = createSignal('');
   const [handleSearching, setHandleSearching] = createSignal(false);
-  const [handleResults, setHandleResults] = createSignal<DirectoryUser[]>([]);
+  const [handleResults, setHandleResults] = createSignal<UserSearchResult[]>([]);
   const [handleInviteStatuses, setHandleInviteStatuses] = createSignal<
     Record<string, HandleInviteStatus>
   >({});
@@ -253,7 +248,7 @@ export default function AddContactModal(props: Props) {
   async function runGenericShare() {
     setStatus({ text: t('contact.invite.share.opening'), type: 'loading' });
     const result = await shareInvite({
-      senderName: user()?.displayName,
+      senderName: getLoggedInUserProfile()?.displayName,
       userId: getLoggedInUserId(),
     });
     const statusConfig: Record<
@@ -287,7 +282,7 @@ export default function AddContactModal(props: Props) {
     });
     const result = await shareInviteViaProvider({
       providerId: providerId as 'whatsapp' | 'telegram',
-      senderName: user()?.displayName,
+      senderName: getLoggedInUserProfile()?.displayName,
       userId: getLoggedInUserId(),
     });
     if (result.status === 'opened') {
@@ -426,10 +421,10 @@ export default function AddContactModal(props: Props) {
       const incomingIds = new Set(
         incomingRequests.map((request) => request.fromId),
       );
-      setHandleResults(users as DirectoryUser[]);
+      setHandleResults(users);
       setHandleInviteStatuses(
         Object.fromEntries(
-          users.flatMap((user: DirectoryUser) => {
+          users.flatMap((user): [string, HandleInviteStatus][] => {
             if (contacts?.[user.uid]) return [[user.uid, 'already_saved']];
             if (incomingIds.has(user.uid))
               return [[user.uid, 'incoming_pending']];
@@ -450,7 +445,7 @@ export default function AddContactModal(props: Props) {
     }
   }
 
-  async function handleSendRequest(user: DirectoryUser) {
+  async function handleSendRequest(user: UserSearchResult) {
     if (!user?.uid || requestingUserId()) return;
     if (user.uid === getLoggedInUserId()) {
       setStatus({ text: t('contact.add.self_error'), type: 'error' });

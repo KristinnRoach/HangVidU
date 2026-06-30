@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../../auth/solid-auth.js';
 import { useP2PContext } from '../../shared/p2p-context.js';
 import { createRoomSignaling } from '../../realtime/index.js';
+import { getLoggedInUserProfile } from '../../stores/userProfileStore.js';
 import type { CallInvite } from './model/call-schema.js';
 import { CallHandshakeController } from './call-handshake-controller.js';
 import type {
@@ -44,8 +45,10 @@ export function CallHandshakeProvider(props: ParentProps) {
   const controller = new CallHandshakeController({
     p2p,
     createSignaling: createRoomSignaling,
-    getCallerName: () =>
-      auth.user()?.displayName || auth.user()?.username || 'Unknown',
+    getCallerName: () => {
+      const profile = getLoggedInUserProfile();
+      return profile?.displayName || profile?.username || 'Unknown';
+    },
     onStateChange: setHandshakeState,
     onCalleeBusy: setIsCalleeBusy,
   });

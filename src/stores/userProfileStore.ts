@@ -1,14 +1,15 @@
 // Wiring layer for user profile + directory. `stores` is the only layer allowed
 // to import both storage and auth, so the bearer-token provider is injected here
-// and the D1-backed repo/discovery singletons are built lazily. Public function
-// names are unchanged so feature consumers don't move.
+// and the D1-backed repo/discovery singletons are built lazily.
 
 import { ref, set } from 'firebase/database';
-import { getLoggedInUserToken } from '../auth/index.js';
+import { createSignal } from 'solid-js';
+import { getAuthState, getLoggedInUserToken } from '../auth/index.js';
 import { rtdb } from '../infra/firebase-rtdb.js';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 import { hashEmail } from '@lib/utils/email-hash.js';
 import { convertToEnglishLetters } from '../../shared/utils/transliteration';
+import { subscribe } from '../shared/events/index.js';
 import {
   createUserProfileRepository,
   createUserProfileD1Adapter,
@@ -16,25 +17,85 @@ import {
 } from '../storage/user/index.js';
 import { createWorkerRequest } from '../storage/worker-request.js';
 
-let profileRepo = null;
+type AuthUser = {
+  uid: string;
+  displayName: string | null;
+  username?: string | null;
+  email: string | null;
+  photoURL: string | null;
+};
+
+type UserLike = {
+  uid?: string;
+  displayName?: string | null;
+  email?: string | null;
+  photoURL?: string | null;
+};
+
+export type UserProfile = {
+  displayName?: string | null;
+  photoURL?: string | null;
+  username?: string | null;
+  discoverable?: boolean;
+};
+
+export type UserSearchResult = {
+  uid: string;
+  displayName: string;
+  photoURL?: string | null;
+  username?: string | null;
+};
+
+export type LoggedInUserProfile = {
+  uid: string;
+  displayName: string | null;
+  photoURL: string | null;
+  username: string | null;
+  email: string | null;
+  discoverable?: boolean;
+};
+
+type ProfileRepo = {
+  getUserProfile(userId: string): Promise<UserProfile | null>;
+  saveUserProfile(user: UserLike): Promise<void>;
+};
+type Discovery = {
+  register(
+    user: {
+      uid: string;
+      email: string;
+      displayName?: string | null;
+      photoURL?: string | null;
+    },
+    opts?: { username?: string | null },
+  ): Promise<void>;
+  lookupByEmail(email: string): Promise<unknown>;
+  findByEmails(emails: string[]): Promise<unknown>;
+  searchByHandle(handle: string): Promise<UserSearchResult[]>;
+};
+type WorkerRequest = ReturnType<typeof createWorkerRequest>;
+
+let profileRepo: ProfileRepo | null = null;
 function getProfileRepo() {
-  return (profileRepo ??= createUserProfileRepository(
+  if (profileRepo) return profileRepo;
+  profileRepo = createUserProfileRepository(
     createUserProfileD1Adapter({
       baseUrl: getHangViduApiBaseUrl(),
       getToken: getLoggedInUserToken,
-    }),
-  ));
+    }) as never,
+  ) as ProfileRepo;
+  return profileRepo;
 }
 
-let discovery = null;
+let discovery: Discovery | null = null;
 function getDiscovery() {
   return (discovery ??= createUserDiscovery({
     baseUrl: getHangViduApiBaseUrl(),
     getToken: getLoggedInUserToken,
-  }));
+  }) as Discovery);
 }
 
-let request = null;
+let request: WorkerRequest | null = null;
 function getRequest() {
   return (request ??= createWorkerRequest({
     baseUrl: getHangViduApiBaseUrl(),
@@ -42,17 +103,92 @@ function getRequest() {
   }));
 }
 
-export function getPublicUserProfile(userId) {
+const [loggedInUserProfile, setLoggedInUserProfile] =
+  createSignal<LoggedInUserProfile | null>(null);
+let loggedInProfileLoad: Promise<LoggedInUserProfile | null> | null = null;
+let subscribedToAuth = false;
+
+export function getLoggedInUserProfile(): LoggedInUserProfile | null {
+  const cached = loggedInUserProfile();
+  if (!cached) {
+    void loadLoggedInUserProfile();
+  }
+  return cached;
+}
+
+async function loadLoggedInUserProfile(): Promise<LoggedInUserProfile | null> {
+  const user = getAuthState().user as AuthUser | null;
+  if (!user?.uid) {
+    setLoggedInUserProfile(null);
+    return null;
+  }
+  if (loggedInProfileLoad) return loggedInProfileLoad;
+  loggedInProfileLoad = hydrateLoggedInUserProfile(user).finally(() => {
+    loggedInProfileLoad = null;
+  });
+  return loggedInProfileLoad;
+}
+
+async function hydrateLoggedInUserProfile(
+  user: AuthUser,
+): Promise<LoggedInUserProfile | null> {
+  let profile = await getPublicUserProfile(user.uid);
+  if (!profile?.displayName && !profile?.photoURL) {
+    await savePublicUserProfile(user);
+  }
+
+  const { handle } = await ensureHandle(user);
+  if (user.email) {
+    await registerInUserDirectory(user, { username: handle });
+  }
+
+  profile = await getPublicUserProfile(user.uid);
+  const next = {
+    uid: user.uid,
+    displayName: profile?.displayName ?? null,
+    photoURL: profile?.photoURL ?? null,
+    username: profile?.username ?? handle ?? null,
+    email: user.email,
+    discoverable: profile?.discoverable,
+  };
+  setLoggedInUserProfile(next);
+  return next;
+}
+
+function setupLoggedInUserProfileSync() {
+  if (subscribedToAuth) return;
+  subscribedToAuth = true;
+
+  subscribe('evt:auth:session:logged-in', () => {
+    void loadLoggedInUserProfile();
+  });
+  subscribe('evt:auth:session:logged-out', () => {
+    setLoggedInUserProfile(null);
+  });
+
+  if (getAuthState().isLoggedIn) {
+    void loadLoggedInUserProfile();
+  }
+}
+
+setupLoggedInUserProfileSync();
+
+export function getPublicUserProfile(userId: string) {
   return getProfileRepo().getUserProfile(userId);
 }
 
-export function savePublicUserProfile(user) {
+export function savePublicUserProfile(user: UserLike) {
   return getProfileRepo().saveUserProfile(user);
 }
 
-export async function claimUsername(user, username) {
+export async function claimUsername(user: UserLike, username: string) {
   if (!user?.uid) throw new Error('user required');
-  const body = {
+  const body: {
+    displayName: string | null;
+    photoURL: string | null;
+    username: string;
+    emailHash?: string;
+  } = {
     displayName: user.displayName || null,
     photoURL: user.photoURL || null,
     username,
@@ -71,7 +207,10 @@ export async function claimUsername(user, username) {
  * @param {{ displayName?: string|null, email?: string|null, uid?: string }} user
  * @param {string} [suffix]
  */
-export function suggestHandle(user, suffix = '') {
+export function suggestHandle(
+  user: UserLike,
+  suffix = '',
+) {
   const source = user?.displayName || user?.email?.split('@')[0] || user?.uid || '';
   const base = convertToEnglishLetters(source)
     .toLowerCase()
@@ -89,7 +228,9 @@ export function suggestHandle(user, suffix = '') {
  * @param {{ uid?: string, displayName?: string|null, email?: string|null, photoURL?: string|null }} user
  * @returns {Promise<{ handle: string|null, assigned: boolean }>}
  */
-export async function ensureHandle(user) {
+export async function ensureHandle(
+  user: UserLike,
+) {
   if (!user?.uid) return { handle: null, assigned: false };
   const profile = await getPublicUserProfile(user.uid);
   if (profile?.username) return { handle: profile.username, assigned: false };
@@ -101,16 +242,21 @@ export async function ensureHandle(user) {
       const saved = await claimUsername(user, suggestHandle(user, suffix));
       return { handle: saved?.username ?? null, assigned: true };
     } catch (error) {
-      if (error?.status !== 409) throw error;
+      if ((error as { status?: number })?.status !== 409) throw error;
     }
   }
   return { handle: null, assigned: false };
 }
 
-export async function registerInUserDirectory(user, opts) {
+export async function registerInUserDirectory(
+  user: AuthUser,
+  opts: { username?: string | null } = {},
+) {
   // D1 directory: powers authed handle search + email-hash discovery (the new
   // path consumed by manual-invite / google-import).
-  await getDiscovery().register(user, opts);
+  if (user.email) {
+    await getDiscovery().register({ ...user, email: user.email }, opts);
+  }
 
   // RTDB usersByEmail: NOT migratable yet. signInWithUsernameOrEmail resolves
   // email→handle by reading this node BEFORE the user is authenticated, so it
@@ -118,7 +264,13 @@ export async function registerInUserDirectory(user, opts) {
   // login moves off the pre-auth read. ponytail: dual-write, drop the RTDB half
   // once a public (token-less) handle-resolve endpoint exists.
   if (user?.uid && user?.email) {
-    const entry = {
+    const entry: {
+      uid: string;
+      displayName: string;
+      photoURL: string | null;
+      registeredAt: number;
+      username?: string;
+    } = {
       uid: user.uid,
       displayName: user.displayName || 'Anonymous',
       photoURL: user.photoURL || null,
@@ -129,20 +281,20 @@ export async function registerInUserDirectory(user, opts) {
   }
 }
 
-export function lookupRegisteredUserByEmail(email) {
+export function lookupRegisteredUserByEmail(email: string) {
   return getDiscovery().lookupByEmail(email);
 }
 
-export function findRegisteredUsersByEmails(emails) {
+export function findRegisteredUsersByEmails(emails: string[]) {
   return getDiscovery().findByEmails(emails);
 }
 
 /** Handle search — the new directory search box's data source. */
-export function searchUsersByHandle(handle) {
+export function searchUsersByHandle(handle: string) {
   return getDiscovery().searchByHandle(handle);
 }
 
-export async function sendContactRequest(toId) {
+export async function sendContactRequest(toId: string) {
   await getRequest()('POST', '/contact-requests', { toId });
 }
 
@@ -159,20 +311,20 @@ export async function listOutgoingContactRequests() {
   return Array.isArray(requests) ? requests : [];
 }
 
-export async function acceptContactRequest(fromId) {
+export async function acceptContactRequest(fromId: string) {
   return getRequest()(
     'POST',
     `/contact-requests/${encodeURIComponent(fromId)}/accept`,
   );
 }
 
-export async function declineContactRequest(fromId) {
+export async function declineContactRequest(fromId: string) {
   return getRequest()(
     'POST',
     `/contact-requests/${encodeURIComponent(fromId)}/decline`,
   );
 }
 
-export async function connectReferral(referrerId) {
+export async function connectReferral(referrerId: string) {
   return getRequest()('POST', '/referrals/connect', { referrerId });
 }
