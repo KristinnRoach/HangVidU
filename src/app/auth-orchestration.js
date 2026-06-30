@@ -167,9 +167,13 @@ export function wireAuthReactions() {
             const user = state?.user;
             if (user) {
               try {
-                const profile = await getPublicUserProfile(user.uid);
-                if (!profile?.displayName && !profile?.photoURL) {
-                  await savePublicUserProfile(user);
+                try {
+                  const profile = await getPublicUserProfile(user.uid);
+                  if (!profile?.displayName && !profile?.photoURL) {
+                    await savePublicUserProfile(user);
+                  }
+                } catch (e) {
+                  console.warn('[AUTH] Failed to sync public profile on login:', e);
                 }
                 const { handle } = await ensureHandle(user);
                 // Directory entry is the email→account index; skip when the
