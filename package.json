@@ -37,16 +37,10 @@
     "d1:view:remote": "pnpm -C backend/cloudflare view:remote",
     "migrate:local": "pnpm -C backend/cloudflare run migrate:local",
     "migrate:clean:local": "node -e \"require('node:fs').rmSync('backend/cloudflare/.wrangler/state/v3/d1',{recursive:true,force:true})\" && pnpm migrate:local",
-    "migrate:rtdb-files:r2:dry": "node scripts/migrate-rtdb-files-to-r2.js",
-    "migrate:rtdb-files:r2": "node scripts/migrate-rtdb-files-to-r2.js --write",
-    "migrate:rtdb-files:r2:rewrite-legacy:dry": "node scripts/migrate-rtdb-files-to-r2.js --rewrite-legacy-keys",
-    "migrate:rtdb-files:r2:rewrite-legacy": "node scripts/migrate-rtdb-files-to-r2.js --rewrite-legacy-keys --write",
-    "migrate:rtdb-files:r2:verify-legacy-copies": "node scripts/migrate-rtdb-files-to-r2.js --verify-legacy-copies",
     "play:rtdb": "open ./playgrounds/rtdb-schema.html",
     "play:rtdb-live": "fkill :8080 :8081 --silent; node --env-file=.env.development ./playgrounds/rtdb-proxy.js & python3 -m http.server 8080 --directory . & sleep 0.5 && open http://localhost:8080/playgrounds/rtdb-live.html && wait",
     "play:boundaries:scan": "node ./playgrounds/build-import-graph.mjs",
     "play:boundaries": "pnpm play:boundaries:scan && fkill :8082 --silent; python3 -m http.server 8082 --directory . & sleep 0.5 && open http://localhost:8082/playgrounds/boundary-rules.html && wait",
-    "play:media": "vite --open ./src/shared/media-next/media-lab.html",
     "preview": "pnpm kill:silent && pnpm build && concurrently -k -n preview,tunnel \"vite preview\" \"cloudflared tunnel run vidu-dev\"",
     "preview:local": "pnpm build && vite preview",
     "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\" && pnpm lint:cf && pnpm lint:boundaries",
@@ -66,8 +60,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
-    "test:e2e:report": "playwright show-report",
-    "check-deps": "pnpm why glob pnpm why node-domexception pnpm why source-map pnpm why sourcemap-codec"
+    "test:e2e:report": "playwright show-report"
   },
   "repository": {
     "type": "git",
