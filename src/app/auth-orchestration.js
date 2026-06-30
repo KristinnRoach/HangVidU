@@ -2,6 +2,7 @@ import { subscribe } from '../shared/events/index.js';
 import { initAuth } from '../auth/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import {
+  getPublicUserProfile,
   savePublicUserProfile,
   registerInUserDirectory,
   ensureHandle,
@@ -166,10 +167,10 @@ export function wireAuthReactions() {
             const user = state?.user;
             if (user) {
               try {
-                // Serialize: write the profile row, guarantee a handle exists
-                // (auto-assign for accounts without one), then index the
-                // email→account entry with that handle. Each is non-fatal.
-                await savePublicUserProfile(user);
+                const profile = await getPublicUserProfile(user.uid);
+                if (!profile?.displayName && !profile?.photoURL) {
+                  await savePublicUserProfile(user);
+                }
                 const { handle } = await ensureHandle(user);
                 // Directory entry is the email→account index; skip when the
                 // user has no email (e.g. username-only password accounts).

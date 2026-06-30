@@ -114,6 +114,11 @@ describe('wireAuthReactions', () => {
       email: 'ada@example.com',
       photoURL: null,
     };
+    mocks.getPublicUserProfile.mockResolvedValue({
+      displayName: null,
+      photoURL: null,
+      username: null,
+    });
     mocks.ensureHandle.mockResolvedValue({ handle: 'ada', assigned: false });
 
     const teardown = await wireAuthReactions({ lobbyElement });
@@ -125,6 +130,7 @@ describe('wireAuthReactions', () => {
 
     expect(mocks.processReferral).toHaveBeenCalled();
     expect(mocks.hydrateContacts).toHaveBeenCalled();
+    expect(mocks.getPublicUserProfile).toHaveBeenCalledWith(user.uid);
     expect(mocks.savePublicUserProfile).toHaveBeenCalledWith(user);
     // Login guarantees a handle via ensureHandle, then indexes the email→account
     // entry with that handle (replaces the old getPublicUserProfile read).
@@ -133,6 +139,39 @@ describe('wireAuthReactions', () => {
       username: 'ada',
     });
     expect(mocks.setupInviteListener).toHaveBeenCalledWith();
+
+    teardown();
+  });
+
+  it('does not overwrite an existing D1 profile with provider profile data on login', async () => {
+    const { wireAuthReactions } = await import('../auth-orchestration.js');
+    const user = {
+      uid: 'user-1',
+      displayName: 'Kristinn Roach',
+      email: 'crystalquicksand@gmail.com',
+      photoURL: 'https://example.test/google-photo.jpg',
+    };
+    mocks.getPublicUserProfile.mockResolvedValue({
+      displayName: 'Crystal Quicksand',
+      photoURL: null,
+      username: 'crystal_quicksand',
+    });
+    mocks.ensureHandle.mockResolvedValue({
+      handle: 'crystal_quicksand',
+      assigned: false,
+    });
+
+    const teardown = await wireAuthReactions({ lobbyElement: { id: 'lobby' } });
+
+    await mocks.handlers.get('evt:auth:session:logged-in')({
+      state: { user },
+    });
+
+    expect(mocks.savePublicUserProfile).not.toHaveBeenCalled();
+    expect(mocks.ensureHandle).toHaveBeenCalledWith(user);
+    expect(mocks.registerInUserDirectory).toHaveBeenCalledWith(user, {
+      username: 'crystal_quicksand',
+    });
 
     teardown();
   });
