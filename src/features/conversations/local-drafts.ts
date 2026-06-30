@@ -1,6 +1,6 @@
 import type { ConversationId, UserId } from './types.js';
 
-const STORAGE_PREFIX = 'hangvidu:messaging-next:draft';
+const STORAGE_PREFIX = 'hangvidu:conversations:draft';
 
 function storageKey(userId: UserId, conversationId: ConversationId) {
   return `${STORAGE_PREFIX}:${encodeURIComponent(userId)}:${encodeURIComponent(

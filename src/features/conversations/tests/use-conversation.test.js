@@ -32,7 +32,7 @@ function envelope(overrides) {
   };
 }
 
-describe('messaging-next useConversation', () => {
+describe('conversations useConversation', () => {
   it('snapshots push recipients before persistence and isolates push failures', async () => {
     const store = createConversationState();
     const actions = createConversationActions(store);

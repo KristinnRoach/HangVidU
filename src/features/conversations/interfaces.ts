@@ -1,4 +1,4 @@
-// Transport and state contracts for messaging-next.
+// Transport and state contracts for the conversations feature.
 // No Firebase, no runtime deps — adapters implement these and are swapped freely.
 
 import type {

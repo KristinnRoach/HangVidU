@@ -20,7 +20,7 @@ import PublicHomepage from '../components/app/PublicHomepage';
 import CallLobby from '../features/call/components/CallLobby';
 import ContactsList from '../features/contacts/components/ContactsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
-import ConversationPanel from '../features/messaging-next/ConversationPanel';
+import ConversationPanel from '../features/conversations/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs';
 import { StartCallButton } from '../features/call/components/CallControls';
 
@@ -30,12 +30,12 @@ import { Spinner } from '../components/app/Spinner';
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
 
-import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
-import type { UserId } from '../features/messaging-next/types.js';
+import type { ConversationSelection } from '../features/conversations/interfaces.js';
+import type { UserId } from '../features/conversations/types.js';
 import { resolveContactIdFromDirectConversationId } from '../shared/utils/direct-conversation-id';
 import { selection as selectedConversation } from '../stores/selectedConversationStore';
 
-type ViewMode = 'home' | 'call' | 'contacts' | 'messaging';
+type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
 
 export default function MainContent() {
   const p2p = useP2PContext();
@@ -66,7 +66,7 @@ export default function MainContent() {
     on(
       selectedConversation,
       (sel) => {
-        if (sel && sel.displayUI !== false) setUserView('messaging');
+        if (sel && sel.displayUI !== false) setUserView('conversations');
       },
       { defer: true },
     ),
@@ -156,13 +156,13 @@ export default function MainContent() {
             </div>
 
             <div
-              hidden={activeView() !== 'messaging'}
+              hidden={activeView() !== 'conversations'}
               class={mainStyles.activeViewContainer + ' ' + mainStyles.chat}
             >
               <ConversationPanel
                 selection={selectedConversation()}
                 myUserId={(user()?.uid as UserId | undefined) ?? null}
-                visible={activeView() === 'messaging'}
+                visible={activeView() === 'conversations'}
               />
             </div>
           </Show>
@@ -251,24 +251,24 @@ function TopBar(props: TopBarProps) {
             </div>
           </div>
 
-          <div class={getNavItemClass('messaging')}>
+          <div class={getNavItemClass('conversations')}>
             <button
               type='button'
               class={
-                props.activeView === 'messaging'
+                props.activeView === 'conversations'
                   ? topbarStyles.navBtnSelected
                   : topbarStyles.navBtn
               }
               title={t('nav.messages')}
               aria-label={t('nav.messages')}
-              onClick={() => props.setActiveView('messaging')}
+              onClick={() => props.setActiveView('conversations')}
             >
               <Mail />
             </button>
 
             <div
               class={topbarStyles.toolbar}
-              hidden={props.activeView !== 'messaging'}
+              hidden={props.activeView !== 'conversations'}
             >
               <Show when={!props.isInCall && calleeId()}>
                 {(resolvedCalleeId) => (

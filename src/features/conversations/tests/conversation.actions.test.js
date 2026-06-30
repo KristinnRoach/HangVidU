@@ -21,7 +21,7 @@ function start(actions) {
   actions.startConversation({ conversationId: 'conversation-1' }, 'me');
 }
 
-describe('messaging-next conversation actions', () => {
+describe('conversations actions', () => {
   it('keeps messages ordered by sentAt when replay and history arrive out of order', () => {
     const store = createConversationState();
     const actions = createConversationActions(store);

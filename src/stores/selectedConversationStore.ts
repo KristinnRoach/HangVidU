@@ -1,5 +1,5 @@
 import { createSignal } from 'solid-js';
-import type { ConversationSelection } from '../features/messaging-next/interfaces.js';
+import type { ConversationSelection } from '../features/conversations/interfaces.js';
 import { resolveDirectConversationId } from './conversations-client';
 import { cacheContactConversationId, getContactById } from './contactsStore.js';
 
