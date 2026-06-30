@@ -50,7 +50,7 @@ export default function UsernamePasswordForm(props) {
           username: username(),
           password: password(),
           email: email() || null,
-          displayName: displayName() || null,
+          displayName: displayName() || username(),
         });
       } else {
         await signInWithUsernameOrEmail({
