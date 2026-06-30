@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   hydrateContacts: vi.fn(),
 }));
 
-vi.mock('../../../stores/userDirectoryStore.js', () => ({
+vi.mock('../../../stores/userProfileStore.js', () => ({
   lookupRegisteredUserByEmail: mocks.lookupRegisteredUserByEmail,
 }));
 

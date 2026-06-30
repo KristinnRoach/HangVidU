@@ -39,7 +39,7 @@ import {
   listIncomingContactRequests,
   listOutgoingContactRequests,
   searchUsersByHandle,
-} from '../../../stores/userDirectoryStore.js';
+} from '../../../stores/userProfileStore.js';
 import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
 import { filterImportableContacts } from '../import/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';

@@ -32,7 +32,7 @@ vi.mock('../../auth/index.js', () => ({
   initAuth: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('../../stores/userDirectoryStore.js', () => ({
+vi.mock('../../stores/userProfileStore.js', () => ({
   savePublicUserProfile: mocks.savePublicUserProfile,
   getPublicUserProfile: mocks.getPublicUserProfile,
   ensureHandle: mocks.ensureHandle,

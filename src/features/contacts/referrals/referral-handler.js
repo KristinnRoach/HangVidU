@@ -12,7 +12,7 @@ import {
 import {
   connectReferral,
   getPublicUserProfile,
-} from '../../../stores/userDirectoryStore.js';
+} from '../../../stores/userProfileStore.js';
 import { dispatchCommand } from '../../../shared/events/index.js';
 import { t } from '../../../shared/i18n/index.js';
 

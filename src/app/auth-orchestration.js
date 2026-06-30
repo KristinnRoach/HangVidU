@@ -6,7 +6,7 @@ import {
   savePublicUserProfile,
   registerInUserDirectory,
   ensureHandle,
-} from '../stores/userDirectoryStore.js';
+} from '../stores/userProfileStore.js';
 import { setupInviteListener } from '../features/contacts/invites/invite-listener.js';
 import { processReferral } from '../features/contacts/referrals/referral-handler.js';
 import { hydrateContacts, resetContacts } from '../stores/contactsStore.js';

@@ -3,7 +3,7 @@ import {
   getLoggedInUserId,
 } from '../../../auth/index.js';
 import { getAllContacts, hydrateContacts } from '../../../stores/contactsStore.js';
-import { findRegisteredUsersByEmails } from '../../../stores/userDirectoryStore.js';
+import { findRegisteredUsersByEmails } from '../../../stores/userProfileStore.js';
 import { fetchGoogleContacts } from '../../../shared/utils/google/google-contacts.js';
 import { buildImportableContacts } from './import-contacts-utils.js';
 

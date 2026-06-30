@@ -8,7 +8,7 @@ import {
   acceptContactRequest,
   declineContactRequest,
   listIncomingContactRequests,
-} from '../../../stores/userDirectoryStore.js';
+} from '../../../stores/userProfileStore.js';
 
 const pendingNotificationIds = new Set();
 

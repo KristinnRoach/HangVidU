@@ -24,7 +24,7 @@ Each feature subscribes to the auth events it cares about from its own `setup()`
 |---|---|---|
 | `evt:auth:session:ready` → `hydrateContacts()` | contacts hydration | `features/contacts/index.ts` `setup()` |
 | `evt:auth:session:logged-in` → `processReferral()`, `hydrateContacts()`, `setupInviteListener()` | contacts + referrals + invites | `features/contacts/index.ts` `setup()` (invites are a sub-feature; fold for now) |
-| `evt:auth:session:logged-in` → `savePublicUserProfile()`, `registerInUserDirectory()` | user-directory write | `stores/userDirectoryStore.js` `setup()` |
+| `evt:auth:session:logged-in` → `savePublicUserProfile()`, `registerInUserDirectory()` | user-directory write | `stores/userProfileStore.js` `setup()` |
 | `evt:auth:session:logged-out` → contact request listener cleanup, `resetContacts()` | contacts teardown | `features/contacts/index.ts` `setup()` |
 | `evt:auth:session:logged-out` → `clearLocalStorageOnLogout()` | auth-level housekeeping | `auth/index.ts` `setup()` |
 | `await initAuth()` (last) | kicks off auth lifecycle | `auth/index.ts` `setup()`, after subscribe registration |
@@ -56,7 +56,7 @@ events after all subscribers are registered.
 4. **Test split** — current `__tests__/setupAuth.test.js` tests cross-cutting orchestration end-to-end. Replace with three smaller tests:
    - `auth/__tests__/setup.test.js` — logout localStorage clearing + initAuth ordering
    - extend `features/contacts/__tests__/setup.test.js` — auth event subscriptions
-   - new `stores/__tests__/userDirectoryStore.setup.test.js` — logged-in writes
+   - new `stores/__tests__/userProfileStore.setup.test.js` — logged-in writes
 
 ## Known non-blocking observations (do not fix in isolation)
 

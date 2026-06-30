@@ -6,7 +6,7 @@ import {
   claimUsername,
   getPublicUserProfile,
   suggestHandle,
-} from '../../../stores/userDirectoryStore.js';
+} from '../../../stores/userProfileStore.js';
 import styles from './HandleClaimPrompt.module.css';
 
 type UserLike = {
