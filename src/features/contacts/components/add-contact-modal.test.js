@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDebouncedAsyncAction } from './add-contact-modal.js';
+import { createDebouncedAsyncAction } from '../utils/createDebouncedAsyncAction';
 
 const mocks = vi.hoisted(() => ({
   shareInvite: vi.fn(),

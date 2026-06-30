@@ -45,7 +45,7 @@ import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.
 import { filterImportableContacts } from '../import/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
 import { importGoogleContacts as importGoogleContactsFlow } from '../import/google-import.js';
-import { createDebouncedAsyncAction } from './add-contact-modal.js';
+import { createDebouncedAsyncAction } from '../utils/createDebouncedAsyncAction';
 import {
   showErrorToast,
   showSuccessToast,
@@ -387,29 +387,44 @@ export default function AddContactModal(props: Props) {
     setHandleSearching(true);
     try {
       await hydrateContacts().catch((error) => {
-        console.warn('[AddContactModal] Contact hydration before search failed:', error);
+        console.warn(
+          '[AddContactModal] Contact hydration before search failed:',
+          error,
+        );
       });
       const [users, outgoingRequests, incomingRequests] = await Promise.all([
         searchUsersByHandle(handle),
         listOutgoingContactRequests().catch((error) => {
-          console.warn('[AddContactModal] Outgoing contact requests lookup failed:', error);
+          console.warn(
+            '[AddContactModal] Outgoing contact requests lookup failed:',
+            error,
+          );
           return [];
         }),
         listIncomingContactRequests().catch((error) => {
-          console.warn('[AddContactModal] Incoming contact requests lookup failed:', error);
+          console.warn(
+            '[AddContactModal] Incoming contact requests lookup failed:',
+            error,
+          );
           return [];
         }),
       ]);
       const contacts = getAllContacts();
-      const outgoingIds = new Set(outgoingRequests.map((request) => request.toId));
-      const incomingIds = new Set(incomingRequests.map((request) => request.fromId));
+      const outgoingIds = new Set(
+        outgoingRequests.map((request) => request.toId),
+      );
+      const incomingIds = new Set(
+        incomingRequests.map((request) => request.fromId),
+      );
       setHandleResults(users as DirectoryUser[]);
       setHandleInviteStatuses(
         Object.fromEntries(
           users.flatMap((user: DirectoryUser) => {
             if (contacts?.[user.uid]) return [[user.uid, 'already_saved']];
-            if (incomingIds.has(user.uid)) return [[user.uid, 'incoming_pending']];
-            if (outgoingIds.has(user.uid)) return [[user.uid, 'already_invited']];
+            if (incomingIds.has(user.uid))
+              return [[user.uid, 'incoming_pending']];
+            if (outgoingIds.has(user.uid))
+              return [[user.uid, 'already_invited']];
             return [];
           }),
         ),

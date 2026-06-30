@@ -19,7 +19,10 @@ import {
 } from '../../../shared/utils/share-invite-presets.js';
 import { t } from '../../../shared/i18n/index.js';
 import { escapeHtml } from '../../../shared/utils/ui-utils/dom-utils.js';
-import { showErrorToast, showSuccessToast } from '../../../components/base-legacy/toast.js';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../components/base-legacy/toast.js';
 import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
 import { filterImportableContacts } from '../import/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
@@ -157,7 +160,10 @@ export async function showAddContactModal() {
         );
       },
       onInviteContact: async (contact) => {
-        return await sendContactInvite(contact.user.uid, contact.user.displayName);
+        return await sendContactInvite(
+          contact.user.uid,
+          contact.user.displayName,
+        );
       },
       onInviteSelected: async (contacts) => {
         let count = 0;
@@ -613,7 +619,7 @@ export async function showAddContactModal() {
  * @param {{ waitMs?: number, onPendingChange?: ((isPending: boolean) => void) | null }} [options]
  * @returns {((...args: any[]) => Promise<any>) & { isPending: () => boolean, cancel: () => void }}
  */
-export function createDebouncedAsyncAction(action, options = {}) {
+function createDebouncedAsyncAction(action, options = {}) {
   const waitMs =
     typeof options.waitMs === 'number' && options.waitMs >= 0
       ? options.waitMs
