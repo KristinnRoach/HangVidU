@@ -44,10 +44,6 @@ export const setup = createSingleFlightSetup({
         });
 
         inAppNotificationManager.add(notificationId, notification);
-
-        if (!inAppNotificationManager.isListVisible()) {
-          inAppNotificationManager.showList();
-        }
       },
       { signal },
     );
