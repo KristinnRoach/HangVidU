@@ -73,4 +73,20 @@ describe('D1 message reactions', () => {
 
     expect(client.setMyReaction).toHaveBeenCalledWith('c1', 'm1', 'laugh');
   });
+
+  it('persists a read marker via the client', async () => {
+    const client = {
+      getUserId: () => 'me',
+      loadMessages: vi.fn(),
+      sendMessage: vi.fn(),
+      setMyReaction: vi.fn(),
+      markRead: vi.fn(async () => {}),
+      subscribe: vi.fn(),
+    };
+    const repository = createD1MessageRepository(client);
+
+    await repository.markConversationRead('c1', 'me');
+
+    expect(client.markRead).toHaveBeenCalledWith('c1');
+  });
 });

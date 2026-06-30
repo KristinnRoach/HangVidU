@@ -35,6 +35,7 @@ CREATE TABLE conversation_members (
   conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   user_id         TEXT NOT NULL REFERENCES users(id)         ON DELETE CASCADE,
   joined_at       INTEGER NOT NULL,
+  last_read_at    INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (conversation_id, user_id)
 );
 CREATE INDEX idx_members_user ON conversation_members(user_id);

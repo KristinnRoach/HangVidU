@@ -33,6 +33,13 @@ const [activity, setActivity] = createSignal<Map<string, ParticipantActivity>>(
   new Map(),
 );
 const [readVersion, setReadVersion] = createSignal(0);
+// Server-owned read markers (conversationId -> lastReadAt), seeded from
+// GET /conversations. Makes the unread badge cross-device: a read on another
+// device clears here on the next seed. localStorage stays as the optimistic
+// in-tab layer; getLastReadAt returns the max of the two.
+const [serverLastRead, setServerLastRead] = createSignal<Map<string, number>>(
+  new Map(),
+);
 
 /** Reactive: participant uid -> latest activity. Read in useContacts. */
 export const conversationActivity = activity;
@@ -41,11 +48,14 @@ const readKey = (conversationId: string) => `hangvidu:lastRead:${conversationId}
 
 export function getLastReadAt(conversationId: string): number {
   readVersion();
+  const server = serverLastRead().get(conversationId) ?? 0;
+  let local = 0;
   try {
-    return Number(localStorage.getItem(readKey(conversationId))) || 0;
+    local = Number(localStorage.getItem(readKey(conversationId))) || 0;
   } catch {
-    return 0;
+    local = 0;
   }
+  return Math.max(local, server);
 }
 
 /**
@@ -96,6 +106,7 @@ export async function refreshConversationActivity(): Promise<void> {
   const me = getLoggedInUserId();
   if (!me) {
     setActivity(new Map());
+    setServerLastRead(new Map());
     return;
   }
   try {
@@ -103,6 +114,7 @@ export async function refreshConversationActivity(): Promise<void> {
     if (getLoggedInUserId() !== me) return;
 
     const map = new Map<string, ParticipantActivity>();
+    const reads = new Map<string, number>();
     for (const c of conversations) {
       if (c.kind !== 'direct') continue; // contacts list is DMs only for now
       const other = c.members.find((m) => m.user_id !== me);
@@ -112,7 +124,9 @@ export async function refreshConversationActivity(): Promise<void> {
         latestSentAt: c.latest_sent_at ?? c.updated_at,
         latestSenderId: c.latest_sender_id ?? null,
       });
+      reads.set(c.id, c.last_read_at ?? 0);
     }
+    setServerLastRead(reads);
     setActivity((current) => {
       for (const [participantId, existing] of current) {
         const fetched = map.get(participantId);
@@ -146,6 +160,7 @@ export function stopConversationActivity(): void {
   closeUserMailbox();
   started = false;
   setActivity(new Map());
+  setServerLastRead(new Map());
 }
 
 /** Idempotent: seed once + open the live mailbox subscription. */
