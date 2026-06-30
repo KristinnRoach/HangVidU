@@ -40,7 +40,6 @@ function initializeOneTapClient() {
     cancel_on_tap_outside: false,
     auto_select: true,
     use_fedcm_for_prompt: true,
-    prompt_parent_id: 'onetap-container',
     callback: handleOneTapCredential,
   });
 }
