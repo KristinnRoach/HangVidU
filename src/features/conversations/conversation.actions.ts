@@ -4,7 +4,6 @@ import type {
   ChatMessage,
   ConversationSelection,
   MessageAction,
-  ReactionSummary,
   TransportMode,
 } from './interfaces.js';
 import type { UserId } from './types.js';
@@ -110,12 +109,6 @@ export function createConversationActions(store: ConversationStateStore) {
   }
 
   // TODO: integrate or remove
-  function updateReactions(messageId: string, reactions: ReactionSummary[]) {
-    const idx = state.messages.findIndex((m) => m.id === messageId);
-    if (idx !== -1) setState('messages', idx, 'reactions', reactions);
-  }
-
-  // TODO: integrate or remove
   function addSystemMessage(text: string, actions?: MessageAction[]) {
     const id = crypto.randomUUID();
     setState('messages', (msgs) => [
@@ -165,7 +158,6 @@ export function createConversationActions(store: ConversationStateStore) {
     receiveMessage,
     markSent,
     markFailed,
-    updateReactions,
     addSystemMessage,
     removeSystemMessage,
     setTransportMode,
