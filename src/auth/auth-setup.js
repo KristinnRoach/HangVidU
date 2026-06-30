@@ -11,7 +11,7 @@ import {
   signInFirebaseAnonymously,
 } from './adapters/firebase-auth-adapter.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
-import { initOneTap, showOneTapSignin } from './onetap.js';
+import { initOneTap, cancelOneTap, showOneTapSignin } from './onetap.js';
 import { clearGISTokenCache } from './gis-tokens.js';
 import { setupAuthCommandHandlers } from './auth-command-handlers.js';
 import { getLocale, onLocaleChange } from '../shared/i18n/index.js';
@@ -124,7 +124,9 @@ async function _initAuthInternal() {
           }
         : { status: 'unauthenticated', isLoggedIn: false, user: null },
     );
-    if (!loggedIn) clearGISTokenCache();
+
+    if (loggedIn) cancelOneTap();
+    else clearGISTokenCache();
   });
 
   devDebug('[AUTH] Auth initialization complete, scheduling One Tap...');

@@ -115,8 +115,6 @@ export default function MainContent() {
           visible={headerVisible()}
         />
 
-        <div id='onetap-container' />
-
         <main id='main-content' class={mainStyles.mainContent}>
           <CallDialogs />
 
@@ -277,8 +275,7 @@ function TopBar(props: TopBarProps) {
                       audioOnly={false}
                       calleeId={resolvedCalleeId()}
                       calleeName={
-                        props?.selectedConversation?.nickname ||
-                        undefined
+                        props?.selectedConversation?.nickname || undefined
                       }
                     />
                     {/* 

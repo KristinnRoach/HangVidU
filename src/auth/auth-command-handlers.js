@@ -28,6 +28,11 @@ import { callCloudFunction } from './cloud-functions.js';
  */
 let cleanupAuthCommandHandlers = null;
 
+if (import.meta.hot?.data?.cleanupAuthCommandHandlers) {
+  import.meta.hot.data.cleanupAuthCommandHandlers();
+  import.meta.hot.data.cleanupAuthCommandHandlers = null;
+}
+
 export function setupAuthCommandHandlers() {
   if (cleanupAuthCommandHandlers) {
     return cleanupAuthCommandHandlers;
@@ -80,8 +85,20 @@ export function setupAuthCommandHandlers() {
     if (cleanupAuthCommandHandlers === cleanup) {
       cleanupAuthCommandHandlers = null;
     }
+    if (import.meta.hot?.data?.cleanupAuthCommandHandlers === cleanup) {
+      import.meta.hot.data.cleanupAuthCommandHandlers = null;
+    }
   };
 
   cleanupAuthCommandHandlers = cleanup;
+  if (import.meta.hot?.data) {
+    import.meta.hot.data.cleanupAuthCommandHandlers = cleanup;
+  }
   return cleanup;
+}
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    cleanupAuthCommandHandlers?.();
+  });
 }
