@@ -43,6 +43,9 @@ export interface Conversation {
   // when the conversation has no messages yet.
   latest_sent_at?: number | null;
   latest_sender_id?: string | null;
+  // Caller's own server-owned read marker (present on `list()`); drives the
+  // cross-device unread badge. 0 = never read.
+  last_read_at?: number;
 }
 
 export interface ConversationsClient {
@@ -67,6 +70,8 @@ export interface ConversationsClient {
     messageId: string,
     reactionKey: string | null,
   ): Promise<WireReactionSummary[]>;
+  /** Advance the caller's server-owned read marker; resolves with the new marker. */
+  markRead(conversationId: string): Promise<number>;
 }
 
 export interface ConversationsClientOptions {
@@ -161,6 +166,12 @@ export function createConversationsClient(
         `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/reaction`,
         { reactionKey },
       ).then((r) => r.reactions);
+    },
+    markRead(conversationId) {
+      return request<{ lastReadAt: number }>(
+        'PUT',
+        `/conversations/${encodeURIComponent(conversationId)}/read`,
+      ).then((r) => r.lastReadAt);
     },
   };
 }

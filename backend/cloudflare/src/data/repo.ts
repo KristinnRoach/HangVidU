@@ -930,6 +930,29 @@ export async function isMember(
   return row != null;
 }
 
+/**
+ * Advance the caller's read marker for a conversation to `readAt` (server clock).
+ * MAX() guards against regressing on out-of-order/concurrent reads. Returns the
+ * resulting marker, or null if the user is not a member (no row updated).
+ */
+export async function markConversationRead(
+  db: D1Database,
+  conversationId: string,
+  userId: string,
+  readAt: number,
+): Promise<number | null> {
+  const row = await db
+    .prepare(
+      `UPDATE conversation_members
+          SET last_read_at = MAX(last_read_at, ?)
+        WHERE conversation_id = ? AND user_id = ?
+      RETURNING last_read_at`,
+    )
+    .bind(readAt, conversationId, userId)
+    .first<{ last_read_at: number }>();
+  return row ? row.last_read_at : null;
+}
+
 export async function getConversation(
   db: D1Database,
   conversationId: string,
@@ -966,14 +989,19 @@ export async function listConversations(
     members: MemberRow[];
     latest_sent_at: number | null;
     latest_sender_id: string | null;
+    last_read_at: number;
   })[]
 > {
   // latest_* feed the conversation list's MRU sort + unread badge (last message
-  // time + who sent it). ponytail: per-conversation correlated subqueries —
-  // fine at current scale; fold into a grouped join if the list grows large.
+  // time + who sent it). last_read_at is the caller's own read marker (the JOIN
+  // is on m.user_id = caller), so the client can compute unread server-side
+  // rather than from per-device localStorage. ponytail: per-conversation
+  // correlated subqueries — fine at current scale; fold into a grouped join if
+  // the list grows large.
   const { results } = await db
     .prepare(
       `SELECT c.*,
+              m.last_read_at AS last_read_at,
               (SELECT msg.created_at FROM messages msg
                 WHERE msg.conversation_id = c.id
                 ORDER BY msg.created_at DESC, msg.id DESC LIMIT 1) AS latest_sent_at,
@@ -990,6 +1018,7 @@ export async function listConversations(
       ConversationRow & {
         latest_sent_at: number | null;
         latest_sender_id: string | null;
+        last_read_at: number;
       }
     >();
 
@@ -1004,6 +1033,7 @@ export async function listConversations(
       updated_at: c.updated_at,
       latest_sent_at: c.latest_sent_at,
       latest_sender_id: c.latest_sender_id,
+      last_read_at: c.last_read_at,
       members: await getMembers(db, c.id),
     })),
   );

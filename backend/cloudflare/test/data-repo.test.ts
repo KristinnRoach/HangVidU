@@ -8,6 +8,7 @@ import {
   isMember,
   listConversations,
   loadMessages,
+  markConversationRead,
   resolveOrCreateDirect,
   setMyReaction,
   upsertUser,
@@ -233,5 +234,29 @@ describe('listConversations', () => {
     const [conversation] = await listConversations(db, 'user-a');
     expect(conversation.latest_sent_at).toBe(2000);
     expect(conversation.latest_sender_id).toBe('user-b');
+  });
+
+  it("surfaces the caller's own read marker, defaulting to 0", async () => {
+    const convoId = await resolveOrCreateDirect(db, 'user-a', 'user-b', 1000);
+    const [fresh] = await listConversations(db, 'user-a');
+    expect(fresh.last_read_at).toBe(0);
+
+    await markConversationRead(db, convoId, 'user-a', 5000);
+    const [aView] = await listConversations(db, 'user-a');
+    const [bView] = await listConversations(db, 'user-b');
+    expect(aView.last_read_at).toBe(5000); // per-member: only the reader advances
+    expect(bView.last_read_at).toBe(0);
+  });
+});
+
+describe('markConversationRead', () => {
+  it('never regresses the marker and returns null for non-members', async () => {
+    const convoId = await resolveOrCreateDirect(db, 'user-a', 'user-b', 1000);
+
+    expect(await markConversationRead(db, convoId, 'user-a', 5000)).toBe(5000);
+    // Older read must not move the marker backwards.
+    expect(await markConversationRead(db, convoId, 'user-a', 3000)).toBe(5000);
+    // Non-member: no row updated.
+    expect(await markConversationRead(db, convoId, 'user-c', 9000)).toBeNull();
   });
 });

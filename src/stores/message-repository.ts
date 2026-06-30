@@ -24,6 +24,9 @@ export function createD1MessageRepositoryFromEnv(): MessageRepository {
       http.sendMessage(conversationId, input),
     setMyReaction: (conversationId, messageId, reactionKey) =>
       http.setMyReaction(conversationId, messageId, reactionKey),
+    markRead: async (conversationId) => {
+      await http.markRead(conversationId);
+    },
     getUserId: getLoggedInUserId,
     subscribe: (conversationId, onEvent) => {
       const channel = createConversationChannel({

@@ -52,6 +52,8 @@ export interface D1MessageClient {
     messageId: string,
     reactionKey: string | null,
   ): Promise<ReactionSummary[]>;
+  /** Advance the caller's server-owned read marker for a conversation. */
+  markRead(conversationId: string): Promise<void>;
   getUserId(): string | null;
   /** Subscribe to live broadcasts for a conversation. Returns unsubscribe. */
   subscribe(
@@ -208,8 +210,12 @@ export function createD1MessageRepository(
       return { id: stored.id, sentAt: stored.sentAt };
     },
 
-    // Read receipts are deferred (decision #5); marking is a no-op for now.
-    markConversationRead() {},
+    // Durable cross-device read marker (#563). The store's local optimistic
+    // clear (conversation-activity) covers the in-tab badge; this persists it
+    // server-side so other devices clear on their next conversation-list load.
+    async markConversationRead(conversationId) {
+      await client.markRead(conversationId);
+    },
 
     async setMyReaction(conversationId, messageId, _userId, reactionKey) {
       await client.setMyReaction(conversationId, messageId, reactionKey);

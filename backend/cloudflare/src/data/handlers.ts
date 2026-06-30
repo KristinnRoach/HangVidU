@@ -20,6 +20,7 @@ import {
   loadMessages,
   lookupByEmailHash,
   lookupByHandle,
+  markConversationRead,
   patchContact,
   putContact,
   removeContact,
@@ -486,6 +487,23 @@ export async function handleDataRequest(
   if (request.method === 'GET' && url.pathname === '/conversations') {
     const conversations = await listConversations(env.DB, callerId);
     return json({ conversations }, 200, cors);
+  }
+
+  // PUT /conversations/:id/read -> advance caller's read marker (membership-guarded).
+  // Server-clock authoritative: ignores any client-supplied time so a skewed
+  // client clock can't suppress later messages' badges.
+  const readMatch = url.pathname.match(/^\/conversations\/([^/]+)\/read$/);
+  if (request.method === 'PUT' && readMatch) {
+    const conversationId = decodeURIComponent(readMatch[1]);
+    const lastReadAt = await markConversationRead(
+      env.DB,
+      conversationId,
+      callerId,
+      Date.now(),
+    );
+    // null = no member row updated: hide existence (same as GET).
+    if (lastReadAt === null) return json({ error: 'not_found' }, 404, cors);
+    return json({ lastReadAt }, 200, cors);
   }
 
   // GET /conversations/:id -> conversation + members (membership-guarded)
