@@ -4,7 +4,7 @@ import { validateUsername } from '../../../auth/password-auth.js';
 import { useI18n } from '../../../shared/i18n';
 import {
   claimUsername,
-  getPublicUserProfile,
+  getUserProfileById,
   suggestHandle,
 } from '../../../stores/userProfileStore.js';
 import styles from './HandleClaimPrompt.module.css';
@@ -36,7 +36,7 @@ export default function HandleClaimPrompt(props: { user: UserLike | null }) {
         if (!uid || localStorage.getItem(storageKey(uid))) return;
         // Dormant settings-slice candidate; not mounted in the current app.
         try {
-          const profile = await getPublicUserProfile(uid);
+          const profile = await getUserProfileById(uid);
           setHandle(profile?.username || suggestHandle(props.user ?? {}));
           setOpen(true);
         } catch (error) {

@@ -1,10 +1,14 @@
-// Wiring layer for user profile + directory. `stores` is the only layer allowed
-// to import both storage and auth, so the bearer-token provider is injected here
-// and the D1-backed repo/discovery singletons are built lazily.
+// Wiring layer for user profiles and lookup indexes. `stores` is the only layer
+// allowed to import both storage and auth, so the bearer-token provider is
+// injected here and the D1-backed repo/discovery singletons are built lazily.
 
 import { ref, set } from 'firebase/database';
 import { createSignal } from 'solid-js';
-import { getAuthState, getLoggedInUserToken } from '../auth/index.js';
+import {
+  getAuthProviderProfileSeed,
+  getAuthState,
+  getLoggedInUserToken,
+} from '../auth/index.js';
 import { rtdb } from '../infra/firebase-rtdb.js';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 import { hashEmail } from '@lib/utils/email-hash.js';
@@ -19,9 +23,12 @@ import { createWorkerRequest } from '../storage/worker-request.js';
 
 type AuthUser = {
   uid: string;
-  displayName: string | null;
-  username?: string | null;
   email: string | null;
+};
+
+type AuthProviderProfileSeed = AuthUser & {
+  displayName: string | null;
+  username: string | null;
   photoURL: string | null;
 };
 
@@ -132,17 +139,24 @@ async function loadLoggedInUserProfile(): Promise<LoggedInUserProfile | null> {
 async function hydrateLoggedInUserProfile(
   user: AuthUser,
 ): Promise<LoggedInUserProfile | null> {
-  let profile = await getPublicUserProfile(user.uid);
+  const seed = getAuthProviderProfileSeed() ?? {
+    uid: user.uid,
+    displayName: null,
+    username: null,
+    email: user.email,
+    photoURL: null,
+  };
+  let profile = await getUserProfileById(user.uid);
   if (!profile?.displayName && !profile?.photoURL) {
-    await savePublicUserProfile(user);
+    await savePublicUserProfile(seed);
   }
 
-  const { handle } = await ensureHandle(user);
+  const { handle } = await ensureHandle(seed);
   if (user.email) {
-    await registerInUserDirectory(user, { username: handle });
+    await syncLoggedInUserEmailLookup(seed, { username: handle });
   }
 
-  profile = await getPublicUserProfile(user.uid);
+  profile = await getUserProfileById(user.uid);
   const next = {
     uid: user.uid,
     displayName: profile?.displayName ?? null,
@@ -173,7 +187,7 @@ function setupLoggedInUserProfileSync() {
 
 setupLoggedInUserProfileSync();
 
-export function getPublicUserProfile(userId: string) {
+export function getUserProfileById(userId: string) {
   return getProfileRepo().getUserProfile(userId);
 }
 
@@ -232,7 +246,7 @@ export async function ensureHandle(
   user: UserLike,
 ) {
   if (!user?.uid) return { handle: null, assigned: false };
-  const profile = await getPublicUserProfile(user.uid);
+  const profile = await getUserProfileById(user.uid);
   if (profile?.username) return { handle: profile.username, assigned: false };
 
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -248,17 +262,16 @@ export async function ensureHandle(
   return { handle: null, assigned: false };
 }
 
-export async function registerInUserDirectory(
-  user: AuthUser,
+async function syncLoggedInUserEmailLookup(
+  user: AuthProviderProfileSeed,
   opts: { username?: string | null } = {},
 ) {
-  // D1 directory: powers authed handle search + email-hash discovery (the new
-  // path consumed by manual-invite / google-import).
+  // Keep D1's email-hash/handle lookup fields current for this account.
   if (user.email) {
     await getDiscovery().register({ ...user, email: user.email }, opts);
   }
 
-  // RTDB usersByEmail: NOT migratable yet. signInWithUsernameOrEmail resolves
+  // Legacy RTDB usersByEmail: NOT migratable yet. signInWithUsernameOrEmail resolves
   // email→handle by reading this node BEFORE the user is authenticated, so it
   // can't use the token-gated D1 lookup. Keep writing it until password email
   // login moves off the pre-auth read. ponytail: dual-write, drop the RTDB half
@@ -289,7 +302,7 @@ export function findRegisteredUsersByEmails(emails: string[]) {
   return getDiscovery().findByEmails(emails);
 }
 
-/** Handle search — the new directory search box's data source. */
+/** Handle search for the add-contact profile search box. */
 export function searchUsersByHandle(handle: string) {
   return getDiscovery().searchByHandle(handle);
 }

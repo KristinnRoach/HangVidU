@@ -5,11 +5,15 @@ const mocks = vi.hoisted(() => ({
     isLoggedIn: true,
     user: {
       uid: 'user-1',
-      displayName: 'Kristinn Roach',
-      username: null,
       email: 'crystalquicksand@gmail.com',
-      photoURL: 'https://example.test/google-photo.jpg',
     },
+  },
+  providerSeed: {
+    uid: 'user-1',
+    displayName: 'Kristinn Roach',
+    username: null,
+    email: 'crystalquicksand@gmail.com',
+    photoURL: 'https://example.test/google-photo.jpg',
   },
   getUserProfile: vi.fn(),
   saveUserProfile: vi.fn(() => Promise.resolve()),
@@ -22,6 +26,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../auth/index.js', () => ({
   getAuthState: () => mocks.authState,
+  getAuthProviderProfileSeed: () => mocks.providerSeed,
   getLoggedInUserToken: vi.fn(async () => 'token'),
 }));
 
@@ -43,7 +48,7 @@ vi.mock('../infra/hangvidu-api-url', () => ({
 }));
 
 vi.mock('@lib/utils/email-hash.js', () => ({
-  hashEmail: (email: string) => `hash:${email}`,
+  hashEmail: (email) => `hash:${email}`,
 }));
 
 vi.mock('../storage/user/index.js', () => ({
@@ -76,6 +81,10 @@ describe('userProfileStore', () => {
     vi.clearAllMocks();
     mocks.authState.isLoggedIn = true;
     mocks.authState.user = {
+      uid: 'user-1',
+      email: 'crystalquicksand@gmail.com',
+    };
+    mocks.providerSeed = {
       uid: 'user-1',
       displayName: 'Kristinn Roach',
       username: null,
@@ -135,7 +144,7 @@ describe('userProfileStore', () => {
     getLoggedInUserProfile();
     await flushAsync();
 
-    expect(mocks.saveUserProfile).toHaveBeenCalledWith(mocks.authState.user);
+    expect(mocks.saveUserProfile).toHaveBeenCalledWith(mocks.providerSeed);
     expect(mocks.workerRequest).toHaveBeenCalledWith(
       'PUT',
       '/users/me/profile',

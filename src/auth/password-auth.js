@@ -127,8 +127,7 @@ export async function signUpWithUsername({
     }
 
     try {
-      // Firebase Auth `displayName` is the canonical source for the display
-      // name (`authState.user.displayName`); `username` is the unique login handle.
+      // Firebase Auth profile is provider seed data; D1 remains app profile truth.
       await updateFirebaseProfile(cred.user, {
         displayName: resolvedDisplayName,
       });

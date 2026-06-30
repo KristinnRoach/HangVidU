@@ -7,7 +7,7 @@ let state = {
   // 'uninitialized' = auth not yet determined (pre first resolution); not ready
   // 'loading' = auth operation in flight (sign-in/out/delete)
   // 'authenticated' | 'unauthenticated' = stable login state
-  user: null, // { uid, displayName, username, email, photoURL } | null
+  user: null, // { uid, email } | null
   isLoggedIn: false,
 };
 
@@ -17,7 +17,7 @@ let emitChain = Promise.resolve();
 /**
  * Build the public auth snapshot without leaking private object references.
  *
- * @returns {{ status: string, user: { uid: string, displayName: string | null, username: string | null, email: string | null, photoURL: string | null } | null, isLoggedIn: boolean }}
+ * @returns {{ status: string, user: { uid: string, email: string | null } | null, isLoggedIn: boolean }}
  */
 const snapshot = () => ({
   ...state,

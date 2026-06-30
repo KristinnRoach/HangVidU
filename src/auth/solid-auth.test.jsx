@@ -71,7 +71,7 @@ describe('AuthProvider', () => {
 
       emitAuthState({
         status: 'authenticated',
-        user: { uid: 'u1', displayName: 'User', email: 'user@example.com' },
+        user: { uid: 'u1', email: 'user@example.com' },
         isLoggedIn: true,
       });
 
@@ -103,7 +103,7 @@ describe('AuthProvider', () => {
 
       emitAuthState({
         status: 'loading',
-        user: { uid: 'u1', displayName: 'U', email: null, photoURL: null },
+        user: { uid: 'u1', email: null },
         isLoggedIn: true,
       });
       expect(auth.isLoggingIn()).toBe(false);

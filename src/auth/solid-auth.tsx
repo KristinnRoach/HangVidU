@@ -18,10 +18,7 @@ export type AuthStatus =
 
 export type AuthUser = {
   uid: string;
-  displayName: string | null;
-  username: string | null;
   email: string | null;
-  photoURL: string | null;
 };
 
 export type AuthSnapshot = {

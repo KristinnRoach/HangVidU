@@ -31,6 +31,23 @@ onLocaleChange((locale) => {
 export { getLoggedInUserToken };
 
 /**
+ * Provider profile fields are seed data for the app profile store only.
+ * They are not part of public auth state because D1 owns app identity/profile.
+ */
+export function getAuthProviderProfileSeed() {
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser || firebaseUser.isAnonymous) return null;
+  const rawEmail = firebaseUser.email;
+  return {
+    uid: firebaseUser.uid,
+    displayName: firebaseUser.displayName,
+    email: isSyntheticEmail(rawEmail) ? null : rawEmail,
+    photoURL: firebaseUser.photoURL,
+    username: extractUsernameFromSyntheticEmail(rawEmail),
+  };
+}
+
+/**
  * Ensure a Firebase user exists whose ID token can authenticate against the
  * signaling worker, without requiring an account: reuses the current session
  * (logged-in or anonymous), otherwise signs in anonymously.
@@ -149,15 +166,6 @@ function normalizeUser(firebaseUser) {
   const email = isSyntheticEmail(rawEmail) ? null : rawEmail;
   return {
     uid: firebaseUser.uid,
-    displayName: firebaseUser.displayName,
     email,
-    photoURL: firebaseUser.photoURL,
-    // Login handle for username (password) accounts — recovered from the
-    // synthetic email principal. null for Google accounts (they have no handle
-    // until they claim one). Carried so the on-login profile save writes it to
-    // D1 (`users.username`), making these accounts handle-searchable without a
-    // separate claim step. null is COALESCEd server-side, so Google users keep
-    // any previously-claimed handle.
-    username: extractUsernameFromSyntheticEmail(rawEmail),
   };
 }

@@ -11,7 +11,7 @@ import {
 } from '../../../components/base-legacy/toast.js';
 import {
   connectReferral,
-  getPublicUserProfile,
+  getUserProfileById,
 } from '../../../stores/userProfileStore.js';
 import { dispatchCommand } from '../../../shared/events/index.js';
 import { t } from '../../../shared/i18n/index.js';
@@ -34,7 +34,7 @@ export async function captureReferral() {
     url.searchParams.delete('ref');
     window.history.replaceState({}, '', url.toString());
 
-    const profile = await getPublicUserProfile(referrerId);
+    const profile = await getUserProfileById(referrerId);
     const name = profile?.displayName || null;
     const photoURL = profile?.photoURL || null;
 
@@ -81,7 +81,7 @@ export async function processReferral() {
     console.log('[REFERRAL] Processing referral from:', referrerId);
 
     // Fetch referrer profile (may not exist yet for older users)
-    const profile = await getPublicUserProfile(referrerId);
+    const profile = await getUserProfileById(referrerId);
     const referrerName = profile?.displayName?.trim() || t('contact.no_name');
     await connectReferral(referrerId);
     await reloadContacts();

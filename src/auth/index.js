@@ -22,7 +22,12 @@
 // App-level cross-feature wiring lives in `app/auth-orchestration.js`
 // (`wireAuthReactions`), which is NOT part of this module.
 
-export { initAuth, getLoggedInUserToken, signInAsGuest } from './auth-setup.js';
+export {
+  initAuth,
+  getAuthProviderProfileSeed,
+  getLoggedInUserToken,
+  signInAsGuest,
+} from './auth-setup.js';
 
 export {
   signInWithAccountSelection,
