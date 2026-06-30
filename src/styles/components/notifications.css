@@ -109,11 +109,6 @@
   animation: slideIn 0.3s ease-out;
 }
 
-.notification.unread {
-  border-left: 3px solid #2196f3;
-  background: #2f2f2f;
-}
-
 .notification .notification-content {
   display: flex;
   flex-direction: column;

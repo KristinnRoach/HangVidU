@@ -57,13 +57,12 @@ class InAppNotificationManager {
   }
 
   /**
-   * Show the notifications list and mark all as read
+   * Show the notifications list
    */
   showList() {
     if (this.container) {
       this.container.style.display = 'flex';
       this.setupClickOutside();
-      this.markAllAsRead();
     }
   }
 
@@ -197,33 +196,6 @@ class InAppNotificationManager {
   }
 
   /**
-   * Get count of unread notifications
-   * @returns {number}
-   */
-  getUnreadCount() {
-    let unread = 0;
-    this.notifications.forEach((notification) => {
-      if (!notification.isRead) {
-        unread++;
-      }
-    });
-    return unread;
-  }
-
-  /**
-   * Mark all notifications as read
-   * @private
-   */
-  markAllAsRead() {
-    this.notifications.forEach((notification) => {
-      if (notification.markAsRead) {
-        notification.markAsRead();
-      }
-    });
-    this.updateToggle();
-  }
-
-  /**
    * Check if a notification exists
    * @param {string} id - Notification identifier
    * @returns {boolean}
@@ -249,10 +221,7 @@ class InAppNotificationManager {
    */
   updateToggle() {
     if (this.toggle) {
-      const count = this.getCount();
-      const unreadCount = this.getUnreadCount();
-      this.toggle.setCount(count);
-      this.toggle.setUnread(unreadCount);
+      this.toggle.setCount(this.getCount());
     }
   }
 

@@ -6,7 +6,6 @@ import { Bell } from 'lucide-solid';
 export default function NotificationsToggle() {
   const { t } = useI18n();
   const [count, setCount] = createSignal(0);
-  const [unreadCount, setUnreadCount] = createSignal(0);
 
   let manager = inAppNotificationManager;
   let rootEl;
@@ -21,7 +20,6 @@ export default function NotificationsToggle() {
 
   onMount(() => {
     rootEl.setCount = setCount;
-    rootEl.setUnread = setUnreadCount;
     rootEl.setManager = setManager;
 
     rootEl.show = () => {
@@ -53,9 +51,9 @@ export default function NotificationsToggle() {
         <Bell />
         <span
           class='notification-badge'
-          style={{ display: unreadCount() > 0 ? 'flex' : 'none' }}
+          style={{ display: count() > 0 ? 'flex' : 'none' }}
         >
-          {unreadCount()}
+          {count()}
         </span>
       </button>
     </div>

@@ -12,22 +12,13 @@ import {
 
 const pendingNotificationIds = new Set();
 
-function inviteDataFromRequest(request) {
-  return {
-    fromUserId: request.fromId,
-    fromName: request.fromName || 'User',
-    timestamp: request.createdAt,
-    status: 'pending',
-  };
-}
-
 async function showRequestNotification(request) {
   const fromUserId = request?.fromId;
   if (!fromUserId) return;
   const notificationId = `invite-${fromUserId}`;
   if (pendingNotificationIds.has(notificationId)) return;
   pendingNotificationIds.add(notificationId);
-  const inviteData = inviteDataFromRequest(request);
+  const inviteData = { fromName: request.fromName || 'User' };
 
   dispatchCommand('cmd:app-notifications:invite:add', {
     notificationId,
