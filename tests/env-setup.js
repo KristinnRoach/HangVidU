@@ -11,4 +11,30 @@ try {
   }
 } catch {}
 
+try {
+  const testStorage = (() => {
+    const data = new Map();
+    return {
+      get length() {
+        return data.size;
+      },
+      key: (index) => Array.from(data.keys())[index] ?? null,
+      getItem: (key) => (data.has(String(key)) ? data.get(String(key)) : null),
+      setItem: (key, value) => data.set(String(key), String(value)),
+      removeItem: (key) => data.delete(String(key)),
+      clear: () => data.clear(),
+    };
+  })();
+
+  const storage =
+    typeof process !== 'undefined' && process.versions?.node
+      ? testStorage
+      : window.localStorage;
+
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: storage,
+  });
+} catch {}
+
 // Browser mode provides native WebRTC APIs - no mocking needed

@@ -5,8 +5,6 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 import solid from 'vite-plugin-solid';
-import devtools from 'solid-devtools/vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig(({ mode }) => {
   // Firebase Hosting is the only production target.
@@ -16,6 +14,7 @@ export default defineConfig(({ mode }) => {
     base: basePath,
 
     resolve: {
+      tsconfigPaths: true,
       dedupe: ['solid-js'],
     },
 
@@ -31,14 +30,9 @@ export default defineConfig(({ mode }) => {
     },
 
     plugins: [
-      tsconfigPaths(),
       ...(mode === 'development'
         ? [mkcert({ savePath: path.resolve(__dirname, '.vite-plugin-mkcert') })]
         : []),
-      devtools({
-        jsxLocation: true,
-        autoname: true,
-      }),
       solid(),
       VitePWA({
         includeAssets: ['index.html', 'favicon.ico'],

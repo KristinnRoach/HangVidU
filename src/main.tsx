@@ -1,7 +1,6 @@
 import { onCleanup, onMount } from 'solid-js';
 import type { JSX } from 'solid-js';
 import { render } from 'solid-js/web';
-import 'solid-devtools';
 
 import App from './App';
 import { initPushNotifications } from './features/push-notifications/push-notifications.js';
