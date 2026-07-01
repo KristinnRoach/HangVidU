@@ -111,6 +111,16 @@ describe('userProfileStore', () => {
     await flushAsync();
 
     expect(mocks.saveUserProfile).not.toHaveBeenCalled();
+    // Per-field seed-only: the write preserves the existing D1 displayName
+    // (not the provider's 'Kristinn Roach'), but fills photoURL from the
+    // provider since D1 had none.
+    expect(mocks.register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayName: 'Crystal Quicksand',
+        photoURL: 'https://example.test/google-photo.jpg',
+      }),
+      expect.anything(),
+    );
     expect(getLoggedInUserProfile()).toEqual({
       uid: 'user-1',
       displayName: 'Crystal Quicksand',

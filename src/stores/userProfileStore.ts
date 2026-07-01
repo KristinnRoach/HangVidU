@@ -160,15 +160,26 @@ async function hydrateLoggedInUserProfile(
   // switch during any await would PUT this (old) user's seed onto the new user.
   // Re-check the session after each async boundary and bail if it moved on.
   if (!isCurrentAuthUser(user)) return null;
+
+  // D1 is the source of truth: the provider seed fills a field only when D1
+  // has none, and never overwrites an existing value. Backend uses
+  // COALESCE(?, col) — the *sent* value wins — so resolve to existing-or-seed
+  // here and pass it to every write below.
+  const writeSeed = {
+    ...seed,
+    displayName: profile?.displayName ?? seed.displayName,
+    photoURL: profile?.photoURL ?? seed.photoURL,
+  };
+
   if (!profile?.displayName && !profile?.photoURL) {
-    await savePublicUserProfile(seed);
+    await savePublicUserProfile(writeSeed);
   }
   if (!isCurrentAuthUser(user)) return null;
 
-  const { handle } = await ensureHandle(seed);
+  const { handle } = await ensureHandle(writeSeed);
   if (!isCurrentAuthUser(user)) return null;
   if (user.email) {
-    await syncLoggedInUserEmailLookup(seed, { username: handle });
+    await syncLoggedInUserEmailLookup(writeSeed, { username: handle });
   }
 
   profile = await getUserProfileById(user.uid);
