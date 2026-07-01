@@ -36,7 +36,7 @@ cleanups.push(await setupNotifications());
 cleanups.push(await setupPresence());
 cleanups.push(await setupPushNotifications());
 cleanups.push(await setupContacts());      // registers auth subscribers
-cleanups.push(await setupUserDirectory()); // registers auth subscriber
+cleanups.push(await setupUserProfile());   // registers auth subscriber
 cleanups.push(await setupAuth());          // logout housekeeping + initAuth() LAST
 cleanups.push(await setupPWA());
 initPushNotifications().catch(...);
@@ -53,22 +53,22 @@ events after all subscribers are registered.
 
 3. **`LOCAL_STORAGE_KEYS_TO_PRESERVE_ON_LOGOUT = ['locale']` + `_PREFIXES = ['debug:']`** — these mix auth concern (housekeeping) with feature concerns (i18n owns `locale`). Lives in `auth/` for now. If i18n later wants to own its own preservation list, expose a registry. Out of scope for the split.
 
-4. **Test split** — current `__tests__/setupAuth.test.js` tests cross-cutting orchestration end-to-end. Replace with three smaller tests:
+4. **Test split** — current `app/__tests__/auth-orchestration.test.js` tests cross-cutting orchestration end-to-end. Replace with three smaller tests:
    - `auth/__tests__/setup.test.js` — logout localStorage clearing + initAuth ordering
    - extend `features/contacts/__tests__/setup.test.js` — auth event subscriptions
    - new `stores/__tests__/userProfileStore.setup.test.js` — logged-in writes
 
 ## Known non-blocking observations (do not fix in isolation)
 
-These are visible while reading `setupAuth.js`. None are blocking. Capture them so the rewrite addresses them deliberately.
+These are visible while reading `auth-orchestration.js`. None are blocking. Capture them so the rewrite addresses them deliberately.
 
-- `savePublicUserProfile` and `registerInUserDirectory` fire-and-forget inside the logged-in handler (not awaited). `getPublicUserProfile(user.uid)` can run before `savePublicUserProfile(user)` settles; this is non-blocking today because directory display data comes from the auth user, and the profile read only carries the optional `username` handle. Password accounts that need `username` for email sign-in write the directory entry during sign-up and skip this post-login path because their auth email is synthetic/null. When extracting the user-directory setup, either await save-before-fetch if the profile read should reflect the just-saved state, or remove/clarify the fetch if the fallback remains intentional.
+- `getLoggedInUserProfile()` is still fire-and-forget from the logged-in handler. The profile store owns the D1 writes now, including stale-session guards. When extracting profile setup, keep that ownership in `userProfileStore` rather than reintroducing profile writes into auth orchestration.
 - Logout sequence: invite cleanup → `clearLocalStorageOnLogout()` → `resetContacts()`. `localStorage.clear()` wipes the guest-mode `'contacts'` key as a side effect; intentional today but a coupling worth documenting after the split.
 - All three handlers swallow errors to `console.warn`. Masks bugs in tests where the handler silently fails but the assertion still passes. After the split, prefer surfacing or at least incrementing a counter.
 
 ## Why this is safe to defer
 
 - No correctness bug in the current implementation. It is the same code that was running in `src/setup/`, only relocated.
-- Existing test coverage at `app/__tests__/setupAuth.test.js` exercises each handler and the localStorage preservation list.
+- Existing test coverage at `app/__tests__/auth-orchestration.test.js` exercises each handler and the localStorage preservation list.
 - No external caller of `src/setup/` survives — `setupAuth` is imported only from `main.tsx`.
-- The split has medium blast radius (auth, contacts, user-directory, plus tests). Worth doing as a focused pass, not bundled with other work.
+- The split has medium blast radius (auth, contacts, user profile, plus tests). Worth doing as a focused pass, not bundled with other work.

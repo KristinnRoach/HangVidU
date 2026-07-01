@@ -169,7 +169,7 @@ export interface ProfilePatch {
  * (COALESCE keeps the existing value when the bind is null-sentinel). The row is
  * guaranteed to exist — handlers upsertUser the caller first. `registered_at` is
  * stamped once on the first profile write (the D1 equivalent of the old RTDB
- * registerUserInDirectory) and preserved thereafter.
+ * directory registration) and preserved thereafter.
  */
 export async function updateProfile(
   db: D1Database,

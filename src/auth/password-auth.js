@@ -134,7 +134,7 @@ export async function signUpWithUsername({
       if (trimmedEmail) {
         // Populate the email lookup index so email-based sign-in can resolve
         // this account before auth. Password accounts use synthetic Firebase
-        // emails, so the post-login directory registration cannot repair this.
+        // emails, so logged-in D1 profile/discovery hydration cannot repair this.
         await set(ref(rtdb, `usersByEmail/${hashEmail(trimmedEmail)}`), {
           uid: cred.user.uid,
           displayName: resolvedDisplayName,
@@ -161,7 +161,7 @@ export async function signUpWithUsername({
 /**
  * Sign in with username or email + password.
  * Email-mode requires that the account was registered in `usersByEmail` with
- * its `username` field — see registerUserInDirectory.
+ * its `username` field; D1 lookup is token-gated and not available pre-auth.
  *
  * @param {{ identifier: string, password: string }} params
  * @returns {Promise<import('firebase/auth').UserCredential>}
@@ -180,8 +180,8 @@ export async function signInWithUsernameOrEmail({ identifier, password }) {
     let handle;
     if (raw.includes('@')) {
       // Inline directory lookup — auth layer cannot import from storage.
-      // Reads the same `usersByEmail/{hash}` entry maintained by
-      // registerUserInDirectory; the `username` field is required.
+      // Reads the same pre-auth `usersByEmail/{hash}` entry written at sign-up;
+      // the `username` field is required.
       const snap = await get(ref(rtdb, `usersByEmail/${hashEmail(raw)}`));
       if (!snap.exists()) throw new Error('no_account_for_email');
       handle = snap.val()?.username;
