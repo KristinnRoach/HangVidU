@@ -35,6 +35,11 @@ try {
     configurable: true,
     value: storage,
   });
-} catch {}
+} catch (error) {
+  console.error(
+    '[tests/env-setup] failed to install localStorage stub:',
+    error,
+  );
+}
 
 // Browser mode provides native WebRTC APIs - no mocking needed
