@@ -16,12 +16,12 @@
 //       - `evt:auth:state:changed` — every status transition (incl. `loading`).
 //       - `evt:auth:session:logged-in` / `:logged-out` / `:ready` — login/logout
 //         lifecycle. Non-Solid auth-scoped listeners (e.g. `presence`,
-//         `wireAuthReactions`) (re)wire on these so they survive a login that
-//         completes after setup.
+//         `contacts`, `conversations`) (re)wire on these from their own
+//         `setup()` so they survive a login that completes after setup.
 //     See docs/architecture/STATE_RULES.md.
 //
-// App-level cross-feature wiring lives in `app/auth-orchestration.js`
-// (`wireAuthReactions`), which is NOT part of this module.
+// App-level auth wiring (logout housekeeping + calling `initAuth()` last) lives
+// in `src/auth/setup.js`, which main.tsx invokes after feature setups.
 
 export {
   initAuth,

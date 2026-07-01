@@ -62,7 +62,7 @@ export const setup = createSingleFlightSetup({
   label: '[presence]',
   register: (signal) => {
     // Registered before initAuth() fires its first lifecycle events
-    // (main.tsx orders setupPresence() ahead of wireAuthReactions()).
+    // (main.tsx orders setupPresence() ahead of setupAuth()).
     subscribe('evt:auth:session:logged-in', handleLoggedIn, { signal });
     subscribe('evt:auth:session:logged-out', handleLoggedOut, { signal });
 

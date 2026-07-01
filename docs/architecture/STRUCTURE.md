@@ -17,7 +17,7 @@ their direction of allowed imports:
 | `src/auth/`        | Session/auth state and helpers.                                                        | `auth`, `shared`, `lib`, `infra`, `components`                  |
 | `src/features/<x>/`| Feature modules. Each has a barrel, optional `components/`, and optional `setup()`.    | `auth`, `shared`, `lib`, `feature`, `components`, `infra`, `stores`, `realtime` |
 | `src/components/`  | App-level + shared/primitive UI (`app/`, `base-legacy/`, `dialogs/`, `media/`). **Not** feature UI. | `components`, `auth`, `shared`, `lib`                          |
-| `src/app/`         | Composition/orchestration root (`MainContent`, `auth-orchestration`).                  | `app`, `auth`, `stores`, `feature`, `components`, `shared`, `lib` |
+| `src/app/`         | Composition root (`MainContent`, `TopBar`).                                            | `app`, `auth`, `stores`, `feature`, `components`, `shared`, `lib` |
 
 Rule of thumb for placing a util: if it has no app/domain knowledge and no
 imports outside `lib`, it belongs in `src/lib/utils/`; otherwise `src/shared/utils/`.
@@ -31,12 +31,14 @@ features consume realtime directly and persistence via `stores`.
 There is **no `setup/` layer**. App startup lives in:
 
 - `src/main.tsx` — entry point: mounts `App.tsx`, runs each feature's `setup()`
-  export, and `wireAuthReactions()`; tears them down on cleanup.
+  export plus `src/auth/setup.js` (last, so `initAuth()` fires after all
+  subscribers register); tears them down on cleanup.
 - `src/App.tsx` — the SolidJS root component (providers + `MainContent`).
-- `src/app/` — composition/orchestration that wires domain events into UI
-  (`auth-orchestration.js`, `MainContent.tsx`).
-- `src/features/<x>/index` — each feature exposes an optional `setup()` for its
-  own cross-feature wiring (e.g. `contacts`, `presence`, `notifications`, `pwa`).
+- `src/app/` — composition root that wires domain state into UI
+  (`MainContent.tsx`).
+- `src/features/<x>/index` — each feature exposes an optional `setup()` that
+  subscribes to the auth lifecycle events it owns (e.g. `contacts`,
+  `conversations`, `presence`, `notifications`, `pwa`).
 
 ## Module layout
 
@@ -60,7 +62,7 @@ There is **no `setup/` layer**. App startup lives in:
 - **PascalCase `.tsx`/`.jsx`** for files that render JSX components
   (`ContactsList.tsx`, `PresenceIndicator.jsx`).
 - **kebab-case** for bridges, command handlers, and stores-only files
-  (`auth-orchestration.js`, `edit-contact-modal.jsx`).
+  (`edit-contact-modal.jsx`, `invite-listener.js`).
 - **Dialog vs modal**: `XyzDialog.jsx` is the component; `xyz-modal.jsx` is the
   imperative `openSolidDialog(...)` bridge that returns a Promise.
 - Prefer `.ts`/`.tsx` for new files; existing `.js`/`.jsx` migrate opportunistically.

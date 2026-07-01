@@ -6,8 +6,9 @@ import 'solid-devtools';
 import App from './App';
 import { initPushNotifications } from './features/push-notifications/push-notifications.js';
 import { initializeAppCheckDeferred } from './infra/firebase.js';
-import { wireAuthReactions } from './app/auth-orchestration.js';
+import { setup as setupAuth } from './auth/setup.js';
 import { setup as setupContacts } from './features/contacts';
+import { setup as setupConversations } from './features/conversations';
 import { setup as setupNotifications } from './features/notifications/index.js';
 import { setup as setupPresence } from './features/presence/index.js';
 import { setup as setupPushNotifications } from './features/push-notifications/index.js';
@@ -36,7 +37,10 @@ function AppSideEffects(props: { children: JSX.Element }) {
       cleanups.push(await setupPresence());
       cleanups.push(await setupPushNotifications());
       cleanups.push(await setupContacts());
-      cleanups.push(await wireAuthReactions());
+      cleanups.push(await setupConversations());
+      // Auth LAST among auth-touching setups: initAuth() fires its initial
+      // lifecycle events only once every subscriber above is registered.
+      cleanups.push(await setupAuth());
       cleanups.push(await setupPWA());
       initPushNotifications().catch((error) => {
         console.error('[main] Push notifications init:', error);

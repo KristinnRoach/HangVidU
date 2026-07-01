@@ -33,6 +33,8 @@ authed Cloud Function calls are in `features/push-notifications/`.
 
 ## App-level wiring
 
-Cross-feature reactions to auth lifecycle events live in
-`app/auth-orchestration.js` (`wireAuthReactions`), NOT in this module. Its
-pending decomposition is tracked in `app/auth-orchestration.TODO.md`.
+There is no cross-feature orchestrator. Each feature subscribes to the auth
+lifecycle events it cares about from its own `setup()` (contacts, conversations,
+presence, …). App-level auth wiring — logout localStorage housekeeping and
+calling `initAuth()` last, after all subscribers register — lives in
+`src/auth/setup.js`, invoked by `main.tsx`.
