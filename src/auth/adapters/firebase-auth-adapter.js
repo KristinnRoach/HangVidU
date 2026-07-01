@@ -89,21 +89,6 @@ export function updateFirebaseProfile(user, patch) {
   return updateProfile(user, patch);
 }
 
-// Maps Firebase's 'auth/...' error codes to provider-agnostic codes so the
-// rest of src/auth never branches on Firebase-specific strings directly.
-const ERROR_CODE_MAP = {
-  'auth/popup-closed-by-user': 'cancelled',
-  'auth/cancelled-popup-request': 'cancelled',
-  'auth/popup-blocked': 'popup-blocked',
-  'auth/network-request-failed': 'network-error',
-  'auth/unauthorized-domain': 'unauthorized-domain',
-  'auth/account-exists-with-different-credential': 'account-exists',
-  'auth/email-already-in-use': 'email-already-in-use',
-  'auth/invalid-credential': 'invalid-credentials',
-  'auth/user-not-found': 'invalid-credentials',
-  'auth/wrong-password': 'invalid-credentials',
-};
-
-export function normalizeAuthErrorCode(error) {
-  return ERROR_CODE_MAP[error?.code] ?? 'unknown';
-}
+// Provider-agnostic error-code normalizer lives in a pure leaf (no firebase
+// import) so UI can use it too; re-exported here for the vendor-boundary API.
+export { normalizeAuthErrorCode } from '../shared/auth-error-codes.js';

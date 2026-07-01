@@ -26,10 +26,9 @@ authed Cloud Function calls are in `features/push-notifications/`.
 
 - `adapters/firebase-auth-adapter.js` is the only file allowed to import
   `firebase/auth`. Everything else goes through its exports.
-- Never branch on raw `auth/...` Firebase error strings outside the adapter; use
-  `normalizeAuthErrorCode(error)`. (Pre-existing exceptions not yet migrated:
-  `auth-commands.js`, `onetap.js`, `password-auth.js`,
-  `components/UsernamePasswordForm.jsx` — migrate opportunistically.)
+- Never branch on raw `auth/...` Firebase error strings; use
+  `normalizeAuthErrorCode(error)` (pure leaf `shared/auth-error-codes.js`, also
+  re-exported by the adapter) and branch on its generic codes.
 
 ## App-level wiring
 

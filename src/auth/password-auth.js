@@ -15,6 +15,7 @@ import {
   signInPassword,
   updateFirebaseProfile,
 } from './adapters/firebase-auth-adapter.js';
+import { normalizeAuthErrorCode } from './shared/auth-error-codes.js';
 import {
   getAuthState,
   setState,
@@ -33,14 +34,14 @@ export { SYNTHETIC_DOMAIN, extractUsernameFromSyntheticEmail, isSyntheticEmail }
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 const MIN_PASSWORD_LENGTH = 8;
+// Domain codes we throw ourselves + normalized Firebase codes (see
+// normalizeAuthErrorCode). Expected failures are surfaced to the user, not logged.
 const EXPECTED_PASSWORD_AUTH_FAILURES = new Set([
   'account_has_no_username',
-  'auth/email-already-in-use',
-  'auth/invalid-credential',
-  'auth/user-not-found',
-  'auth/wrong-password',
   'no_account_for_email',
   'username_taken',
+  'email-already-in-use',
+  'invalid-credentials',
 ]);
 
 function normalizeUsername(input) {
@@ -62,7 +63,9 @@ function validatePassword(password) {
 }
 
 function isExpectedPasswordAuthFailure(error) {
-  return EXPECTED_PASSWORD_AUTH_FAILURES.has(error?.code || error?.message);
+  const normalized = normalizeAuthErrorCode(error);
+  const code = normalized !== 'unknown' ? normalized : error?.code || error?.message;
+  return EXPECTED_PASSWORD_AUTH_FAILURES.has(code);
 }
 
 async function rollbackCreatedPasswordUser(cred, cause) {
@@ -120,7 +123,7 @@ export async function signUpWithUsername({
     try {
       cred = await createPasswordUser(syntheticEmail(handle), password);
     } catch (e) {
-      if (e?.code === 'auth/email-already-in-use') {
+      if (normalizeAuthErrorCode(e) === 'email-already-in-use') {
         throw new Error('username_taken');
       }
       throw e;
