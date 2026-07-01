@@ -61,8 +61,13 @@ export function createSingleFlightSetup(options) {
       .then(async () => {
         const ac = new AbortController();
 
-        register?.(ac.signal);
-        await start(ac.signal);
+        try {
+          register?.(ac.signal);
+          await start(ac.signal);
+        } catch (error) {
+          ac.abort();
+          throw error;
+        }
 
         cleanup = () => {
           try {
