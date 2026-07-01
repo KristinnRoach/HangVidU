@@ -1,7 +1,6 @@
 import { subscribe } from '../shared/events/index.js';
 import { initAuth } from '../auth/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
-import { getLoggedInUserProfile } from '../stores/userProfileStore.js';
 import { setupInviteListener } from '../features/contacts/invites/invite-listener.js';
 import { processReferral } from '../features/contacts/referrals/referral-handler.js';
 import { hydrateContacts, resetContacts } from '../stores/contactsStore.js';
@@ -159,7 +158,8 @@ export function wireAuthReactions() {
               ),
             );
 
-            getLoggedInUserProfile();
+            // Profile hydration on login is owned by userProfileStore
+            // (setupLoggedInUserProfileSync, subscribes at module import).
 
             cleanupLoginScopedListeners();
 

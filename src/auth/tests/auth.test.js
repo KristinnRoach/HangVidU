@@ -69,10 +69,6 @@ vi.mock('../../infra/firebase-rtdb.js', () => ({
   rtdb: {},
 }));
 
-vi.mock('../gis-tokens.js', () => ({
-  clearGISTokenCache: vi.fn(),
-}));
-
 // Placeholder test to prevent Vitest error when no test suites are present
 describe('auth placeholder', () => {
   it('should pass (placeholder)', () => {

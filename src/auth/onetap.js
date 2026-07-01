@@ -11,7 +11,7 @@ import {
   loadGoogleIdentityScript,
   promptGoogleOneTap,
   renderGoogleSignInButton as renderAdapterGoogleSignInButton,
-} from './adapters/google-identity-adapter.js';
+} from '../shared/utils/google/google-identity-adapter.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import { getLocale, onLocaleChange, t } from '../shared/i18n/index.js';
 

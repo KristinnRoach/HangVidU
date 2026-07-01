@@ -12,8 +12,7 @@ import {
 } from './adapters/firebase-auth-adapter.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
 import { initOneTap, cancelOneTap, showOneTapSignin } from './onetap.js';
-import { clearGISTokenCache } from './gis-tokens.js';
-import { setupAuthCommandHandlers } from './auth-command-handlers.js';
+import { clearGisTokenCache } from '../shared/utils/google/gis-token-service.js';
 import { getLocale, onLocaleChange } from '../shared/i18n/index.js';
 import { logAuthError } from './shared/auth-error-logging.js';
 import { getLoggedInUserToken } from './shared/auth-token.js';
@@ -81,8 +80,6 @@ export function initAuth() {
 }
 
 async function _initAuthInternal() {
-  setupAuthCommandHandlers();
-
   // 1. Set persistence with graceful fallback for Safari/iOS/private mode.
   // Must never throw: a rejection here would skip listener registration below,
   // leaving auth state stuck at 'uninitialized' (never ready → stuck UI).
@@ -143,7 +140,7 @@ async function _initAuthInternal() {
     );
 
     if (loggedIn) cancelOneTap();
-    else clearGISTokenCache();
+    else clearGisTokenCache();
   });
 
   devDebug('[AUTH] Auth initialization complete, scheduling One Tap...');

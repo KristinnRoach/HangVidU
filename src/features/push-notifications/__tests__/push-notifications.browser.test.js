@@ -1,36 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../shared/events/index.js', () => ({
-  dispatchCommandAndAwait: vi.fn(async (commandName, payload = {}) => {
-    if (commandName === 'cmd:auth:cloud-function:call') {
-      const response = await fetch(
-        `https://example.com/${payload.functionName ?? ''}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload.body),
-        },
-      );
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const error = new Error(
-          body?.message ||
-            body?.error ||
-            `Function ${payload.functionName} failed with status ${response.status}`,
-        );
-        error.status = response.status;
-        error.payload = body;
-        throw error;
-      }
-      return { status: response.status, payload: body };
-    }
-
-    return undefined;
-  }),
   dispatchCommand: vi.fn(),
   subscribe: vi.fn(() => () => {}),
+}));
+
+vi.mock('../cloud-functions.js', () => ({
+  callCloudFunction: vi.fn(async (functionName, body) => {
+    const response = await fetch(`https://example.com/${functionName ?? ''}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(
+        payload?.message ||
+          payload?.error ||
+          `Function ${functionName} failed with status ${response.status}`,
+      );
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
+    }
+    return { status: response.status, payload };
+  }),
 }));
 
 vi.mock('../../../stores/contactsStore.js', () => ({

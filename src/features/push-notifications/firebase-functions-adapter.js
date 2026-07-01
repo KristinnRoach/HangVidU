@@ -1,7 +1,8 @@
-// src/auth/adapters/firebase-functions-adapter.js
+// src/features/push-notifications/firebase-functions-adapter.js
 // Firebase onRequest Cloud Functions transport adapter.
 
 const FUNCTION_REGION = 'europe-west1';
+const FUNCTION_TIMEOUT_MS = 10000;
 
 /**
  * Build a Firebase onRequest Cloud Function URL.
@@ -47,14 +48,28 @@ export async function callFirebaseCloudFunction(
     );
   }
 
-  const response = await fetch(getFirebaseFunctionUrl(functionName), {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${idToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let response;
+  try {
+    response = await fetch(getFirebaseFunctionUrl(functionName), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(FUNCTION_TIMEOUT_MS),
+    });
+  } catch (error) {
+    // AbortSignal.timeout aborts with a TimeoutError; older engines use AbortError.
+    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+      const timeoutError = new Error(
+        `Function ${functionName} timed out after ${FUNCTION_TIMEOUT_MS}ms`,
+      );
+      timeoutError.status = 504;
+      throw timeoutError;
+    }
+    throw error;
+  }
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {

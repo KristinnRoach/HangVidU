@@ -15,7 +15,6 @@ const mocks = vi.hoisted(() => {
     processReferral: vi.fn(() => Promise.resolve()),
     hydrateContacts: vi.fn(() => Promise.resolve()),
     resetContacts: vi.fn(),
-    getLoggedInUserProfile: vi.fn(() => null),
     devDebug: vi.fn(),
     stopConversationActivity: vi.fn(),
   };
@@ -27,10 +26,6 @@ vi.mock('../../shared/events/index.js', () => ({
 
 vi.mock('../../auth/index.js', () => ({
   initAuth: vi.fn(() => Promise.resolve()),
-}));
-
-vi.mock('../../stores/userProfileStore.js', () => ({
-  getLoggedInUserProfile: mocks.getLoggedInUserProfile,
 }));
 
 vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
@@ -118,7 +113,6 @@ describe('wireAuthReactions', () => {
 
     expect(mocks.processReferral).toHaveBeenCalled();
     expect(mocks.hydrateContacts).toHaveBeenCalled();
-    expect(mocks.getLoggedInUserProfile).toHaveBeenCalledWith();
     expect(mocks.setupInviteListener).toHaveBeenCalledWith();
 
     teardown();

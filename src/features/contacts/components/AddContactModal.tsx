@@ -24,10 +24,8 @@ import {
   copyInviteLink,
   shareInvite,
 } from '../../../shared/utils/share-invite.js';
-import {
-  getLoggedInUserId,
-  requestGmailSendAccess,
-} from '../../../auth/index.js';
+import { getAuthState, getLoggedInUserId } from '../../../auth/index.js';
+import { requestGmailSendAccess } from '../../../shared/utils/google/gis-tokens.js';
 import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
 import { sendContactInvite } from '../invites/send-contact-invite.js';
 import {
@@ -167,7 +165,9 @@ export default function AddContactModal(props: Props) {
       },
       onEmailSelected: async (contacts: any[]) => {
         try {
-          const accessToken = await requestGmailSendAccess();
+          const accessToken = await requestGmailSendAccess({
+            hint: getAuthState().user?.email ?? undefined,
+          });
           const referralLink = buildReferralLink(getLoggedInUserId());
           const subject = t('contact.invite.subject');
           const body = t('contact.invite.body', {
