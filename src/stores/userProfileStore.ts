@@ -247,6 +247,19 @@ export function suggestHandle(
  * @param {{ uid?: string, displayName?: string|null, email?: string|null, photoURL?: string|null }} user
  * @returns {Promise<{ handle: string|null, assigned: boolean }>}
  */
+// Unbiased 10..99, via rejection sampling so we don't skew handle suffixes
+// (and to satisfy CodeQL's biased-crypto-random rule).
+function randomSuffix(): number {
+  const limit = Math.floor(0xffffffff / 90) * 90;
+  const buf = new Uint32Array(1);
+  let x: number;
+  do {
+    crypto.getRandomValues(buf);
+    x = buf[0];
+  } while (x >= limit);
+  return 10 + (x % 90);
+}
+
 export async function ensureHandle(
   user: UserLike,
 ) {
@@ -255,12 +268,7 @@ export async function ensureHandle(
   if (profile?.username) return { handle: profile.username, assigned: false };
 
   for (let attempt = 0; attempt < 5; attempt++) {
-    // ponytail: modulo bias is fine here, this is a collision-avoidance
-    // suffix, not a security value.
-    const suffix =
-      attempt === 0
-        ? ''
-        : String(10 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90));
+    const suffix = attempt === 0 ? '' : String(randomSuffix());
     try {
       const saved = await claimUsername(user, suggestHandle(user, suffix));
       return { handle: saved?.username ?? null, assigned: true };
