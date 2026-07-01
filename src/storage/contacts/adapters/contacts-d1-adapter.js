@@ -4,7 +4,7 @@ import { createWorkerRequest } from '../../worker-request.js';
 /**
  * D1 adapter for contacts storage — talks to the hangvidu-data Worker's
  * /users/me/contacts endpoints. The owner is the authenticated caller (uid from
- * the bearer token), so unlike the RTDB adapter this needs no getOwnerId.
+ * the bearer token).
  *
  * Wire shape mirrors ContactRecordSchema, so the worker's rows pass straight
  * through; the repository normalizes them.

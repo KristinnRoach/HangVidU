@@ -41,16 +41,16 @@ const KNOWN_TOP_LEVEL = new Set([
 ]);
 
 const KNOWN_USER_KEYS = new Set([
-  'contacts',
   'incomingInvites',
   'acceptedInvites',
   'calls', // new (incoming/response)
-  'profile',
   'presence',
   'pushSubscriptions',
 ]);
 
 const LEGACY_USER_KEYS = new Set([
+  'contacts',
+  'profile',
   'recentCalls',
   'outgoingCall',
   'callHistory',

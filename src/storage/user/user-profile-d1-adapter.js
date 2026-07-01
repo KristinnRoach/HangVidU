@@ -8,8 +8,8 @@ import { createWorkerRequest } from '../worker-request.js';
  * - `save(user)` writes the CALLER's own profile (PUT /users/me/profile); the
  *   owner is token-derived server-side, so `user.uid` is only a guard here.
  *
- * Wire fields match the RTDB adapter's shape (`displayName`, `photoURL`, plus the
- * `username` handle), so consumers don't branch on backend.
+ * Wire fields are the app profile shape: `displayName`, `photoURL`, and the
+ * `username` handle.
  */
 export class UserProfileD1Adapter {
   /**
