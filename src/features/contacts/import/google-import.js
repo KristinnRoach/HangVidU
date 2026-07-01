@@ -20,7 +20,7 @@ export async function importGoogleContacts({ onProgress = () => {} } = {}) {
     onProgress({ step: 'requesting' });
     const accessToken = await requestContactsAccess({
       interactive: true,
-      hint: getAuthState().user?.email,
+      hint: getAuthState().user?.email ?? undefined,
     });
 
     onProgress({ step: 'fetching' });
