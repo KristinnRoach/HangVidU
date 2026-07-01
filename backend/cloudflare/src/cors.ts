@@ -23,8 +23,10 @@ export function corsHeaders(
   env: CorsEnv,
 ): Record<string, string> {
   const headers: Record<string, string> = {
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers':
+      'Authorization, Content-Type, X-Firebase-AppCheck',
+    'Access-Control-Expose-Headers': 'Content-Length, Content-Type, ETag',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
