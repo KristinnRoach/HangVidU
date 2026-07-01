@@ -128,7 +128,11 @@ export function setState(next) {
 export function beginAuthTransition() {
   const previous = snapshot();
   setState({ status: 'loading' });
-  return () => setState(toStableAuthState(previous));
+  return () => {
+    if (state.status === 'loading') {
+      setState(toStableAuthState(previous));
+    }
+  };
 }
 
 // --- Public accessors ---

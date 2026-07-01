@@ -94,4 +94,19 @@ describe('auth setup', () => {
     expect(mocks.handlers.has('evt:auth:session:logged-out')).toBe(false);
     expect(mocks.initAuth).toHaveBeenCalledTimes(1);
   });
+
+  it('aborts the logout listener when initAuth fails', async () => {
+    const error = new Error('auth failed');
+    mocks.initAuth.mockRejectedValueOnce(error);
+
+    const { setup } = await import('../setup.js');
+
+    await expect(setup()).rejects.toBe(error);
+    expect(mocks.handlers.has('evt:auth:session:logged-out')).toBe(false);
+
+    mocks.initAuth.mockResolvedValueOnce(undefined);
+    await setup();
+    expect(mocks.handlers.has('evt:auth:session:logged-out')).toBe(true);
+    expect(mocks.initAuth).toHaveBeenCalledTimes(2);
+  });
 });

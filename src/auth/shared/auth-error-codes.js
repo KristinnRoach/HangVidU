@@ -25,3 +25,8 @@ const ERROR_CODE_MAP = {
 export function normalizeAuthErrorCode(error) {
   return ERROR_CODE_MAP[error?.code] ?? 'unknown';
 }
+
+export function resolveErrorLookupKey(error) {
+  const normalized = normalizeAuthErrorCode(error);
+  return normalized !== 'unknown' ? normalized : error?.code || error?.message;
+}

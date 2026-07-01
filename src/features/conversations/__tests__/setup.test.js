@@ -46,6 +46,25 @@ describe('conversations setup', () => {
     expect(mocks.resetConversationsState).toHaveBeenCalledOnce();
   });
 
+  it('resets conversation state when activity teardown throws', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mocks.stopConversationActivity.mockImplementation(() => {
+      throw new Error('stop failed');
+    });
+
+    try {
+      const { setup } = await import('../index');
+      await setup();
+
+      await mocks.handlers.get('evt:auth:session:logged-out')();
+
+      expect(mocks.stopConversationActivity).toHaveBeenCalledOnce();
+      expect(mocks.resetConversationsState).toHaveBeenCalledOnce();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('aborts the subscription on teardown', async () => {
     const { setup } = await import('../index');
     const teardown = await setup();

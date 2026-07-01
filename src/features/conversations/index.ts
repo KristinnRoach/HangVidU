@@ -19,9 +19,13 @@ export const setup = createSingleFlightSetup({
       () => {
         try {
           stopConversationActivity();
+        } catch (error) {
+          console.warn('[conversations] activity teardown failed:', error);
+        }
+        try {
           resetConversationsState();
         } catch (error) {
-          console.warn('[conversations] logout teardown failed:', error);
+          console.warn('[conversations] state reset failed:', error);
         }
       },
       { signal },

@@ -3,7 +3,7 @@ import {
   signInWithUsernameOrEmail,
   signUpWithUsername,
 } from '../password-auth.js';
-import { normalizeAuthErrorCode } from '../shared/auth-error-codes.js';
+import { resolveErrorLookupKey } from '../shared/auth-error-codes.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import styles from './UsernamePasswordForm.module.css';
 
@@ -23,9 +23,9 @@ const FRIENDLY_ERROR_KEYS = {
 };
 
 function getFriendlyAuthErrorKey(error) {
-  const normalized = normalizeAuthErrorCode(error);
-  const code = normalized !== 'unknown' ? normalized : error?.code || error?.message;
-  return FRIENDLY_ERROR_KEYS[code] || 'auth.error.generic';
+  return (
+    FRIENDLY_ERROR_KEYS[resolveErrorLookupKey(error)] || 'auth.error.generic'
+  );
 }
 
 // Minimal sign-up / sign-in form. No dedicated styles yet — uses semantic

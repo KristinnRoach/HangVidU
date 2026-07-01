@@ -15,7 +15,10 @@ import {
   signInPassword,
   updateFirebaseProfile,
 } from './adapters/firebase-auth-adapter.js';
-import { normalizeAuthErrorCode } from './shared/auth-error-codes.js';
+import {
+  normalizeAuthErrorCode,
+  resolveErrorLookupKey,
+} from './shared/auth-error-codes.js';
 import {
   getAuthState,
   setState,
@@ -63,9 +66,7 @@ function validatePassword(password) {
 }
 
 function isExpectedPasswordAuthFailure(error) {
-  const normalized = normalizeAuthErrorCode(error);
-  const code = normalized !== 'unknown' ? normalized : error?.code || error?.message;
-  return EXPECTED_PASSWORD_AUTH_FAILURES.has(code);
+  return EXPECTED_PASSWORD_AUTH_FAILURES.has(resolveErrorLookupKey(error));
 }
 
 async function rollbackCreatedPasswordUser(cred, cause) {

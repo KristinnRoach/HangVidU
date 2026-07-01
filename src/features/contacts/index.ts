@@ -36,6 +36,7 @@ export function setup(): Promise<() => void> {
     // Per-login-scoped invite listener: replaced on each login, torn down on
     // logout and on full teardown.
     let inviteCleanup: () => void = () => {};
+    let authEpoch = 0;
     const runInviteCleanup = () => {
       try {
         inviteCleanup();
@@ -60,15 +61,19 @@ export function setup(): Promise<() => void> {
     subscribe(
       'evt:auth:session:logged-in',
       async () => {
+        const epoch = ++authEpoch;
+        runInviteCleanup();
         try {
           await processReferral().catch((e) =>
             console.warn('[contacts] processReferral failed:', e),
           );
+          if (epoch !== authEpoch) return;
+
           await hydrateContacts().catch((e) =>
             console.warn('[contacts] hydrate on login failed:', e),
           );
+          if (epoch !== authEpoch) return;
 
-          runInviteCleanup();
           const maybeInviteCleanup = setupInviteListener();
           if (typeof maybeInviteCleanup === 'function') {
             inviteCleanup = maybeInviteCleanup;
@@ -84,6 +89,7 @@ export function setup(): Promise<() => void> {
       'evt:auth:session:logged-out',
       () => {
         try {
+          authEpoch += 1;
           runInviteCleanup();
           resetContacts();
         } catch (error) {
@@ -95,8 +101,16 @@ export function setup(): Promise<() => void> {
 
     // Anonymous boot: capture referral from URL → localStorage, hydrate guest
     // contacts. (processReferral applies the captured referral once logged in.)
-    await captureReferral();
-    await hydrateContacts();
+    try {
+      await captureReferral();
+    } catch (error) {
+      console.warn('[contacts] captureReferral failed:', error);
+    }
+    try {
+      await hydrateContacts();
+    } catch (error) {
+      console.warn('[contacts] initial hydrate failed:', error);
+    }
 
     cleanup = () => {
       runInviteCleanup();

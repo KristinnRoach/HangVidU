@@ -77,18 +77,25 @@ export function setup() {
 
   initPromise = (async () => {
     const ac = new AbortController();
+    const teardown = () => {
+      ac.abort();
+      isReady = false;
+    };
+    cleanup = teardown;
 
     subscribe('evt:auth:session:logged-out', clearLocalStorageOnLogout, {
       signal: ac.signal,
     });
 
     // initAuth() LAST: subscribers (this one + feature setups) are now registered.
-    await initAuth();
+    try {
+      await initAuth();
+    } catch (error) {
+      teardown();
+      throw error;
+    }
 
-    cleanup = () => {
-      ac.abort();
-      isReady = false;
-    };
+    cleanup = teardown;
     isReady = true;
     return cleanup;
   })().finally(() => {

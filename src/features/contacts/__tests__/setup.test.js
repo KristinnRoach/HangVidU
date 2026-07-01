@@ -54,6 +54,24 @@ describe('contacts setup', () => {
     expect(mocks.hydrateContacts).toHaveBeenCalled();
   });
 
+  it('keeps setup recoverable when anonymous boot work fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mocks.captureReferral.mockRejectedValue(new Error('capture failed'));
+    mocks.hydrateContacts.mockRejectedValue(new Error('hydrate failed'));
+
+    try {
+      const { setup } = await import('../index');
+      const teardown = await setup();
+
+      expect(typeof teardown).toBe('function');
+      expect(mocks.captureReferral).toHaveBeenCalled();
+      expect(mocks.hydrateContacts).toHaveBeenCalled();
+      expect(mocks.handlers.has('evt:auth:session:logged-in')).toBe(true);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('hydrates contacts when auth becomes ready', async () => {
     const { setup } = await import('../index');
     await setup();
@@ -104,6 +122,28 @@ describe('contacts setup', () => {
     // Second login tears down the first scope's listener, not the new one.
     expect(firstCleanup).toHaveBeenCalledTimes(1);
     expect(secondCleanup).not.toHaveBeenCalled();
+  });
+
+  it('does not start an invite listener from a stale login handler', async () => {
+    let finishReferral;
+    mocks.processReferral.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishReferral = resolve;
+        }),
+    );
+    const { setup } = await import('../index');
+    await setup();
+    mocks.hydrateContacts.mockClear();
+
+    const login = mocks.handlers.get('evt:auth:session:logged-in')();
+    await Promise.resolve();
+    await mocks.handlers.get('evt:auth:session:logged-out')();
+    finishReferral();
+    await login;
+
+    expect(mocks.hydrateContacts).not.toHaveBeenCalled();
+    expect(mocks.setupInviteListener).not.toHaveBeenCalled();
   });
 
   it('aborts subscriptions on teardown', async () => {
