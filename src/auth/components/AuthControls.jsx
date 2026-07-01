@@ -6,7 +6,6 @@ import {
 } from '../auth-events-schema.js';
 import { dispatchCommand } from '../../shared/events/index.js';
 import { useI18n } from '../../shared/i18n/index.js';
-import { getLoggedInUserProfile } from '../../stores/userProfileStore.js';
 import LoginButton from './LoginButton';
 import SignInSheet from './SignInSheet';
 import { LogOut } from 'lucide-solid';
@@ -26,7 +25,7 @@ function smartTruncateName(fullName, maxLength = 10) {
   return `${firstName.slice(0, maxLength - 3)}...`;
 }
 
-export default function AuthControls() {
+export default function AuthControls(props) {
   const { t } = useI18n();
   const {
     isLoggedIn,
@@ -39,7 +38,7 @@ export default function AuthControls() {
 
   // TODO: Decide whether to show name, for now just showing avatar
   const displayName = createMemo(() => {
-    const profile = getLoggedInUserProfile();
+    const profile = props.loggedInProfile?.();
     const name =
       profile?.displayName ||
       profile?.username ||
@@ -48,7 +47,7 @@ export default function AuthControls() {
     return smartTruncateName(name);
   });
 
-  const photoUrl = createMemo(() => getLoggedInUserProfile()?.photoURL || '');
+  const photoUrl = createMemo(() => props.loggedInProfile?.()?.photoURL || '');
   const avatarInitial = createMemo(() =>
     (displayName() || t('auth.guest_user')).trim().slice(0, 1).toUpperCase(),
   );

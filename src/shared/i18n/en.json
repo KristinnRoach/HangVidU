@@ -42,6 +42,7 @@
   "handle.claim.title": "Choose a username",
   "handle.claim.input": "Username",
   "contact.add.title": "Add Contacts",
+  "contact.invite.sender_fallback": "A friend",
   "contact.add.login_required": "Please sign in to add contacts",
   "contact.add.enter_handle": "Search username",
   "contact.add.enter_email": "Enter email address",

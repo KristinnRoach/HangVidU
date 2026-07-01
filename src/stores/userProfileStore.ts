@@ -4,7 +4,6 @@
 
 import { ref, set } from 'firebase/database';
 import { createSignal } from 'solid-js';
-import { randomInt } from 'crypto';
 import {
   getAuthProviderProfileSeed,
   getAuthState,
@@ -113,28 +112,30 @@ function getRequest() {
 
 const [loggedInUserProfile, setLoggedInUserProfile] =
   createSignal<LoggedInUserProfile | null>(null);
-let loggedInProfileLoad: Promise<LoggedInUserProfile | null> | null = null;
 let subscribedToAuth = false;
+
+function logProfileLoadFailure(error: unknown) {
+  console.error('[userProfileStore] Failed to load logged-in profile:', error);
+}
 
 export function getLoggedInUserProfile(): LoggedInUserProfile | null {
   const cached = loggedInUserProfile();
   if (!cached) {
-    void loadLoggedInUserProfile();
+    void loadLoggedInUserProfile().catch(logProfileLoadFailure);
   }
   return cached;
 }
 
+// ponytail: no in-flight dedup — concurrent cache-miss loads may fire a few
+// redundant reads during the brief pre-populate window; the stale-write guard
+// in hydrate keeps the result correct. Add dedup only if those reads matter.
 async function loadLoggedInUserProfile(): Promise<LoggedInUserProfile | null> {
   const user = getAuthState().user as AuthUser | null;
   if (!user?.uid) {
     setLoggedInUserProfile(null);
     return null;
   }
-  if (loggedInProfileLoad) return loggedInProfileLoad;
-  loggedInProfileLoad = hydrateLoggedInUserProfile(user).finally(() => {
-    loggedInProfileLoad = null;
-  });
-  return loggedInProfileLoad;
+  return hydrateLoggedInUserProfile(user);
 }
 
 async function hydrateLoggedInUserProfile(
@@ -166,6 +167,9 @@ async function hydrateLoggedInUserProfile(
     email: user.email,
     discoverable: profile?.discoverable,
   };
+  // The session may have moved on (logout/user switch) while this was in
+  // flight — don't clobber a newer profile (or null) with stale data.
+  if ((getAuthState().user as AuthUser | null)?.uid !== user.uid) return null;
   setLoggedInUserProfile(next);
   return next;
 }
@@ -175,14 +179,14 @@ function setupLoggedInUserProfileSync() {
   subscribedToAuth = true;
 
   subscribe('evt:auth:session:logged-in', () => {
-    void loadLoggedInUserProfile();
+    void loadLoggedInUserProfile().catch(logProfileLoadFailure);
   });
   subscribe('evt:auth:session:logged-out', () => {
     setLoggedInUserProfile(null);
   });
 
   if (getAuthState().isLoggedIn) {
-    void loadLoggedInUserProfile();
+    void loadLoggedInUserProfile().catch(logProfileLoadFailure);
   }
 }
 
@@ -251,8 +255,12 @@ export async function ensureHandle(
   if (profile?.username) return { handle: profile.username, assigned: false };
 
   for (let attempt = 0; attempt < 5; attempt++) {
+    // ponytail: modulo bias is fine here, this is a collision-avoidance
+    // suffix, not a security value.
     const suffix =
-      attempt === 0 ? '' : String(randomInt(10, 100));
+      attempt === 0
+        ? ''
+        : String(10 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90));
     try {
       const saved = await claimUsername(user, suggestHandle(user, suffix));
       return { handle: saved?.username ?? null, assigned: true };

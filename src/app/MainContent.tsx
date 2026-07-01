@@ -8,6 +8,7 @@ import { useI18n } from '../shared/i18n';
 
 import AppLogo from '../components/app/AppLogo';
 import AuthControls from '../auth/components/AuthControls';
+import { getLoggedInUserProfile } from '../stores/userProfileStore.js';
 import AddContactButton from '../features/contacts/components/AddContactButton';
 import NotificationsToggle from '../features/notifications/components/NotificationsToggle';
 import InstallButton from '../features/pwa/InstallButton';
@@ -219,7 +220,7 @@ function TopBar(props: TopBarProps) {
     >
       <div id='top-bar-left' class={`${topbarStyles.stickyLeft} animated-flex`}>
         <AppLogo />
-        <AuthControls />
+        <AuthControls loggedInProfile={getLoggedInUserProfile} />
       </div>
 
       {/* Temp Navigation/Test buttons to demonstrate switching */}

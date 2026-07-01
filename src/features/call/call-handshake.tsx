@@ -9,6 +9,7 @@ import {
 } from 'solid-js';
 
 import { useAuth } from '../../auth/solid-auth.js';
+import { getAuthProviderProfileSeed } from '../../auth/index.js';
 import { useP2PContext } from '../../shared/p2p-context.js';
 import { createRoomSignaling } from '../../realtime/index.js';
 import { getLoggedInUserProfile } from '../../stores/userProfileStore.js';
@@ -47,7 +48,14 @@ export function CallHandshakeProvider(props: ParentProps) {
     createSignaling: createRoomSignaling,
     getCallerName: () => {
       const profile = getLoggedInUserProfile();
-      return profile?.displayName || profile?.username || 'Unknown';
+      const seed = getAuthProviderProfileSeed();
+      return (
+        profile?.displayName ||
+        profile?.username ||
+        seed?.displayName ||
+        seed?.username ||
+        'Unknown'
+      );
     },
     onStateChange: setHandshakeState,
     onCalleeBusy: setIsCalleeBusy,

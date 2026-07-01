@@ -93,7 +93,9 @@ function openEmailComposeFallback(
 export default function AddContactModal(props: Props) {
   const { t } = useI18n();
   const shareProviders = getInviteShareProviders();
-  const senderName = () => getLoggedInUserProfile()?.displayName || 'A friend';
+  const senderName = () =>
+    getLoggedInUserProfile()?.displayName ||
+    t('contact.invite.sender_fallback');
 
   const [emailInput, setEmailInput] = createSignal('');
   const [emailSending, setEmailSending] = createSignal(false);
