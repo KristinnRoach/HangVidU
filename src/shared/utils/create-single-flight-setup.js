@@ -11,8 +11,12 @@
  * @param {object} options
  * @param {string} options.label - log prefix used in teardown warnings,
  *   e.g. `[presence]`.
- * @param {(signal: AbortSignal) => void} options.register - registers
+ * @param {(signal: AbortSignal) => void} [options.register] - registers
  *   handlers/subscriptions against the provided abort signal.
+ * @param {(signal: AbortSignal) => (void|Promise<void>)} [options.start] - runs
+ *   setup work before the setup is marked ready.
+ * @param {() => void} [options.stop] - runs extra teardown work
+ *   before aborting registered handlers.
  * @returns {() => Promise<() => void>} the memoized setup function.
  */
 export function createSingleFlightSetup(options) {
@@ -21,14 +25,22 @@ export function createSingleFlightSetup(options) {
   }
 
   const { label, register } = options;
+  const start = options.start ?? (() => {});
+  const stop = options.stop ?? (() => {});
 
   if (typeof label !== 'string' || label.trim() === '') {
     throw new TypeError(
       'createSingleFlightSetup: label must be a non-empty string',
     );
   }
-  if (typeof register !== 'function') {
+  if (register !== undefined && typeof register !== 'function') {
     throw new TypeError('createSingleFlightSetup: register must be a function');
+  }
+  if (typeof start !== 'function') {
+    throw new TypeError('createSingleFlightSetup: start must be a function');
+  }
+  if (typeof stop !== 'function') {
+    throw new TypeError('createSingleFlightSetup: stop must be a function');
   }
 
   let isReady = false;
@@ -46,12 +58,18 @@ export function createSingleFlightSetup(options) {
     }
 
     initPromise = Promise.resolve()
-      .then(() => {
+      .then(async () => {
         const ac = new AbortController();
 
-        register(ac.signal);
+        register?.(ac.signal);
+        await start(ac.signal);
 
         cleanup = () => {
+          try {
+            stop();
+          } catch (error) {
+            console.warn(`${label} cleanup failed:`, error);
+          }
           ac.abort();
           isReady = false;
         };
