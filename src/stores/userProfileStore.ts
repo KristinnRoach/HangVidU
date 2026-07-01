@@ -244,11 +244,9 @@ export async function claimUsername(user: UserLike, username: string) {
  * @param {{ displayName?: string|null, email?: string|null, uid?: string }} user
  * @param {string} [suffix]
  */
-export function suggestHandle(
-  user: UserLike,
-  suffix = '',
-) {
-  const source = user?.displayName || user?.email?.split('@')[0] || user?.uid || '';
+export function suggestHandle(user: UserLike, suffix = '') {
+  const source =
+    user?.displayName || user?.email?.split('@')[0] || user?.uid || '';
   const base = convertToEnglishLetters(source)
     .toLowerCase()
     .replace(/[^a-z0-9_]+/g, '_')
@@ -272,15 +270,13 @@ function randomSuffix(): number {
   const buf = new Uint32Array(1);
   let x: number;
   do {
-    crypto.getRandomValues(buf);
+    globalThis.crypto.getRandomValues(buf);
     x = buf[0];
   } while (x >= limit);
   return 10 + (x % 90);
 }
 
-export async function ensureHandle(
-  user: UserLike,
-) {
+export async function ensureHandle(user: UserLike) {
   if (!user?.uid) return { handle: null, assigned: false };
   const profile = await getUserProfileById(user.uid);
   if (profile?.username) return { handle: profile.username, assigned: false };
