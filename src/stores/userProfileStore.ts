@@ -141,6 +141,10 @@ async function loadLoggedInUserProfile(): Promise<LoggedInUserProfile | null> {
   return hydrateLoggedInUserProfile(user);
 }
 
+function isCurrentAuthUser(user: AuthUser) {
+  return (getAuthState().user as AuthUser | null)?.uid === user.uid;
+}
+
 async function hydrateLoggedInUserProfile(
   user: AuthUser,
 ): Promise<LoggedInUserProfile | null> {
@@ -152,15 +156,17 @@ async function hydrateLoggedInUserProfile(
     photoURL: null,
   };
   let profile = await getUserProfileById(user.uid);
-  // Writes below hit /users/me/* using the *current* auth token, so a user
-  // switch mid-hydration would PUT this (old) user's seed onto the new user.
-  // Bail before any write if the session moved on.
-  if ((getAuthState().user as AuthUser | null)?.uid !== user.uid) return null;
+  // The writes below hit /users/me/* using the *current* auth token, so a user
+  // switch during any await would PUT this (old) user's seed onto the new user.
+  // Re-check the session after each async boundary and bail if it moved on.
+  if (!isCurrentAuthUser(user)) return null;
   if (!profile?.displayName && !profile?.photoURL) {
     await savePublicUserProfile(seed);
   }
+  if (!isCurrentAuthUser(user)) return null;
 
   const { handle } = await ensureHandle(seed);
+  if (!isCurrentAuthUser(user)) return null;
   if (user.email) {
     await syncLoggedInUserEmailLookup(seed, { username: handle });
   }
@@ -174,9 +180,8 @@ async function hydrateLoggedInUserProfile(
     email: user.email,
     discoverable: profile?.discoverable,
   };
-  // The session may have moved on (logout/user switch) while this was in
-  // flight — don't clobber a newer profile (or null) with stale data.
-  if ((getAuthState().user as AuthUser | null)?.uid !== user.uid) return null;
+  // Don't clobber a newer profile (or null) with this stale session's data.
+  if (!isCurrentAuthUser(user)) return null;
   setLoggedInUserProfile(next);
   return next;
 }
