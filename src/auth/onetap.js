@@ -1,4 +1,5 @@
 import { setSafariExternalOpenArmed } from './shared/safari-auth-fallback.js';
+import { normalizeAuthErrorCode } from './shared/auth-error-codes.js';
 import { getIsLoggedIn, setState } from './auth-state.js';
 import {
   createGoogleCredential,
@@ -110,14 +111,13 @@ async function handleOneTapCredential(response) {
 
     setSafariExternalOpenArmed(false);
   } catch (error) {
-    const errorCode = error?.code || 'unknown';
     const errorMessage = error?.message || String(error);
 
     setState({ status: 'unauthenticated', isLoggedIn: false, user: null });
     setSafariExternalOpenArmed(false);
     notifyOneTapStatus('failed');
 
-    if (errorCode === 'auth/account-exists-with-different-credential') {
+    if (normalizeAuthErrorCode(error) === 'account-exists') {
       alert(t('auth.account_exists'));
     } else {
       alert(t('auth.onetap_failed', { error: errorMessage }));

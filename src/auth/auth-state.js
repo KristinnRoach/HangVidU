@@ -118,6 +118,23 @@ export function setState(next) {
   }
 }
 
+/**
+ * Mark an auth operation as in-flight (`status: 'loading'`) and return a
+ * function that reverts to the prior stable state. Lets command modules express
+ * intent ("begin/revert a transition") without touching state primitives.
+ *
+ * @returns {() => void} revert — restore the pre-transition stable state
+ */
+export function beginAuthTransition() {
+  const previous = snapshot();
+  setState({ status: 'loading' });
+  return () => {
+    if (state.status === 'loading') {
+      setState(toStableAuthState(previous));
+    }
+  };
+}
+
 // --- Public accessors ---
 
 /**

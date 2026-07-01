@@ -26,13 +26,14 @@ authed Cloud Function calls are in `features/push-notifications/`.
 
 - `adapters/firebase-auth-adapter.js` is the only file allowed to import
   `firebase/auth`. Everything else goes through its exports.
-- Never branch on raw `auth/...` Firebase error strings outside the adapter; use
-  `normalizeAuthErrorCode(error)`. (Pre-existing exceptions not yet migrated:
-  `auth-commands.js`, `onetap.js`, `password-auth.js`,
-  `components/UsernamePasswordForm.jsx` — migrate opportunistically.)
+- Never branch on raw `auth/...` Firebase error strings; use
+  `normalizeAuthErrorCode(error)` (pure leaf `shared/auth-error-codes.js`, also
+  re-exported by the adapter) and branch on its generic codes.
 
 ## App-level wiring
 
-Cross-feature reactions to auth lifecycle events live in
-`app/auth-orchestration.js` (`wireAuthReactions`), NOT in this module. Its
-pending decomposition is tracked in `app/auth-orchestration.TODO.md`.
+There is no cross-feature orchestrator. Each feature subscribes to the auth
+lifecycle events it cares about from its own `setup()` (contacts, conversations,
+presence, …). App-level auth wiring — logout localStorage housekeeping and
+calling `initAuth()` last, after all subscribers register — lives in
+`src/auth/setup.js`, invoked by `main.tsx`.

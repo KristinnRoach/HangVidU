@@ -1,8 +1,9 @@
 // src/auth/auth-commands.js — sign-in, sign-out + iOS Safari workarounds
 
 import { logAuthError } from './shared/auth-error-logging.js';
+import { normalizeAuthErrorCode } from './shared/auth-error-codes.js';
 import { clearGisTokenCache } from '../shared/utils/google/gis-token-service.js';
-import { getAuthState, setState, toStableAuthState } from './auth-state.js';
+import { beginAuthTransition } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
 import {
   auth,
@@ -32,50 +33,41 @@ import {
  * @param {Error} error The error object from a signInWithPopup catch block.
  */
 function handleSignInError(error) {
-  const errorCode = error?.code || 'unknown';
-  // Only log error details, do not show raw error to user
+  const code = normalizeAuthErrorCode(error);
 
-  // Ignore popup-closed-by-user error (user cancelled auth)
-  if (
-    errorCode === 'auth/popup-closed-by-user' ||
-    errorCode === 'auth/cancelled-popup-request'
-  ) {
+  // User cancelled the popup — not an error, show nothing.
+  if (code === 'cancelled') {
     console.log('Sign-in cancelled by user');
     return;
   }
 
   const { isIOSStandalone } = detectIOSStandalone();
 
-  // iOS Standalone PWA: arm Safari fallback and ask user to tap Login again
-  if (
-    (errorCode === 'auth/network-request-failed' ||
-      errorCode === 'auth/popup-blocked') &&
-    isIOSStandalone
-  ) {
+  // iOS Standalone PWA: arm Safari fallback and ask user to tap Login again.
+  if ((code === 'network-error' || code === 'popup-blocked') && isIOSStandalone) {
     console.warn(
-      `[AUTH] ${errorCode} inside iOS standalone PWA. Arming Safari fallback.`,
+      `[AUTH] ${code} inside iOS standalone PWA. Arming Safari fallback.`,
     );
     setSafariExternalOpenArmed(true);
     alert(t('auth.ios_blocked'));
     return;
   }
 
-  // If popup is blocked (and not iOS standalone which is handled above), inform user
-  if (errorCode === 'auth/popup-blocked') {
+  // Popup blocked (non-iOS-standalone, handled above otherwise): inform user.
+  if (code === 'popup-blocked') {
     alert(t('auth.popup_blocked'));
     return;
   }
 
-  // The email of the user's account used (do not print raw value in prod)
-  // Log error in a production-safe way, do not log email or sensitive data
+  // Log in a production-safe way (never log email/sensitive data).
   logAuthError('Google sign-in', error);
 
-  if (errorCode === 'auth/unauthorized-domain') {
+  if (code === 'unauthorized-domain') {
     alert(t('auth.unauthorized'));
     return;
   }
 
-  // Generic fallback for any other errors
+  // Generic fallback for any other errors.
   alert(t('auth.sign_in_failed'));
 }
 
@@ -87,10 +79,9 @@ export const signInWithAccountSelection = async () => {
   });
 
   const { isIOSStandalone } = detectIOSStandalone();
-  const previousAuthState = getAuthState();
 
-  // Signal sign-in is in progress (will be cleared by the auth listener)
-  setState({ status: 'loading' });
+  // Signal sign-in is in progress (will be cleared by the auth listener).
+  const revertAuthState = beginAuthTransition();
 
   try {
     // If previous attempt failed in iOS standalone PWA, the user can tap Login again
@@ -99,7 +90,7 @@ export const signInWithAccountSelection = async () => {
       devDebug('[AUTH] Using Safari external fallback');
       setSafariExternalOpenArmed(false);
       openInSafariExternal();
-      setState(toStableAuthState(previousAuthState));
+      revertAuthState();
       return;
     }
 
@@ -112,15 +103,14 @@ export const signInWithAccountSelection = async () => {
     return result;
   } catch (error) {
     handleSignInError(error);
-    setState(toStableAuthState(previousAuthState));
+    revertAuthState();
     // Don't re-throw - errors are handled gracefully by handleSignInError
   }
 };
 
 export async function signOutUser() {
-  const previousAuthState = getAuthState();
-  // Signal sign-out is in progress (will be cleared by the auth listener)
-  setState({ status: 'loading' });
+  // Signal sign-out is in progress (will be cleared by the auth listener).
+  const revertAuthState = beginAuthTransition();
 
   try {
     // Disable notifications and unregister the current Web Push subscription - Fire and forget
@@ -138,7 +128,7 @@ export async function signOutUser() {
     setTimeout(() => showOneTapSignin(), 1500); // ? reshow onetap on signout ?
   } catch (error) {
     logAuthError('Sign out', error);
-    setState(toStableAuthState(previousAuthState));
+    revertAuthState();
     // Re-throw the error to allow callers to handle it
     throw error;
   }

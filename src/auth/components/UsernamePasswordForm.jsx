@@ -3,10 +3,12 @@ import {
   signInWithUsernameOrEmail,
   signUpWithUsername,
 } from '../password-auth.js';
+import { resolveErrorLookupKey } from '../shared/auth-error-codes.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import styles from './UsernamePasswordForm.module.css';
 
 const FRIENDLY_ERROR_KEYS = {
+  // Domain codes thrown by password-auth.
   account_has_no_username: 'auth.error.invalid_credentials',
   identifier_required: 'auth.error.identifier_required',
   no_account_for_email: 'auth.error.invalid_credentials',
@@ -15,15 +17,15 @@ const FRIENDLY_ERROR_KEYS = {
   username_invalid: 'auth.error.username_invalid',
   username_required: 'auth.error.username_required',
   username_taken: 'auth.error.username_taken',
-  'auth/email-already-in-use': 'auth.error.username_taken',
-  'auth/invalid-credential': 'auth.error.invalid_credentials',
-  'auth/user-not-found': 'auth.error.invalid_credentials',
-  'auth/wrong-password': 'auth.error.invalid_credentials',
+  // Normalized Firebase codes (see normalizeAuthErrorCode).
+  'email-already-in-use': 'auth.error.username_taken',
+  'invalid-credentials': 'auth.error.invalid_credentials',
 };
 
 function getFriendlyAuthErrorKey(error) {
-  const code = error?.code || error?.message;
-  return FRIENDLY_ERROR_KEYS[code] || 'auth.error.generic';
+  return (
+    FRIENDLY_ERROR_KEYS[resolveErrorLookupKey(error)] || 'auth.error.generic'
+  );
 }
 
 // Minimal sign-up / sign-in form. No dedicated styles yet — uses semantic

@@ -71,3 +71,27 @@ describe('setState', () => {
     }
   });
 });
+
+describe('beginAuthTransition', () => {
+  it('does not revert over a newer stable auth state', async () => {
+    const { beginAuthTransition, getAuthState, setState } = await import(
+      '../auth-state.js'
+    );
+
+    setState({
+      status: 'authenticated',
+      isLoggedIn: true,
+      user: { uid: 'u1', email: null },
+    });
+    const revert = beginAuthTransition();
+
+    setState({ status: 'unauthenticated', isLoggedIn: false, user: null });
+    revert();
+
+    expect(getAuthState()).toEqual({
+      status: 'unauthenticated',
+      isLoggedIn: false,
+      user: null,
+    });
+  });
+});
