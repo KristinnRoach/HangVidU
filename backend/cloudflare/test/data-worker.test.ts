@@ -213,7 +213,10 @@ describe('message reactions', () => {
     );
 
     expect(res.status).toBe(204);
-    expect(res.headers.get('Access-Control-Allow-Methods')).toContain('PUT');
+    const allowedMethods = res.headers.get('Access-Control-Allow-Methods');
+    for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
+      expect(allowedMethods).toContain(method);
+    }
   });
 
   it('persists, hydrates, and broadcasts authoritative reaction counts', async () => {

@@ -1,5 +1,5 @@
 import { authenticate, type Identity } from '../auth';
-import { allowedOrigin } from '../cors';
+import { allowedOrigin, corsHeaders } from '../cors';
 import { isMember } from '../data/repo';
 import type { WorkerEnv } from '../types';
 import type { FileObjectStore } from './file-object-store';
@@ -15,18 +15,6 @@ const IMAGE_UPLOAD_PATH = /^\/conversations\/([^/]+)\/files\/images$/;
 const FILE_UPLOAD_PATH = /^\/conversations\/([^/]+)\/files$/;
 
 const authorizationCache = new Map<string, number>();
-
-function corsHeaders(origin: string): HeadersInit {
-  return {
-    'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers':
-      'Authorization,Content-Type,X-Firebase-AppCheck',
-    'Access-Control-Expose-Headers': 'Content-Length,Content-Type,ETag',
-    'Access-Control-Max-Age': '86400',
-    Vary: 'Origin',
-  };
-}
 
 function appendVaryOrigin(headers: Headers) {
   const vary = headers.get('Vary');
@@ -50,7 +38,7 @@ function response(
   const headers = new Headers(init.headers);
   const origin = allowedOrigin(request, env);
   if (origin) {
-    for (const [key, value] of Object.entries(corsHeaders(origin))) {
+    for (const [key, value] of Object.entries(corsHeaders(origin, env))) {
       if (key.toLowerCase() === 'vary') continue;
       headers.set(key, value);
     }
@@ -318,7 +306,7 @@ export async function handleFilesRequest(
   const origin = allowedOrigin(request, env);
   if (request.method === 'OPTIONS') {
     if (!origin) return new Response('Forbidden origin', { status: 403 });
-    const headers = new Headers(corsHeaders(origin));
+    const headers = new Headers(corsHeaders(origin, env));
     appendVaryOrigin(headers);
     return new Response(null, { status: 204, headers });
   }
