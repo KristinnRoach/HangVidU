@@ -48,9 +48,13 @@ const KNOWN_USER_KEYS = new Set([
   'pushSubscriptions',
 ]);
 
-const LEGACY_USER_KEYS = new Set([
-  'contacts',
-  'profile',
+  const legacyOwners = {
+    contacts: [],
+    profile: [],
+    recentCalls: [],
+    outgoingCall: [],
+    callHistory: [],
+  };
   'recentCalls',
   'outgoingCall',
   'callHistory',
