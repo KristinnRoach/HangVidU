@@ -250,7 +250,7 @@ export default function AddContactModal(props: Props) {
   async function runGenericShare() {
     setStatus({ text: t('contact.invite.share.opening'), type: 'loading' });
     const result = await shareInvite({
-      senderName: getLoggedInUserProfile()?.displayName,
+      senderName: senderName(),
       userId: getLoggedInUserId(),
     });
     const statusConfig: Record<
@@ -284,7 +284,7 @@ export default function AddContactModal(props: Props) {
     });
     const result = await shareInviteViaProvider({
       providerId: providerId as 'whatsapp' | 'telegram',
-      senderName: getLoggedInUserProfile()?.displayName,
+      senderName: senderName(),
       userId: getLoggedInUserId(),
     });
     if (result.status === 'opened') {

@@ -182,6 +182,12 @@ function setupLoggedInUserProfileSync() {
   subscribedToAuth = true;
 
   subscribe('evt:auth:session:logged-in', () => {
+    // Don't leave the previous user's profile visible while the new one loads
+    // (sender/caller/display names read this). Clear only on an actual user
+    // switch, so a same-user token re-emit doesn't flash the guest fallback.
+    const uid = (getAuthState().user as AuthUser | null)?.uid;
+    const cached = loggedInUserProfile();
+    if (cached && cached.uid !== uid) setLoggedInUserProfile(null);
     void loadLoggedInUserProfile().catch(logProfileLoadFailure);
   });
   subscribe('evt:auth:session:logged-out', () => {
