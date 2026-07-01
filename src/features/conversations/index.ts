@@ -1,12 +1,7 @@
 import { subscribe } from '../../shared/events/index.js';
 import { stopConversationActivity } from '../../stores/conversation-activity';
 import { resetConversationsState } from '../../stores/conversations-client.js';
-
-let isReady = false;
-let initPromise: Promise<() => void> | null = null;
-let cleanup: () => void = () => {
-  isReady = false;
-};
+import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
 
 /**
  * Setup contract:
@@ -16,17 +11,9 @@ let cleanup: () => void = () => {
  *
  * Tears down live conversation state when the user logs out.
  */
-export function setup(): Promise<() => void> {
-  if (isReady) {
-    return Promise.resolve(cleanup);
-  }
-  if (initPromise) {
-    return initPromise;
-  }
-
-  initPromise = (async () => {
-    const ac = new AbortController();
-
+export const setup = createSingleFlightSetup({
+  label: '[conversations]',
+  register: (signal) => {
     subscribe(
       'evt:auth:session:logged-out',
       () => {
@@ -37,18 +24,7 @@ export function setup(): Promise<() => void> {
           console.warn('[conversations] logout teardown failed:', error);
         }
       },
-      { signal: ac.signal },
+      { signal },
     );
-
-    cleanup = () => {
-      ac.abort();
-      isReady = false;
-    };
-    isReady = true;
-    return cleanup;
-  })().finally(() => {
-    initPromise = null;
-  });
-
-  return initPromise;
-}
+  },
+});
