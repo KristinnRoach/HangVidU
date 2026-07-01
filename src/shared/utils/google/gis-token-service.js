@@ -1,11 +1,11 @@
-// src/auth/gis-token-service.js
+// src/shared/utils/google/gis-token-service.js
 // GIS OAuth token policy layer (cache + silent/interactive flow).
 
 import {
   createGoogleOAuthTokenClient,
   isGoogleOAuthLoaded,
   requestGoogleOAuthAccessToken,
-} from './adapters/google-identity-adapter.js';
+} from './google-identity-adapter.js';
 
 const TOKEN_EXPIRY_BUFFER_MS = 60_000;
 const tokenCache = new Map();

@@ -1,4 +1,4 @@
-// src/auth/adapters/google-identity-adapter.js
+// src/shared/utils/google/google-identity-adapter.js
 // Thin adapter around Google Identity Services browser APIs.
 
 const GIS_SCRIPT_BASE = 'https://accounts.google.com/gsi/client';

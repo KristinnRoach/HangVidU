@@ -1,14 +1,7 @@
 // src/auth/auth-commands.js — sign-in, sign-out + iOS Safari workarounds
 
-/**
- * TODO(auth commands)
- * This module still includes non-command concerns.
- * - Command and state responsibilities are still mixed in this module; keep
- *   provider-agnostic shared helpers in ./shared while that split is pending.
- */
-
 import { logAuthError } from './shared/auth-error-logging.js';
-import { clearGISTokenCache } from './gis-tokens.js';
+import { clearGisTokenCache } from '../shared/utils/google/gis-token-service.js';
 import { getAuthState, setState, toStableAuthState } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
 import {
@@ -27,13 +20,11 @@ import {
   detectIOSStandalone,
   openInSafariExternal,
 } from './shared/auth-platform-utils.js';
-import { disableGoogleAutoSignIn } from './adapters/google-identity-adapter.js';
+import { disableGoogleAutoSignIn } from '../shared/utils/google/google-identity-adapter.js';
 import {
   isSafariExternalOpenArmed,
   setSafariExternalOpenArmed,
 } from './shared/safari-auth-fallback.js';
-
-export { isSafariExternalOpenArmed, setSafariExternalOpenArmed };
 
 /**
  * A robust, shared error handler for Google Sign-In popup errors.
@@ -140,7 +131,7 @@ export async function signOutUser() {
     await dispatchCommandAndAwait('cmd:user:presence:set-offline', {
       userId: auth.currentUser?.uid,
     });
-    clearGISTokenCache();
+    clearGisTokenCache();
     await signOutFirebaseUser();
     console.info('User signed out');
     disableGoogleAutoSignIn();

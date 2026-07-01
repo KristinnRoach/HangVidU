@@ -1,21 +1,10 @@
 // Public app-facing push notifications facade.
 
-import {
-  dispatchCommandAndAwait,
-  dispatchCommand,
-  subscribe,
-} from '../../shared/events/index.js';
+import { dispatchCommand, subscribe } from '../../shared/events/index.js';
 import { getContactByConversationId } from '../../stores/contactsStore.js';
+import { callCloudFunction } from './cloud-functions.js';
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
-const AUTH_CLOUD_FUNCTION_COMMAND = 'cmd:auth:cloud-function:call';
-
-async function callCloudFunction(functionName, body) {
-  return dispatchCommandAndAwait(AUTH_CLOUD_FUNCTION_COMMAND, {
-    functionName,
-    body,
-  });
-}
 
 function resolveCallNotificationType(type) {
   if (!type) {

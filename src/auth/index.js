@@ -3,7 +3,8 @@
 // Module map:
 //   auth-state.js   — state store + read-only getters + lifecycle events
 //   auth-setup.js   — Firebase init (`initAuth`), persistence, token access
-//   auth-commands.js / password-auth.js / gis-tokens.js — auth operations
+//   auth-commands.js / password-auth.js — auth operations (Google + username)
+//   onetap.js       — Google One Tap sign-in
 //   shared/         — small auth-internal leaf helpers used by multiple modules
 //   solid-auth.tsx  — Solid reactive surface (`AuthProvider` / `useAuth`)
 //
@@ -29,24 +30,13 @@ export {
   signInAsGuest,
 } from './auth-setup.js';
 
-export {
-  signInWithAccountSelection,
-  signOutUser,
-  isSafariExternalOpenArmed,
-  setSafariExternalOpenArmed,
-} from './auth-commands.js';
+export { signInWithAccountSelection, signOutUser } from './auth-commands.js';
 
 export {
   signUpWithUsername,
   signInWithUsernameOrEmail,
   validateUsername,
 } from './password-auth.js';
-
-export {
-  requestContactsAccess,
-  requestGmailSendAccess,
-  clearGISTokenCache,
-} from './gis-tokens.js';
 
 // Read-only state API. `setState` is intentionally NOT re-exported — writers live
 // inside the auth module only. External consumers read via getters and subscribe

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   requestContactsAccess: vi.fn(),
   getLoggedInUserId: vi.fn(),
+  getAuthState: vi.fn(() => ({ user: null })),
   getAllContacts: vi.fn(),
   hydrateContacts: vi.fn(),
   findRegisteredUsersByEmails: vi.fn(),
@@ -11,8 +12,12 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../auth/index.js', () => ({
-  requestContactsAccess: mocks.requestContactsAccess,
   getLoggedInUserId: mocks.getLoggedInUserId,
+  getAuthState: mocks.getAuthState,
+}));
+
+vi.mock('../../../shared/utils/google/gis-tokens.js', () => ({
+  requestContactsAccess: mocks.requestContactsAccess,
 }));
 
 vi.mock('../../../stores/contactsStore.js', () => ({

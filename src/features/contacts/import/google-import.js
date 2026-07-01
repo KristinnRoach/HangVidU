@@ -1,7 +1,5 @@
-import {
-  requestContactsAccess,
-  getLoggedInUserId,
-} from '../../../auth/index.js';
+import { getAuthState, getLoggedInUserId } from '../../../auth/index.js';
+import { requestContactsAccess } from '../../../shared/utils/google/gis-tokens.js';
 import { getAllContacts, hydrateContacts } from '../../../stores/contactsStore.js';
 import { findRegisteredUsersByEmails } from '../../../stores/userProfileStore.js';
 import { fetchGoogleContacts } from '../../../shared/utils/google/google-contacts.js';
@@ -20,7 +18,10 @@ import { buildImportableContacts } from './import-contacts-utils.js';
 export async function importGoogleContacts({ onProgress = () => {} } = {}) {
   try {
     onProgress({ step: 'requesting' });
-    const accessToken = await requestContactsAccess({ interactive: true });
+    const accessToken = await requestContactsAccess({
+      interactive: true,
+      hint: getAuthState().user?.email,
+    });
 
     onProgress({ step: 'fetching' });
     const contacts = await fetchGoogleContacts(accessToken);

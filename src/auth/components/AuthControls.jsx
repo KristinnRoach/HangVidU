@@ -1,10 +1,6 @@
 import { Show, createEffect, createMemo, createSignal } from 'solid-js';
 import { useAuth } from '../solid-auth';
-import {
-  AUTH_COMMANDS,
-  parseAuthLogoutRequested,
-} from '../auth-events-schema.js';
-import { dispatchCommand } from '../../shared/events/index.js';
+import { signOutUser } from '../index.js';
 import { useI18n } from '../../shared/i18n/index.js';
 import LoginButton from './LoginButton';
 import SignInSheet from './SignInSheet';
@@ -56,12 +52,9 @@ export default function AuthControls(props) {
     setAvatarFailed(false);
   });
 
-  function requestLogout() {
+  async function requestLogout() {
     try {
-      dispatchCommand(
-        AUTH_COMMANDS.LOGOUT_REQUESTED,
-        parseAuthLogoutRequested({ source: 'auth-ui' }),
-      );
+      await signOutUser();
     } catch (error) {
       console.error('[AuthControls] logout request failed:', error);
       alert(t('auth.logout_failed'));

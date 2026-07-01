@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('./shared/auth-token.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   getLoggedInUserToken: vi.fn().mockResolvedValue('mock-token-123'),
 }));
 
