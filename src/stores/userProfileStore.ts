@@ -86,6 +86,9 @@ let profileRepo: ProfileRepo | null = null;
 function getProfileRepo() {
   if (profileRepo) return profileRepo;
   profileRepo = createUserProfileRepository(
+    // JS/TS boundary: the repository's JSDoc types the adapter's save() as
+    // (user: unknown), but the D1 adapter takes a concrete shape — structurally
+    // a superset, so the cast just bridges the untyped factory's loose param.
     createUserProfileD1Adapter({
       baseUrl: getHangViduApiBaseUrl(),
       getToken: getLoggedInUserToken,

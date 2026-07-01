@@ -24,7 +24,7 @@ Each feature subscribes to the auth events it cares about from its own `setup()`
 |---|---|---|
 | `evt:auth:session:ready` → `hydrateContacts()` | contacts hydration | `features/contacts/index.ts` `setup()` |
 | `evt:auth:session:logged-in` → `processReferral()`, `hydrateContacts()`, `setupInviteListener()` | contacts + referrals + invites | `features/contacts/index.ts` `setup()` (invites are a sub-feature; fold for now) |
-| `evt:auth:session:logged-in` → `savePublicUserProfile()`, `registerInUserDirectory()` | user-directory write | `stores/userProfileStore.js` `setup()` |
+| `evt:auth:session:logged-in` → `getLoggedInUserProfile()` (hydrates D1 profile, ensures handle, syncs discovery) | user profile write | `stores/userProfileStore.ts` `setup()` |
 | `evt:auth:session:logged-out` → contact request listener cleanup, `resetContacts()` | contacts teardown | `features/contacts/index.ts` `setup()` |
 | `evt:auth:session:logged-out` → `clearLocalStorageOnLogout()` | auth-level housekeeping | `auth/index.ts` `setup()` |
 | `await initAuth()` (last) | kicks off auth lifecycle | `auth/index.ts` `setup()`, after subscribe registration |
