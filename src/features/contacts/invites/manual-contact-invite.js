@@ -1,5 +1,5 @@
 import { getAllContacts, hydrateContacts } from '../../../stores/contactsStore.js';
-import { lookupRegisteredUserByEmail } from '../../../stores/userDirectoryStore.js';
+import { lookupRegisteredUserByEmail } from '../../../stores/userProfileStore.js';
 import { getLoggedInUserId } from '../../../auth/index.js';
 import { sendContactInvite } from './send-contact-invite.js';
 

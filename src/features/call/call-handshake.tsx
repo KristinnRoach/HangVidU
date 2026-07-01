@@ -9,8 +9,10 @@ import {
 } from 'solid-js';
 
 import { useAuth } from '../../auth/solid-auth.js';
+import { getAuthProviderProfileSeed } from '../../auth/index.js';
 import { useP2PContext } from '../../shared/p2p-context.js';
 import { createRoomSignaling } from '../../realtime/index.js';
+import { getLoggedInUserProfile } from '../../stores/userProfileStore.js';
 import type { CallInvite } from './model/call-schema.js';
 import { CallHandshakeController } from './call-handshake-controller.js';
 import type {
@@ -36,6 +38,7 @@ const CallHandshakeContext = createContext<CallHandshakeContextValue>();
 
 export function CallHandshakeProvider(props: ParentProps) {
   const p2p = useP2PContext();
+  const auth = useAuth();
   const [handshakeState, setHandshakeState] =
     createSignal<CallHandshakeState>(null);
   const [isCalleeBusy, setIsCalleeBusy] = createSignal(false);
@@ -43,6 +46,17 @@ export function CallHandshakeProvider(props: ParentProps) {
   const controller = new CallHandshakeController({
     p2p,
     createSignaling: createRoomSignaling,
+    getCallerName: () => {
+      const profile = getLoggedInUserProfile();
+      const seed = getAuthProviderProfileSeed();
+      return (
+        profile?.displayName ||
+        profile?.username ||
+        seed?.displayName ||
+        seed?.username ||
+        'Unknown'
+      );
+    },
     onStateChange: setHandshakeState,
     onCalleeBusy: setIsCalleeBusy,
   });
@@ -108,7 +122,6 @@ export function CallHandshakeProvider(props: ParentProps) {
   // AFTER mount (the listener never attached → no incoming-call dialog until a
   // reload). Keying on the uid avoids tearing down an active call on unrelated
   // auth-state updates (e.g. token refresh) that don't change the user.
-  const auth = useAuth();
   let attachedUid: string | null | undefined;
   createEffect(() => {
     const uid = auth.user()?.uid ?? null;

@@ -26,7 +26,6 @@ import {
 } from '../../../shared/utils/share-invite.js';
 import {
   getLoggedInUserId,
-  getUser,
   requestGmailSendAccess,
 } from '../../../auth/index.js';
 import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
@@ -38,8 +37,10 @@ import {
 import {
   listIncomingContactRequests,
   listOutgoingContactRequests,
+  getLoggedInUserProfile,
   searchUsersByHandle,
-} from '../../../stores/userDirectoryStore.js';
+  type UserSearchResult,
+} from '../../../stores/userProfileStore.js';
 import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
 import { filterImportableContacts } from '../import/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';
@@ -51,11 +52,6 @@ import {
 } from '../../../components/base-legacy/toast.js';
 
 type StatusState = { text: string; type: string };
-type DirectoryUser = {
-  uid: string;
-  displayName: string;
-  username?: string | null;
-};
 type HandleInviteStatus =
   | 'already_saved'
   | 'already_invited'
@@ -70,10 +66,9 @@ type Props = {
 function openEmailComposeFallback(
   contacts: { email: string }[],
   userId: string,
+  senderName: string,
 ) {
   const referralLink = buildReferralLink(userId);
-  const currentUser = getUser();
-  const senderName = currentUser?.displayName || 'A friend';
   const subject = encodeURIComponent(t_('contact.invite.subject'));
   const body = encodeURIComponent(
     t_('contact.invite.body', { name: senderName, link: referralLink }),
@@ -98,12 +93,15 @@ function openEmailComposeFallback(
 export default function AddContactModal(props: Props) {
   const { t } = useI18n();
   const shareProviders = getInviteShareProviders();
+  const senderName = () =>
+    getLoggedInUserProfile()?.displayName ||
+    t('contact.invite.sender_fallback');
 
   const [emailInput, setEmailInput] = createSignal('');
   const [emailSending, setEmailSending] = createSignal(false);
   const [handleInput, setHandleInput] = createSignal('');
   const [handleSearching, setHandleSearching] = createSignal(false);
-  const [handleResults, setHandleResults] = createSignal<DirectoryUser[]>([]);
+  const [handleResults, setHandleResults] = createSignal<UserSearchResult[]>([]);
   const [handleInviteStatuses, setHandleInviteStatuses] = createSignal<
     Record<string, HandleInviteStatus>
   >({});
@@ -171,11 +169,9 @@ export default function AddContactModal(props: Props) {
         try {
           const accessToken = await requestGmailSendAccess();
           const referralLink = buildReferralLink(getLoggedInUserId());
-          const currentUser = getUser();
-          const senderName = currentUser?.displayName || 'A friend';
           const subject = t('contact.invite.subject');
           const body = t('contact.invite.body', {
-            name: senderName,
+            name: senderName(),
             link: referralLink,
           });
           const results = await sendBulkEmailsViaGmail(
@@ -203,7 +199,11 @@ export default function AddContactModal(props: Props) {
           console.error('[AddContactModal] Gmail send error:', err);
           if (err.message === 'Authorization cancelled') {
             showErrorToast(t('contact.invite.permission_denied'));
-            openEmailComposeFallback(contacts, getLoggedInUserId()!);
+            openEmailComposeFallback(
+              contacts,
+              getLoggedInUserId()!,
+              senderName(),
+            );
             return { ok: false, status: 'permission_denied' };
           }
           showErrorToast(
@@ -249,9 +249,8 @@ export default function AddContactModal(props: Props) {
 
   async function runGenericShare() {
     setStatus({ text: t('contact.invite.share.opening'), type: 'loading' });
-    const currentUser = getUser();
     const result = await shareInvite({
-      senderName: currentUser?.displayName,
+      senderName: senderName(),
       userId: getLoggedInUserId(),
     });
     const statusConfig: Record<
@@ -283,10 +282,9 @@ export default function AddContactModal(props: Props) {
       }),
       type: 'loading',
     });
-    const currentUser = getUser();
     const result = await shareInviteViaProvider({
       providerId: providerId as 'whatsapp' | 'telegram',
-      senderName: currentUser?.displayName,
+      senderName: senderName(),
       userId: getLoggedInUserId(),
     });
     if (result.status === 'opened') {
@@ -355,7 +353,11 @@ export default function AddContactModal(props: Props) {
 
     const result = await inviteContactByEmail(email, {
       onNotFound: async () =>
-        openEmailComposeFallback([{ email }], getLoggedInUserId()!),
+        openEmailComposeFallback(
+          [{ email }],
+          getLoggedInUserId()!,
+          senderName(),
+        ),
     });
 
     if (result.status === 'sent') {
@@ -421,10 +423,10 @@ export default function AddContactModal(props: Props) {
       const incomingIds = new Set(
         incomingRequests.map((request) => request.fromId),
       );
-      setHandleResults(users as DirectoryUser[]);
+      setHandleResults(users);
       setHandleInviteStatuses(
         Object.fromEntries(
-          users.flatMap((user: DirectoryUser) => {
+          users.flatMap((user): [string, HandleInviteStatus][] => {
             if (contacts?.[user.uid]) return [[user.uid, 'already_saved']];
             if (incomingIds.has(user.uid))
               return [[user.uid, 'incoming_pending']];
@@ -445,7 +447,7 @@ export default function AddContactModal(props: Props) {
     }
   }
 
-  async function handleSendRequest(user: DirectoryUser) {
+  async function handleSendRequest(user: UserSearchResult) {
     if (!user?.uid || requestingUserId()) return;
     if (user.uid === getLoggedInUserId()) {
       setStatus({ text: t('contact.add.self_error'), type: 'error' });

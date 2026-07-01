@@ -15,10 +15,7 @@ const mocks = vi.hoisted(() => {
     processReferral: vi.fn(() => Promise.resolve()),
     hydrateContacts: vi.fn(() => Promise.resolve()),
     resetContacts: vi.fn(),
-    savePublicUserProfile: vi.fn(() => Promise.resolve()),
-    getPublicUserProfile: vi.fn(() => Promise.resolve(null)),
-    ensureHandle: vi.fn(() => Promise.resolve({ handle: null, assigned: false })),
-    registerInUserDirectory: vi.fn(() => Promise.resolve()),
+    getLoggedInUserProfile: vi.fn(() => null),
     devDebug: vi.fn(),
     stopConversationActivity: vi.fn(),
   };
@@ -32,11 +29,8 @@ vi.mock('../../auth/index.js', () => ({
   initAuth: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('../../stores/userDirectoryStore.js', () => ({
-  savePublicUserProfile: mocks.savePublicUserProfile,
-  getPublicUserProfile: mocks.getPublicUserProfile,
-  ensureHandle: mocks.ensureHandle,
-  registerInUserDirectory: mocks.registerInUserDirectory,
+vi.mock('../../stores/userProfileStore.js', () => ({
+  getLoggedInUserProfile: mocks.getLoggedInUserProfile,
 }));
 
 vi.mock('../../shared/utils/dev/dev-utils.js', () => ({
@@ -114,12 +108,6 @@ describe('wireAuthReactions', () => {
       email: 'ada@example.com',
       photoURL: null,
     };
-    mocks.getPublicUserProfile.mockResolvedValue({
-      displayName: null,
-      photoURL: null,
-      username: null,
-    });
-    mocks.ensureHandle.mockResolvedValue({ handle: 'ada', assigned: false });
 
     const teardown = await wireAuthReactions({ lobbyElement });
 
@@ -130,48 +118,8 @@ describe('wireAuthReactions', () => {
 
     expect(mocks.processReferral).toHaveBeenCalled();
     expect(mocks.hydrateContacts).toHaveBeenCalled();
-    expect(mocks.getPublicUserProfile).toHaveBeenCalledWith(user.uid);
-    expect(mocks.savePublicUserProfile).toHaveBeenCalledWith(user);
-    // Login guarantees a handle via ensureHandle, then indexes the email→account
-    // entry with that handle (replaces the old getPublicUserProfile read).
-    expect(mocks.ensureHandle).toHaveBeenCalledWith(user);
-    expect(mocks.registerInUserDirectory).toHaveBeenCalledWith(user, {
-      username: 'ada',
-    });
+    expect(mocks.getLoggedInUserProfile).toHaveBeenCalledWith();
     expect(mocks.setupInviteListener).toHaveBeenCalledWith();
-
-    teardown();
-  });
-
-  it('does not overwrite an existing D1 profile with provider profile data on login', async () => {
-    const { wireAuthReactions } = await import('../auth-orchestration.js');
-    const user = {
-      uid: 'user-1',
-      displayName: 'Kristinn Roach',
-      email: 'crystalquicksand@gmail.com',
-      photoURL: 'https://example.test/google-photo.jpg',
-    };
-    mocks.getPublicUserProfile.mockResolvedValue({
-      displayName: 'Crystal Quicksand',
-      photoURL: null,
-      username: 'crystal_quicksand',
-    });
-    mocks.ensureHandle.mockResolvedValue({
-      handle: 'crystal_quicksand',
-      assigned: false,
-    });
-
-    const teardown = await wireAuthReactions({ lobbyElement: { id: 'lobby' } });
-
-    await mocks.handlers.get('evt:auth:session:logged-in')({
-      state: { user },
-    });
-
-    expect(mocks.savePublicUserProfile).not.toHaveBeenCalled();
-    expect(mocks.ensureHandle).toHaveBeenCalledWith(user);
-    expect(mocks.registerInUserDirectory).toHaveBeenCalledWith(user, {
-      username: 'crystal_quicksand',
-    });
 
     teardown();
   });

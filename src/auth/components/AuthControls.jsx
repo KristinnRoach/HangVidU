@@ -25,10 +25,9 @@ function smartTruncateName(fullName, maxLength = 10) {
   return `${firstName.slice(0, maxLength - 3)}...`;
 }
 
-export default function AuthControls() {
+export default function AuthControls(props) {
   const { t } = useI18n();
   const {
-    user,
     isLoggedIn,
     isLoading,
     isLoggingIn,
@@ -39,15 +38,16 @@ export default function AuthControls() {
 
   // TODO: Decide whether to show name, for now just showing avatar
   const displayName = createMemo(() => {
+    const profile = props.loggedInProfile?.();
     const name =
-      user()?.displayName ||
-      user()?.username ||
-      user()?.email ||
+      profile?.displayName ||
+      profile?.username ||
+      profile?.email ||
       t('auth.guest_user');
     return smartTruncateName(name);
   });
 
-  const photoUrl = createMemo(() => user()?.photoURL || '');
+  const photoUrl = createMemo(() => props.loggedInProfile?.()?.photoURL || '');
   const avatarInitial = createMemo(() =>
     (displayName() || t('auth.guest_user')).trim().slice(0, 1).toUpperCase(),
   );

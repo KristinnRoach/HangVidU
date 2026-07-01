@@ -1,12 +1,7 @@
 import { subscribe } from '../shared/events/index.js';
 import { initAuth } from '../auth/index.js';
 import { devDebug } from '../shared/utils/dev/dev-utils.js';
-import {
-  getPublicUserProfile,
-  savePublicUserProfile,
-  registerInUserDirectory,
-  ensureHandle,
-} from '../stores/userDirectoryStore.js';
+import { getLoggedInUserProfile } from '../stores/userProfileStore.js';
 import { setupInviteListener } from '../features/contacts/invites/invite-listener.js';
 import { processReferral } from '../features/contacts/referrals/referral-handler.js';
 import { hydrateContacts, resetContacts } from '../stores/contactsStore.js';
@@ -164,27 +159,7 @@ export function wireAuthReactions() {
               ),
             );
 
-            const user = state?.user;
-            if (user) {
-              try {
-                try {
-                  const profile = await getPublicUserProfile(user.uid);
-                  if (!profile?.displayName && !profile?.photoURL) {
-                    await savePublicUserProfile(user);
-                  }
-                } catch (e) {
-                  console.warn('[AUTH] Failed to sync public profile on login:', e);
-                }
-                const { handle } = await ensureHandle(user);
-                // Directory entry is the email→account index; skip when the
-                // user has no email (e.g. username-only password accounts).
-                if (user.email) {
-                  await registerInUserDirectory(user, { username: handle });
-                }
-              } catch (e) {
-                console.warn('[AUTH] Failed to save profile / ensure handle:', e);
-              }
-            }
+            getLoggedInUserProfile();
 
             cleanupLoginScopedListeners();
 

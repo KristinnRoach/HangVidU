@@ -1,6 +1,6 @@
 ## Contacts Current State
 
-- Contact connect/request writes currently go through `stores/userDirectoryStore`.
+- Contact connect/request writes currently go through `stores/userProfileStore`.
 
 - `stores/contactsStore` is currently the hydrated contacts read model. It also
   handles small contact metadata updates such as `updateContact()` and

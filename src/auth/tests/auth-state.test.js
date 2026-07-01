@@ -12,7 +12,7 @@ describe('waitForAuthReady', () => {
     setState({
       status: 'authenticated',
       isLoggedIn: true,
-      user: { uid: 'user-1', displayName: 'Test' },
+      user: { uid: 'user-1', email: null },
     });
 
     const snapshot = await waitForAuthReady();

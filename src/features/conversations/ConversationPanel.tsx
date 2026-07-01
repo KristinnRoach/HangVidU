@@ -10,7 +10,7 @@ import {
   onCleanup,
 } from 'solid-js';
 import { Paperclip, Download } from 'lucide-solid';
-import { getUserName } from '../../auth/index.js';
+import { getLoggedInUserProfile } from '../../stores/userProfileStore';
 
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
@@ -481,7 +481,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     repository: messageRepository,
     store,
     actions,
-    getSenderName: getUserName,
+    getSenderName: () => getLoggedInUserProfile()?.displayName,
     getRecipientIds: () => props.selection?.remoteParticipantIds ?? [],
   });
 

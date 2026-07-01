@@ -6,7 +6,6 @@ import {
 import {
   getLoggedInUserId,
   getLoggedInUserToken,
-  getUser,
 } from '../../auth/index.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import type { CreateRoomSignalingOptions, P2PRoomSignaling } from '@kidlib/p2p';
@@ -42,6 +41,7 @@ type CreateRoomSignaling = (
 type CallHandshakeControllerOptions = {
   p2p: SolidP2PRoom;
   createSignaling: CreateRoomSignaling;
+  getCallerName: () => string;
   onStateChange: (state: CallHandshakeState) => void;
   onCalleeBusy: (busy: boolean) => void;
 };
@@ -49,6 +49,7 @@ type CallHandshakeControllerOptions = {
 export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
   private readonly createSignaling: CreateRoomSignaling;
+  private readonly getCallerName: () => string;
   private readonly onStateChange: (state: CallHandshakeState) => void;
   private readonly onCalleeBusy: (busy: boolean) => void;
 
@@ -62,11 +63,13 @@ export class CallHandshakeController {
   constructor({
     p2p,
     createSignaling,
+    getCallerName,
     onStateChange,
     onCalleeBusy,
   }: CallHandshakeControllerOptions) {
     this.p2p = p2p;
     this.createSignaling = createSignaling;
+    this.getCallerName = getCallerName;
     this.onStateChange = onStateChange;
     this.onCalleeBusy = onCalleeBusy;
   }
@@ -167,9 +170,7 @@ export class CallHandshakeController {
     });
 
     const { calleeId, calleeName, audioOnly } = details;
-    const currentUser = getUser();
-    const callerName =
-      currentUser?.displayName || currentUser?.username || 'Unknown';
+    const callerName = this.getCallerName();
     let roomId: string;
     try {
       roomId = await this.resolveCallRoomId(calleeId);
