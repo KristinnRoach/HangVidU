@@ -152,6 +152,10 @@ async function hydrateLoggedInUserProfile(
     photoURL: null,
   };
   let profile = await getUserProfileById(user.uid);
+  // Writes below hit /users/me/* using the *current* auth token, so a user
+  // switch mid-hydration would PUT this (old) user's seed onto the new user.
+  // Bail before any write if the session moved on.
+  if ((getAuthState().user as AuthUser | null)?.uid !== user.uid) return null;
   if (!profile?.displayName && !profile?.photoURL) {
     await savePublicUserProfile(seed);
   }
