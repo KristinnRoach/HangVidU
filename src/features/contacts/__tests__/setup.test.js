@@ -146,6 +146,28 @@ describe('contacts setup', () => {
     expect(mocks.setupInviteListener).not.toHaveBeenCalled();
   });
 
+  it('does not start an invite listener after teardown', async () => {
+    let finishReferral;
+    mocks.processReferral.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishReferral = resolve;
+        }),
+    );
+    const { setup } = await import('../index');
+    const teardown = await setup();
+    mocks.hydrateContacts.mockClear();
+
+    const login = mocks.handlers.get('evt:auth:session:logged-in')();
+    await Promise.resolve();
+    teardown();
+    finishReferral();
+    await login;
+
+    expect(mocks.hydrateContacts).not.toHaveBeenCalled();
+    expect(mocks.setupInviteListener).not.toHaveBeenCalled();
+  });
+
   it('aborts subscriptions on teardown', async () => {
     const { setup } = await import('../index');
     const teardown = await setup();
