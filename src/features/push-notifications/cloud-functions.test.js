@@ -66,6 +66,22 @@ describe('callCloudFunction', () => {
     expect(err.payload).toEqual({ error: 'Unauthorized' });
   });
 
+  it('throws a 504 when the request times out', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(
+        Object.assign(new Error('The operation timed out'), {
+          name: 'TimeoutError',
+        }),
+      ),
+    );
+
+    const err = await callCloudFunction('fn').catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.status).toBe(504);
+    expect(err.message).toContain('timed out');
+  });
+
   it('handles non-JSON error responses gracefully', async () => {
     vi.stubGlobal(
       'fetch',
