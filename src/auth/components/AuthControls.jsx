@@ -36,7 +36,6 @@ export default function AuthControls(props) {
   } = useAuth();
   const [avatarFailed, setAvatarFailed] = createSignal(false);
 
-  // TODO: Decide whether to show name, for now just showing avatar
   const displayName = createMemo(() => {
     const profile = props.loggedInProfile?.();
     const name =
