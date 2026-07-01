@@ -11,7 +11,7 @@ their direction of allowed imports:
 | `src/lib/`         | Framework-agnostic primitives, **zero app knowledge** (`event-emitter/`, `media/`, `utils/`). "Could be published to npm." | `lib` only                                                       |
 | `src/shared/`      | App-aware cross-cutting code that knows HangVidU concepts (`events/`, `i18n/`, `p2p-context`, `utils/`). | `shared`, `lib`                                                 |
 | `src/infra/`       | External-SDK wiring: Firebase init, App Check, RTDB client, Sentry.                    | `infra`, `lib`                                                   |
-| `src/storage/`     | Durable persistence ports (`contacts/`, `conversations/`, `files/`, `user/`). D1 + R2 spine; RTDB for contacts/profile/presence (migrating). | `storage`, `shared`, `lib`, `infra`                             |
+| `src/storage/`     | Durable persistence ports (`contacts/`, `conversations/`, `files/`, `user/`). D1 + R2 spine; RTDB remains for user presence and legacy cleanup. | `storage`, `shared`, `lib`, `infra`                             |
 | `src/realtime/`    | Ephemeral coordination (WebRTC signaling, conversation channel, user mailbox). Backed by Cloudflare Durable Objects in `backend/cloudflare/`. | `realtime`, `shared`, `lib`, `infra`, `auth`                   |
 | `src/stores/`      | Solid reactive mirrors over storage/realtime (`contactsStore`, `filesStore`, `selectedConversationStore`, …). | `stores`, `auth`, `shared`, `lib`, `storage`, `realtime`, `infra`, `feature` |
 | `src/auth/`        | Session/auth state and helpers.                                                        | `auth`, `shared`, `lib`, `infra`, `components`                  |

@@ -1,11 +1,9 @@
 # Contacts RTDB Usage
 
-Contacts are now wired through the D1 repository path for this branch.
+Contacts are wired through the D1 repository path.
 
-RTDB contact data is still kept in place for existing remote users until the
-production D1 backfill and deploy are complete. Do not delete RTDB contact nodes
-or rules as part of the users-to-D1 PR.
+RTDB contact data may still exist in old exports or production cleanup windows.
+Do not add app code that writes contacts to RTDB again.
 
 Known RTDB leftovers:
-- Existing production users/contacts need one-shot backfill into remote D1.
-- RTDB remains the rollback/source data until post-deploy verification passes.
+- Old `users/*/contacts` nodes are cleanup/backfill input only.

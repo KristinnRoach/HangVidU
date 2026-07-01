@@ -41,16 +41,20 @@ const KNOWN_TOP_LEVEL = new Set([
 ]);
 
 const KNOWN_USER_KEYS = new Set([
-  'contacts',
   'incomingInvites',
   'acceptedInvites',
   'calls', // new (incoming/response)
-  'profile',
   'presence',
   'pushSubscriptions',
 ]);
 
-const LEGACY_USER_KEYS = new Set([
+  const legacyOwners = {
+    contacts: [],
+    profile: [],
+    recentCalls: [],
+    outgoingCall: [],
+    callHistory: [],
+  };
   'recentCalls',
   'outgoingCall',
   'callHistory',
@@ -59,11 +63,10 @@ const LEGACY_USER_KEYS = new Set([
 const KNOWN_ROOM_KEYS = new Set([
   'meta',
   'participants',
-  'p2pSignaling',
-  // legacy WebRTC + watch-together — flagged if present
 ]);
 
 const LEGACY_ROOM_KEYS = new Set([
+  'p2pSignaling',
   'watch',
   'mediaSyncSignaling',
   'offerCandidates',

@@ -15,8 +15,7 @@ import type { RelayChannel, ServerMessage } from '../protocol';
 import { buildHangViduWebSocketUrl } from '../../infra/hangvidu-api-url';
 
 /**
- * Durable Object `P2PRoomSignaling` — drop-in replacement for
- * `createFirebaseRoomSignaling`. Talks to the signaling worker over one
+ * Durable Object `P2PRoomSignaling`. Talks to the signaling worker over one
  * WebSocket per room and maps the port's offer/answer/ICE calls onto the
  * generic `relay` protocol. The DO is a dumb relay; the SDP offer-vs-answer
  * distinction is an adapter-owned convention carried in the relay payload.

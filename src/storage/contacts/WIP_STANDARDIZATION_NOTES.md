@@ -21,8 +21,8 @@ Updated: 2026-06-26
   storage boundary; missing labels become `''`, not `null`.
 - UI display text should use `getContactLabel(contact)` instead of re-creating
   fallback chains.
-- RTDB contacts remain only as legacy/deferred code until production cutover is
-  verified.
+- Legacy RTDB contact data may still exist for cleanup/backfill, but app
+  storage uses D1.
 
 ## Notes
 
