@@ -19,7 +19,10 @@ import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
 import { compressImage } from '@lib/media/image-compress.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
 import { linkifyText } from './utils/linkifyText.jsx';
-import { formatTimestamp, TIMESTAMP_THRESHOLD_MS } from './utils/format-timestamp.js';
+import {
+  formatTimestamp,
+  TIMESTAMP_THRESHOLD_MS,
+} from './utils/format-timestamp.js';
 import {
   IMAGE_COMPRESSION_THRESHOLD_BYTES,
   MAX_R2_FILE_UPLOAD_BYTES,
@@ -72,8 +75,8 @@ function MessageHistorySkeleton() {
   return (
     <div
       class={`${styles.messages} ${styles.messageSkeleton}`}
-      aria-busy='true'
-      aria-label='Loading message history'
+      aria-busy="true"
+      aria-label="Loading message history"
     >
       <div class={`${styles.skeletonBubble} ${styles.skeletonIncoming}`} />
       <div class={`${styles.skeletonBubble} ${styles.skeletonOwn}`} />
@@ -705,7 +708,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                               <For each={msg.actions}>
                                 {(action) => (
                                   <button
-                                    type='button'
+                                    type="button"
                                     class={styles.msgActionBtn}
                                     onClick={action.onClick}
                                   >
@@ -793,7 +796,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                       height={file.height}
                                       alt={file.fileName}
                                       onLoad={followIfPinned}
-                                      role='button'
+                                      role="button"
                                       tabIndex={0}
                                       aria-label={`Open preview for ${file.fileName}`}
                                       ref={(el) => {
@@ -844,7 +847,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
                                       {displayAttachmentFileName(file.fileName)}
                                       <Download
                                         size={14}
-                                        aria-hidden='true'
+                                        aria-hidden="true"
                                         class={styles.fileMessageDownloadIcon}
                                       />
                                     </a>
@@ -874,27 +877,27 @@ export default function ConversationPanel(props: ConversationPanelProps) {
 
         <form class={styles.form} onSubmit={onSubmit}>
           <input
-            title='Attach file'
+            title="Attach file"
             ref={fileInputEl}
             class={styles.fileInput}
-            type='file'
+            type="file"
             onChange={onFileInput}
           />
           <button
             class={styles.attach}
-            type='button'
-            aria-label='Attach file'
-            title='Attach file'
+            type="button"
+            aria-label="Attach file"
+            title="Attach file"
             disabled={state.sending || filePreparing()}
             onClick={() => fileInputEl?.click()}
           >
-            <Paperclip size={20} aria-hidden='true' />
+            <Paperclip size={20} aria-hidden="true" />
           </button>
           <textarea
             autofocus
             ref={inputTextAreaEl}
             class={styles.growableTextArea}
-            placeholder='Message…'
+            placeholder="Message…"
             value={state.draft}
             onInput={(e) => {
               const text = e.currentTarget.value;
@@ -906,7 +909,7 @@ export default function ConversationPanel(props: ConversationPanelProps) {
           <button
             ref={attachSendButton}
             class={styles.send}
-            type='submit'
+            type="submit"
             disabled={!state.draft.trim() || state.sending || filePreparing()}
           >
             Send

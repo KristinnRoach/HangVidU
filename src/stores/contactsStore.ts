@@ -10,7 +10,7 @@ import {
   createContactsD1Repository,
 } from '../storage/contacts/index.js';
 
-/* TODO: Once storage/contacts/* is converted to typescript: 
+/* TODO: Once storage/contacts/* is converted to typescript:
          import schema from storage and avoid drift (if should stay identical) => export type Contact = z.infer<typeof ContactRecordSchema>;*/
 
 export type Contact = {

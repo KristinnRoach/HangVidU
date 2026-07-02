@@ -204,7 +204,7 @@ class DiagnosticLogger {
 
     if (filters.category) {
       filteredLogs = filteredLogs.filter(
-        (log) => log.category === filters.category
+        (log) => log.category === filters.category,
       );
     }
 
@@ -214,19 +214,19 @@ class DiagnosticLogger {
 
     if (filters.roomId) {
       filteredLogs = filteredLogs.filter(
-        (log) => log.data.roomId === filters.roomId
+        (log) => log.data.roomId === filters.roomId,
       );
     }
 
     if (filters.since) {
       filteredLogs = filteredLogs.filter(
-        (log) => log.timestamp >= filters.since
+        (log) => log.timestamp >= filters.since,
       );
     }
 
     if (filters.until) {
       filteredLogs = filteredLogs.filter(
-        (log) => log.timestamp <= filters.until
+        (log) => log.timestamp <= filters.until,
       );
     }
 
@@ -252,7 +252,7 @@ class DiagnosticLogger {
       (log) =>
         (log.category === 'FIREBASE' && log.data.success === false) ||
         (log.category === 'INCOMING_CALL' && log.data.decision === 'REJECT') ||
-        (log.category === 'LISTENER' && log.event === 'DUPLICATE_PREVENTED')
+        (log.category === 'LISTENER' && log.event === 'DUPLICATE_PREVENTED'),
     );
 
     return {
@@ -261,10 +261,10 @@ class DiagnosticLogger {
         .length,
       rejectedCalls: failures.filter(
         (log) =>
-          log.category === 'INCOMING_CALL' && log.data.decision === 'REJECT'
+          log.category === 'INCOMING_CALL' && log.data.decision === 'REJECT',
       ).length,
       duplicateListeners: failures.filter(
-        (log) => log.event === 'DUPLICATE_PREVENTED'
+        (log) => log.event === 'DUPLICATE_PREVENTED',
       ).length,
       failures,
     };
@@ -315,7 +315,7 @@ class DiagnosticLogger {
    */
   getLogsInTimeRange(startTime, endTime) {
     return this.logs.filter(
-      (log) => log.timestamp >= startTime && log.timestamp <= endTime
+      (log) => log.timestamp >= startTime && log.timestamp <= endTime,
     );
   }
 
@@ -366,7 +366,7 @@ class DiagnosticLogger {
           const existingIds = new Set(this.logs.map((log) => log.id));
           const newLogs = parsed.logs.filter((log) => !existingIds.has(log.id));
           this.logs = [...this.logs, ...newLogs].sort(
-            (a, b) => a.timestamp - b.timestamp
+            (a, b) => a.timestamp - b.timestamp,
           );
           return newLogs.length;
         }
@@ -454,7 +454,7 @@ class DiagnosticLogger {
       (log) =>
         log.category === 'TIMING' &&
         log.event === 'START' &&
-        log.data.timingId === timingId
+        log.data.timingId === timingId,
     );
 
     if (startLog) {
@@ -549,9 +549,9 @@ if (typeof window !== 'undefined') {
       const logs = logger.getLogsInTimeRange(startTime, endTime);
       console.log(
         `Logs from ${new Date(startTime).toISOString()} to ${new Date(
-          endTime
+          endTime,
         ).toISOString()}:`,
-        logs
+        logs,
       );
       return logs;
     },
@@ -682,7 +682,7 @@ Example Usage:
         const keys = DiagnosticLogger.getPersistedLogKeys();
         if (keys.length > 0) {
           console.log(
-            `Found ${keys.length} persisted diagnostic log sessions. Use diagnosticLogger.loadPersistedLogs(key) to load them.`
+            `Found ${keys.length} persisted diagnostic log sessions. Use diagnosticLogger.loadPersistedLogs(key) to load them.`,
           );
           console.log('Available keys:', keys);
         }

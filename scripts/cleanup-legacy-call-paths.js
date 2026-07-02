@@ -34,7 +34,10 @@ const serviceAccountPath = path.join(
 );
 
 if (!fs.existsSync(serviceAccountPath)) {
-  console.error('Error: service-account-key.json not found at', serviceAccountPath);
+  console.error(
+    'Error: service-account-key.json not found at',
+    serviceAccountPath,
+  );
   process.exit(1);
 }
 
@@ -42,7 +45,8 @@ const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
+  databaseURL:
+    'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
 });
 
 const db = admin.database();
@@ -100,7 +104,9 @@ async function main() {
   for (const key of LEGACY_KEYS) {
     console.log(`  Users with ${key}: ${counts[key]}`);
   }
-  console.log(`  Total path deletions queued: ${Object.keys(updates).length}\n`);
+  console.log(
+    `  Total path deletions queued: ${Object.keys(updates).length}\n`,
+  );
 
   if (Object.keys(updates).length === 0) {
     console.log('Nothing to delete.');

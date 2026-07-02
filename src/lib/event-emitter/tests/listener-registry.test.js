@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 import { ListenerRegistry } from '../listener-registry.js';
 
 describe('ListenerRegistry', () => {
@@ -34,7 +34,10 @@ describe('ListenerRegistry', () => {
     it('supports AbortSignal cleanup', () => {
       const controller = new AbortController();
       const cb = vi.fn();
-      const removeEventListener = vi.spyOn(controller.signal, 'removeEventListener');
+      const removeEventListener = vi.spyOn(
+        controller.signal,
+        'removeEventListener',
+      );
 
       const unsub = registry.on('foo', cb, { signal: controller.signal });
       expect(registry.listenerCount('foo')).toBe(1);
@@ -97,7 +100,10 @@ describe('ListenerRegistry', () => {
 
     it('detaches AbortSignal listener when removed via off()', () => {
       const controller = new AbortController();
-      const removeEventListener = vi.spyOn(controller.signal, 'removeEventListener');
+      const removeEventListener = vi.spyOn(
+        controller.signal,
+        'removeEventListener',
+      );
       const cb = vi.fn();
 
       registry.on('foo', cb, { signal: controller.signal });

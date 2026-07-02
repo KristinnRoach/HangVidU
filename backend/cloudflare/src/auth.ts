@@ -98,10 +98,13 @@ async function getSigningKey(kid: string): Promise<CryptoKey | null> {
     if (refreshed.keys.size > 0) {
       keyCache = refreshed;
     } else if (keyCache) {
-      console.warn('[auth] JWKS refresh yielded no usable keys; keeping cache', {
-        cachedKeys: keyCache.keys.size,
-        cacheExpiresAt: keyCache.expiresAt,
-      });
+      console.warn(
+        '[auth] JWKS refresh yielded no usable keys; keeping cache',
+        {
+          cachedKeys: keyCache.keys.size,
+          cacheExpiresAt: keyCache.expiresAt,
+        },
+      );
     }
   }
   return keyCache?.keys.get(kid) ?? null;
@@ -175,7 +178,9 @@ function logJwksProblem(
   });
 }
 
-function describeError(error: unknown): { name?: string; message?: string } | unknown {
+function describeError(
+  error: unknown,
+): { name?: string; message?: string } | unknown {
   if (error instanceof Error) {
     return { name: error.name, message: error.message };
   }

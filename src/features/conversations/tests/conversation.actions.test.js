@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { createConversationActions } from '../conversation.actions.js';
 import { createConversationState } from '../conversation.state.js';
 
@@ -87,7 +87,9 @@ describe('conversations actions', () => {
       ...message({ id: 'temp-1', senderId: 'me', sentAt: 10 }),
       status: 'sending',
     });
-    actions.receiveMessage(message({ id: 'real-1', senderId: 'me', sentAt: 10 }));
+    actions.receiveMessage(
+      message({ id: 'real-1', senderId: 'me', sentAt: 10 }),
+    );
 
     actions.markSent('temp-1', 'real-1');
 

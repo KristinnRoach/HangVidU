@@ -42,6 +42,9 @@ export function saveLocalDraft(
   }
 }
 
-export function clearLocalDraft(userId: UserId, conversationId: ConversationId) {
+export function clearLocalDraft(
+  userId: UserId,
+  conversationId: ConversationId,
+) {
   saveLocalDraft(userId, conversationId, '');
 }

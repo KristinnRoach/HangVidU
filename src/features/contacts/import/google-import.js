@@ -1,6 +1,9 @@
 import { getAuthState, getLoggedInUserId } from '../../../auth/index.js';
 import { requestContactsAccess } from '../../../shared/utils/google/gis-tokens.js';
-import { getAllContacts, hydrateContacts } from '../../../stores/contactsStore.js';
+import {
+  getAllContacts,
+  hydrateContacts,
+} from '../../../stores/contactsStore.js';
 import { findRegisteredUsersByEmails } from '../../../stores/userProfileStore.js';
 import { fetchGoogleContacts } from '../../../shared/utils/google/google-contacts.js';
 import { buildImportableContacts } from './import-contacts-utils.js';

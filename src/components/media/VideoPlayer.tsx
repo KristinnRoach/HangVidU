@@ -57,11 +57,6 @@ export default function VideoPlayer(props: VideoPlayerProps) {
   });
 
   return (
-    <video
-      {...videoProps}
-      ref={video}
-      style={mergedStyle()}
-      playsinline
-    />
+    <video {...videoProps} ref={video} style={mergedStyle()} playsinline />
   );
 }

@@ -1,5 +1,12 @@
 import { env, SELF } from 'cloudflare:test';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vite-plus/test';
 
 const PROJECT_ID = env.FIREBASE_PROJECT_ID;
 const KID = 'test-key-1';
@@ -17,7 +24,8 @@ function b64urlFromString(s: string): string {
 function b64urlFromBytes(buf: ArrayBuffer): string {
   let binary = '';
   const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i++)
+    binary += String.fromCharCode(bytes[i]);
   return b64urlFromString(binary);
 }
 
@@ -33,7 +41,9 @@ function validClaims(sub = 'user-a') {
 }
 
 async function signToken(claims: Record<string, unknown>): Promise<string> {
-  const headerB64 = b64urlFromString(JSON.stringify({ alg: 'RS256', kid: KID }));
+  const headerB64 = b64urlFromString(
+    JSON.stringify({ alg: 'RS256', kid: KID }),
+  );
   const payloadB64 = b64urlFromString(JSON.stringify(claims));
   const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
   const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, data);
@@ -316,12 +326,15 @@ describe('files worker routing + auth', () => {
     const token = await signToken(validClaims('user-a'));
     await allowMember('conversation-membership-test', 'user-a');
 
-    const upload = await request('/conversations/conversation-membership-test/files/images', {
-      method: 'POST',
-      token,
-      contentType: 'image/webp',
-      body: 'image',
-    });
+    const upload = await request(
+      '/conversations/conversation-membership-test/files/images',
+      {
+        method: 'POST',
+        token,
+        contentType: 'image/webp',
+        body: 'image',
+      },
+    );
 
     expect(upload.status).toBe(201);
   });

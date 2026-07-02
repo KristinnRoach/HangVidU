@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vite-plus/test';
 
 // Mock dependencies so the module can load — only t() matters for getBlockedMessage
 vi.mock('../../push-notifications/index.js', () => ({

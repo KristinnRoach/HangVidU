@@ -1,4 +1,1 @@
-export {
-  createFilesClient,
-  type R2StorageDescriptor,
-} from './files-client.js';
+export { createFilesClient, type R2StorageDescriptor } from './files-client.js';

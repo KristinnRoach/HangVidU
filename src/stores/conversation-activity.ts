@@ -44,7 +44,8 @@ const [serverLastRead, setServerLastRead] = createSignal<Map<string, number>>(
 /** Reactive: participant uid -> latest activity. Read in useContacts. */
 export const conversationActivity = activity;
 // ── per-device read state ────────────────────────────────────────────────────
-const readKey = (conversationId: string) => `hangvidu:lastRead:${conversationId}`;
+const readKey = (conversationId: string) =>
+  `hangvidu:lastRead:${conversationId}`;
 
 export function getLastReadAt(conversationId: string): number {
   readVersion();

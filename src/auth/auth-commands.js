@@ -44,7 +44,10 @@ function handleSignInError(error) {
   const { isIOSStandalone } = detectIOSStandalone();
 
   // iOS Standalone PWA: arm Safari fallback and ask user to tap Login again.
-  if ((code === 'network-error' || code === 'popup-blocked') && isIOSStandalone) {
+  if (
+    (code === 'network-error' || code === 'popup-blocked') &&
+    isIOSStandalone
+  ) {
     console.warn(
       `[AUTH] ${code} inside iOS standalone PWA. Arming Safari fallback.`,
     );

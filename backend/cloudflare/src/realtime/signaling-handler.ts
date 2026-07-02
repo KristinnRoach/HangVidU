@@ -12,27 +12,27 @@ export async function handleSignalingRequest(
   request: Request,
   env: WorkerEnv,
 ): Promise<Response> {
-    const url = new URL(request.url);
-    const match = url.pathname.match(ROOM_PATH);
-    if (!match) return new Response('Not found', { status: 404 });
+  const url = new URL(request.url);
+  const match = url.pathname.match(ROOM_PATH);
+  if (!match) return new Response('Not found', { status: 404 });
 
-    if (request.headers.get('Upgrade') !== 'websocket') {
-      return new Response('Expected WebSocket upgrade', { status: 426 });
-    }
+  if (request.headers.get('Upgrade') !== 'websocket') {
+    return new Response('Expected WebSocket upgrade', { status: 426 });
+  }
 
-    if (!isAllowedOrigin(request.headers.get('Origin'), env)) {
-      return new Response('Forbidden origin', { status: 403 });
-    }
+  if (!isAllowedOrigin(request.headers.get('Origin'), env)) {
+    return new Response('Forbidden origin', { status: 403 });
+  }
 
-    const identity = await authenticateWebSocket(request, env);
-    if (!identity) return new Response('Unauthorized', { status: 401 });
+  const identity = await authenticateWebSocket(request, env);
+  if (!identity) return new Response('Unauthorized', { status: 401 });
 
-    let roomId: string;
-    try {
-      roomId = decodeURIComponent(match[1]);
-    } catch {
-      return new Response('Invalid roomId', { status: 400 });
-    }
-    const stub = env.SIGNALING_ROOM.getByName(roomId);
-    return stub.fetch(request);
+  let roomId: string;
+  try {
+    roomId = decodeURIComponent(match[1]);
+  } catch {
+    return new Response('Invalid roomId', { status: 400 });
+  }
+  const stub = env.SIGNALING_ROOM.getByName(roomId);
+  return stub.fetch(request);
 }

@@ -1,8 +1,5 @@
 import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
-import {
-  setupUpdateHandler,
-  stopUpdateChecks,
-} from './update-handlers.js';
+import { setupUpdateHandler, stopUpdateChecks } from './update-handlers.js';
 
 /**
  * Setup contract:

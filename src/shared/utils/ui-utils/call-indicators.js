@@ -52,7 +52,9 @@ class CallIndicators {
    */
   startCallIndicators(callerName) {
     if (import.meta.env.DEV) {
-      console.log(`[CallIndicators] Starting call indicators for: ${callerName}`);
+      console.log(
+        `[CallIndicators] Starting call indicators for: ${callerName}`,
+      );
     }
 
     // Always start title flashing (even if visible, for consistency)
@@ -73,7 +75,8 @@ class CallIndicators {
    * Stop all visual indicators
    */
   stopCallIndicators() {
-    if (import.meta.env.DEV) console.log('[CallIndicators] Stopping call indicators');
+    if (import.meta.env.DEV)
+      console.log('[CallIndicators] Stopping call indicators');
 
     this.stopTitleFlashing();
     this.restoreFavicon();
@@ -166,7 +169,8 @@ class CallIndicators {
       navigator
         .clearAppBadge()
         .then(() => {
-          if (import.meta.env.DEV) console.log('[CallIndicators] Badge cleared');
+          if (import.meta.env.DEV)
+            console.log('[CallIndicators] Badge cleared');
         })
         .catch((err) => {
           console.warn('[CallIndicators] Badge clear failed:', err);

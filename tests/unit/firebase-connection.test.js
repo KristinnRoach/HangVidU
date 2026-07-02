@@ -3,7 +3,7 @@
  * Focus: Are listeners staying attached after Firebase operations?
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vite-plus/test';
 import { getDiagnosticLogger } from '../../src/shared/utils/dev/diagnostic-logger.js';
 
 describe('Firebase Connection Recovery', () => {
@@ -57,7 +57,7 @@ describe('Firebase Connection Recovery', () => {
       {
         detectedBy: 'no_listener_attached',
         problem: 'listener_was_cleaned_up',
-      }
+      },
     );
 
     const logs = logger.getLogs();
@@ -75,11 +75,11 @@ describe('Firebase Connection Recovery', () => {
     console.log('Listener attached:', !!listenerAttach);
     console.log(
       'Firebase operations completed:',
-      logs.filter((log) => log.category === 'FIREBASE').length
+      logs.filter((log) => log.category === 'FIREBASE').length,
     );
     console.log('Member join detected:', !!memberJoin);
     console.log(
-      'Potential issue: Listeners cleaned up during Firebase operations'
+      'Potential issue: Listeners cleaned up during Firebase operations',
     );
 
     return {
@@ -131,14 +131,14 @@ describe('Firebase Connection Recovery', () => {
 
     const logs = logger.getLogs();
     const connectionStates = logs.filter(
-      (log) => log.category === 'FIREBASE' && log.event === 'CONNECTION_STATE'
+      (log) => log.category === 'FIREBASE' && log.event === 'CONNECTION_STATE',
     );
 
     console.log('=== CONNECTION STATE ANALYSIS ===');
     console.log('Connection state changes:', connectionStates.length);
     console.log(
       'States:',
-      connectionStates.map((log) => log.data.state)
+      connectionStates.map((log) => log.data.state),
     );
     console.log('Potential issue: Listeners not restored after reconnection');
 

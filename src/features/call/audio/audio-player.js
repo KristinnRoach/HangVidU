@@ -58,7 +58,7 @@ export class AudioPlayer {
         // Autoplay blocked - user interaction required
         console.warn(
           '[AudioPlayer] Autoplay blocked - user interaction required first',
-          { src: this.src }
+          { src: this.src },
         );
       } else if (err.name === 'NotSupportedError') {
         // Audio format not supported

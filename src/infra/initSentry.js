@@ -61,7 +61,7 @@ if (sentryDsn) {
 
 // myUndefinedFunction(); // Uncomment to debug (should cause error)
 
-/* Todo: Explore optional options below: 
+/* Todo: Explore optional options below:
 
 Automatically upload your source maps to enable readable stack traces for Errors:
     npx @sentry/wizard@latest -i sourcemaps --saas --org kristinn-roach --project javascript

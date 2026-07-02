@@ -1,5 +1,5 @@
 import { cleanup, render, waitFor } from '@solidjs/testing-library';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import UsernamePasswordForm from './UsernamePasswordForm';
 
 const mocks = vi.hoisted(() => ({

@@ -8,7 +8,7 @@
  * This test is intentionally minimal and isolated from DOM dependencies.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vite-plus/test';
 
 describe('Call Import Integration', () => {
   beforeAll(() => {
@@ -37,9 +37,8 @@ describe('Call Import Integration', () => {
   });
 
   it('call handshake context exports exist', async () => {
-    const { CallHandshakeProvider, useCallHandshake } = await import(
-      '../../src/features/call/call-handshake.tsx'
-    );
+    const { CallHandshakeProvider, useCallHandshake } =
+      await import('../../src/features/call/call-handshake.tsx');
 
     expect(typeof CallHandshakeProvider).toBe('function');
     expect(typeof useCallHandshake).toBe('function');
@@ -48,9 +47,8 @@ describe('Call Import Integration', () => {
   it('extracted call helpers exist', async () => {
     const { sendIncomingCallPushNotification, sendMissedCallPushNotification } =
       await import('../../src/features/call/call-notifications.ts');
-    const { CallHandshakeController } = await import(
-      '../../src/features/call/call-handshake-controller.ts'
-    );
+    const { CallHandshakeController } =
+      await import('../../src/features/call/call-handshake-controller.ts');
 
     expect(typeof sendIncomingCallPushNotification).toBe('function');
     expect(typeof sendMissedCallPushNotification).toBe('function');

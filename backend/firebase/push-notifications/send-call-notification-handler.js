@@ -17,7 +17,9 @@ async function handleSendCallNotification(req, res) {
 
     const { targetUserId, callData } = req.body || {};
     if (!targetUserId || !callData) {
-      return res.status(400).json({ error: 'Missing targetUserId or callData' });
+      return res
+        .status(400)
+        .json({ error: 'Missing targetUserId or callData' });
     }
 
     const result = await sendWebPushToUser(

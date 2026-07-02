@@ -5,6 +5,7 @@ enforced. One line per column: type, nullable (Y/N), meaning + what writes it.
 Timestamps are integer epoch milliseconds. IDs are application-generated TEXT.
 
 ## users
+
 Account directory. Rows are created both by the backfill and as a side effect of
 conversation/message writes.
 
@@ -20,6 +21,7 @@ conversation/message writes.
 Notes: `username` uses a partial unique index (`WHERE username IS NOT NULL`); `email_hash` uses a plain unique index. Both permit multiple NULLs.
 
 ## conversations
+
 One row per DM or group thread. Opaque `id` is the only handle used by messages, files, calls.
 
 - `id` TEXT, N — opaque UUID. Primary key.
@@ -30,6 +32,7 @@ One row per DM or group thread. Opaque `id` is the only handle used by messages,
 - `updated_at` INT, N.
 
 ## conversation_members
+
 Membership join table.
 
 - `conversation_id` TEXT, N — FK → conversations(id), ON DELETE CASCADE. PK part.
@@ -37,6 +40,7 @@ Membership join table.
 - `joined_at` INT, N.
 
 ## messages
+
 - `id` TEXT, N — PK.
 - `conversation_id` TEXT, N — FK → conversations(id), CASCADE.
 - `sender_id` TEXT, N — FK → users(id) (no cascade).
@@ -45,6 +49,7 @@ Membership join table.
 - `created_at` INT, N.
 
 ## message_attachments
+
 File payload metadata; bytes live in R2.
 
 - `id` TEXT, N — PK.
@@ -58,11 +63,13 @@ File payload metadata; bytes live in R2.
 - `height` INT, Y — CHECK NULL or > 0.
 
 ## message_reactions
+
 - `message_id` TEXT, N — FK → messages(id), CASCADE. PK part.
 - `user_id` TEXT, N — FK → users(id), CASCADE. PK part.
 - `reaction_key` TEXT, N — CHECK length 1–64. One reaction per user per message.
 
 ## contacts
+
 Directed social-graph edge (owner saved contact). Two rows for a mutual pair.
 
 - `owner_id` TEXT, N — FK → users(id), CASCADE. PK part.
@@ -73,6 +80,7 @@ Directed social-graph edge (owner saved contact). Two rows for a mutual pair.
 - `last_interaction_at` INT, N.
 
 ## contact_requests
+
 Pending/resolved connection requests.
 
 - `from_id` TEXT, N — FK → users(id), CASCADE. PK part.

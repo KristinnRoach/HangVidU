@@ -1,5 +1,4 @@
-const DEFAULT_HANGVIDU_API_URL =
-  'https://api.hangvidu.com';
+const DEFAULT_HANGVIDU_API_URL = 'https://api.hangvidu.com';
 
 function normalizeHangViduApiBaseUrl(value: string): string {
   return value.trim().replace(/\/+$/, '');

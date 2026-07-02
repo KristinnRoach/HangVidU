@@ -3,10 +3,7 @@ import {
   initCallService,
   getCallService,
 } from './call-service.js';
-import {
-  getLoggedInUserId,
-  getLoggedInUserToken,
-} from '../../auth/index.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '../../auth/index.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import type { CreateRoomSignalingOptions, P2PRoomSignaling } from '@kidlib/p2p';
 import { CallResponseType, type CallInvite } from './model/call-schema.js';

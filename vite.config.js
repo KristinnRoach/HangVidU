@@ -1,16 +1,161 @@
 // vite.config.js
 
-import { defineConfig } from 'vite';
+import { defineConfig, lazyPlugins } from 'vite-plus';
 import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 import solid from 'vite-plugin-solid';
+import boundariesConfig from './eslint.boundaries.config.js';
+
+// Architecture boundaries: eslint.boundaries.config.js is the single source
+// (it also feeds the boundary playground). Derive the oxlint overrides and
+// settings from it instead of duplicating them here.
+const boundariesSettings = boundariesConfig.find((c) => c.settings)?.settings;
+const boundariesOverrides = boundariesConfig
+  .filter((c) => c.rules?.['boundaries/dependencies'])
+  .map(({ files, rules }) => ({
+    files,
+    rules,
+    jsPlugins: ['eslint-plugin-boundaries'],
+  }));
 
 export default defineConfig(({ mode }) => {
   // Firebase Hosting is the only production target.
   const basePath = '/';
 
   return {
+    staged: {
+      '*': 'vp check --fix',
+    },
+    fmt: {
+      singleQuote: true,
+      printWidth: 80,
+    },
+    lint: {
+      plugins: ['oxc', 'typescript', 'unicorn', 'react'],
+      categories: {
+        correctness: 'warn',
+      },
+      env: {
+        builtin: true,
+      },
+      overrides: [
+        ...boundariesOverrides,
+        {
+          // STATE_RULES.md: *-state.js modules are module-private. A later
+          // override resets this inside src/auth/** and src/features/contacts/**.
+          files: ['src/**/*.js', 'src/**/*.jsx', 'src/**/*.ts', 'src/**/*.tsx'],
+          rules: {
+            'no-restricted-imports': [
+              'error',
+              {
+                paths: [
+                  {
+                    name: 'firebase/auth',
+                    message:
+                      'Import from src/auth/adapters/firebase-auth-adapter.js instead of firebase/auth directly.',
+                  },
+                ],
+                patterns: [
+                  {
+                    group: ['firebase/auth/*'],
+                    message:
+                      'Import from src/auth/adapters/firebase-auth-adapter.js instead of firebase/auth directly.',
+                  },
+                  {
+                    group: ['**/auth-state', '**/auth-state.js'],
+                    message:
+                      'auth-state.js is private to src/auth/. Import read-only getters from src/auth/index.js and subscribe to evt:auth:state:changed. See docs/architecture/STATE_RULES.md.',
+                  },
+                  {
+                    group: ['**/contacts-state', '**/contacts-state.js'],
+                    message:
+                      'contacts-state.js is private to src/features/contacts/. Import read-only getters from src/features/contacts/index.js and subscribe to evt:contacts:state:changed. See docs/architecture/STATE_RULES.md.',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        {
+          // Inside their own module the *-state.js files are fair game;
+          // only the firebase/auth restriction still applies here.
+          files: ['src/auth/**', 'src/features/contacts/**'],
+          rules: {
+            'no-restricted-imports': [
+              'error',
+              {
+                paths: [
+                  {
+                    name: 'firebase/auth',
+                    message:
+                      'Import from src/auth/adapters/firebase-auth-adapter.js instead of firebase/auth directly.',
+                  },
+                ],
+                patterns: [
+                  {
+                    group: ['firebase/auth/*'],
+                    message:
+                      'Import from src/auth/adapters/firebase-auth-adapter.js instead of firebase/auth directly.',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        {
+          files: ['src/auth/adapters/firebase-auth-adapter.js'],
+          rules: {
+            'no-restricted-imports': 'off',
+          },
+        },
+        {
+          files: ['src/components/**/*.jsx', 'src/components/**/*.tsx'],
+          rules: {
+            'no-restricted-imports': [
+              'error',
+              {
+                patterns: [
+                  {
+                    group: ['**/shared/i18n', '**/shared/i18n/index.js'],
+                    importNames: [
+                      't',
+                      'getLocale',
+                      'setLocale',
+                      'onLocaleChange',
+                    ],
+                    message:
+                      'In Solid components use `useI18n()` from src/shared/i18n/. Bare t/getLocale/setLocale/onLocaleChange imports couple components to the current impl.',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+      options: {
+        typeAware: true,
+        typeCheck: true,
+      },
+      // Worker package type-checks with its own tsconfig (`pnpm lint:cf`);
+      // the root type-aware pass can't resolve cloudflare:test there.
+      ignorePatterns: ['backend/**'],
+      settings: boundariesSettings,
+      jsPlugins: [
+        {
+          name: 'vite-plus',
+          specifier: 'vite-plus/oxlint-plugin',
+        },
+        {
+          name: 'local',
+          specifier: './eslint-plugin-local.js',
+        },
+      ],
+      rules: {
+        'vite-plus/prefer-vite-plus-imports': 'error',
+        'local/event-name-format': 'error',
+      },
+    },
     base: basePath,
 
     resolve: {
@@ -29,7 +174,7 @@ export default defineConfig(({ mode }) => {
       },
     },
 
-    plugins: [
+    plugins: lazyPlugins(() => [
       ...(mode === 'development'
         ? [mkcert({ savePath: path.resolve(__dirname, '.vite-plugin-mkcert') })]
         : []),
@@ -105,7 +250,7 @@ export default defineConfig(({ mode }) => {
           ],
         },
       }),
-    ],
+    ]),
     server: {
       port: 5173,
       strictPort: true,

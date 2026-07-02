@@ -22,9 +22,14 @@ const needsR2Credentials = !dryRun || verifyLegacyCopies;
 
 const config = {
   accountId: requiredEnv('R2_ACCOUNT_ID', { required: needsR2Credentials }),
-  accessKeyId: requiredEnv('R2_ACCESS_KEY_ID', { required: needsR2Credentials }),
-  secretAccessKey: requiredEnv('R2_SECRET_ACCESS_KEY', { required: needsR2Credentials }),
-  bucket: args.bucket ?? requiredEnv('R2_BUCKET', { required: needsR2Credentials }),
+  accessKeyId: requiredEnv('R2_ACCESS_KEY_ID', {
+    required: needsR2Credentials,
+  }),
+  secretAccessKey: requiredEnv('R2_SECRET_ACCESS_KEY', {
+    required: needsR2Credentials,
+  }),
+  bucket:
+    args.bucket ?? requiredEnv('R2_BUCKET', { required: needsR2Credentials }),
 };
 
 if (limit !== Infinity && (!Number.isFinite(limit) || limit <= 0)) {
@@ -85,7 +90,10 @@ for (const [conversationId, conversation] of Object.entries(conversations)) {
       continue;
     }
 
-    if (rewriteLegacyKeys && isMigratedImageMessageWithLegacyR2Key(message, conversationId)) {
+    if (
+      rewriteLegacyKeys &&
+      isMigratedImageMessageWithLegacyR2Key(message, conversationId)
+    ) {
       candidates += 1;
       const oldKey = message.storage.key;
       const key = buildR2Key(conversationId, messageId);
@@ -322,7 +330,9 @@ function initializeFirebaseAdmin() {
   const databaseURL =
     process.env.FIREBASE_DATABASE_URL ?? process.env.VITE_FIREBASE_DATABASE_URL;
   if (!databaseURL) {
-    throw new Error('FIREBASE_DATABASE_URL or VITE_FIREBASE_DATABASE_URL is required');
+    throw new Error(
+      'FIREBASE_DATABASE_URL or VITE_FIREBASE_DATABASE_URL is required',
+    );
   }
 
   const credentialPath =
@@ -557,7 +567,9 @@ async function putR2Object({
   });
 
   if (!response.ok) {
-    throw new Error(`R2 upload failed: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `R2 upload failed: ${response.status} ${await response.text()}`,
+    );
   }
 }
 
@@ -580,12 +592,15 @@ async function getR2Object({
 
   const response = await fetch(url, { method: 'GET', headers });
   if (!response.ok) {
-    throw new Error(`R2 download failed: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `R2 download failed: ${response.status} ${await response.text()}`,
+    );
   }
 
   return {
     body: Buffer.from(await response.arrayBuffer()),
-    contentType: response.headers.get('Content-Type') || 'application/octet-stream',
+    contentType:
+      response.headers.get('Content-Type') || 'application/octet-stream',
   };
 }
 
@@ -617,7 +632,9 @@ async function* listR2Keys({
 
     const response = await fetch(url, { method: 'GET', headers });
     if (!response.ok) {
-      throw new Error(`R2 list failed: ${response.status} ${await response.text()}`);
+      throw new Error(
+        `R2 list failed: ${response.status} ${await response.text()}`,
+      );
     }
 
     const xml = await response.text();
@@ -628,7 +645,9 @@ async function* listR2Keys({
     if (!/<IsTruncated>true<\/IsTruncated>/.test(xml)) break;
     continuationToken = parseSingleXmlValue(xml, 'NextContinuationToken');
     if (!continuationToken) {
-      throw new Error('R2 list response was truncated without a continuation token');
+      throw new Error(
+        'R2 list response was truncated without a continuation token',
+      );
     }
   }
 }
@@ -754,8 +773,9 @@ function canonicalQueryString(query) {
 }
 
 function encodeRfc3986(value) {
-  return encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
-    `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
   );
 }
 

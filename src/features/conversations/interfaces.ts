@@ -60,9 +60,7 @@ export type MessageRepository = {
    */
   send(
     msg: OutgoingMessage,
-  ):
-    | { id: string; sentAt: number }
-    | Promise<{ id: string; sentAt: number }>;
+  ): { id: string; sentAt: number } | Promise<{ id: string; sentAt: number }>;
 
   /** Mark a conversation read by userId at the current backend time. */
   markConversationRead(

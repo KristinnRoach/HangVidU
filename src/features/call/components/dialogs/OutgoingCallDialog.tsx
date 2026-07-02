@@ -16,18 +16,18 @@ export default function OutgoingCallDialog(props: OutgoingCallDialogProps) {
   return (
     <CallDialog
       {...props}
-      cardClass='outgoing-call-card'
-      tone='outgoing'
-      ringtone='outgoing'
-      idPrefix='outgoing-call'
+      cardClass="outgoing-call-card"
+      tone="outgoing"
+      ringtone="outgoing"
+      idPrefix="outgoing-call"
       name={props.calleeName}
       defaultName={t('shared.contact')}
-      titleKey='call.calling'
+      titleKey="call.calling"
       subtitle={props.subtitle || t('call.waiting')}
       actions={
         <button
-          type='button'
-          class='dialog-btn dialog-btn--danger'
+          type="button"
+          class="dialog-btn dialog-btn--danger"
           disabled={!!props.disabled}
           onClick={() => props.onCancel?.()}
         >

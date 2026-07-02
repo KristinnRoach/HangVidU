@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const TEST_APP_URL = import.meta.env.VITE_APP_URL || 'https://hangvidu.com/';
 

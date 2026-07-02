@@ -12,7 +12,8 @@ import type {
 const PENDING_INVITE_PREFIX = 'invite:';
 const inviteKey = (roomId: string): string => PENDING_INVITE_PREFIX + roomId;
 const PENDING_RESPONSE_PREFIX = 'response:';
-const responseKey = (roomId: string): string => PENDING_RESPONSE_PREFIX + roomId;
+const responseKey = (roomId: string): string =>
+  PENDING_RESPONSE_PREFIX + roomId;
 
 /**
  * One instance per userId (keyed via getByName). Broadcast-only fan-out across
@@ -50,7 +51,9 @@ export class UserMailbox extends DurableObject<Env> {
       );
     }
     for (const response of await this.getFreshPendingResponses()) {
-      server.send(JSON.stringify({ t: 'response', response } satisfies MailboxEnvelope));
+      server.send(
+        JSON.stringify({ t: 'response', response } satisfies MailboxEnvelope),
+      );
     }
 
     // Echo the auth subprotocol; browsers abort the handshake if the server
@@ -75,8 +78,14 @@ export class UserMailbox extends DurableObject<Env> {
   async deliver(envelope: MailboxEnvelope): Promise<void> {
     if (envelope.t === 'invite') {
       await this.storePendingInvite(envelope.invite);
-    } else if (envelope.t === 'response' && envelope.response.responseType === 'accepted') {
-      await this.ctx.storage.put(responseKey(envelope.response.roomId), envelope.response);
+    } else if (
+      envelope.t === 'response' &&
+      envelope.response.responseType === 'accepted'
+    ) {
+      await this.ctx.storage.put(
+        responseKey(envelope.response.roomId),
+        envelope.response,
+      );
     } else if (envelope.t === 'cancel' || envelope.t === 'handled') {
       await this.clearPendingInvite(envelope.roomId);
     }
@@ -135,7 +144,8 @@ export class UserMailbox extends DurableObject<Env> {
     const fresh: MailboxResponse[] = [];
     const expiredKeys: string[] = [];
     for (const [key, response] of stored) {
-      if (response.expiresAt != null && response.expiresAt <= now) expiredKeys.push(key);
+      if (response.expiresAt != null && response.expiresAt <= now)
+        expiredKeys.push(key);
       else fresh.push(response);
     }
     if (expiredKeys.length) await this.ctx.storage.delete(expiredKeys);

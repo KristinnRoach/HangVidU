@@ -1,5 +1,5 @@
 // src/auth/tests/auth-state.test.js
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 
 beforeEach(() => {
   vi.resetModules();
@@ -74,9 +74,8 @@ describe('setState', () => {
 
 describe('beginAuthTransition', () => {
   it('does not revert over a newer stable auth state', async () => {
-    const { beginAuthTransition, getAuthState, setState } = await import(
-      '../auth-state.js'
-    );
+    const { beginAuthTransition, getAuthState, setState } =
+      await import('../auth-state.js');
 
     setState({
       status: 'authenticated',

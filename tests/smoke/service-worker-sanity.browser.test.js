@@ -1,7 +1,7 @@
 // tests/smoke/service-worker-sanity.test.js
 // Automated sanity checks for service worker configuration and environment
 
-import { test, expect, describe } from 'vitest';
+import { test, expect, describe } from 'vite-plus/test';
 
 /**
  * Service Worker Sanity Checks

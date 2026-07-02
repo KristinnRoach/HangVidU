@@ -58,5 +58,9 @@ export function getReactionEmoji(reactionType, reactions = DEFAULT_REACTIONS) {
  * @returns {Object} Object mapping reaction types to emojis
  */
 export function getAvailableReactions(reactions = DEFAULT_REACTIONS) {
-  return { ...(reactions && typeof reactions === 'object' ? reactions : DEFAULT_REACTIONS) };
+  return {
+    ...(reactions && typeof reactions === 'object'
+      ? reactions
+      : DEFAULT_REACTIONS),
+  };
 }

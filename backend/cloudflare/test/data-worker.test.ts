@@ -1,5 +1,12 @@
 import { env, SELF } from 'cloudflare:test';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vite-plus/test';
 import { insertMessage, resolveOrCreateDirect } from '../src/data/repo';
 
 // End-to-end coverage of the security seam: the Bearer-auth + membership guard
@@ -26,7 +33,8 @@ function b64urlFromString(s: string): string {
 function b64urlFromBytes(buf: ArrayBuffer): string {
   let binary = '';
   const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i++)
+    binary += String.fromCharCode(bytes[i]);
   return b64urlFromString(binary);
 }
 
@@ -42,7 +50,9 @@ function validClaims(sub = 'user-a'): Record<string, unknown> {
 }
 
 async function signToken(claims: Record<string, unknown>): Promise<string> {
-  const headerB64 = b64urlFromString(JSON.stringify({ alg: 'RS256', kid: KID }));
+  const headerB64 = b64urlFromString(
+    JSON.stringify({ alg: 'RS256', kid: KID }),
+  );
   const payloadB64 = b64urlFromString(JSON.stringify(claims));
   const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
   const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, data);
@@ -220,8 +230,22 @@ describe('message reactions', () => {
   });
 
   it('persists, hydrates, and broadcasts authoritative reaction counts', async () => {
-    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
-    await insertMessage(env.DB, convoId, 'm1', 'user-a', 'text', 'hi', null, 2000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      'user-a',
+      'user-b',
+      1000,
+    );
+    await insertMessage(
+      env.DB,
+      convoId,
+      'm1',
+      'user-a',
+      'text',
+      'hi',
+      null,
+      2000,
+    );
     const aliceToken = await signToken(validClaims('user-a'));
     const bobToken = await signToken(validClaims('user-b'));
     const bobChannel = await connectConversation(convoId, bobToken);
@@ -257,14 +281,28 @@ describe('message reactions', () => {
   });
 
   it('uses null to remove and rejects invalid or inaccessible reactions', async () => {
-    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      'user-a',
+      'user-b',
+      1000,
+    );
     const otherConvoId = await resolveOrCreateDirect(
       env.DB,
       'user-c',
       'user-d',
       1000,
     );
-    await insertMessage(env.DB, convoId, 'm1', 'user-a', 'text', 'hi', null, 2000);
+    await insertMessage(
+      env.DB,
+      convoId,
+      'm1',
+      'user-a',
+      'text',
+      'hi',
+      null,
+      2000,
+    );
     const token = await signToken(validClaims('user-a'));
 
     expect(
@@ -320,14 +358,24 @@ describe('auth + membership guard on GET /conversations/:id/messages', () => {
   });
 
   it('404s a valid token for a non-member (no id probing)', async () => {
-    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      'user-a',
+      'user-b',
+      1000,
+    );
     const token = await signToken(validClaims('user-c'));
     const res = await messagesRequest(convoId, token);
     expect(res.status).toBe(404);
   });
 
   it('200s a valid token for a member (positive control)', async () => {
-    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      'user-a',
+      'user-b',
+      1000,
+    );
     const token = await signToken(validClaims('user-a'));
     const res = await messagesRequest(convoId, token);
     expect(res.status).toBe(200);
@@ -337,8 +385,22 @@ describe('auth + membership guard on GET /conversations/:id/messages', () => {
 
 describe('PUT /conversations/:id/read round-trip', () => {
   it('persists the marker and surfaces it on GET /conversations for the reader only', async () => {
-    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
-    await insertMessage(env.DB, convoId, 'm1', 'user-b', 'text', 'hi', null, 2000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      'user-a',
+      'user-b',
+      1000,
+    );
+    await insertMessage(
+      env.DB,
+      convoId,
+      'm1',
+      'user-b',
+      'text',
+      'hi',
+      null,
+      2000,
+    );
     const aToken = await signToken(validClaims('user-a'));
     const bToken = await signToken(validClaims('user-b'));
 
@@ -353,9 +415,9 @@ describe('PUT /conversations/:id/read round-trip', () => {
     const aBody = (await listA.json()) as {
       conversations: { id: string; last_read_at: number }[];
     };
-    expect(aBody.conversations.find((c) => c.id === convoId)?.last_read_at).toBe(
-      lastReadAt,
-    );
+    expect(
+      aBody.conversations.find((c) => c.id === convoId)?.last_read_at,
+    ).toBe(lastReadAt);
 
     const listB = await SELF.fetch('https://data/conversations', {
       headers: { Authorization: `Bearer ${bToken}`, Origin: ORIGIN },
@@ -363,13 +425,18 @@ describe('PUT /conversations/:id/read round-trip', () => {
     const bBody = (await listB.json()) as {
       conversations: { id: string; last_read_at: number }[];
     };
-    expect(bBody.conversations.find((c) => c.id === convoId)?.last_read_at).toBe(
-      0,
-    );
+    expect(
+      bBody.conversations.find((c) => c.id === convoId)?.last_read_at,
+    ).toBe(0);
   });
 
   it('404s a non-member', async () => {
-    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      'user-a',
+      'user-b',
+      1000,
+    );
     const token = await signToken(validClaims('user-c'));
     const res = await jsonPut(`/conversations/${convoId}/read`, token, {});
     expect(res.status).toBe(404);
@@ -378,7 +445,12 @@ describe('PUT /conversations/:id/read round-trip', () => {
 
 describe('call cancel mailbox route', () => {
   it('404s when the caller is not a conversation member', async () => {
-    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      'user-a',
+      'user-b',
+      1000,
+    );
     const token = await signToken(validClaims('user-c'));
 
     const res = await jsonPost('/calls/cancel', token, {
@@ -391,7 +463,12 @@ describe('call cancel mailbox route', () => {
   });
 
   it('delivers the cancel envelope with room and caller identity', async () => {
-    const convoId = await resolveOrCreateDirect(env.DB, 'user-a', 'user-b', 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      'user-a',
+      'user-b',
+      1000,
+    );
     const callerToken = await signToken(validClaims('user-a'));
     const calleeToken = await signToken(validClaims('user-b'));
     const mailbox = await connectMailbox(calleeToken);
@@ -419,7 +496,12 @@ describe('call invite retention', () => {
   it('replays a fresh pending invite when the callee connects late', async () => {
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
-    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
     const callerToken = await signToken(validClaims(callerId));
     const calleeToken = await signToken(validClaims(calleeId));
 
@@ -454,7 +536,12 @@ describe('call invite retention', () => {
   it('does not replay a pending invite after caller cancel', async () => {
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
-    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
     const callerToken = await signToken(validClaims(callerId));
     const calleeToken = await signToken(validClaims(calleeId));
 
@@ -487,7 +574,12 @@ describe('call invite retention', () => {
   it('does not replay a pending invite after callee response', async () => {
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
-    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
     const callerToken = await signToken(validClaims(callerId));
     const calleeToken = await signToken(validClaims(calleeId));
 
@@ -521,7 +613,12 @@ describe('call invite retention', () => {
   it('rejects a forged response that targets the responder instead of the caller', async () => {
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
-    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
     const calleeToken = await signToken(validClaims(calleeId));
 
     const res = await jsonPost('/calls/response', calleeToken, {
@@ -539,7 +636,12 @@ describe('call invite retention', () => {
     // device must dismiss the incoming dialog everywhere, not just clear storage.
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
-    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
     const callerToken = await signToken(validClaims(callerId));
     const calleeToken = await signToken(validClaims(calleeId));
 
@@ -555,7 +657,7 @@ describe('call invite retention', () => {
         ).status,
       ).toBe(200);
       // The live invite reaches the other tab.
-      expect((await otherTab.next() as { t: string }).t).toBe('invite');
+      expect(((await otherTab.next()) as { t: string }).t).toBe('invite');
 
       expect(
         (
@@ -581,8 +683,18 @@ describe('call invite retention', () => {
     const calleeId = `callee-${crypto.randomUUID()}`;
     const callerAId = `caller-${crypto.randomUUID()}`;
     const callerBId = `caller-${crypto.randomUUID()}`;
-    const convoA = await resolveOrCreateDirect(env.DB, callerAId, calleeId, 1000);
-    const convoB = await resolveOrCreateDirect(env.DB, callerBId, calleeId, 1000);
+    const convoA = await resolveOrCreateDirect(
+      env.DB,
+      callerAId,
+      calleeId,
+      1000,
+    );
+    const convoB = await resolveOrCreateDirect(
+      env.DB,
+      callerBId,
+      calleeId,
+      1000,
+    );
     const calleeToken = await signToken(validClaims(calleeId));
     const callerAToken = await signToken(validClaims(callerAId));
     const callerBToken = await signToken(validClaims(callerBId));
@@ -604,8 +716,14 @@ describe('call invite retention', () => {
 
     const mailbox = await connectMailbox(calleeToken);
     try {
-      const a = (await mailbox.next()) as { t: string; invite: { roomId: string } };
-      const b = (await mailbox.next()) as { t: string; invite: { roomId: string } };
+      const a = (await mailbox.next()) as {
+        t: string;
+        invite: { roomId: string };
+      };
+      const b = (await mailbox.next()) as {
+        t: string;
+        invite: { roomId: string };
+      };
       expect([a.t, b.t]).toEqual(['invite', 'invite']);
       expect(new Set([a.invite.roomId, b.invite.roomId])).toEqual(
         new Set([convoA, convoB]),
@@ -620,16 +738,25 @@ describe('call response retention', () => {
   it('replays an accepted response until the caller acknowledges it', async () => {
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
-    const convoId = await resolveOrCreateDirect(env.DB, callerId, calleeId, 1000);
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
     const callerToken = await signToken(validClaims(callerId));
     const calleeToken = await signToken(validClaims(calleeId));
 
-    expect((await jsonPost('/calls/response', calleeToken, {
-      conversationId: convoId,
-      callerId,
-      responseType: 'accepted',
-      expiresAt: Date.now() + 30_000,
-    })).status).toBe(200);
+    expect(
+      (
+        await jsonPost('/calls/response', calleeToken, {
+          conversationId: convoId,
+          callerId,
+          responseType: 'accepted',
+          expiresAt: Date.now() + 30_000,
+        })
+      ).status,
+    ).toBe(200);
 
     const mailbox = await connectMailbox(callerToken);
     try {
@@ -647,9 +774,13 @@ describe('call response retention', () => {
       mailbox.close();
     }
 
-    expect((await jsonPost('/calls/response/ack', callerToken, {
-      conversationId: convoId,
-    })).status).toBe(200);
+    expect(
+      (
+        await jsonPost('/calls/response/ack', callerToken, {
+          conversationId: convoId,
+        })
+      ).status,
+    ).toBe(200);
 
     const reconnected = await connectMailbox(callerToken);
     try {

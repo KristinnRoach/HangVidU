@@ -57,7 +57,7 @@ export default function InstallButton() {
   return (
     <Show when={!installed() && (isIOS() || evt())}>
       <button
-        type='button'
+        type="button"
         title={isIOS() ? 'Show install instructions' : 'Install app'}
         onClick={onClick}
       >

@@ -1,5 +1,5 @@
 import { env, SELF } from 'cloudflare:test';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 
 const PROJECT_ID = env.FIREBASE_PROJECT_ID;
 const KID = 'test-key-1';
@@ -15,7 +15,8 @@ function b64urlFromString(s: string): string {
 function b64urlFromBytes(buf: ArrayBuffer): string {
   let binary = '';
   const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i++)
+    binary += String.fromCharCode(bytes[i]);
   return b64urlFromString(binary);
 }
 
@@ -31,7 +32,9 @@ function validClaims() {
 }
 
 async function signToken(claims: Record<string, unknown>): Promise<string> {
-  const headerB64 = b64urlFromString(JSON.stringify({ alg: 'RS256', kid: KID }));
+  const headerB64 = b64urlFromString(
+    JSON.stringify({ alg: 'RS256', kid: KID }),
+  );
   const payloadB64 = b64urlFromString(JSON.stringify(claims));
   const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
   const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, data);
@@ -96,7 +99,11 @@ describe('signaling worker routing + auth', () => {
   });
 
   it('403s a disallowed origin', async () => {
-    const res = await upgrade('/rooms/r1/signal', undefined, 'https://evil.com');
+    const res = await upgrade(
+      '/rooms/r1/signal',
+      undefined,
+      'https://evil.com',
+    );
     expect(res.status).toBe(403);
   });
 

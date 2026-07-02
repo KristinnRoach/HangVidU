@@ -1,7 +1,8 @@
 // Google People API contacts helper.
 // Fetches contacts from Google People API
 
-const CONNECTIONS_URL = 'https://people.googleapis.com/v1/people/me/connections';
+const CONNECTIONS_URL =
+  'https://people.googleapis.com/v1/people/me/connections';
 const OTHER_CONTACTS_URL = 'https://people.googleapis.com/v1/otherContacts';
 
 /**
@@ -18,16 +19,26 @@ export async function fetchGoogleContacts(accessToken) {
   const contacts = [];
 
   // Fetch from "My Contacts" (connections)
-  const myContacts = await fetchFromEndpoint(accessToken, CONNECTIONS_URL, 'names,emailAddresses');
+  const myContacts = await fetchFromEndpoint(
+    accessToken,
+    CONNECTIONS_URL,
+    'names,emailAddresses',
+  );
   console.log(`[GOOGLE CONTACTS] My Contacts: ${myContacts.length}`);
   contacts.push(...myContacts);
 
   // Fetch from "Other contacts" (auto-saved contacts from email, etc.)
-  const otherContacts = await fetchFromEndpoint(accessToken, OTHER_CONTACTS_URL, 'names,emailAddresses');
+  const otherContacts = await fetchFromEndpoint(
+    accessToken,
+    OTHER_CONTACTS_URL,
+    'names,emailAddresses',
+  );
   console.log(`[GOOGLE CONTACTS] Other Contacts: ${otherContacts.length}`);
   contacts.push(...otherContacts);
 
-  console.log(`[GOOGLE CONTACTS] Total: ${contacts.length} contacts with email addresses`);
+  console.log(
+    `[GOOGLE CONTACTS] Total: ${contacts.length} contacts with email addresses`,
+  );
 
   // Deduplicate by email (keep first occurrence)
   const seen = new Set();
@@ -72,7 +83,10 @@ async function fetchFromEndpoint(accessToken, baseUrl, personFields) {
       const error = await response.json().catch(() => ({}));
       // Log but don't throw for otherContacts - it may fail if scope not granted
       if (baseUrl.includes('otherContacts')) {
-        console.warn('[GOOGLE CONTACTS] Other contacts fetch failed (may need additional scope):', error.error?.message);
+        console.warn(
+          '[GOOGLE CONTACTS] Other contacts fetch failed (may need additional scope):',
+          error.error?.message,
+        );
         return contacts;
       }
       console.error('[GOOGLE CONTACTS] API error:', error);

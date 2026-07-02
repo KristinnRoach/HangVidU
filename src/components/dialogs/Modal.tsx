@@ -45,9 +45,9 @@ export default function Modal(props: ModalProps) {
         </h2>
 
         <button
-          type='button'
+          type="button"
           class={styles.closeButton}
-          aria-label='Close modal'
+          aria-label="Close modal"
           onClick={() => requestClose('close')}
         >
           &times;

@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "description": "Firebase Functions for HangVidU push notifications",
   "main": "index.js",
-  "engines": {
-    "node": "22"
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
   },
   "dependencies": {
     "@google-cloud/functions-framework": "^5.0.2",
@@ -12,11 +16,7 @@
     "firebase-functions": "^7.2.5",
     "web-push": "^3.6.7"
   },
-  "scripts": {
-    "serve": "firebase emulators:start --only functions",
-    "shell": "firebase functions:shell",
-    "start": "npm run shell",
-    "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+  "engines": {
+    "node": "22"
   }
 }

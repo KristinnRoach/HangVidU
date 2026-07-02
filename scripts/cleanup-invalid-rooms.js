@@ -28,10 +28,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const shouldDelete = process.argv.includes('--delete');
 
 // Initialize Firebase Admin
-const serviceAccountPath = path.join(__dirname, '../backend/firebase/service-account-key.json');
+const serviceAccountPath = path.join(
+  __dirname,
+  '../backend/firebase/service-account-key.json',
+);
 
 if (!fs.existsSync(serviceAccountPath)) {
-  console.error('❌ Error: service-account-key.json not found at', serviceAccountPath);
+  console.error(
+    '❌ Error: service-account-key.json not found at',
+    serviceAccountPath,
+  );
   console.error('Please ensure you have a valid service account key file.');
   process.exit(1);
 }
@@ -40,7 +46,8 @@ const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
+  databaseURL:
+    'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
 });
 
 const db = admin.database();
@@ -55,9 +62,13 @@ console.log('Analyzing rooms/...\n');
 function isValidRoomStructure(room) {
   // Required fields for a valid active room based on src/room.js
   const hasCreatedAt = typeof room.createdAt === 'number';
-  const hasCreatedBy = typeof room.createdBy === 'string' && room.createdBy.length > 0;
-  const hasOffer = room.offer && typeof room.offer === 'object' &&
-                   room.offer.type && room.offer.sdp;
+  const hasCreatedBy =
+    typeof room.createdBy === 'string' && room.createdBy.length > 0;
+  const hasOffer =
+    room.offer &&
+    typeof room.offer === 'object' &&
+    room.offer.type &&
+    room.offer.sdp;
 
   return hasCreatedAt && hasCreatedBy && hasOffer;
 }
@@ -65,7 +76,8 @@ function isValidRoomStructure(room) {
 function getMissingFields(room) {
   const missing = [];
   if (typeof room.createdAt !== 'number') missing.push('createdAt');
-  if (typeof room.createdBy !== 'string' || room.createdBy.length === 0) missing.push('createdBy');
+  if (typeof room.createdBy !== 'string' || room.createdBy.length === 0)
+    missing.push('createdBy');
   if (!room.offer || typeof room.offer !== 'object') missing.push('offer');
   else if (!room.offer.type || !room.offer.sdp) missing.push('offer.type/sdp');
 
@@ -73,12 +85,12 @@ function getMissingFields(room) {
 }
 
 function promptConfirmation(message) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
     });
-    rl.question(message, answer => {
+    rl.question(message, (answer) => {
       rl.close();
       resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
     });
@@ -104,7 +116,9 @@ async function deleteInvalidRooms(roomIds) {
 
     const batchNum = Math.floor(i / batchSize) + 1;
     const totalBatches = Math.ceil(roomIds.length / batchSize);
-    console.log(`  Batch ${batchNum}/${totalBatches}: Deleted ${Math.min(batchSize, batch.length)} rooms (${deleted}/${roomIds.length} total)`);
+    console.log(
+      `  Batch ${batchNum}/${totalBatches}: Deleted ${Math.min(batchSize, batch.length)} rooms (${deleted}/${roomIds.length} total)`,
+    );
   }
 
   return deleted;
@@ -126,7 +140,7 @@ async function analyzeRooms() {
     let invalidCount = 0;
     const invalidRooms = [];
 
-    roomIds.forEach(roomId => {
+    roomIds.forEach((roomId) => {
       const room = rooms[roomId];
 
       if (!isValidRoomStructure(room)) {
@@ -149,7 +163,9 @@ async function analyzeRooms() {
     console.log('📊 Summary:');
     console.log(`  Total rooms: ${totalCount}`);
     console.log(`  Invalid structure: ${invalidCount}`);
-    console.log(`  Percentage: ${((invalidCount / totalCount) * 100).toFixed(1)}%\n`);
+    console.log(
+      `  Percentage: ${((invalidCount / totalCount) * 100).toFixed(1)}%\n`,
+    );
 
     if (invalidCount > 0) {
       console.log('📋 Invalid rooms (first 15):');
@@ -157,7 +173,9 @@ async function analyzeRooms() {
         console.log(`  ${idx + 1}. ${room.id}`);
         console.log(`     Created: ${room.createdAt}`);
         console.log(`     Missing: ${room.missingFields.join(', ')}`);
-        console.log(`     Other: offer=${room.hasOffer}, answer=${room.hasAnswer}, members=${room.membersCount}`);
+        console.log(
+          `     Other: offer=${room.hasOffer}, answer=${room.hasAnswer}, members=${room.membersCount}`,
+        );
       });
 
       if (invalidCount > 15) {
@@ -165,8 +183,14 @@ async function analyzeRooms() {
       }
 
       if (shouldDelete) {
-        console.log('\n⚠️  About to delete ' + invalidCount + ' rooms with invalid structure!');
-        const confirmed = await promptConfirmation('\nAre you sure? Type "yes" to confirm: ');
+        console.log(
+          '\n⚠️  About to delete ' +
+            invalidCount +
+            ' rooms with invalid structure!',
+        );
+        const confirmed = await promptConfirmation(
+          '\nAre you sure? Type "yes" to confirm: ',
+        );
 
         if (!confirmed) {
           console.log('\n❌ Deletion cancelled.');
@@ -174,7 +198,7 @@ async function analyzeRooms() {
         }
 
         console.log('\n🗑️  Deleting invalid rooms...');
-        const invalidRoomIds = invalidRooms.map(r => r.id);
+        const invalidRoomIds = invalidRooms.map((r) => r.id);
         const deletedCount = await deleteInvalidRooms(invalidRoomIds);
 
         console.log(`\n✅ Successfully deleted ${deletedCount} invalid rooms`);

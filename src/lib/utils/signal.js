@@ -22,7 +22,7 @@ function createVanillaSignal(initialValue) {
   return [accessor, setter];
 }
 
-/* USAGE: 
+/* USAGE:
 
 const [count, setCount] = createSignal(0);
 

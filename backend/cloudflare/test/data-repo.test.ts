@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:test';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import {
   directDmKey,
   getConversation,
@@ -104,9 +104,36 @@ describe('insertMessage + loadMessages', () => {
 
   it('returns messages oldest-first (newest last)', async () => {
     const convoId = await resolveOrCreateDirect(db, 'user-a', 'user-b', 1000);
-    await insertMessage(db, convoId, 'm1', 'user-a', 'text', 'first', null, 1000);
-    await insertMessage(db, convoId, 'm2', 'user-a', 'text', 'second', null, 2000);
-    await insertMessage(db, convoId, 'm3', 'user-a', 'text', 'third', null, 3000);
+    await insertMessage(
+      db,
+      convoId,
+      'm1',
+      'user-a',
+      'text',
+      'first',
+      null,
+      1000,
+    );
+    await insertMessage(
+      db,
+      convoId,
+      'm2',
+      'user-a',
+      'text',
+      'second',
+      null,
+      2000,
+    );
+    await insertMessage(
+      db,
+      convoId,
+      'm3',
+      'user-a',
+      'text',
+      'third',
+      null,
+      3000,
+    );
 
     const loaded = await loadMessages(db, convoId, 50, 'user-a');
     expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
@@ -114,9 +141,36 @@ describe('insertMessage + loadMessages', () => {
 
   it('caps at the requested limit, keeping the most recent', async () => {
     const convoId = await resolveOrCreateDirect(db, 'user-a', 'user-b', 1000);
-    await insertMessage(db, convoId, 'm1', 'user-a', 'text', 'first', null, 1000);
-    await insertMessage(db, convoId, 'm2', 'user-a', 'text', 'second', null, 2000);
-    await insertMessage(db, convoId, 'm3', 'user-a', 'text', 'third', null, 3000);
+    await insertMessage(
+      db,
+      convoId,
+      'm1',
+      'user-a',
+      'text',
+      'first',
+      null,
+      1000,
+    );
+    await insertMessage(
+      db,
+      convoId,
+      'm2',
+      'user-a',
+      'text',
+      'second',
+      null,
+      2000,
+    );
+    await insertMessage(
+      db,
+      convoId,
+      'm3',
+      'user-a',
+      'text',
+      'third',
+      null,
+      3000,
+    );
 
     const loaded = await loadMessages(db, convoId, 2, 'user-a');
     expect(loaded.map((m) => m.id)).toEqual(['m2', 'm3']);
@@ -228,8 +282,26 @@ describe('listConversations', () => {
 
   it('uses message id to break latest-message timestamp ties', async () => {
     const convoId = await resolveOrCreateDirect(db, 'user-a', 'user-b', 1000);
-    await insertMessage(db, convoId, 'm1', 'user-a', 'text', 'first', null, 2000);
-    await insertMessage(db, convoId, 'm2', 'user-b', 'text', 'second', null, 2000);
+    await insertMessage(
+      db,
+      convoId,
+      'm1',
+      'user-a',
+      'text',
+      'first',
+      null,
+      2000,
+    );
+    await insertMessage(
+      db,
+      convoId,
+      'm2',
+      'user-b',
+      'text',
+      'second',
+      null,
+      2000,
+    );
 
     const [conversation] = await listConversations(db, 'user-a');
     expect(conversation.latest_sent_at).toBe(2000);

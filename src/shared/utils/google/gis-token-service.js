@@ -40,7 +40,9 @@ function createTokenRequestError(errorCode, errorDescription) {
     return error;
   }
 
-  const error = new Error(errorDescription || errorCode || 'Authorization failed');
+  const error = new Error(
+    errorDescription || errorCode || 'Authorization failed',
+  );
   error.code = errorCode || 'unknown';
   return error;
 }
@@ -71,17 +73,16 @@ function requestTokenFromGIS({ clientId, scope, hint, prompt }) {
       },
       error_callback: (error) => {
         if (error?.type === 'popup_closed') {
-          reject(createTokenRequestError('access_denied', 'Authorization cancelled'));
+          reject(
+            createTokenRequestError('access_denied', 'Authorization cancelled'),
+          );
           return;
         }
         reject(new Error(error?.message || 'Authorization failed'));
       },
     });
 
-    requestGoogleOAuthAccessToken(
-      client,
-      prompt ? { prompt } : undefined,
-    );
+    requestGoogleOAuthAccessToken(client, prompt ? { prompt } : undefined);
   });
 }
 
@@ -128,7 +129,11 @@ export async function requestGisToken({
         scope,
         hint,
       });
-      setCachedToken(cacheKey, interactiveResult.token, interactiveResult.expiresIn);
+      setCachedToken(
+        cacheKey,
+        interactiveResult.token,
+        interactiveResult.expiresIn,
+      );
       return interactiveResult.token;
     }
 
@@ -142,7 +147,10 @@ export async function requestGisToken({
       setCachedToken(cacheKey, silentResult.token, silentResult.expiresIn);
       return silentResult.token;
     } catch (error) {
-      const recoverableCodes = new Set(['access_denied', 'interaction_required']);
+      const recoverableCodes = new Set([
+        'access_denied',
+        'interaction_required',
+      ]);
       if (!recoverableCodes.has(error?.code)) {
         throw error;
       }
@@ -151,7 +159,11 @@ export async function requestGisToken({
         scope,
         hint,
       });
-      setCachedToken(cacheKey, interactiveResult.token, interactiveResult.expiresIn);
+      setCachedToken(
+        cacheKey,
+        interactiveResult.token,
+        interactiveResult.expiresIn,
+      );
       return interactiveResult.token;
     }
   })().finally(() => {

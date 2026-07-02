@@ -65,7 +65,7 @@ export async function executeInitialCallFlow(testEnv, userA, userB, roomId) {
   const result = await testEnv.callSimulator.simulateInitialCall(
     userA.uid,
     userB.uid,
-    roomId
+    roomId,
   );
 
   // Simulate successful call completion
@@ -79,13 +79,13 @@ export async function executeContactSaveFlow(testEnv, userA, userB, roomId) {
   const contactA = await testEnv.callSimulator.simulateContactSave(
     userA.uid,
     userB.uid,
-    roomId
+    roomId,
   );
 
   const contactB = await testEnv.callSimulator.simulateContactSave(
     userB.uid,
     userA.uid,
-    roomId
+    roomId,
   );
 
   return { contactA, contactB };
@@ -95,7 +95,7 @@ export async function executeContactCallFlow(testEnv, caller, callee, roomId) {
   const callResult = await testEnv.callSimulator.simulateContactCall(
     caller.uid,
     callee.uid,
-    roomId
+    roomId,
   );
 
   return callResult;
@@ -110,14 +110,14 @@ export function assertCallFlowSuccess(callResult, expectedParticipants) {
 
   if (expectedParticipants && callResult.participants) {
     const hasAllParticipants = expectedParticipants.every((uid) =>
-      callResult.participants.includes(uid)
+      callResult.participants.includes(uid),
     );
 
     if (!hasAllParticipants) {
       throw new Error(
         `Expected participants ${expectedParticipants.join(
-          ', '
-        )} but got ${callResult.participants.join(', ')}`
+          ', ',
+        )} but got ${callResult.participants.join(', ')}`,
       );
     }
   }
@@ -130,7 +130,7 @@ export function assertListenerState(testEnv, roomId, expectedCount) {
 
   if (actualCount !== expectedCount) {
     throw new Error(
-      `Expected ${expectedCount} listeners for room ${roomId}, but found ${actualCount}`
+      `Expected ${expectedCount} listeners for room ${roomId}, but found ${actualCount}`,
     );
   }
 
@@ -144,12 +144,12 @@ export function assertIncomingCallDetected(testEnv, roomId, callerId) {
   });
 
   const callDetected = logs.some(
-    (log) => log.data.roomId === roomId && log.data.callerId === callerId
+    (log) => log.data.roomId === roomId && log.data.callerId === callerId,
   );
 
   if (!callDetected) {
     throw new Error(
-      `Incoming call from ${callerId} in room ${roomId} was not detected`
+      `Incoming call from ${callerId} in room ${roomId} was not detected`,
     );
   }
 
@@ -163,18 +163,18 @@ export function assertCallRejected(testEnv, roomId, expectedReason) {
   });
 
   const rejection = logs.find(
-    (log) => log.data.roomId === roomId && log.data.decision === 'REJECT'
+    (log) => log.data.roomId === roomId && log.data.decision === 'REJECT',
   );
 
   if (!rejection) {
     throw new Error(
-      `Expected call rejection for room ${roomId} but none found`
+      `Expected call rejection for room ${roomId} but none found`,
     );
   }
 
   if (expectedReason && rejection.data.reason !== expectedReason) {
     throw new Error(
-      `Expected rejection reason '${expectedReason}' but got '${rejection.data.reason}'`
+      `Expected rejection reason '${expectedReason}' but got '${rejection.data.reason}'`,
     );
   }
 
@@ -201,11 +201,11 @@ export function analyzeRaceConditions(testEnv, roomId) {
   const logs = testEnv.logger.getLogs({ roomId });
 
   const roomCreation = logs.find(
-    (log) => log.category === 'ROOM' && log.event === 'CREATED'
+    (log) => log.category === 'ROOM' && log.event === 'CREATED',
   );
 
   const listenerAttach = logs.find(
-    (log) => log.category === 'LISTENER' && log.event === 'ATTACHED'
+    (log) => log.category === 'LISTENER' && log.event === 'ATTACHED',
   );
 
   if (!roomCreation || !listenerAttach) {
@@ -227,7 +227,7 @@ export async function simulateCallingUIBug(testEnv, caller, callee, roomId) {
   const result = await testEnv.callSimulator.simulateCallingUIDisappearance(
     roomId,
     caller.uid,
-    callee.uid
+    callee.uid,
   );
 
   return result;
@@ -280,7 +280,7 @@ export function analyzeListenerBehavior(testEnv, roomId) {
   const attachments = listenerLogs.filter((log) => log.event === 'ATTACHED');
   const cleanups = listenerLogs.filter((log) => log.event === 'CLEANUP');
   const duplicates = listenerLogs.filter(
-    (log) => log.event === 'DUPLICATE_PREVENTED'
+    (log) => log.event === 'DUPLICATE_PREVENTED',
   );
 
   return {
@@ -301,7 +301,7 @@ export function validateFreshnessLogic(testEnv, roomId, expectedFreshness) {
   });
 
   const roomFreshnessLogs = freshnessLogs.filter(
-    (log) => log.data.roomId === roomId
+    (log) => log.data.roomId === roomId,
   );
 
   return roomFreshnessLogs.map((log) => ({

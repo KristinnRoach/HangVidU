@@ -71,7 +71,11 @@ export class CallService {
 
   private subscribe(handler: (e: MailboxEnvelope) => void): () => void {
     const unsubscribe = subscribeToUserMailbox(
-      { localUID: this.localUID, baseUrl: this.baseUrl, getToken: this.getToken },
+      {
+        localUID: this.localUID,
+        baseUrl: this.baseUrl,
+        getToken: this.getToken,
+      },
       handler,
     );
     this.unsubscribers.add(unsubscribe);
@@ -94,9 +98,10 @@ export class CallService {
     });
     if (!res.ok) {
       if (res.status === 401) {
+        // Body goes to reportApiAuthFailure only — backend-controlled text
+        // must not leak into thrown errors (logged/telemetered downstream).
         const detail = await res.text().catch(() => '');
         reportApiAuthFailure(`call ${path}`, res.status, detail);
-        throw new Error(`[CallService] ${path} failed: ${res.status} ${detail}`);
       }
       throw new Error(`[CallService] ${path} failed: ${res.status}`);
     }

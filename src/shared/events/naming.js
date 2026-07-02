@@ -13,7 +13,8 @@ export function isCanonicalEventName(name) {
 
 export function assertCanonicalEventName(name, kind = 'event') {
   const expectedPrefix = kind === 'command' ? 'cmd:' : 'evt:';
-  const hasExpectedPrefix = typeof name === 'string' && name.startsWith(expectedPrefix);
+  const hasExpectedPrefix =
+    typeof name === 'string' && name.startsWith(expectedPrefix);
 
   if (hasExpectedPrefix && isCanonicalEventName(name)) return;
 

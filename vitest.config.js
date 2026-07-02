@@ -1,5 +1,5 @@
-import { defineConfig } from 'vitest/config';
-import { playwright } from '@vitest/browser-playwright';
+import { defineConfig } from 'vite-plus';
+import { playwright } from 'vite-plus/test/browser-playwright';
 import { VitePWA } from 'vite-plugin-pwa';
 import solid from 'vite-plugin-solid';
 
@@ -79,10 +79,7 @@ export default defineConfig({
               inline: [/solid-js/, /@solidjs\/testing-library/],
             },
           },
-          include: testDirs.flatMap((d) => [
-            `${d}*.test.js`,
-            `${d}*.test.jsx`,
-          ]),
+          include: testDirs.flatMap((d) => [`${d}*.test.js`, `${d}*.test.jsx`]),
           exclude: testDirs.flatMap((d) => [
             `${d}*.browser.test.js`,
             `${d}*.browser.test.jsx`,

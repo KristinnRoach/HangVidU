@@ -1,5 +1,12 @@
 import { env, SELF } from 'cloudflare:test';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vite-plus/test';
 
 // Coverage for the Users → D1 slice: profile, handle directory lookup,
 // contacts CRUD, and the request/accept handshake (incl. the mailbox nudge).
@@ -369,7 +376,9 @@ describe('contact request handshake', () => {
     expect(accept.status).toBe(200);
 
     // Neither side has a stale incoming request afterwards.
-    const bobIncoming = await (await req('GET', '/contact-requests', bob)).json();
+    const bobIncoming = await (
+      await req('GET', '/contact-requests', bob)
+    ).json();
     const aliceIncoming = await (
       await req('GET', '/contact-requests', alice)
     ).json();

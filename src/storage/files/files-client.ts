@@ -74,17 +74,14 @@ export function createFilesClient({
       conversationId: string,
       file: File,
     ): Promise<R2StorageDescriptor> {
-      const response = await fetch(
-        conversationFilesUrl(conversationId),
-        {
-          method: 'POST',
-          headers: {
-            ...(await authHeaders()),
-            'Content-Type': file.type || 'application/octet-stream',
-          },
-          body: file,
+      const response = await fetch(conversationFilesUrl(conversationId), {
+        method: 'POST',
+        headers: {
+          ...(await authHeaders()),
+          'Content-Type': file.type || 'application/octet-stream',
         },
-      );
+        body: file,
+      });
       if (!response.ok) {
         if (response.status === 401) {
           const detail = await response.text().catch(() => '');

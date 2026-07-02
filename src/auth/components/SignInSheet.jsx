@@ -45,12 +45,12 @@ export default function SignInSheet(props) {
         id={props.id}
         ref={sheetEl}
         popover
-        aria-labelledby='signin-sheet-title'
+        aria-labelledby="signin-sheet-title"
         class={styles.signInSheetModal}
       >
         <div class={styles.content}>
           <div class={styles.header}>
-            <h2 id='signin-sheet-title' class={styles.title}>
+            <h2 id="signin-sheet-title" class={styles.title}>
               {t('auth.sign_in')}
             </h2>
             {/* <h3 id='signin-sheet-description' class={styles.description}>
@@ -71,7 +71,7 @@ export default function SignInSheet(props) {
               when={showPassword()}
               fallback={
                 <button
-                  type='button'
+                  type="button"
                   class={styles.passwordToggle}
                   onClick={() => setShowPassword(true)}
                 >
@@ -85,7 +85,7 @@ export default function SignInSheet(props) {
 
           <button
             popoverTarget={props.id}
-            popoverTargetAction='hide'
+            popoverTargetAction="hide"
             class={styles.closeBtn}
             aria-label={t('shared.close')}
           >

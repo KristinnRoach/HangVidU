@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 import {
   dispatchCommand,
   dispatchCommandAndAwait,
@@ -165,9 +165,24 @@ describe('src/shared/events/index.js', () => {
       const name2 = uniqueName('seq-cmd-2');
       const ac = new AbortController();
       const order = [];
-      handleCommand(name1, async () => { order.push('cmd1'); }, { signal: ac.signal });
-      handleCommand(name2, async () => { order.push('cmd2'); }, { signal: ac.signal });
-      await dispatchCommandAndAwaitSequential([[name1, {}], [name2, {}]]);
+      handleCommand(
+        name1,
+        async () => {
+          order.push('cmd1');
+        },
+        { signal: ac.signal },
+      );
+      handleCommand(
+        name2,
+        async () => {
+          order.push('cmd2');
+        },
+        { signal: ac.signal },
+      );
+      await dispatchCommandAndAwaitSequential([
+        [name1, {}],
+        [name2, {}],
+      ]);
       expect(order).toEqual(['cmd1', 'cmd2']);
       ac.abort();
     });
@@ -179,11 +194,26 @@ describe('src/shared/events/index.js', () => {
       const log = [];
       handleCommand(
         name1,
-        () => new Promise((res) => setTimeout(() => { log.push('first done'); res(); }, 20)),
+        () =>
+          new Promise((res) =>
+            setTimeout(() => {
+              log.push('first done');
+              res();
+            }, 20),
+          ),
         { signal: ac.signal },
       );
-      handleCommand(name2, () => { log.push('second started'); }, { signal: ac.signal });
-      await dispatchCommandAndAwaitSequential([[name1, {}], [name2, {}]]);
+      handleCommand(
+        name2,
+        () => {
+          log.push('second started');
+        },
+        { signal: ac.signal },
+      );
+      await dispatchCommandAndAwaitSequential([
+        [name1, {}],
+        [name2, {}],
+      ]);
       expect(log).toEqual(['first done', 'second started']);
       ac.abort();
     });
@@ -207,9 +237,9 @@ describe('src/shared/events/index.js', () => {
 
     it('rejects when a command has no registered handler', async () => {
       const name = uniqueName('seq-no-handler');
-      await expect(dispatchCommandAndAwaitSequential([[name, {}]])).rejects.toThrow(
-        `Command "${name}" has no registered handler`,
-      );
+      await expect(
+        dispatchCommandAndAwaitSequential([[name, {}]]),
+      ).rejects.toThrow(`Command "${name}" has no registered handler`);
     });
 
     it('resolves for an empty commands array with empty results', async () => {
@@ -263,7 +293,14 @@ describe('src/shared/events/index.js', () => {
       const name = uniqueEventName('pub-await');
       const ac = new AbortController();
       let done = false;
-      subscribe(name, async () => { await new Promise((res) => setTimeout(res, 5)); done = true; }, { signal: ac.signal });
+      subscribe(
+        name,
+        async () => {
+          await new Promise((res) => setTimeout(res, 5));
+          done = true;
+        },
+        { signal: ac.signal },
+      );
       await publishAndAwait(name, {});
       expect(done).toBe(true);
       ac.abort();
@@ -288,9 +325,24 @@ describe('src/shared/events/index.js', () => {
       const name2 = uniqueEventName('seq-evt-2');
       const ac = new AbortController();
       const order = [];
-      subscribe(name1, async () => { order.push('evt1'); }, { signal: ac.signal });
-      subscribe(name2, async () => { order.push('evt2'); }, { signal: ac.signal });
-      await publishAndAwaitSequential([[name1, {}], [name2, {}]]);
+      subscribe(
+        name1,
+        async () => {
+          order.push('evt1');
+        },
+        { signal: ac.signal },
+      );
+      subscribe(
+        name2,
+        async () => {
+          order.push('evt2');
+        },
+        { signal: ac.signal },
+      );
+      await publishAndAwaitSequential([
+        [name1, {}],
+        [name2, {}],
+      ]);
       expect(order).toEqual(['evt1', 'evt2']);
       ac.abort();
     });
@@ -302,11 +354,26 @@ describe('src/shared/events/index.js', () => {
       const log = [];
       subscribe(
         name1,
-        () => new Promise((res) => setTimeout(() => { log.push('evt1 done'); res(); }, 20)),
+        () =>
+          new Promise((res) =>
+            setTimeout(() => {
+              log.push('evt1 done');
+              res();
+            }, 20),
+          ),
         { signal: ac.signal },
       );
-      subscribe(name2, () => { log.push('evt2 started'); }, { signal: ac.signal });
-      await publishAndAwaitSequential([[name1, {}], [name2, {}]]);
+      subscribe(
+        name2,
+        () => {
+          log.push('evt2 started');
+        },
+        { signal: ac.signal },
+      );
+      await publishAndAwaitSequential([
+        [name1, {}],
+        [name2, {}],
+      ]);
       expect(log).toEqual(['evt1 done', 'evt2 started']);
       ac.abort();
     });
@@ -353,9 +420,9 @@ describe('src/shared/events/index.js', () => {
     });
 
     it('rejects event names when dispatching a command', () => {
-      expect(() => dispatchCommand(uniqueEventName('invalid-dispatch'))).toThrow(
-        'Invalid command name',
-      );
+      expect(() =>
+        dispatchCommand(uniqueEventName('invalid-dispatch')),
+      ).toThrow('Invalid command name');
     });
   });
 });

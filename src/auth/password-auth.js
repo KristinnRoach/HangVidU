@@ -19,11 +19,7 @@ import {
   normalizeAuthErrorCode,
   resolveErrorLookupKey,
 } from './shared/auth-error-codes.js';
-import {
-  getAuthState,
-  setState,
-  toStableAuthState,
-} from './auth-state.js';
+import { getAuthState, setState, toStableAuthState } from './auth-state.js';
 import { logAuthError } from './shared/auth-error-logging.js';
 import {
   SYNTHETIC_DOMAIN,
@@ -33,7 +29,11 @@ import {
 } from './shared/synthetic-email.js';
 import { hashEmail } from '@lib/utils/email-hash.js';
 
-export { SYNTHETIC_DOMAIN, extractUsernameFromSyntheticEmail, isSyntheticEmail };
+export {
+  SYNTHETIC_DOMAIN,
+  extractUsernameFromSyntheticEmail,
+  isSyntheticEmail,
+};
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 const MIN_PASSWORD_LENGTH = 8;

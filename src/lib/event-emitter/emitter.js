@@ -65,7 +65,10 @@ export class Emitter {
     }
 
     if (phase === 'emit') {
-      console.error(`EventEmitter: Error in listener for "${String(eventName)}"`, error);
+      console.error(
+        `EventEmitter: Error in listener for "${String(eventName)}"`,
+        error,
+      );
       return;
     }
     console.error(`EventEmitter: Async error in "${String(eventName)}"`, error);

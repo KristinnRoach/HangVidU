@@ -7,10 +7,10 @@ Status: **deferred**. Add this when parametric strings get painful (forgotten pa
 Current `t(key, params)` validates the key against `keyof typeof en`, but **not** the param shape. These all compile today and ship broken strings:
 
 ```ts
-t('contact.invite.body', { name });              // missing `link` → "{link}" leaks
-t('contact.invite.body', { name, lnk: link });   // typo → same
-t('referral.connected', { count: 1 });           // wrong shape → "{name}" leaks
-t('call.incoming');                              // forgot params entirely
+t('contact.invite.body', { name }); // missing `link` → "{link}" leaks
+t('contact.invite.body', { name, lnk: link }); // typo → same
+t('referral.connected', { count: 1 }); // wrong shape → "{name}" leaks
+t('call.incoming'); // forgot params entirely
 ```
 
 ## Approach
@@ -26,7 +26,8 @@ Cost: ~40 LoC of new code + migrate `en.json` / `is.json` → `en.ts` / `is.ts`.
 ```ts
 export type BaseArgs = Record<string, string | number>;
 export type Template<T extends BaseArgs> = string & { __args: T };
-export const template = <T extends BaseArgs>(s: string): Template<T> => s as any;
+export const template = <T extends BaseArgs>(s: string): Template<T> =>
+  s as any;
 
 type ArgsOf<V> = V extends Template<infer A> ? [args: A] : [];
 type Out<V> = V extends Template<any> ? string : V;
@@ -36,7 +37,9 @@ export function translator<D extends Record<string, unknown>>(dict: () => D) {
     const v = dict()[key] as any;
     if (typeof v !== 'string') return key as any;
     const a = args[0] as BaseArgs | undefined;
-    return (a ? v.replace(/\{(\w+)\}/g, (_, k) => String(a[k] ?? `{${k}}`)) : v) as Out<D[K]>;
+    return (
+      a ? v.replace(/\{(\w+)\}/g, (_, k) => String(a[k] ?? `{${k}}`)) : v
+    ) as Out<D[K]>;
   };
 }
 ```
@@ -65,7 +68,9 @@ Mirror the shape of `en.ts`. Enforce parity:
 ```ts
 import en from './en';
 // ...
-const is = { /* ... */ } satisfies typeof en;
+const is = {
+  /* ... */
+} satisfies typeof en;
 export default is;
 ```
 
@@ -82,17 +87,17 @@ import { translator } from './core';
 const [dict, setDict] = createSignal<typeof en>(en);
 // ...existing setLocale / loaders, but dict is now typed-object not Record<string,string>...
 
-export const t = translator(dict);  // reactive: reads signal on each call
+export const t = translator(dict); // reactive: reads signal on each call
 ```
 
 ## What you get at call sites (no syntactic change)
 
 ```ts
-t('contact.invite.body', { name, link });               // ok
-t('contact.invite.body', { name });                     // TS error: missing 'link'
-t('contact.invite.body', { name, lnk: link });          // TS error: unknown property
-t('call.incoming');                                     // TS error: expected 2 args
-t('shared.save', { foo: 1 });                           // TS error: no args allowed
+t('contact.invite.body', { name, link }); // ok
+t('contact.invite.body', { name }); // TS error: missing 'link'
+t('contact.invite.body', { name, lnk: link }); // TS error: unknown property
+t('call.incoming'); // TS error: expected 2 args
+t('shared.save', { foo: 1 }); // TS error: no args allowed
 ```
 
 ## Migration steps when ready
@@ -114,6 +119,7 @@ t('shared.save', { foo: 1 });                           // TS error: no args all
 ## Trigger to actually do this
 
 Any of:
+
 - Two or more bugs shipped because of param drift.
 - Adding a third locale (translator parity matters more).
 - A feature with >5 new parametric strings landing at once (referral flow, error toasts).

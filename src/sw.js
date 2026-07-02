@@ -70,7 +70,10 @@ self.addEventListener('pushsubscriptionchange', (event) => {
             applicationServerKey: urlBase64ToUint8Array(vapidKey),
           });
         } catch (error) {
-          console.error('[SW] pushsubscriptionchange re-subscribe failed', error);
+          console.error(
+            '[SW] pushsubscriptionchange re-subscribe failed',
+            error,
+          );
         }
       }
       const clients = await self.clients.matchAll({
@@ -111,7 +114,8 @@ self.addEventListener('message', (event) => {
     default:
       // Ignore valid Workbox messages or other known internal messages
       if (type !== undefined) {
-        if (import.meta.env.DEV) console.log('[SW] Unknown message type:', type);
+        if (import.meta.env.DEV)
+          console.log('[SW] Unknown message type:', type);
       } else {
         // Log full data for debugging undefined types (often benign)
         if (import.meta.env.DEV) {

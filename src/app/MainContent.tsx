@@ -116,7 +116,7 @@ export default function MainContent() {
           visible={headerVisible()}
         />
 
-        <main id='main-content' class={mainStyles.mainContent}>
+        <main id="main-content" class={mainStyles.mainContent}>
           <CallDialogs />
 
           {/* CSS display toggles keep stateful views mounted across nav. */}
@@ -211,14 +211,14 @@ function TopBar(props: TopBarProps) {
 
   return (
     <header
-      id='top-bar'
+      id="top-bar"
       class={topbarStyles.topBar}
       classList={{
         [topbarStyles.hidden]: !props.visible,
         [topbarStyles.overlay]: props.isInCall,
       }}
     >
-      <div id='top-bar-left' class={`${topbarStyles.stickyLeft} animated-flex`}>
+      <div id="top-bar-left" class={`${topbarStyles.stickyLeft} animated-flex`}>
         <AppLogo />
         <AuthControls loggedInProfile={getLoggedInUserProfile} />
       </div>
@@ -230,7 +230,7 @@ function TopBar(props: TopBarProps) {
         <Show when={props.showAuthenticatedUi && user()?.uid}>
           <div class={getNavItemClass('contacts')}>
             <button
-              type='button'
+              type="button"
               class={
                 props.activeView === 'contacts'
                   ? topbarStyles.navBtnSelected
@@ -252,7 +252,7 @@ function TopBar(props: TopBarProps) {
 
           <div class={getNavItemClass('conversations')}>
             <button
-              type='button'
+              type="button"
               class={
                 props.activeView === 'conversations'
                   ? topbarStyles.navBtnSelected
@@ -279,7 +279,7 @@ function TopBar(props: TopBarProps) {
                         props?.selectedConversation?.nickname || undefined
                       }
                     />
-                    {/* 
+                    {/*
                     // TODO: fix audio only call UX before uncommenting
                     <StartCallButton
                       audioOnly={true}
@@ -298,7 +298,7 @@ function TopBar(props: TopBarProps) {
 
         <Show when={props.isInCall}>
           <button
-            type='button'
+            type="button"
             class={
               props.activeView === 'call'
                 ? topbarStyles.navBtnSelected

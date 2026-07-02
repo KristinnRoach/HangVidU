@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { createConversationActions } from '../conversation.actions.js';
 import { createConversationState } from '../conversation.state.js';
 

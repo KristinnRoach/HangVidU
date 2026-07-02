@@ -4,7 +4,7 @@ const elExists = (el) => {
       'Element not found. el.id: =>',
       el?.id ?? '(no id)',
       'el: =>',
-      el
+      el,
     );
     console.trace();
     return false;

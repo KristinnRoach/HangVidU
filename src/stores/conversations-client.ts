@@ -43,7 +43,8 @@ export async function resolveDirectConversationId(
   try {
     conversationId = await getConversationsClient().resolveDirect(otherUserId);
   } catch (error) {
-    if (!(error instanceof DOMException) || error.name !== 'TimeoutError') throw error;
+    if (!(error instanceof DOMException) || error.name !== 'TimeoutError')
+      throw error;
     // ponytail: resolve-direct is idempotent; one retry covers a cold Worker.
     conversationId = await getConversationsClient().resolveDirect(otherUserId);
   }

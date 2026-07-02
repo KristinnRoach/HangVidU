@@ -17,8 +17,13 @@ async function handleSendMessageNotification(req, res) {
 
     const authenticatedUid = await verifyAuthHeader(req);
 
-    const { recipientIds, conversationId, senderId, senderName, messagePreview } =
-      req.body || {};
+    const {
+      recipientIds,
+      conversationId,
+      senderId,
+      senderName,
+      messagePreview,
+    } = req.body || {};
     if (senderId && senderId !== authenticatedUid) {
       return res.status(403).json({ error: 'Forbidden: sender mismatch' });
     }

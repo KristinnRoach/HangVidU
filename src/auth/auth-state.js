@@ -177,12 +177,18 @@ export function waitForAuthReady() {
   return new Promise((resolve) => {
     // No await between this check and subscribe, and `publish` is synchronous,
     // so there is no window to miss the resolving state change.
-    const unsubscribe = subscribe('evt:auth:state:changed', ({ state: next }) => {
-      if (next.status !== 'authenticated' && next.status !== 'unauthenticated') {
-        return;
-      }
-      unsubscribe();
-      resolve(next);
-    });
+    const unsubscribe = subscribe(
+      'evt:auth:state:changed',
+      ({ state: next }) => {
+        if (
+          next.status !== 'authenticated' &&
+          next.status !== 'unauthenticated'
+        ) {
+          return;
+        }
+        unsubscribe();
+        resolve(next);
+      },
+    );
   });
 }

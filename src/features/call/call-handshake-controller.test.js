@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
   incomingCallback: undefined,
@@ -60,9 +60,8 @@ async function flushPromises() {
   await Promise.resolve();
 }
 
-const { CallHandshakeController } = await import(
-  './call-handshake-controller.js'
-);
+const { CallHandshakeController } =
+  await import('./call-handshake-controller.js');
 
 describe('CallHandshakeController', () => {
   beforeEach(() => {
@@ -85,7 +84,7 @@ describe('CallHandshakeController', () => {
     mocks.resolveDirectConversationId.mockResolvedValue('room-1');
   });
 
-  it("dismisses a matching incoming call when another device handles it", () => {
+  it('dismisses a matching incoming call when another device handles it', () => {
     const onStateChange = vi.fn();
     const controller = new CallHandshakeController({
       p2p: {

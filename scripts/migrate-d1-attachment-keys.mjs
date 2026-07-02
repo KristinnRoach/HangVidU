@@ -137,7 +137,16 @@ for (const oldKey of pendingDeletes) {
 
 console.log(
   JSON.stringify(
-    { dryRun, scanned, alreadyAligned: aligned, copied, updated, deleted, skipped, failed },
+    {
+      dryRun,
+      scanned,
+      alreadyAligned: aligned,
+      copied,
+      updated,
+      deleted,
+      skipped,
+      failed,
+    },
     null,
     2,
   ),
@@ -160,7 +169,16 @@ function rekey(key, conversationId) {
 function wrangler(extraArgs) {
   const result = spawnSync(
     'npx',
-    ['wrangler', 'd1', 'execute', D1_DATABASE, '--remote', '--config', D1_CONFIG, ...extraArgs],
+    [
+      'wrangler',
+      'd1',
+      'execute',
+      D1_DATABASE,
+      '--remote',
+      '--config',
+      D1_CONFIG,
+      ...extraArgs,
+    ],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
   );
   if (result.status !== 0) {

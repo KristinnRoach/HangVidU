@@ -29,11 +29,7 @@ export function mimeFromExtension(fileName) {
  * @param {string[]} [allowedPrefixes]
  * @returns {boolean}
  */
-export function isVideoMime(
-  mimeType,
-  fileObj,
-  allowedPrefixes = ['video/'],
-) {
+export function isVideoMime(mimeType, fileObj, allowedPrefixes = ['video/']) {
   const metaType = (mimeType || '').toLowerCase();
   const fileType = (fileObj?.type || '').toLowerCase();
   const extType = (mimeFromExtension(fileObj?.name) || '').toLowerCase();

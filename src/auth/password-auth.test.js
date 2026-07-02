@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
   previousAuthState: {
@@ -145,6 +145,9 @@ describe('password auth failure state', () => {
 
     expect(mocks.deleteFirebaseUser).toHaveBeenCalledWith(user);
     expectAuthStateRestored();
-    expect(mocks.logAuthError).toHaveBeenCalledWith('Sign up (password)', error);
+    expect(mocks.logAuthError).toHaveBeenCalledWith(
+      'Sign up (password)',
+      error,
+    );
   });
 });

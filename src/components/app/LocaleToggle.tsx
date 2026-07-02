@@ -11,9 +11,9 @@ export default function LocaleToggle() {
 
   return (
     <button
-      id='toggle-lang-btn'
+      id="toggle-lang-btn"
       class={styles.localeToggle}
-      type='button'
+      type="button"
       onClick={toggleLocale}
     >
       🌐 {locale().toUpperCase()}

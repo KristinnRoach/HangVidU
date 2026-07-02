@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { TimestampStringSchema, NonEmptyStringSchema } from './schema-primitives.js';
+import {
+  TimestampStringSchema,
+  NonEmptyStringSchema,
+} from './schema-primitives.js';
 
 const NotificationDataBaseSchema = z.object({
   notificationId: NonEmptyStringSchema,
@@ -25,14 +28,13 @@ export const MissedCallNotificationDataSchema =
     targetUserId: NonEmptyStringSchema,
   });
 
-export const MessageNotificationDataSchema =
-  NotificationDataBaseSchema.extend({
-    type: z.literal('message'),
-    senderId: NonEmptyStringSchema,
-    senderName: NonEmptyStringSchema,
-    messagePreview: z.string(),
-    conversationId: NonEmptyStringSchema,
-  });
+export const MessageNotificationDataSchema = NotificationDataBaseSchema.extend({
+  type: z.literal('message'),
+  senderId: NonEmptyStringSchema,
+  senderName: NonEmptyStringSchema,
+  messagePreview: z.string(),
+  conversationId: NonEmptyStringSchema,
+});
 
 export const CanonicalPushNotificationDataSchema = z.discriminatedUnion(
   'type',
