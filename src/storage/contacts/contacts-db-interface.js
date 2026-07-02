@@ -10,7 +10,7 @@ export class ContactsDBInterface {
    * @param {string} contactId
    * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
    */
-  async get(contactId) {
+  async get(_contactId) {
     throw new Error('Not implemented');
   }
 
@@ -27,7 +27,7 @@ export class ContactsDBInterface {
    * @param {import('./contact-schema.js').ContactRecord} contactRecord
    * @returns {Promise<void>}
    */
-  async put(contactRecord) {
+  async put(_contactRecord) {
     throw new Error('Not implemented');
   }
 
@@ -39,7 +39,7 @@ export class ContactsDBInterface {
    * @param {import('./contact-schema.js').ContactPatch} patch
    * @returns {Promise<import('./contact-schema.js').ContactRecord|null>}
    */
-  async patch(contactId, patch) {
+  async patch(_contactId, _patch) {
     throw new Error('Not implemented');
   }
 
@@ -48,7 +48,7 @@ export class ContactsDBInterface {
    * @param {string} contactId
    * @returns {Promise<void>}
    */
-  async remove(contactId) {
+  async remove(_contactId) {
     throw new Error('Not implemented');
   }
 }

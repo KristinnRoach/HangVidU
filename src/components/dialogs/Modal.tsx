@@ -1,4 +1,4 @@
-import { createSignal, createEffect, createUniqueId, type JSX } from 'solid-js';
+import { createEffect, createUniqueId, type JSX } from 'solid-js';
 import styles from './Modal.module.css';
 
 type ModalProps = {

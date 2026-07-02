@@ -14,6 +14,7 @@ import { getLoggedInUserProfile } from '../../stores/userProfileStore';
 
 import { useI18n } from '../../shared/i18n';
 import { LoadBoundary } from '../../components/app/LoadBoundary';
+// eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:fileDrop` directive
 import { fileDrop } from '@shared/utils/ui-utils/fileDrop/onFileDrop.solid.js';
 import { showImagePreview } from '../../components/base-legacy/imagePreview.js';
 import { compressImage } from '@lib/media/image-compress.js';
@@ -57,14 +58,11 @@ import { createConversationActions } from './conversation.actions.js';
 import { envelopeToChatMessage, useConversation } from './use-conversation.js';
 import { sortMessagesBySentAt } from './message-ordering.js';
 import { clearLocalDraft, saveLocalDraft } from './local-drafts.js';
+// eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:reactions` directive
 import { reactions } from './reactions/solid/solid.js';
 import type { ReactionChange } from './reactions/solid/solid.js';
 import type { ConversationId, UserId } from './types.js';
-import type {
-  ChatMessage,
-  ConversationSelection,
-  MessageAttachment,
-} from './interfaces.js';
+import type { ChatMessage, ConversationSelection } from './interfaces.js';
 
 import styles from './ConversationPanel.module.css';
 

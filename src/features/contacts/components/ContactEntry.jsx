@@ -1,4 +1,4 @@
-import { Show, onMount } from 'solid-js';
+import { Show } from 'solid-js';
 import { dispatchCommand } from '../../../shared/events/index.js';
 import { useI18n } from '../../../shared/i18n/index.js';
 import PresenceIndicator from '../../presence/components/PresenceIndicator';
@@ -28,7 +28,7 @@ export default function ContactEntry(props) {
   let rootEl;
 
   const contactLabel = () => props.label;
-  const editMenuTitle = () => t('contact.action.edit');
+  const _editMenuTitle = () => t('contact.action.edit');
 
   const onOpenConversation = () => {
     if (!props.id) return;
@@ -40,7 +40,7 @@ export default function ContactEntry(props) {
     });
   };
 
-  const onEdit = () => {
+  const _onEdit = () => {
     if (!props.id) return;
     dispatchCommand('cmd:dialog:contact-edit:open', {
       contactId: props.id,
@@ -87,9 +87,9 @@ export default function ContactEntry(props) {
       {/* <button
         class='contact-edit-btn'
         type='button'
-        onClick={onEdit}
-        title={editMenuTitle()}
-        aria-label={editMenuTitle()}
+        onClick={_onEdit}
+        title={_editMenuTitle()}
+        aria-label={_editMenuTitle()}
       >
         ⋮
       </button> */}

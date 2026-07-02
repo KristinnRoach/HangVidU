@@ -175,4 +175,4 @@ async function analyzeRooms() {
   }
 }
 
-analyzeRooms();
+void analyzeRooms();

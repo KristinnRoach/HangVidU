@@ -275,7 +275,7 @@ export class CallHandshakeController {
     const storedConversationId = getContactById(calleeId)?.conversationId;
     if (storedConversationId) return storedConversationId;
     const conversationId = await resolveDirectConversationId(calleeId);
-    cacheContactConversationId(calleeId, conversationId);
+    void cacheContactConversationId(calleeId, conversationId);
     return conversationId;
   }
 
@@ -309,8 +309,7 @@ export class CallHandshakeController {
     if (!room)
       throw this.p2p.error() ?? new Error('Room join returned no room');
 
-    import.meta.env.DEV &&
-      room &&
+    if (import.meta.env.DEV)
       console.debug(
         `Active room: ${room.roomId}, members: ${room.members.join(', ')}`,
       );

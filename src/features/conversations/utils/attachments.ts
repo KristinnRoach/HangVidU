@@ -22,7 +22,10 @@ export function isImageFile(file: File) {
 // Strip control chars and path separators for a safe optimistic display +
 // download name. Length is the worker's concern (it truncates authoritatively).
 export function attachmentFileName(file: File) {
-  return file.name.replace(/[\x00-\x1f\x7f/\\]/g, '_').trim() || 'attachment';
+  return (
+    // eslint-disable-next-line no-control-regex -- stripping control chars is the point
+    file.name.replace(/[\u0000-\u001f\u007f/\\]/g, '_').trim() || 'attachment'
+  );
 }
 
 export function displayAttachmentFileName(fileName: string) {

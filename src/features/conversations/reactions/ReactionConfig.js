@@ -43,7 +43,7 @@ export const DEFAULT_CONFIG = {
 /**
  * Get the emoji for a reaction type
  * @param {string} reactionType - The reaction type key
- * @param {Object} [reactions] - Reaction type -> emoji map
+ * @param {Record<string, string>} [reactions] - Reaction type -> emoji map
  * @returns {string} The emoji for the reaction type
  */
 export function getReactionEmoji(reactionType, reactions = DEFAULT_REACTIONS) {
@@ -54,7 +54,7 @@ export function getReactionEmoji(reactionType, reactions = DEFAULT_REACTIONS) {
 
 /**
  * Get all available reaction types
- * @param {Object} [reactions] - Reaction type -> emoji map
+ * @param {Record<string, string>} [reactions] - Reaction type -> emoji map
  * @returns {Object} Object mapping reaction types to emojis
  */
 export function getAvailableReactions(reactions = DEFAULT_REACTIONS) {

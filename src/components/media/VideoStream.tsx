@@ -69,11 +69,11 @@ export default function VideoStream(props: Props) {
     video.setAttribute('playsinline', 'true');
 
     // Attaches the stream and runs the initial play() (autoplay defaults on).
-    playback.attach(video, stream ?? null, { muted });
+    void playback.attach(video, stream ?? null, { muted });
 
     // Re-attempt playback once the stream produces frames / on spurious pause.
     const replay = () => {
-      if (stream && video.paused) playback.resumePlayback();
+      if (stream && video.paused) void playback.resumePlayback();
     };
 
     function debugVideoResize() {

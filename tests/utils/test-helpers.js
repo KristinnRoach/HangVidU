@@ -6,12 +6,7 @@
 import { createFirebaseMock } from './firebase-mock.js';
 import { createCallFlowSimulator } from './call-simulator.js';
 import { getDiagnosticLogger } from '../../src/shared/utils/diagnostic-logger.js';
-import {
-  TEST_USERS,
-  TEST_ROOMS,
-  createTestUser,
-  createTestRoom,
-} from '../fixtures/user-scenarios.js';
+import { TEST_USERS, createTestRoom } from '../fixtures/user-scenarios.js';
 
 /**
  * Test Setup Helpers

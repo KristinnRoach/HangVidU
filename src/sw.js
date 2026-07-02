@@ -95,7 +95,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
  * Handle messages from the main thread
  */
 self.addEventListener('message', (event) => {
-  const { type, data } = event.data || {};
+  const { type } = event.data || {};
 
   switch (type) {
     case 'SKIP_WAITING':

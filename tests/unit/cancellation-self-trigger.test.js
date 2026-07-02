@@ -9,7 +9,6 @@ import {
   beforeEach,
   afterEach,
 } from 'vite-plus/test';
-import { ref, onValue } from 'firebase/database';
 
 describe('Cancellation Listener - Self-Trigger Prevention', () => {
   let mockGetUserId;

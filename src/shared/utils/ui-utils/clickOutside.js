@@ -25,7 +25,6 @@ export function onClickOutside(element, onClick, options = {}) {
   // Todo: look into whether it is better to use Pointer Events for unified handling: events = ['pointerdown']  // Handles mouse, touch, and pen
 
   const {
-    ignore = [],
     esc = true,
     events = ['mousedown', 'touchstart'],
     ignoreInputBlur = false, // New option: ignore clicks that blur input elements

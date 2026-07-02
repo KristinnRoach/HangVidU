@@ -152,6 +152,6 @@ async function getFirebaseAppCheckToken() {
 // initializing App Check as early as possible in app boot.
 // Note: microtasks usually run before first paint; this is intentional to
 // minimize the race window before first Firebase API calls.
-Promise.resolve().then(initializeAppCheckDeferred);
+void Promise.resolve().then(initializeAppCheckDeferred);
 
 export { getFirebaseAppCheckToken, initializeAppCheckDeferred };

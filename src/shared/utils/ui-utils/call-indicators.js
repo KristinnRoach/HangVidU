@@ -68,7 +68,7 @@ class CallIndicators {
     this.setBadge(1);
 
     // Request wake lock (if supported)
-    this.requestWakeLock();
+    void this.requestWakeLock();
   }
 
   /**

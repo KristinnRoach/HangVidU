@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
     lint: {
       plugins: ['oxc', 'typescript', 'unicorn', 'react'],
       categories: {
-        correctness: 'warn',
+        correctness: 'error',
       },
       env: {
         builtin: true,
@@ -132,6 +132,22 @@ export default defineConfig(({ mode }) => {
             ],
           },
         },
+        {
+          // Solid idioms: `let el;` ref variables and bare signal reads in
+          // createEffect for dependency tracking.
+          files: ['src/**/*.jsx', 'src/**/*.tsx'],
+          rules: {
+            'no-unassigned-vars': 'off',
+            'no-unused-expressions': 'off',
+          },
+        },
+        {
+          // unbound-method is noise on vitest mock assertions.
+          files: ['**/*.test.*', '**/__tests__/**', 'tests/**'],
+          rules: {
+            'typescript/unbound-method': 'off',
+          },
+        },
       ],
       options: {
         typeAware: true,
@@ -154,6 +170,8 @@ export default defineConfig(({ mode }) => {
       rules: {
         'vite-plus/prefer-vite-plus-imports': 'error',
         'local/event-name-format': 'error',
+        // Solid JSX has no key prop; the React rule is noise here.
+        'react/jsx-key': 'off',
       },
     },
     base: basePath,

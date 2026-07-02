@@ -9,9 +9,9 @@ export class AudioPlayer {
   /**
    * Create a new audio player
    * @param {string} src - Path to audio file
-   * @param {Object} options - Player configuration
-   * @param {boolean} options.loop - Whether to loop the audio (default: false)
-   * @param {number} options.volume - Volume level 0-1 (default: 0.5)
+   * @param {Object} [options] - Player configuration
+   * @param {boolean} [options.loop=false] - Whether to loop the audio (default: false)
+   * @param {number} [options.volume=0.5] - Volume level 0-1 (default: 0.5)
    */
   constructor(src, { loop = false, volume = 0.5 } = {}) {
     this.src = src;

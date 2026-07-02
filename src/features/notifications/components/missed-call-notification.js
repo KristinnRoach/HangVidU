@@ -20,9 +20,9 @@ import { t, onLocaleChange } from '../../../shared/i18n/index.js';
  * @returns {HTMLElement} The notification component
  */
 export function createMissedCallNotification({
-  callerId,
+  _callerId,
   callerName,
-  roomId,
+  _roomId,
   onCallBack,
   onDismiss,
 }) {

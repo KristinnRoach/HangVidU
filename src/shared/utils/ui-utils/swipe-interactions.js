@@ -89,7 +89,7 @@ export function onSwipe(element, callbacks = {}, options = {}) {
     element.addEventListener(
       'touchstart',
       (e) => {
-        enablePreventDefault && e.preventDefault();
+        if (enablePreventDefault) e.preventDefault();
         if (!e.touches.length) return;
         touching = true;
         const t = e.touches[0];

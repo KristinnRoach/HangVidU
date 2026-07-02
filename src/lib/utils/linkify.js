@@ -30,7 +30,7 @@ function normalizeSafeHref(raw) {
         : undefined,
     );
     protocol = parsedUrl.protocol; // e.g., "http:", "https:", "javascript:"
-  } catch (_) {
+  } catch {
     const match = href.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:)/);
     protocol = match ? match[1].toLowerCase() : '';
   }

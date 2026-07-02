@@ -59,7 +59,7 @@ function isAlreadyInvitedError(error) {
   });
 }
 
-export async function sendContactInvite(toUserId, toName = 'User') {
+export async function sendContactInvite(toUserId, _toName = 'User') {
   try {
     await sendContactRequest(toUserId);
     return { ok: true, status: 'sent' };

@@ -116,7 +116,7 @@ export class PushNotifications {
         onDenied?.('already-denied');
         return { state: 'denied', reason: 'already-denied', browser };
       }
-    } catch (_) {
+    } catch {
       // Best-effort hint only; browsers may not support querying notification permission.
     }
 
@@ -734,7 +734,7 @@ export const initPushNotifications = async (options = {}) => {
   if (!instance) {
     instance = new PushNotifications(options);
     try {
-      const pushInitialized = await instance.initialize();
+      await instance.initialize();
       // TODO: Re-enable in a decoupled way if needed / when notifications get migrated to solidjs
       // if (!pushInitialized && !instance.isNotificationSupported()) {
       //   const { showPushUnsupportedNotification } = await import(

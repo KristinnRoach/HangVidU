@@ -95,7 +95,7 @@ async function startupUpdateCheck(updateSW) {
     const reg = await navigator.serviceWorker.getRegistration();
     if (reg?.waiting) {
       console.info('[PWA] Found waiting service worker at startup');
-      attemptAutoUpdate(updateSW);
+      void attemptAutoUpdate(updateSW);
     }
   } catch (err) {
     console.debug('[PWA] Startup waiting-check failed:', err);
@@ -202,7 +202,7 @@ export async function setupUpdateHandler() {
       immediate: true,
       onNeedRefresh() {
         console.info('[PWA] New version available');
-        attemptAutoUpdate(updateSW);
+        void attemptAutoUpdate(updateSW);
       },
       onOfflineReady() {
         console.info('[PWA] App ready to work offline');
