@@ -36,12 +36,12 @@ export default function CallDialog(props: ParentProps<CallDialogProps>) {
 
   onMount(() => {
     if (ringtone() === 'incoming') {
-      ringtoneManager.playIncoming();
+      void ringtoneManager.playIncoming();
       callIndicators.startCallIndicators(name());
     } else if (ringtone() === 'outgoing') {
-      ringtoneManager.playOutgoing({ audioOnly: props.audioOnly });
+      void ringtoneManager.playOutgoing({ audioOnly: props.audioOnly });
     } else if (ringtone() === 'busy') {
-      ringtoneManager.playBusy();
+      void ringtoneManager.playBusy();
     }
   });
 

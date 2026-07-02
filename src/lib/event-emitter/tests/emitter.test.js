@@ -67,6 +67,7 @@ describe('Emitter', () => {
     it('handles thenables without a .catch method', async () => {
       const hook = vi.fn();
       const thenableReject = {
+        // eslint-disable-next-line unicorn/no-thenable -- intentionally thenable: that is what the test exercises
         then(_resolve, reject) {
           reject(new Error('thenable fail'));
         },

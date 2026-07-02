@@ -21,13 +21,13 @@ export const isHidden = (el) => {
 export const showElement = (el) => {
   if (!elExists(el)) return;
 
-  el.classList.contains('hidden') && el.classList.remove('hidden');
+  el.classList.remove('hidden');
 };
 
 export const hideElement = (el) => {
   if (!elExists(el)) return;
 
-  !el.classList.contains('hidden') && el.classList.add('hidden');
+  el.classList.add('hidden');
 };
 
 export const isInSmallFrame = (element) => {
@@ -36,7 +36,7 @@ export const isInSmallFrame = (element) => {
 
 export const placeInSmallFrame = (element) => {
   if (!element) {
-    import.meta.env.DEV &&
+    if (import.meta.env.DEV)
       console.warn('placeInSmallFrame: valid element required');
     return;
   }

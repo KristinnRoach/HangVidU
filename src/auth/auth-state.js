@@ -64,7 +64,7 @@ export function setState(next) {
 
   state = { ...state, ...patch };
   const snap = snapshot();
-  import.meta.env.DEV && console.info('[AUTH] setState', snap);
+  if (import.meta.env.DEV) console.info('[AUTH] setState', snap);
 
   // Canonical state-change event (STATE_RULES.md pattern) and the single
   // notification channel for auth state. Fire-and-forget: does not participate

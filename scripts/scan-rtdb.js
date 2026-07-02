@@ -56,7 +56,7 @@ const LEGACY_USER_KEYS = new Set([
   'callHistory',
 ]);
 
-const KNOWN_ROOM_KEYS = new Set(['meta', 'participants']);
+const _KNOWN_ROOM_KEYS = new Set(['meta', 'participants']);
 
 const LEGACY_ROOM_KEYS = new Set([
   'p2pSignaling',

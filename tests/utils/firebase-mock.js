@@ -260,7 +260,7 @@ class MockDatabaseRef {
     });
   }
 
-  once(eventType) {
+  once(_eventType) {
     return new Promise((resolve, reject) => {
       if (this.mock.connectionState === 'disconnected') {
         reject(new Error('Firebase connection lost'));

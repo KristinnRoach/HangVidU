@@ -408,7 +408,7 @@ class DiagnosticLogger {
             localStorage.removeItem(key);
           }
         }
-      } catch (e) {
+      } catch {
         // Remove corrupted entries
         localStorage.removeItem(key);
       }
@@ -660,7 +660,7 @@ Example Usage:
       }
       // Clean up old persisted logs
       DiagnosticLogger.cleanupPersistedLogs();
-    } catch (e) {
+    } catch {
       // Ignore errors during unload
     }
   });
@@ -686,7 +686,7 @@ Example Usage:
           );
           console.log('Available keys:', keys);
         }
-      } catch (e) {
+      } catch {
         // Ignore errors
       }
     }, 1000);

@@ -43,7 +43,7 @@ describe('createDoRoomSignaling', () => {
 
   it('sends join and re-joins on reconnect', () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
-    signaling.join('peer-a');
+    void signaling.join('peer-a');
     expect(socket.sent).toEqual([{ t: 'join', peerId: 'peer-a' }]);
 
     socket.sent.length = 0;
@@ -73,7 +73,7 @@ describe('createDoRoomSignaling', () => {
 
   it('sends presence data on join and restores it on reconnect', () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
-    signaling.join('peer-a', { muted: true });
+    void signaling.join('peer-a', { muted: true });
     expect(socket.sent).toEqual([
       { t: 'join', peerId: 'peer-a', data: { muted: true } },
     ]);
@@ -87,10 +87,10 @@ describe('createDoRoomSignaling', () => {
 
   it('updatePresenceData sends a presence message and is restored on reconnect', () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
-    signaling.join('peer-a');
+    void signaling.join('peer-a');
     socket.sent.length = 0;
 
-    signaling.updatePresenceData('peer-a', { muted: true });
+    void signaling.updatePresenceData('peer-a', { muted: true });
     expect(socket.sent).toEqual([{ t: 'presence', data: { muted: true } }]);
 
     socket.sent.length = 0;
@@ -107,8 +107,8 @@ describe('createDoRoomSignaling', () => {
       remotePeerId: 'peer-b',
     });
 
-    peer.sendOffer({ type: 'offer', sdp: 'x' });
-    peer.sendCandidate({ candidate: 'c' });
+    void peer.sendOffer({ type: 'offer', sdp: 'x' });
+    void peer.sendCandidate({ candidate: 'c' });
 
     expect(socket.sent).toEqual([
       {
@@ -155,10 +155,10 @@ describe('createDoRoomSignaling', () => {
 
   it('does not re-join on reconnect after leave', () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
-    signaling.join('peer-a');
+    void signaling.join('peer-a');
     socket.sent.length = 0;
 
-    signaling.leave('peer-a');
+    void signaling.leave('peer-a');
     expect(socket.sent).toEqual([{ t: 'leave' }]);
 
     // Local join state must be cleared so a reconnect doesn't re-assert it.
@@ -169,10 +169,10 @@ describe('createDoRoomSignaling', () => {
 
   it('closes the socket on cleanup', () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
-    signaling.join('peer-a');
+    void signaling.join('peer-a');
     socket.sent.length = 0;
 
-    signaling.cleanupSignaling();
+    void signaling.cleanupSignaling();
     expect(socket.sent).toEqual([{ t: 'leave' }]);
     expect(socket.closed).toBe(true);
   });

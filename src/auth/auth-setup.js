@@ -87,7 +87,7 @@ async function _initAuthInternal() {
     await setFirebaseAuthPersistence(
       persistenceBackends.indexedDBLocalPersistence,
     );
-  } catch (_) {
+  } catch {
     try {
       await setFirebaseAuthPersistence(
         persistenceBackends.browserLocalPersistence,

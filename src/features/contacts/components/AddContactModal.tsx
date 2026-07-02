@@ -557,7 +557,7 @@ export default function AddContactModal(props: Props) {
             onInput={(e) => setHandleInput(e.currentTarget.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !handleSearching())
-                handleSearchByHandle();
+                void handleSearchByHandle();
             }}
             placeholder={t('contact.add.enter_handle')}
             aria-label={t('contact.add.enter_handle')}
@@ -626,7 +626,7 @@ export default function AddContactModal(props: Props) {
             onInput={(e) => setEmailInput(e.currentTarget.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !emailSending())
-                handleManualEmailInvite();
+                void handleManualEmailInvite();
             }}
             placeholder={t('contact.add.enter_email')}
             aria-label={t('contact.add.enter_email')}

@@ -44,7 +44,7 @@ export async function openDirectConversation(
       // here to keep failures on the warn-and-return path instead of an
       // unhandled rejection.
       conversationId = await resolveDirectConversationId(contactId);
-      cacheContactConversationId(contactId, conversationId);
+      void cacheContactConversationId(contactId, conversationId);
     } catch (error) {
       console.warn('[conversation] failed to resolve conversation id', {
         contactId,

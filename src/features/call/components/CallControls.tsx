@@ -25,7 +25,7 @@ export function StartCallButton(props: StartCallButtonProps) {
     props.title || t('contact.action.call', { name: calleeName() });
 
   function onCall() {
-    startCall({
+    void startCall({
       calleeId: props.calleeId,
       calleeName: calleeName(),
       audioOnly: audioOnly(),

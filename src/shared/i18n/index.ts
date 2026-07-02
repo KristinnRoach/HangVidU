@@ -52,7 +52,7 @@ export function getLocale(): Locale {
   return locale();
 }
 
-export function setLocale(next: Locale | string) {
+export function setLocale(next: string) {
   const n: Locale = next === 'en' || next === 'is' ? next : 'en';
   if (n === locale()) return;
   setLocaleSignal(n);

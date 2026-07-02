@@ -1,5 +1,4 @@
 import { Show, createSignal } from 'solid-js';
-import { LogIn } from 'lucide-solid';
 import { useI18n } from '../../shared/i18n/index.js';
 import GoogleSignInButton from './GoogleSignInButton';
 import UsernamePasswordForm from './UsernamePasswordForm';

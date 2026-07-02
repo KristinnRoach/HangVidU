@@ -6,11 +6,11 @@ import { isDev } from '../../shared/utils/dev/dev-utils';
  * Show a toast notification message.
  * @param {string} message - The message to display
  * @param {Object} options - Toast options
- * @param {number} options.duration - Duration in ms (default: 6000)
- * @param {string} options.type - Toast type: 'success', 'info', 'warning', 'error' (default: 'info')
- * @param {string} options.position - Position: 'top', 'bottom' (default: 'bottom')
- * @param {Function} options.onClick - Click handler. When set, toast becomes clickable and dismisses on click.
- * @param {HTMLElement} options.containerEl - Container element for the toast (default: document.body)
+ * @param {number} [options.duration=6000] - Duration in ms (default: 6000)
+ * @param {string} [options.type='info'] - Toast type: 'success', 'info', 'warning', 'error' (default: 'info')
+ * @param {string} [options.position='bottom'] - Position: 'top', 'bottom' (default: 'bottom')
+ * @param {Function} [options.onClick] - Click handler. When set, toast becomes clickable and dismisses on click.
+ * @param {HTMLElement} [options.containerEl] - Container element for the toast (default: document.body)
  */
 export function showToast(message, options = {}) {
   const {

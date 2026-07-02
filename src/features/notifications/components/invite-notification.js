@@ -19,7 +19,7 @@ import { t, onLocaleChange } from '../../../shared/i18n/index.js';
  * @returns {HTMLElement} The notification component
  */
 export function createInviteNotification({
-  fromUserId,
+  _fromUserId,
   inviteData,
   onAccept,
   onDecline,
