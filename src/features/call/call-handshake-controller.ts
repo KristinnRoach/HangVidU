@@ -212,7 +212,9 @@ export class CallHandshakeController {
       this.clearOutgoingCallTracking();
       try {
         if (response.responseType === 'accepted') {
-          this.pendingOutgoingLocalStream = undefined;
+          if (this.pendingOutgoingLocalStream === localStream) {
+            this.pendingOutgoingLocalStream = undefined;
+          }
           await this.enterRoom(
             response.roomId,
             localUID,
