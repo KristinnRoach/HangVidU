@@ -1,5 +1,9 @@
 /* src/style.css */
 
+/* Tailwind v4 (preflight added separately, see PR #606 task list) */
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
 @import './init/reset.css';
 @import './init/typography.css';
 @import './init/scrollbar.css';
