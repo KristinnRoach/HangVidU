@@ -38,9 +38,9 @@ minimumReleaseAgeExclude:
   - miniflare@4.20260617.0
   - wrangler@4.102.0
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@latest
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.1
   vitest: 4.1.9
-  vite-plus: latest
+  vite-plus: 0.2.1
 peerDependencyRules:
   allowAny:
     - vite
