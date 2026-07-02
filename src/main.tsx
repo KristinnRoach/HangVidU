@@ -55,6 +55,8 @@ function AppSideEffects(props: { children: JSX.Element }) {
   return <>{props.children}</>;
 }
 
+document.getElementById('static-home')?.remove();
+
 render(
   () => (
     <AppSideEffects>

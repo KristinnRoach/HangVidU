@@ -16,6 +16,19 @@
     <link rel="icon" href="/favicon.ico" />
   </head>
   <body>
+    <!-- Static content for crawlers/no-JS (Google OAuth homepage verification); removed when the app mounts -->
+    <div id="static-home">
+      <h1>HangVidU</h1>
+      <p>
+        HangVidU is a peer-to-peer video chat and messaging app with real-time
+        synced media playback. Google sign-in is used only for authentication.
+      </p>
+      <p>
+        <a href="/privacy-policy.html">Privacy Policy</a> ·
+        <a href="/terms-of-service.html">Terms of Service</a>
+      </p>
+      <noscript><p>HangVidU requires JavaScript to run.</p></noscript>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
