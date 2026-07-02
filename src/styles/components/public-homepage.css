@@ -47,6 +47,10 @@
   line-height: 1.5;
 }
 
+.public-homepage p.public-homepage__support {
+  gap: 0.4em;
+}
+
 .public-homepage__login_prompt {
   display: flex;
   align-items: center;
