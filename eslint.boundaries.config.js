@@ -1,6 +1,6 @@
-// ⚠️ Playground data source only — lint enforcement of these rules now lives
-// in the `lint` block of vite.config.js (oxlint + eslint-plugin-boundaries via
-// jsPlugins). Keep BOTH in sync when changing elements or allow-rules.
+// Single source of truth for architecture boundaries. vite.config.js derives
+// the oxlint `lint` overrides/settings from this file, so editing rules here
+// updates `vp lint` directly (no sync step).
 // The visualizer (playgrounds/boundary-rules.html) reads this config live for
 // element types + allow-rules, but the underlying import data is a generated
 // snapshot. After changing elements, rules, or the tsconfig path aliases,
