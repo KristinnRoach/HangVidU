@@ -1,28 +1,16 @@
 .public-homepage {
-  display: flex;
-  flex-direction: column;
-
-  flex: 1;
-  min-height: 0;
   margin-inline: auto;
-  width: 100%;
-  height: 100%;
+  max-width: 90svw;
+  max-height: 90svh;
+  font-size: 16px;
+  font-weight: 300;
+  overflow: hidden;
 }
 
 .public-homepage__content {
-  position: relative;
-
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  height: 100%;
-
-  padding: clamp(18px, 6dvh, 36px) var(--spacing-xl) var(--spacing-2xl);
-
+  padding: 1rem;
   color: var(--text-primary);
   text-align: center;
 }
@@ -30,7 +18,7 @@
 .public-homepage h2 {
   margin: 0;
   font-size: 2rem;
-  line-height: 1.1;
+  font-weight: 500;
   text-shadow: var(--text-shadow-medium);
 
   color: var(--color-primary);
@@ -55,13 +43,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* text-wrap: none; */
+  gap: 0.5em;
+  flex-wrap: wrap;
 }
 
 button.public-homepage__login {
   text-transform: capitalize;
   text-shadow: var(--text-shadow-medium);
   white-space: nowrap;
+
+  border: rgb(151, 200, 238) 2px solid;
+  background-color: rgba(124, 190, 208, 0.234);
 
   &:hover {
     text-decoration: underline;
@@ -70,10 +62,6 @@ button.public-homepage__login {
 }
 
 .public-homepage__links {
-  position: absolute;
-  bottom: 2rem;
-  inset-inline: 0;
-
   display: flex;
   justify-content: center;
   gap: var(--spacing-xl);

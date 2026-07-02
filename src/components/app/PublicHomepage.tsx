@@ -10,8 +10,6 @@ export default function PublicHomepage(props: ParentProps) {
       <div class="public-homepage__content">
         <h2 id="public-homepage-title">{t('home.title')}</h2>
         <p>{t('home.description')}</p>
-        <p>{t('contact.disclosure.import')}</p>
-        <p>{t('contact.disclosure.gmail_send')}</p>
 
         <p class="public-homepage__login_prompt">
           <LoginButton
@@ -28,6 +26,9 @@ export default function PublicHomepage(props: ParentProps) {
           Support:{' '}
           <a href="mailto:kristinnroach@gmail.com">kristinnroach@gmail.com</a>
         </p>
+
+        <p>{t('contact.disclosure.import')}</p>
+        <p>{t('contact.disclosure.gmail_send')}</p>
 
         <div class="public-homepage__links" aria-label={t('home.links')}>
           <a href="/privacy-policy.html">{t('nav.privacy')}</a>
