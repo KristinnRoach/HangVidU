@@ -5,13 +5,26 @@ Tailwind v4 is the styling system. Everything else is legacy on its way out.
 ## Rules
 
 - New/touched components: Tailwind utility classes. No new CSS files.
-- Design tokens live in [`src/styles/theme.css`](../../src/styles/theme.css)
-  (`@theme` block). Current names are a mechanical port (`bg-bg-primary`,
-  `text-text-secondary`, …) — a proper redesign happens after the migration,
-  don't polish names now.
-- Legacy var names (`--bg-primary`, `--font-size-md`, …) are aliases at the
-  bottom of theme.css. Delete each alias once its consumers are migrated.
 - No inline styles (`style={{ ... }}`). Utilities or the `hidden` attribute.
+- **Tokens are minted intentionally, never bulk-ported.** `@theme` in
+  [`src/styles/theme.css`](../../src/styles/theme.css) starts near-empty;
+  Tailwind's default theme (spacing scale, `neutral-*`, `text-xs`, …) is the
+  baseline. Add a token only when a migration or the redesign needs a value
+  the default theme can't express — everything in `@theme` is actively used
+  and deliberate.
+- **Migrated components must not reference legacy `--vars`.** Use intentional
+  tokens, Tailwind defaults, or arbitrary literals (`text-[#cdcdcdd2]`).
+- Legacy tokens live in the `:root` block of theme.css, verbatim. Delete each
+  line when its last consumer migrates.
+
+## Migrating a component
+
+1. Rebuild it with utilities in its intended look (redesign happens here —
+   don't pixel-port hover states you're about to redesign).
+2. Decide token integration: default theme value, existing `@theme` token,
+   new intentional token, or one-off arbitrary literal.
+3. Delete its `*.module.css` file / its section of global CSS, and any legacy
+   `:root` token lines that lost their last consumer.
 
 ## Cascade layers (src/styles/main.css)
 
@@ -25,7 +38,7 @@ Tailwind v4 is the styling system. Everything else is legacy on its way out.
 ## Migration status
 
 - Setup + pilot: PR #606 (LegalFooter, LocaleToggle).
-- Remaining: ~14 `*.module.css` files, `src/styles/{element,layout,components}/`,
+- Remaining: ~13 `*.module.css` files, `src/styles/{element,layout,components}/`,
   `init/typography.css`, `animations.css`. Migrate opportunistically when
   touching a component.
 - `src/components/base-legacy/` (imperative DOM toast/notification/imagePreview)
@@ -33,6 +46,7 @@ Tailwind v4 is the styling system. Everything else is legacy on its way out.
 
 ## Under Consideration
 
-- Token/naming redesign (incl. dark/light theming) once migration completes.
+- Token/palette redesign (incl. dark/light theming) — tokens get minted as
+  that lands.
 - Whether `element/button.css` + `input.css` base styles become Tailwind
   `@layer base` styles or component classes.
