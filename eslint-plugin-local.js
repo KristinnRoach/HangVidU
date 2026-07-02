@@ -6,13 +6,15 @@ import {
   isCanonicalEventName,
 } from './src/shared/events/naming.js';
 
-const EVENT_API_CALLS = new Set([
-  'dispatchCommand',
-  'dispatchCommandAndAwait',
-  'handleCommand',
-  'publish',
-  'publishAndAwait',
-  'subscribe',
+// Expected name prefix per event-bus API call, mirroring the runtime
+// assertCanonicalEventName(name, kind) contract in src/shared/events/index.js.
+const EVENT_API_PREFIXES = new Map([
+  ['dispatchCommand', 'cmd:'],
+  ['dispatchCommandAndAwait', 'cmd:'],
+  ['handleCommand', 'cmd:'],
+  ['publish', 'evt:'],
+  ['publishAndAwait', 'evt:'],
+  ['subscribe', 'evt:'],
 ]);
 
 export default {
@@ -45,7 +47,8 @@ export default {
             if (node.callee?.type !== 'Identifier') {
               return;
             }
-            if (!EVENT_API_CALLS.has(node.callee.name)) {
+            const expectedPrefix = EVENT_API_PREFIXES.get(node.callee.name);
+            if (!expectedPrefix) {
               return;
             }
 
@@ -55,13 +58,13 @@ export default {
               return;
             }
 
-            if (isCanonicalEventName(name)) {
+            if (name.startsWith(expectedPrefix) && isCanonicalEventName(name)) {
               return;
             }
 
             context.report({
               node: firstArg,
-              message: `Event/command name "${name}" must match canonical regex ${EVENT_NAME_REGEX}.`,
+              message: `${node.callee.name}() name "${name}" must start with "${expectedPrefix}" and match canonical regex ${EVENT_NAME_REGEX}.`,
             });
           },
         };
