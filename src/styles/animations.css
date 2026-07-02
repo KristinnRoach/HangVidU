@@ -23,9 +23,22 @@
   .slide-left,
   .slide-right,
   .auto-animate,
+  .spinner,
   .auto-animate > * {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+.spinner {
+  transform-origin: center;
+  animation: spinner-rotate 1s linear infinite;
+  will-change: transform;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
   }
 }
 
