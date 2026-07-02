@@ -23,7 +23,7 @@ export default function PublicHomepage(props: ParentProps) {
         {props.children}
 
         <p class="public-homepage__support">
-          Support:{' '}
+          {t('home.contact')}:{' '}
           <a href="mailto:kristinnroach@gmail.com">kristinnroach@gmail.com</a>
         </p>
 

@@ -38,6 +38,7 @@
   "call.lobby.error.generic": "Could not join the call. Please try again.",
   "home.title": "HangVidU",
   "home.description": "HangVidU is a messaging app for peer-to-peer video calls, chat, and shared media playback.",
+  "home.contact": "Contact",
   "home.links": "Legal links",
   "handle.claim.title": "Choose a username",
   "handle.claim.input": "Username",
