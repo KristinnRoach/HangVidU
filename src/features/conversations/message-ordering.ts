@@ -10,10 +10,7 @@ function getStableId(message: OrderedMessage) {
   return message.id ?? message.messageId ?? '';
 }
 
-export function compareMessagesBySentAt(
-  a: OrderedMessage,
-  b: OrderedMessage,
-) {
+export function compareMessagesBySentAt(a: OrderedMessage, b: OrderedMessage) {
   const sentAtDiff = a.sentAt - b.sentAt;
   if (sentAtDiff !== 0) return sentAtDiff;
 
@@ -24,8 +21,6 @@ export function compareMessagesBySentAt(
   return 0;
 }
 
-export function sortMessagesBySentAt<T extends OrderedMessage>(
-  messages: T[],
-) {
+export function sortMessagesBySentAt<T extends OrderedMessage>(messages: T[]) {
   return [...messages].sort(compareMessagesBySentAt);
 }

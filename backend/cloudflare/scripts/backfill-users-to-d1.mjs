@@ -71,12 +71,55 @@ function trimmed(value) {
 // (convertToEnglishLetters) — this standalone Node script can't import the .ts
 // without a loader. KEEP IN SYNC with that file; it is the source of truth.
 const CHAR_MAP = {
-  þ: 'th', Þ: 'Th', ð: 'd', Ð: 'D', æ: 'ae', Æ: 'Ae', ö: 'o', Ö: 'O',
-  á: 'a', Á: 'A', é: 'e', É: 'E', í: 'i', Í: 'I', ó: 'o', Ó: 'O',
-  ú: 'u', Ú: 'U', ý: 'y', Ý: 'Y', ø: 'o', Ø: 'O', å: 'a', Å: 'A',
-  ä: 'a', Ä: 'A', ü: 'u', Ü: 'U', ß: 'ss', ç: 'c', Ç: 'C', ñ: 'n', Ñ: 'N',
-  à: 'a', À: 'A', è: 'e', È: 'E', ù: 'u', Ù: 'U', â: 'a', Â: 'A',
-  ê: 'e', Ê: 'E', î: 'i', Î: 'I', ô: 'o', Ô: 'O', û: 'u', Û: 'U',
+  þ: 'th',
+  Þ: 'Th',
+  ð: 'd',
+  Ð: 'D',
+  æ: 'ae',
+  Æ: 'Ae',
+  ö: 'o',
+  Ö: 'O',
+  á: 'a',
+  Á: 'A',
+  é: 'e',
+  É: 'E',
+  í: 'i',
+  Í: 'I',
+  ó: 'o',
+  Ó: 'O',
+  ú: 'u',
+  Ú: 'U',
+  ý: 'y',
+  Ý: 'Y',
+  ø: 'o',
+  Ø: 'O',
+  å: 'a',
+  Å: 'A',
+  ä: 'a',
+  Ä: 'A',
+  ü: 'u',
+  Ü: 'U',
+  ß: 'ss',
+  ç: 'c',
+  Ç: 'C',
+  ñ: 'n',
+  Ñ: 'N',
+  à: 'a',
+  À: 'A',
+  è: 'e',
+  È: 'E',
+  ù: 'u',
+  Ù: 'U',
+  â: 'a',
+  Â: 'A',
+  ê: 'e',
+  Ê: 'E',
+  î: 'i',
+  Î: 'I',
+  ô: 'o',
+  Ô: 'O',
+  û: 'u',
+  Û: 'U',
 };
 const CHAR_RE = new RegExp(Object.keys(CHAR_MAP).join('|'), 'g');
 function transliterate(source) {
@@ -148,7 +191,9 @@ function build(users, backfillTs, emailByUid = new Map()) {
         const slug = slugifyHandle(displayName);
         if (taken.has(slug)) {
           stats.collisions += 1;
-          console.error(`WARN collision: ${uid} ("${displayName}") -> "${slug}" already taken; leaving username NULL`);
+          console.error(
+            `WARN collision: ${uid} ("${displayName}") -> "${slug}" already taken; leaving username NULL`,
+          );
         } else {
           username = slug;
           taken.add(slug);
@@ -237,35 +282,67 @@ function selftest() {
   };
   assert(s("a'b") === "'a''b'" && s('') === 'NULL', 'escape/empty');
   assert(txt('') === "''" && txt(null) === "''", 'txt never NULL');
-  assert(emitsRichRow({ userName: 'A' }) && !emitsRichRow({ deleted: true }), 'rich');
+  assert(
+    emitsRichRow({ userName: 'A' }) && !emitsRichRow({ deleted: true }),
+    'rich',
+  );
   assert(!emitsRichRow({}) && !emitsRichRow(null), 'no identity');
-  assert(slugifyHandle('Aron S!') === 'aron_s' && slugifyHandle('') === 'user', 'slug');
-  assert(slugifyHandle('Davíð') === 'david' && slugifyHandle('Þórður') === 'thordur', 'transliterate');
+  assert(
+    slugifyHandle('Aron S!') === 'aron_s' && slugifyHandle('') === 'user',
+    'slug',
+  );
+  assert(
+    slugifyHandle('Davíð') === 'david' && slugifyHandle('Þórður') === 'thordur',
+    'transliterate',
+  );
   const uuid = '11111111-2222-3333-4444-555555555555';
   const { richRows, stubRows, contactRows, convRows, emailRows, stats } = build(
     {
-      g: { profile: { userName: 'Aron S', photoURL: 'http://x/p' }, contacts: { h: { contactNickName: 'H', savedAt: 5, conversationId: uuid }, q: { roomId: 'legacy_room_1' } } },
+      g: {
+        profile: { userName: 'Aron S', photoURL: 'http://x/p' },
+        contacts: {
+          h: { contactNickName: 'H', savedAt: 5, conversationId: uuid },
+          q: { roomId: 'legacy_room_1' },
+        },
+      },
       h: { profile: { username: 'kiddi', userName: 'kiddi' } },
       k: { profile: { userName: 'Kiddi' } }, // Google whose slug collides with handle 'kiddi'
-      d: { profile: { deleted: true }, contacts: { g: { conversationId: 'c' } } }, // edge from deleted
+      d: {
+        profile: { deleted: true },
+        contacts: { g: { conversationId: 'c' } },
+      }, // edge from deleted
       x: { contacts: { z: { savedAt: 9 } } }, // identity-less owner, refs z (stub)
     },
     1700,
     new Map([['g', 'aGFzaA==-']]),
   );
   assert(stats.google === 2 && stats.handle === 1, 'cohorts');
-  assert(stats.assigned === 1 && stats.collisions === 1, 'assign + collision skip');
+  assert(
+    stats.assigned === 1 && stats.collisions === 1,
+    'assign + collision skip',
+  );
   assert(stats.skippedDeleted === 1 && stats.skippedNoIdentity === 1, 'skips');
   assert(stats.contacts === 4 && contactRows.length === 4, 'contact edges');
   // referenced = owners + endpoints = {g,h,q,d,x,z}. rich = {g,h,k}.
   // stubs = referenced \ rich = {q,d,x,z} = 4.
   assert(stats.stubs === 4 && stubRows.length === 4, 'fk stubs');
-  assert(richRows[0].includes("'Aron S'") && richRows[0].includes("'aron_s'"), 'assigned slug emitted');
+  assert(
+    richRows[0].includes("'Aron S'") && richRows[0].includes("'aron_s'"),
+    'assigned slug emitted',
+  );
   assert(contactRows[0].includes('conversation_id'), 'shape');
   // only the UUID conversationId links; the legacy roomId edge does not.
   assert(stats.convLinks === 1 && convRows.length === 1, 'conv link count');
-  assert(convRows[0].includes(uuid) && convRows[0].includes("dm_key = 'g:h'"), 'conv guard (membership)');
-  assert(stats.emailHashes === 1 && emailRows[0].includes("'aGFzaA==-'") && emailRows[0].includes("id = 'g'"), 'email hash');
+  assert(
+    convRows[0].includes(uuid) && convRows[0].includes("dm_key = 'g:h'"),
+    'conv guard (membership)',
+  );
+  assert(
+    stats.emailHashes === 1 &&
+      emailRows[0].includes("'aGFzaA==-'") &&
+      emailRows[0].includes("id = 'g'"),
+    'email hash',
+  );
   console.error('selftest OK');
 }
 

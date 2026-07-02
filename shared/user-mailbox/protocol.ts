@@ -51,7 +51,12 @@ export type MailboxEnvelope =
   | { t: 'activity'; conversationId: string; senderId: string; sentAt: number }
   // Fire-and-forget "someone sent you a contact request" nudge. Not persisted —
   // the recipient fetches pending requests from D1 on load (source of truth).
-  | { t: 'contact_request'; fromId: string; fromName?: string; createdAt: number };
+  | {
+      t: 'contact_request';
+      fromId: string;
+      fromName?: string;
+      createdAt: number;
+    };
 
 export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {
   if (!value || typeof value !== 'object') return false;

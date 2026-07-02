@@ -6,15 +6,15 @@ export default function LegalFooter() {
 
   return (
     <footer
-      id='legal-footer'
+      id="legal-footer"
       class={styles.legalFooter}
       aria-label={t('nav.legal_links')}
     >
       <a
         class={styles.legalFooterLink}
-        href='/privacy-policy.html'
-        target='_blank'
-        rel='noopener noreferrer'
+        href="/privacy-policy.html"
+        target="_blank"
+        rel="noopener noreferrer"
         title={t('nav.privacy')}
         aria-label={t('nav.privacy')}
       >
@@ -23,9 +23,9 @@ export default function LegalFooter() {
       <span class={styles.legalFooterSeparator}>&bull;</span>
       <a
         class={styles.legalFooterLink}
-        href='/terms-of-service.html'
-        target='_blank'
-        rel='noopener noreferrer'
+        href="/terms-of-service.html"
+        target="_blank"
+        rel="noopener noreferrer"
         title={t('nav.terms')}
         aria-label={t('nav.terms')}
       >

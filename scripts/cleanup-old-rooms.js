@@ -20,10 +20,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const shouldDelete = process.argv.includes('--delete');
 
 // Initialize Firebase Admin
-const serviceAccountPath = path.join(__dirname, '../backend/firebase/service-account-key.json');
+const serviceAccountPath = path.join(
+  __dirname,
+  '../backend/firebase/service-account-key.json',
+);
 
 if (!fs.existsSync(serviceAccountPath)) {
-  console.error('❌ Error: service-account-key.json not found at', serviceAccountPath);
+  console.error(
+    '❌ Error: service-account-key.json not found at',
+    serviceAccountPath,
+  );
   console.error('Please ensure you have a valid service account key file.');
   process.exit(1);
 }
@@ -32,7 +38,8 @@ const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf-8'));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
+  databaseURL:
+    'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app',
 });
 
 const db = admin.database();
@@ -47,12 +54,12 @@ console.log(`(Entries with createdAt < ${CUTOFF_TIMESTAMP})\n`);
 console.log('Analyzing rooms/...\n');
 
 function promptConfirmation(message) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
     });
-    rl.question(message, answer => {
+    rl.question(message, (answer) => {
       rl.close();
       resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
     });
@@ -61,7 +68,7 @@ function promptConfirmation(message) {
 
 async function deleteOldRooms(roomIds) {
   const updates = {};
-  roomIds.forEach(id => {
+  roomIds.forEach((id) => {
     updates[`/rooms/${id}`] = null;
   });
 
@@ -70,7 +77,10 @@ async function deleteOldRooms(roomIds) {
 
 async function analyzeRooms() {
   try {
-    const snapshot = await db.ref('rooms').orderByChild('createdAt').once('value');
+    const snapshot = await db
+      .ref('rooms')
+      .orderByChild('createdAt')
+      .once('value');
 
     if (!snapshot.exists()) {
       console.log('No rooms found in database.');
@@ -84,14 +94,16 @@ async function analyzeRooms() {
     let oldCount = 0;
     const oldRooms = [];
 
-    roomIds.forEach(roomId => {
+    roomIds.forEach((roomId) => {
       const room = rooms[roomId];
       const createdAt = room.createdAt;
 
       if (typeof createdAt === 'number' && createdAt < CUTOFF_TIMESTAMP) {
         oldCount++;
         const createdDate = new Date(createdAt);
-        const ageInDays = Math.floor((Date.now() - createdAt) / (1000 * 60 * 60 * 24));
+        const ageInDays = Math.floor(
+          (Date.now() - createdAt) / (1000 * 60 * 60 * 24),
+        );
 
         oldRooms.push({
           id: roomId,
@@ -110,14 +122,20 @@ async function analyzeRooms() {
     console.log('📊 Summary:');
     console.log(`  Total rooms: ${totalCount}`);
     console.log(`  Old rooms (>2 months): ${oldCount}`);
-    console.log(`  Percentage: ${((oldCount / totalCount) * 100).toFixed(1)}%\n`);
+    console.log(
+      `  Percentage: ${((oldCount / totalCount) * 100).toFixed(1)}%\n`,
+    );
 
     if (oldCount > 0) {
       console.log('📋 Oldest rooms (first 10):');
       oldRooms.slice(0, 10).forEach((room, idx) => {
         console.log(`  ${idx + 1}. ${room.id}`);
-        console.log(`     Created: ${room.createdDate} (${room.ageInDays} days old)`);
-        console.log(`     Members: ${room.membersCount}, Has offer: ${room.hasOffer}, Has answer: ${room.hasAnswer}`);
+        console.log(
+          `     Created: ${room.createdDate} (${room.ageInDays} days old)`,
+        );
+        console.log(
+          `     Members: ${room.membersCount}, Has offer: ${room.hasOffer}, Has answer: ${room.hasAnswer}`,
+        );
       });
 
       if (oldCount > 10) {
@@ -126,7 +144,9 @@ async function analyzeRooms() {
 
       if (shouldDelete) {
         console.log('\n⚠️  About to delete ' + oldCount + ' old rooms!');
-        const confirmed = await promptConfirmation('\nAre you sure? Type "yes" to confirm: ');
+        const confirmed = await promptConfirmation(
+          '\nAre you sure? Type "yes" to confirm: ',
+        );
 
         if (!confirmed) {
           console.log('\n❌ Deletion cancelled.');
@@ -134,7 +154,7 @@ async function analyzeRooms() {
         }
 
         console.log('\n🗑️  Deleting old rooms...');
-        const oldRoomIds = oldRooms.map(r => r.id);
+        const oldRoomIds = oldRooms.map((r) => r.id);
         await deleteOldRooms(oldRoomIds);
 
         console.log(`\n✅ Successfully deleted ${oldCount} old rooms`);

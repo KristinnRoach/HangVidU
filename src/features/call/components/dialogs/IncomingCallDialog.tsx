@@ -30,19 +30,19 @@ export default function IncomingCallDialog(props: IncomingCallDialogProps) {
   return (
     <CallDialog
       {...props}
-      cardClass='incoming-call-card'
-      tone='incoming'
-      ringtone='incoming'
+      cardClass="incoming-call-card"
+      tone="incoming"
+      ringtone="incoming"
       idPrefix={idPrefix()}
       name={props.callerName}
       defaultName={t('shared.unknown')}
-      titleKey='call.incoming'
+      titleKey="call.incoming"
       subtitle={props.subtitle}
       actions={
         <>
           <button
-            type='button'
-            class='dialog-btn dialog-btn--success'
+            type="button"
+            class="dialog-btn dialog-btn--success"
             disabled={buttonsDisabled()}
             attr:aria-busy={props.isAccepting ? 'true' : 'false'}
             onClick={() => props.onAccept?.()}
@@ -50,8 +50,8 @@ export default function IncomingCallDialog(props: IncomingCallDialogProps) {
             {acceptLabel()}
           </button>
           <button
-            type='button'
-            class='dialog-btn dialog-btn--danger'
+            type="button"
+            class="dialog-btn dialog-btn--danger"
             disabled={buttonsDisabled()}
             attr:aria-busy={props.isDeclining ? 'true' : 'false'}
             onClick={() => props.onDecline?.()}

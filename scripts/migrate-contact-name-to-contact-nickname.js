@@ -77,7 +77,9 @@ async function migrate() {
       }
 
       const legacyName =
-        typeof contact.contactName === 'string' ? contact.contactName.trim() : '';
+        typeof contact.contactName === 'string'
+          ? contact.contactName.trim()
+          : '';
       const nextNickName =
         typeof contact.contactNickName === 'string'
           ? contact.contactNickName.trim()

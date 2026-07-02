@@ -8,7 +8,10 @@ export type Locale = 'en' | 'is';
 export type MessageParams = Record<string, string | number>;
 
 const STORAGE_KEY = 'locale';
-const DICTS = { en, is } as const satisfies Record<Locale, Record<string, string>>;
+const DICTS = { en, is } as const satisfies Record<
+  Locale,
+  Record<string, string>
+>;
 
 function readSavedLocale(): Locale {
   try {

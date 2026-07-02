@@ -29,9 +29,22 @@ overrides:
   'picomatch@<2.3.2': 2.3.2
   'picomatch@>=4 <4.0.4': 4.0.4
   serialize-javascript: 7.0.5
+  vite: 'catalog:'
+  vitest: 'catalog:'
 
 # First-party scope — our own packages, exempt from the release-age cooldown.
 minimumReleaseAgeExclude:
   - '@kidlib/*'
   - miniflare@4.20260617.0
   - wrangler@4.102.0
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@latest
+  vitest: 4.1.9
+  vite-plus: latest
+peerDependencyRules:
+  allowAny:
+    - vite
+    - vitest
+  allowedVersions:
+    vite: '*'
+    vitest: '*'

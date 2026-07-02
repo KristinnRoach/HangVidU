@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 // --- mock the transport so no real WebSocket is opened ---
 let socket;
@@ -58,7 +58,10 @@ describe('createDoRoomSignaling', () => {
 
     socket.emit({
       t: 'peers',
-      peers: [{ peerId: 'peer-a', data: { muted: true } }, { peerId: 'peer-b' }],
+      peers: [
+        { peerId: 'peer-a', data: { muted: true } },
+        { peerId: 'peer-b' },
+      ],
     });
     expect(seen).toEqual([
       [

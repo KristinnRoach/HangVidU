@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { cleanup, render, waitFor } from '@solidjs/testing-library';
 import { setLocale, useI18n } from '../index.js';
 

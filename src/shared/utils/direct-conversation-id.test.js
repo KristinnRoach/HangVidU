@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { resolveContactIdFromDirectConversationId } from './direct-conversation-id.js';
 
 describe('resolveContactIdFromDirectConversationId', () => {

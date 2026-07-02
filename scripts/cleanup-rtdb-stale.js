@@ -66,7 +66,9 @@ const TASKS = [
 const VALID = new Set([...TASKS, 'all', 'migrated-legacy']);
 
 if (!taskArg || !VALID.has(taskArg)) {
-  console.error(`Usage: node ${path.basename(process.argv[1])} <task> [--delete] [--yes]`);
+  console.error(
+    `Usage: node ${path.basename(process.argv[1])} <task> [--delete] [--yes]`,
+  );
   console.error(`Tasks: ${[...VALID].join(', ')}`);
   process.exit(1);
 }
@@ -77,7 +79,10 @@ const serviceAccountPath = path.join(
 );
 
 if (!fs.existsSync(serviceAccountPath)) {
-  console.error('Error: service-account-key.json not found at', serviceAccountPath);
+  console.error(
+    'Error: service-account-key.json not found at',
+    serviceAccountPath,
+  );
   process.exit(1);
 }
 
@@ -231,7 +236,9 @@ async function taskRoomsExpired() {
   }
 
   console.log(`Total rooms: ${Object.keys(rooms).length}`);
-  console.log(`Rooms with valid meta.expiresAt: ${kept + Object.keys(updates).length}`);
+  console.log(
+    `Rooms with valid meta.expiresAt: ${kept + Object.keys(updates).length}`,
+  );
   console.log(`Expired (meta.expiresAt < now): ${Object.keys(updates).length}`);
   return confirmAndApply('rooms-expired', updates);
 }
@@ -268,7 +275,9 @@ async function taskUserConvoIndex() {
       updates[`users/${uid}/conversations`] = null;
     }
   }
-  console.log(`Users with /conversations index: ${Object.keys(updates).length}`);
+  console.log(
+    `Users with /conversations index: ${Object.keys(updates).length}`,
+  );
   return confirmAndApply('user-convo-index', updates);
 }
 
@@ -330,11 +339,15 @@ async function taskMigratedLegacy() {
   }
 
   const presentTop = MIGRATED_DEAD_TOP_LEVEL.filter((n) => n in backup);
-  console.log(`Dead top-level nodes present: ${presentTop.join(', ') || '(none)'}`);
+  console.log(
+    `Dead top-level nodes present: ${presentTop.join(', ') || '(none)'}`,
+  );
   console.log(
     `Dead per-user subnodes: ${userPaths} across ${Object.keys(users).length} users`,
   );
-  console.log('KEEP: usersByEmail, users/*/presence, users/*/pushSubscriptions');
+  console.log(
+    'KEEP: usersByEmail, users/*/presence, users/*/pushSubscriptions',
+  );
 
   // Scoped backup of exactly what will be removed — written via the onConfirmed
   // hook (after the user confirms, before the delete) so the prune is fully

@@ -1,5 +1,11 @@
-import { getLoggedInUserId, getLoggedInUserToken } from '../../../auth/index.js';
-import { showErrorToast, showSuccessToast } from '../../../components/base-legacy/toast.js';
+import {
+  getLoggedInUserId,
+  getLoggedInUserToken,
+} from '../../../auth/index.js';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../components/base-legacy/toast.js';
 import { getHangViduApiBaseUrl } from '../../../infra/hangvidu-api-url.js';
 import { subscribeToUserMailbox } from '../../../realtime/user-mailbox';
 import { dispatchCommand } from '../../../shared/events/index.js';

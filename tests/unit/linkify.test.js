@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { linkifyToFragment, extractLinks } from '../../src/lib/utils/linkify.js';
+import { describe, it, expect } from 'vite-plus/test';
+import {
+  linkifyToFragment,
+  extractLinks,
+} from '../../src/lib/utils/linkify.js';
 
 describe('linkify utility', () => {
   it('extracts multiple links and normalizes protocol-less URLs', () => {

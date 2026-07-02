@@ -93,23 +93,11 @@ async function startContacts() {
 export const setup = createSingleFlightSetup({
   label: '[contacts]',
   register: (signal) => {
-    subscribe(
-      'evt:auth:session:ready',
-      hydrateOnReady,
-      { signal },
-    );
+    subscribe('evt:auth:session:ready', hydrateOnReady, { signal });
 
-    subscribe(
-      'evt:auth:session:logged-in',
-      handleLoggedIn,
-      { signal },
-    );
+    subscribe('evt:auth:session:logged-in', handleLoggedIn, { signal });
 
-    subscribe(
-      'evt:auth:session:logged-out',
-      handleLoggedOut,
-      { signal },
-    );
+    subscribe('evt:auth:session:logged-out', handleLoggedOut, { signal });
   },
   start: startContacts,
   stop: stopContacts,

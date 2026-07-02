@@ -205,7 +205,7 @@ class MockDatabaseRef {
     const listeners = this.mock.listeners.get(roomId);
     if (listeners) {
       const toRemove = Array.from(listeners).find(
-        (l) => l.eventType === eventType && l.callback === callback
+        (l) => l.eventType === eventType && l.callback === callback,
       );
       if (toRemove) {
         listeners.delete(toRemove);
@@ -329,7 +329,7 @@ export class FirebaseTestScenarios {
     mock,
     roomId,
     userData1,
-    userData2
+    userData2,
   ) {
     // Simulate two users joining simultaneously
     mock.simulateRaceCondition(
@@ -343,7 +343,7 @@ export class FirebaseTestScenarios {
         type: 'child_added',
         data: { key: userData2.uid, ...userData2, joinedAt: Date.now() },
       },
-      50 // 50ms delay
+      50, // 50ms delay
     );
   }
 }

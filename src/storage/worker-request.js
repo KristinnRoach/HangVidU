@@ -38,7 +38,9 @@ export function createWorkerRequest({ baseUrl, getToken }) {
       if (res.status === 401) {
         reportApiAuthFailure(`data:${method} ${path}`, res.status, detail);
       }
-      const err = new Error(`data worker ${method} ${path} -> ${res.status} ${detail}`);
+      const err = new Error(
+        `data worker ${method} ${path} -> ${res.status} ${detail}`,
+      );
       err.status = res.status;
       throw err;
     }

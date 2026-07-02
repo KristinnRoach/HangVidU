@@ -9,10 +9,10 @@ export default function ContactsList() {
   const { contacts, isLoading } = useContacts();
 
   return (
-    <div class='contacts-container'>
+    <div class="contacts-container">
       <Show when={!isLoading()} fallback={<Spinner size={32} />}>
         <Show when={contacts.length > 0} fallback={<p>{t('contact.none')}</p>}>
-          <div class='contacts-list'>
+          <div class="contacts-list">
             <For each={contacts}>
               {(row) => (
                 <ContactEntry

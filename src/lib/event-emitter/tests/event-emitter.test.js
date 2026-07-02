@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 import { EventEmitter } from '../event-emitter.js';
 
 describe('EventEmitter facade', () => {
@@ -36,9 +36,9 @@ describe('EventEmitter facade', () => {
     emitter.on('a', vi.fn().mockResolvedValue(1));
     emitter.on('b', vi.fn().mockResolvedValue(2));
 
-    await expect(emitter.emitAsync('a', {}, { returnSettled: true })).resolves.toEqual([
-      { status: 'fulfilled', value: 1 },
-    ]);
+    await expect(
+      emitter.emitAsync('a', {}, { returnSettled: true }),
+    ).resolves.toEqual([{ status: 'fulfilled', value: 1 }]);
 
     await expect(
       emitter.emitAsyncSequential(

@@ -45,6 +45,7 @@ npx cap sync ios
 ```
 
 Edit `ios/App/App/Info.plist` — add:
+
 ```xml
 <key>NSCameraUsageDescription</key>
 <string>Required for video calls</string>
@@ -53,6 +54,7 @@ Edit `ios/App/App/Info.plist` — add:
 ```
 
 Edit `capacitor.config.json`:
+
 ```json
 {
   "ios": {
@@ -108,7 +110,7 @@ Do **not** touch any of these — they're post-Go-decision work:
 ## Known Risk Notes
 
 - **WebRTC in WKWebView**: works since iOS 14.3 but has had bugs around Bluetooth audio routing and speaker vs earpiece selection. If audio works at all during the spike, routing polish is a solvable post-Go problem.
-- **Background behavior**: wrapped web apps suspend aggressively. Incoming-call notification while backgrounded requires PushKit + CallKit — this is the biggest *post-spike* work item, not a spike blocker.
+- **Background behavior**: wrapped web apps suspend aggressively. Incoming-call notification while backgrounded requires PushKit + CallKit — this is the biggest _post-spike_ work item, not a spike blocker.
 - **Firebase Auth**: Google Sign-In popup may need `@capacitor-firebase/authentication` plugin instead of the web SDK flow. If the web flow fails in-shell, that's a known swap, not a Kill criterion — but budget time for it if it happens.
 - **ngrok dev flow**: the spike should load `dist/` from inside the app bundle, not ngrok. Build once, wrap, test. Don't try to make `pnpm dev` work inside Capacitor during the spike.
 
@@ -117,6 +119,7 @@ Do **not** touch any of these — they're post-Go-decision work:
 ## If No-Go
 
 Document which Kill criterion hit and on what iOS version / device. That's the blueprint for either:
+
 - Revisiting in 6–12 months as WebKit improves, or
 - Going straight to a native Swift/Kotlin rewrite if the app's trajectory warrants it.
 

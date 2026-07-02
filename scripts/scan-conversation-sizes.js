@@ -28,9 +28,7 @@ const DATABASE_URL =
 const topArg = process.argv.find((a) => a.startsWith('--top='));
 const perConvArg = process.argv.find((a) => a.startsWith('--per-conv-top='));
 const TOP_N = topArg ? Number(topArg.split('=')[1]) || 15 : 15;
-const PER_CONV_TOP = perConvArg
-  ? Number(perConvArg.split('=')[1]) || 0
-  : 0;
+const PER_CONV_TOP = perConvArg ? Number(perConvArg.split('=')[1]) || 0 : 0;
 
 const serviceAccountPath = path.join(
   __dirname,
@@ -38,7 +36,10 @@ const serviceAccountPath = path.join(
 );
 
 if (!fs.existsSync(serviceAccountPath)) {
-  console.error('Error: service-account-key.json not found at', serviceAccountPath);
+  console.error(
+    'Error: service-account-key.json not found at',
+    serviceAccountPath,
+  );
   process.exit(1);
 }
 
@@ -153,8 +154,12 @@ async function main() {
   console.log(`Total conversations: ${ids.length}`);
   console.log(`Total messages:      ${totalMessages}`);
   console.log(`Total size (approx): ${fmtBytes(totalBytes)}`);
-  console.log(`Average per convo:   ${fmtBytes(totalBytes / Math.max(1, ids.length))}`);
-  console.log(`Average per message: ${fmtBytes(totalBytes / Math.max(1, totalMessages))}`);
+  console.log(
+    `Average per convo:   ${fmtBytes(totalBytes / Math.max(1, ids.length))}`,
+  );
+  console.log(
+    `Average per message: ${fmtBytes(totalBytes / Math.max(1, totalMessages))}`,
+  );
 
   console.log(`\n=== Top ${TOP_N} conversations by size ===`);
   console.log(

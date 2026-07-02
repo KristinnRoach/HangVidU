@@ -40,7 +40,12 @@ export function reactions(
 declare module 'solid-js' {
   namespace JSX {
     interface DirectiveFunctions {
-      reactions: typeof reactions;
+      // Element (not HTMLElement) to stay assignable to the DirectiveFunctions
+      // index signature under strict function types.
+      reactions: (
+        element: Element,
+        value: Accessor<ReactionsDirectiveOptions>,
+      ) => void;
     }
   }
 }

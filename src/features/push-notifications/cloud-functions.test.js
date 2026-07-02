@@ -1,4 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+} from 'vite-plus/test';
 
 vi.mock('../../auth/index.js', () => ({
   getLoggedInUserToken: vi.fn().mockResolvedValue('mock-token-123'),

@@ -48,7 +48,12 @@ function normalizeFileDropValue(
 declare module 'solid-js' {
   namespace JSX {
     interface DirectiveFunctions {
-      fileDrop: typeof fileDrop;
+      // Element (not HTMLElement) to stay assignable to the DirectiveFunctions
+      // index signature under strict function types.
+      fileDrop: (
+        element: Element,
+        value: Accessor<FileDropDirectiveValue>,
+      ) => void;
     }
   }
 }

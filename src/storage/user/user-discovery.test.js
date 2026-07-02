@@ -1,4 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+} from 'vite-plus/test';
 import { createUserDiscovery } from './user-discovery.js';
 
 // The discovery client talks to the Worker over fetch; stub it. Email never
@@ -75,7 +82,9 @@ describe('searchByHandle', () => {
       jsonResponse({ users: [{ uid: 'u1', displayName: '  ' }] }),
     );
     const result = await discovery.searchByHandle('alice99');
-    expect(fetchMock.mock.calls[0][0]).toContain('/users/lookup?handle=alice99');
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      '/users/lookup?handle=alice99',
+    );
     expect(result).toEqual([{ uid: 'u1', displayName: 'Anonymous' }]);
   });
 

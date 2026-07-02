@@ -48,7 +48,9 @@ export class SignalingRoom extends DurableObject<Env> {
     // Echo the auth subprotocol; browsers abort the handshake if the server
     // does not confirm one of the offered subprotocols.
     const headers: HeadersInit = {};
-    if ((request.headers.get('Sec-WebSocket-Protocol') ?? '').includes('bearer')) {
+    if (
+      (request.headers.get('Sec-WebSocket-Protocol') ?? '').includes('bearer')
+    ) {
       headers['Sec-WebSocket-Protocol'] = 'bearer';
     }
     return new Response(null, { status: 101, webSocket: client, headers });
@@ -135,7 +137,10 @@ export class SignalingRoom extends DurableObject<Env> {
   }
 
   private broadcastPeers(): void {
-    const payload: ServerMessage = { t: 'peers', peers: this.presenceMembers() };
+    const payload: ServerMessage = {
+      t: 'peers',
+      peers: this.presenceMembers(),
+    };
     // All sockets, including watchers — see the connect-time snapshot note.
     for (const ws of this.ctx.getWebSockets()) {
       this.send(ws, payload);
@@ -212,7 +217,9 @@ export class SignalingRoom extends DurableObject<Env> {
   }
 
   private getSocketState(ws: WebSocket): SocketState {
-    return (ws.deserializeAttachment() as SocketState | null) ?? { peerId: null };
+    return (
+      (ws.deserializeAttachment() as SocketState | null) ?? { peerId: null }
+    );
   }
 
   private setSocketState(ws: WebSocket, state: SocketState): void {

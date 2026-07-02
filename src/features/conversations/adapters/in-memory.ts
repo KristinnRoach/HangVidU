@@ -1,7 +1,4 @@
-import type {
-  IncomingMessage,
-  MessageRepository,
-} from '../interfaces.js';
+import type { IncomingMessage, MessageRepository } from '../interfaces.js';
 import type { ConversationId, UserId } from '../types.js';
 
 export function createInMemoryMessageRepository(): MessageRepository {

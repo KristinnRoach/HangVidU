@@ -1,7 +1,14 @@
 // Test to verify cancellation listener ignores self-triggered cancellations
 // This prevents duplicate cleanup and duplicate missed call notifications
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+} from 'vite-plus/test';
 import { ref, onValue } from 'firebase/database';
 
 describe('Cancellation Listener - Self-Trigger Prevention', () => {

@@ -64,12 +64,12 @@ export default function AuthControls(props) {
   return (
     <div class={styles.authControls}>
       <Show when={isAuthInitialized() && !isLoggedIn()}>
-        <LoginButton popoverTarget='signinSheet' />
-        <SignInSheet id='signinSheet' />
+        <LoginButton popoverTarget="signinSheet" />
+        <SignInSheet id="signinSheet" />
       </Show>
 
       <Show when={isLoggingIn() || isLoggingOut()}>
-        <span class='signing-in-indicator'>
+        <span class="signing-in-indicator">
           {isLoggedIn() ? t('auth.signing_out') : t('auth.signing_in')}
         </span>
       </Show>
@@ -88,7 +88,7 @@ export default function AuthControls(props) {
               src={photoUrl()}
               alt={displayName()}
               class={styles.userAvatar}
-              referrerpolicy='no-referrer'
+              referrerpolicy="no-referrer"
               onError={() => setAvatarFailed(true)}
             />
           </Show>
@@ -97,9 +97,9 @@ export default function AuthControls(props) {
           <span class={styles.displayName}>{displayName()}</span>
         </div>
         <button
-          id='goog-logout-btn'
+          id="goog-logout-btn"
           class={styles.logoutBtn}
-          type='button'
+          type="button"
           title={t('auth.logout')}
           aria-label={t('auth.logout')}
           disabled={isLoading() || !isAuthInitialized()}

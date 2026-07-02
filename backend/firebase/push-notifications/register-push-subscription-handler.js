@@ -43,7 +43,11 @@ function sanitizeString(value, maxLength) {
 }
 
 function sanitizeDeviceInfo(deviceInfo) {
-  if (!deviceInfo || typeof deviceInfo !== 'object' || Array.isArray(deviceInfo)) {
+  if (
+    !deviceInfo ||
+    typeof deviceInfo !== 'object' ||
+    Array.isArray(deviceInfo)
+  ) {
     return {};
   }
 

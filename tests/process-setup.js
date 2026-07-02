@@ -6,7 +6,8 @@ export function setup() {
   const onUnhandledRejection = (reason) => {
     const msg = reason?.message ?? '';
     const causeMsg = reason?.cause?.message ?? '';
-    if (msg.includes('rpc is closed') || causeMsg.includes('rpc is closed')) return;
+    if (msg.includes('rpc is closed') || causeMsg.includes('rpc is closed'))
+      return;
     throw reason;
   };
 

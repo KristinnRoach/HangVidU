@@ -9,10 +9,7 @@
 // on logout/user-switch; consumers subscribed across that boundary must
 // resubscribe afterwards.
 
-import {
-  createMailboxChannel,
-  type MailboxChannel,
-} from './mailbox-channel';
+import { createMailboxChannel, type MailboxChannel } from './mailbox-channel';
 import type { MailboxEnvelope } from '../../shared/user-mailbox/protocol';
 
 export interface UserMailboxOptions {

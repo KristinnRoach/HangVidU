@@ -9,7 +9,11 @@ Generic event primitives for JavaScript apps.
 ## Install In Project
 
 ```js
-import { EventEmitter, ListenerRegistry, Emitter } from '../lib/event-emitter/index.js';
+import {
+  EventEmitter,
+  ListenerRegistry,
+  Emitter,
+} from '../lib/event-emitter/index.js';
 ```
 
 If you are importing from inside this folder, use `./index.js` instead.

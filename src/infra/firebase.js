@@ -13,7 +13,8 @@ import {
 // CRITICAL: Set debug token BEFORE initializing Firebase or any providers.
 // Keep this development-only so debug tokens can never ship in production.
 if (import.meta.env.MODE === 'development' && typeof self !== 'undefined') {
-  const debugToken = import.meta.env.VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN?.trim();
+  const debugToken =
+    import.meta.env.VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN?.trim();
 
   if (debugToken) {
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken;

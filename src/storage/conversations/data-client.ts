@@ -51,9 +51,7 @@ export interface Conversation {
 export interface ConversationsClient {
   /** Resolve-or-create the direct conversation with `otherUserId`; returns its opaque id. */
   resolveDirect(otherUserId: string): Promise<string>;
-  list(): Promise<
-    Array<Conversation & { members: ConversationMember[] }>
-  >;
+  list(): Promise<Array<Conversation & { members: ConversationMember[] }>>;
   get(
     conversationId: string,
   ): Promise<{ conversation: Conversation; members: ConversationMember[] }>;

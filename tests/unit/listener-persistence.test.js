@@ -3,7 +3,7 @@
  * Verifies that saved contact listeners survive cleanup operations
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vite-plus/test';
 import { getDiagnosticLogger } from '../../src/shared/utils/dev/diagnostic-logger.js';
 
 describe('Listener Persistence Fix', () => {
@@ -58,15 +58,15 @@ describe('Listener Persistence Fix', () => {
       {
         detectedBy: 'persistent_saved_contact_listener',
         status: 'successfully_detected',
-      }
+      },
     );
 
     const logs = logger.getLogs();
     const savedContactListener = logs.find(
-      (log) => log.event === 'ATTACHED' && log.data.source === 'saved_contacts'
+      (log) => log.event === 'ATTACHED' && log.data.source === 'saved_contacts',
     );
     const tempListener = logs.find(
-      (log) => log.event === 'ATTACHED' && log.data.source === 'active_call'
+      (log) => log.event === 'ATTACHED' && log.data.source === 'active_call',
     );
     const cleanupOp = logs.find((log) => log.event === 'CLEANUP_OPERATION');
     const memberJoin = logs.find((log) => log.event === 'MEMBER_JOINED');
@@ -80,13 +80,13 @@ describe('Listener Persistence Fix', () => {
     expect(cleanupOp.data.preserved).toContain(savedContactRoom);
     expect(cleanupOp.data.removed).toContain(tempCallRoom);
     expect(memberJoin.data.detectedBy).toBe(
-      'persistent_saved_contact_listener'
+      'persistent_saved_contact_listener',
     );
 
     console.log('✓ Saved contact listeners persist after cleanup');
     console.log('✓ Temporary call listeners are properly cleaned up');
     console.log(
-      '✓ Incoming calls on saved contacts are detected after cleanup'
+      '✓ Incoming calls on saved contacts are detected after cleanup',
     );
 
     return {

@@ -41,7 +41,10 @@ export class ReactionManager {
     }
 
     if (entry.myKey) {
-      entry.counts[entry.myKey] = Math.max(0, (entry.counts[entry.myKey] ?? 1) - 1);
+      entry.counts[entry.myKey] = Math.max(
+        0,
+        (entry.counts[entry.myKey] ?? 1) - 1,
+      );
       if (entry.counts[entry.myKey] === 0) delete entry.counts[entry.myKey];
     }
     entry.counts[reactionType] = (entry.counts[reactionType] ?? 0) + 1;
@@ -66,7 +69,10 @@ export class ReactionManager {
       return this.getReactions(messageId);
     }
 
-    entry.counts[entry.myKey] = Math.max(0, (entry.counts[entry.myKey] ?? 1) - 1);
+    entry.counts[entry.myKey] = Math.max(
+      0,
+      (entry.counts[entry.myKey] ?? 1) - 1,
+    );
     if (entry.counts[entry.myKey] === 0) delete entry.counts[entry.myKey];
     entry.myKey = null;
 
@@ -92,7 +98,7 @@ export class ReactionManager {
    * @returns {Object} Reaction data { reactionType: count }
    */
   getReactions(messageId) {
-    return { ...(this.reactions.get(messageId)?.counts ?? {}) };
+    return { ...this.reactions.get(messageId)?.counts };
   }
 
   /**

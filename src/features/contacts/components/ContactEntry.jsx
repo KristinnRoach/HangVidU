@@ -49,8 +49,8 @@ export default function ContactEntry(props) {
   };
 
   return (
-    <div class='contact-entry' ref={rootEl}>
-      {/* 
+    <div class="contact-entry" ref={rootEl}>
+      {/*
       // TODO: fix audio only call UX before uncommenting
       <StartCallButton
         calleeId={props.id}
@@ -64,8 +64,8 @@ export default function ContactEntry(props) {
         audioOnly={false}
       />
       <button
-        type='button'
-        class='contact-name'
+        type="button"
+        class="contact-name"
         data-contact-id={props.id}
         onClick={onOpenConversation}
         aria-label={contactLabel()}
@@ -74,13 +74,13 @@ export default function ContactEntry(props) {
       </button>
       <Show when={props.hasUnread}>
         <span
-          class='unread-badge'
-          aria-live='polite'
-          aria-atomic='true'
-          role='status'
+          class="unread-badge"
+          aria-live="polite"
+          aria-atomic="true"
+          role="status"
           aria-label={t('contact.unread')}
         >
-          <span aria-hidden='true'>•</span>
+          <span aria-hidden="true">•</span>
         </span>
       </Show>
       <PresenceIndicator userId={props.id} />

@@ -34,7 +34,7 @@ export default function VideoStream(props: Props) {
     props.muted ??
     props.local ??
     props.preview ??
-    (props.stream?.getAudioTracks().length === 0);
+    props.stream?.getAudioTracks().length === 0;
 
   // Library-owned attach + autoplay/resume core. Surfaces blocked playback
   // through the shared "Continue call" prompt below.

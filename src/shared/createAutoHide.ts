@@ -1,9 +1,4 @@
-import {
-  createSignal,
-  createEffect,
-  onCleanup,
-  type Accessor,
-} from 'solid-js';
+import { createSignal, createEffect, onCleanup, type Accessor } from 'solid-js';
 
 /**
  * Show on user interaction (pointer or keyboard), hide after `delayMs` of
@@ -12,7 +7,7 @@ import {
  */
 export function createAutoHide(
   delayMs: number,
-  active?: Accessor<boolean>
+  active?: Accessor<boolean>,
 ): Accessor<boolean> {
   const [visible, setVisible] = createSignal(true);
 
@@ -30,9 +25,7 @@ export function createAutoHide(
     };
 
     const events = ['pointermove', 'pointerdown', 'keydown'] as const;
-    events.forEach((e) =>
-      window.addEventListener(e, show, { passive: true })
-    );
+    events.forEach((e) => window.addEventListener(e, show, { passive: true }));
     show();
 
     onCleanup(() => {

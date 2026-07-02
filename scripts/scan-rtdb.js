@@ -48,22 +48,15 @@ const KNOWN_USER_KEYS = new Set([
   'pushSubscriptions',
 ]);
 
-  const legacyOwners = {
-    contacts: [],
-    profile: [],
-    recentCalls: [],
-    outgoingCall: [],
-    callHistory: [],
-  };
+const LEGACY_USER_KEYS = new Set([
+  'contacts',
+  'profile',
   'recentCalls',
   'outgoingCall',
   'callHistory',
 ]);
 
-const KNOWN_ROOM_KEYS = new Set([
-  'meta',
-  'participants',
-]);
+const KNOWN_ROOM_KEYS = new Set(['meta', 'participants']);
 
 const LEGACY_ROOM_KEYS = new Set([
   'p2pSignaling',
@@ -86,7 +79,10 @@ const serviceAccountPath = path.join(
 );
 
 if (!fs.existsSync(serviceAccountPath)) {
-  console.error('Error: service-account-key.json not found at', serviceAccountPath);
+  console.error(
+    'Error: service-account-key.json not found at',
+    serviceAccountPath,
+  );
   process.exit(1);
 }
 
@@ -131,7 +127,9 @@ async function shallowList(dbPath) {
   const url = `${DATABASE_URL}/${dbPath}.json?shallow=true&access_token=${accessToken.access_token}`;
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`shallow read ${dbPath} failed: ${res.status} ${await res.text()}`);
+    throw new Error(
+      `shallow read ${dbPath} failed: ${res.status} ${await res.text()}`,
+    );
   }
   return res.json();
 }
@@ -180,10 +178,7 @@ async function scanRooms() {
   const legacyKeys = new Map(); // key -> count of rooms containing it
   const stale = [];
   for (const [roomId, room] of Object.entries(full)) {
-    const created =
-      room?.meta?.createdAt ??
-      room?.createdAt ??
-      null;
+    const created = room?.meta?.createdAt ?? room?.createdAt ?? null;
     const days = ageDays(created);
     const bucket = ageBucket(days);
     buckets[bucket] = (buckets[bucket] || 0) + 1;
@@ -200,7 +195,15 @@ async function scanRooms() {
   }
 
   printHeader('rooms/ age distribution');
-  for (const b of ['<1d', '1-7d', '7-30d', '30-90d', '90-365d', '>1y', 'no-ts']) {
+  for (const b of [
+    '<1d',
+    '1-7d',
+    '7-30d',
+    '30-90d',
+    '90-365d',
+    '>1y',
+    'no-ts',
+  ]) {
     if (buckets[b]) printRow(b, buckets[b]);
   }
 
@@ -214,9 +217,7 @@ async function scanRooms() {
     stale
       .sort((a, b) => b.bytes - a.bytes)
       .slice(0, TOP_N)
-      .forEach((r) =>
-        printRow(r.roomId, `${r.days}d  ${fmtBytes(r.bytes)}`),
-      );
+      .forEach((r) => printRow(r.roomId, `${r.days}d  ${fmtBytes(r.bytes)}`));
   }
 }
 
@@ -228,7 +229,13 @@ async function scanUsers() {
   if (uids.length === 0) return;
 
   const subkeyHist = new Map(); // key -> {count, totalBytes}
-  const legacyOwners = { recentCalls: [], outgoingCall: [], callHistory: [] };
+  const legacyOwners = {
+    contacts: [],
+    profile: [],
+    recentCalls: [],
+    outgoingCall: [],
+    callHistory: [],
+  };
   const unknownKeys = new Map();
   let totalBytes = 0;
 
@@ -240,9 +247,7 @@ async function scanUsers() {
     totalBytes += userBytes;
 
     for (const [childKey, childVal] of Object.entries(userVal)) {
-      const slot =
-        subkeyHist.get(childKey) ||
-        { count: 0, bytes: 0 };
+      const slot = subkeyHist.get(childKey) || { count: 0, bytes: 0 };
       slot.count += 1;
       slot.bytes += approxJsonBytes(childVal);
       subkeyHist.set(childKey, slot);
@@ -259,7 +264,9 @@ async function scanUsers() {
   printRow('total size (approx)', fmtBytes(totalBytes));
 
   printHeader('users/* subkey histogram');
-  const sorted = [...subkeyHist.entries()].sort((a, b) => b[1].bytes - a[1].bytes);
+  const sorted = [...subkeyHist.entries()].sort(
+    (a, b) => b[1].bytes - a[1].bytes,
+  );
   for (const [k, { count, bytes }] of sorted) {
     const tag = LEGACY_USER_KEYS.has(k)
       ? ' (LEGACY)'
@@ -274,7 +281,8 @@ async function scanUsers() {
     if (owners.length > 0 && verbose) {
       printHeader(`users/*/${k} — owners`);
       owners.slice(0, TOP_N).forEach((u) => printRow(u, ''));
-      if (owners.length > TOP_N) printRow('...', `${owners.length - TOP_N} more`);
+      if (owners.length > TOP_N)
+        printRow('...', `${owners.length - TOP_N} more`);
     }
   }
 
@@ -333,7 +341,15 @@ async function scanConversations() {
   printRow('without members/', noMembersCount.withoutMembers);
 
   printHeader('conversations/ last-activity age');
-  for (const b of ['<1d', '1-7d', '7-30d', '30-90d', '90-365d', '>1y', 'no-ts']) {
+  for (const b of [
+    '<1d',
+    '1-7d',
+    '7-30d',
+    '30-90d',
+    '90-365d',
+    '>1y',
+    'no-ts',
+  ]) {
     if (ageBuckets[b]) printRow(b, ageBuckets[b]);
   }
 

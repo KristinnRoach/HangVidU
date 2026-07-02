@@ -45,5 +45,5 @@ export default function GoogleSignInButton() {
     });
   });
 
-  return <div class='gsi-button-container' ref={buttonContainer} />;
+  return <div class="gsi-button-container" ref={buttonContainer} />;
 }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => {
   const handlers = new Map();
@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => {
     const unsubscribe = () => handlers.delete(eventName);
     if (options.signal) {
       if (options.signal.aborted) unsubscribe();
-      else options.signal.addEventListener('abort', unsubscribe, { once: true });
+      else
+        options.signal.addEventListener('abort', unsubscribe, { once: true });
     }
     return unsubscribe;
   };

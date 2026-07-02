@@ -1,5 +1,5 @@
 // src/auth/tests/auth.test.js
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 
 // Mock Firebase modules before importing auth
 const mockAuth = {

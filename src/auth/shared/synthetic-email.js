@@ -7,7 +7,7 @@ export function isSyntheticEmail(email) {
 
 export function extractUsernameFromSyntheticEmail(email) {
   if (!isSyntheticEmail(email)) return null;
-  return email.slice(0, -(`@${SYNTHETIC_DOMAIN}`.length));
+  return email.slice(0, -`@${SYNTHETIC_DOMAIN}`.length);
 }
 
 export function syntheticEmail(username) {

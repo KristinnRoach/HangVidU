@@ -74,9 +74,9 @@ export default function UsernamePasswordForm(props) {
         when={mode() === 'signup'}
         fallback={
           <input
-            type='text'
+            type="text"
             placeholder={t('auth.placeholder.identifier')}
-            autocomplete='username'
+            autocomplete="username"
             value={identifier()}
             aria-invalid={!!error()}
             aria-describedby={error() ? 'auth-password-error' : undefined}
@@ -89,9 +89,9 @@ export default function UsernamePasswordForm(props) {
         }
       >
         <input
-          type='text'
+          type="text"
           placeholder={t('auth.placeholder.username')}
-          autocomplete='username'
+          autocomplete="username"
           value={username()}
           aria-invalid={!!error()}
           aria-describedby={error() ? 'auth-password-error' : undefined}
@@ -102,9 +102,9 @@ export default function UsernamePasswordForm(props) {
           required
         />
         <input
-          type='email'
+          type="email"
           placeholder={t('auth.placeholder.email')}
-          autocomplete='email'
+          autocomplete="email"
           value={email()}
           onInput={(e) => {
             setError('');
@@ -112,9 +112,9 @@ export default function UsernamePasswordForm(props) {
           }}
         />
         <input
-          type='text'
+          type="text"
           placeholder={t('auth.placeholder.display_name')}
-          autocomplete='nickname'
+          autocomplete="nickname"
           value={displayName()}
           onInput={(e) => {
             setError('');
@@ -123,7 +123,7 @@ export default function UsernamePasswordForm(props) {
         />
       </Show>
       <input
-        type='password'
+        type="password"
         placeholder={t('auth.placeholder.password')}
         autocomplete={mode() === 'signup' ? 'new-password' : 'current-password'}
         value={password()}
@@ -135,13 +135,13 @@ export default function UsernamePasswordForm(props) {
         }}
         required
       />
-      <button type='submit' disabled={busy()}>
+      <button type="submit" disabled={busy()}>
         {mode() === 'signup' ? t('auth.sign_up') : t('auth.sign_in')}
       </button>
 
       <button
         class={styles.modeToggle}
-        type='button'
+        type="button"
         onClick={() => {
           setError('');
           setMode(mode() === 'signup' ? 'signin' : 'signup');
@@ -153,7 +153,7 @@ export default function UsernamePasswordForm(props) {
       </button>
 
       <Show when={error()}>
-        <small id='auth-password-error' class={styles.error} role='alert'>
+        <small id="auth-password-error" class={styles.error} role="alert">
           {error()}
         </small>
       </Show>

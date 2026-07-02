@@ -1,6 +1,6 @@
 // Unit tests for ReactionManager
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vite-plus/test';
 import { ReactionManager } from './ReactionManager.js';
 
 describe('ReactionManager', () => {

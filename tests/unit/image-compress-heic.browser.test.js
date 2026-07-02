@@ -1,12 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { compressImage } from '../../src/lib/media/image-compress.js';
 
 // Resolve optional HEIC fixtures without hard-failing when they are absent.
-const heicFileUrls = import.meta.glob('../../src/media/test-images/*.{heic,HEIC}', {
-  query: '?url',
-  import: 'default',
-  eager: true,
-});
+const heicFileUrls = import.meta.glob(
+  '../../src/media/test-images/*.{heic,HEIC}',
+  {
+    query: '?url',
+    import: 'default',
+    eager: true,
+  },
+);
 const heicFiles = Object.entries(heicFileUrls).map(([path, url]) => ({
   name: path.split('/').pop(),
   url,

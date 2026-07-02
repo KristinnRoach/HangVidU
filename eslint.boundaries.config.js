@@ -1,4 +1,6 @@
-// ⚠️ Keep the boundary playground in sync with this file.
+// ⚠️ Playground data source only — lint enforcement of these rules now lives
+// in the `lint` block of vite.config.js (oxlint + eslint-plugin-boundaries via
+// jsPlugins). Keep BOTH in sync when changing elements or allow-rules.
 // The visualizer (playgrounds/boundary-rules.html) reads this config live for
 // element types + allow-rules, but the underlying import data is a generated
 // snapshot. After changing elements, rules, or the tsconfig path aliases,
@@ -6,7 +8,6 @@
 // (the scanner playgrounds/build-import-graph.mjs resolves those same aliases).
 
 import boundaries from 'eslint-plugin-boundaries';
-import tseslint from 'typescript-eslint';
 
 const JS_FILES = ['src/**/*.js', 'src/**/*.jsx'];
 const TS_FILES = ['src/**/*.ts', 'src/**/*.tsx'];
@@ -254,27 +255,6 @@ overrides.push(
 );
 
 export default [
-  {
-    files: TS_FILES,
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: { jsx: true },
-      },
-    },
-  },
-  {
-    files: ['src/**/*.jsx'],
-    languageOptions: {
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: { jsx: true },
-      },
-    },
-  },
   {
     files: SOURCE_FILES,
     plugins: {

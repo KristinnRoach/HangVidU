@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 import { createSignal } from 'solid-js';
 import { render, cleanup } from '@solidjs/testing-library';
 

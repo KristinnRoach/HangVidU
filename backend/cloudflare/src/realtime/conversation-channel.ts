@@ -39,7 +39,9 @@ export class ConversationChannel extends DurableObject<Env> {
     // Echo the auth subprotocol; browsers abort the handshake if the server
     // does not confirm one of the offered subprotocols.
     const headers: HeadersInit = {};
-    if ((request.headers.get('Sec-WebSocket-Protocol') ?? '').includes('bearer')) {
+    if (
+      (request.headers.get('Sec-WebSocket-Protocol') ?? '').includes('bearer')
+    ) {
       headers['Sec-WebSocket-Protocol'] = 'bearer';
     }
     return new Response(null, { status: 101, webSocket: client, headers });

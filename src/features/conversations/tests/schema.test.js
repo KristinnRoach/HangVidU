@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import {
   ConversationIdSchema,
   EventMessagePayloadSchema,
@@ -7,7 +7,9 @@ import {
 
 describe('conversations schema', () => {
   it('normalizes and rejects blank conversation ids', () => {
-    expect(ConversationIdSchema.parse(' conversation-1 ')).toBe('conversation-1');
+    expect(ConversationIdSchema.parse(' conversation-1 ')).toBe(
+      'conversation-1',
+    );
     expect(() => ConversationIdSchema.parse('   ')).toThrow();
   });
 

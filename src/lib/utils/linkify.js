@@ -40,7 +40,6 @@ function normalizeSafeHref(raw) {
     return null;
   }
 
-
   const lowerProtocol = protocol.toLowerCase();
   if (lowerProtocol !== 'http:' && lowerProtocol !== 'https:') {
     return null;
@@ -69,7 +68,7 @@ export function linkifyToFragment(text) {
     }
     // Trim common trailing punctuation from URL match (e.g., '.', ',', '!', '?', ':', ';', ')')
     // Keep the trailing punctuation as plain text after the link.
-    const trimmedMatch = urlText.replace(/[.,!?:;\)\]\}]+$/g, '');
+    const trimmedMatch = urlText.replace(/[.,!?:;)\]}]+$/g, '');
     const trailing = urlText.slice(trimmedMatch.length);
 
     // Normalize href and ensure it uses a safe protocol.
@@ -107,7 +106,7 @@ export function extractLinks(text) {
   let match;
   while ((match = urlRegex.exec(text)) !== null) {
     const raw = match[0];
-    const trimmed = raw.replace(/[.,!?:;\)\]\}]+$/g, '');
+    const trimmed = raw.replace(/[.,!?:;)\]}]+$/g, '');
     const safe = normalizeSafeHref(trimmed);
     if (!safe) continue;
     links.push({

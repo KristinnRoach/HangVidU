@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import {
   buildHangViduWebSocketUrl,
   getHangViduApiBaseUrl,
@@ -19,16 +19,14 @@ describe('HangVidU API URL helper', () => {
     expect(buildHangViduWebSocketUrl('/ws', 'http://localhost:8788/')).toBe(
       'ws://localhost:8788/ws',
     );
-    expect(
-      buildHangViduWebSocketUrl('ws', 'https://api.example.test'),
-    ).toBe('wss://api.example.test/ws');
+    expect(buildHangViduWebSocketUrl('ws', 'https://api.example.test')).toBe(
+      'wss://api.example.test/ws',
+    );
   });
 
   it('uses the default URL for a whitespace-only configured value', () => {
     vi.stubEnv('VITE_HANGVIDU_API_URL', '   ');
 
-    expect(getHangViduApiBaseUrl()).toBe(
-      'https://api.hangvidu.com',
-    );
+    expect(getHangViduApiBaseUrl()).toBe('https://api.hangvidu.com');
   });
 });

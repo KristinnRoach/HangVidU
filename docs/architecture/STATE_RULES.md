@@ -58,12 +58,12 @@ It exposes:
 
 ## Adoption status
 
-| Module    | Shape                                  | Notes                                                              |
-| --------- | -------------------------------------- | ------------------------------------------------------------------ |
-| auth           | dedicated `auth-state.js`                  | non-Solid consumers subscribe to `evt:auth:session:*`         |
-| contacts       | Solid store in `stores/contactsStore.ts`   | Solid-only consumers; no `evt:contacts:state:changed`         |
-| conversations  | —                                          |                                                              |
-| call           | —                                          |                                                              |
+| Module        | Shape                                    | Notes                                                 |
+| ------------- | ---------------------------------------- | ----------------------------------------------------- |
+| auth          | dedicated `auth-state.js`                | non-Solid consumers subscribe to `evt:auth:session:*` |
+| contacts      | Solid store in `stores/contactsStore.ts` | Solid-only consumers; no `evt:contacts:state:changed` |
+| conversations | —                                        |                                                       |
+| call          | —                                        |                                                       |
 
 ## Migration notes
 

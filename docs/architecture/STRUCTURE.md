@@ -6,18 +6,18 @@ Import rules between layers are enforced by `eslint.boundaries.config.js` — th
 config is the source of truth for the allow-table. The enforced element types and
 their direction of allowed imports:
 
-| Layer (dir)        | Role                                                                                   | May import                                                        |
-| ------------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `src/lib/`         | Framework-agnostic primitives, **zero app knowledge** (`event-emitter/`, `media/`, `utils/`). "Could be published to npm." | `lib` only                                                       |
-| `src/shared/`      | App-aware cross-cutting code that knows HangVidU concepts (`events/`, `i18n/`, `p2p-context`, `utils/`). | `shared`, `lib`                                                 |
-| `src/infra/`       | External-SDK wiring: Firebase init, App Check, RTDB client, Sentry.                    | `infra`, `lib`                                                   |
-| `src/storage/`     | Durable persistence ports (`contacts/`, `conversations/`, `files/`, `user/`). D1 + R2 spine; RTDB remains for user presence and legacy cleanup. | `storage`, `shared`, `lib`, `infra`                             |
-| `src/realtime/`    | Ephemeral coordination (WebRTC signaling, conversation channel, user mailbox). Backed by Cloudflare Durable Objects in `backend/cloudflare/`. | `realtime`, `shared`, `lib`, `infra`, `auth`                   |
-| `src/stores/`      | Solid reactive mirrors over storage/realtime (`contactsStore`, `filesStore`, `selectedConversationStore`, …). | `stores`, `auth`, `shared`, `lib`, `storage`, `realtime`, `infra`, `feature` |
-| `src/auth/`        | Session/auth state and helpers.                                                        | `auth`, `shared`, `lib`, `infra`, `components`                  |
-| `src/features/<x>/`| Feature modules. Each has a barrel, optional `components/`, and optional `setup()`.    | `auth`, `shared`, `lib`, `feature`, `components`, `infra`, `stores`, `realtime` |
-| `src/components/`  | App-level + shared/primitive UI (`app/`, `base-legacy/`, `dialogs/`, `media/`). **Not** feature UI. | `components`, `auth`, `shared`, `lib`                          |
-| `src/app/`         | Composition root (`MainContent`, `TopBar`).                                            | `app`, `auth`, `stores`, `feature`, `components`, `shared`, `lib` |
+| Layer (dir)         | Role                                                                                                                                            | May import                                                                      |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `src/lib/`          | Framework-agnostic primitives, **zero app knowledge** (`event-emitter/`, `media/`, `utils/`). "Could be published to npm."                      | `lib` only                                                                      |
+| `src/shared/`       | App-aware cross-cutting code that knows HangVidU concepts (`events/`, `i18n/`, `p2p-context`, `utils/`).                                        | `shared`, `lib`                                                                 |
+| `src/infra/`        | External-SDK wiring: Firebase init, App Check, RTDB client, Sentry.                                                                             | `infra`, `lib`                                                                  |
+| `src/storage/`      | Durable persistence ports (`contacts/`, `conversations/`, `files/`, `user/`). D1 + R2 spine; RTDB remains for user presence and legacy cleanup. | `storage`, `shared`, `lib`, `infra`                                             |
+| `src/realtime/`     | Ephemeral coordination (WebRTC signaling, conversation channel, user mailbox). Backed by Cloudflare Durable Objects in `backend/cloudflare/`.   | `realtime`, `shared`, `lib`, `infra`, `auth`                                    |
+| `src/stores/`       | Solid reactive mirrors over storage/realtime (`contactsStore`, `filesStore`, `selectedConversationStore`, …).                                   | `stores`, `auth`, `shared`, `lib`, `storage`, `realtime`, `infra`, `feature`    |
+| `src/auth/`         | Session/auth state and helpers.                                                                                                                 | `auth`, `shared`, `lib`, `infra`, `components`                                  |
+| `src/features/<x>/` | Feature modules. Each has a barrel, optional `components/`, and optional `setup()`.                                                             | `auth`, `shared`, `lib`, `feature`, `components`, `infra`, `stores`, `realtime` |
+| `src/components/`   | App-level + shared/primitive UI (`app/`, `base-legacy/`, `dialogs/`, `media/`). **Not** feature UI.                                             | `components`, `auth`, `shared`, `lib`                                           |
+| `src/app/`          | Composition root (`MainContent`, `TopBar`).                                                                                                     | `app`, `auth`, `stores`, `feature`, `components`, `shared`, `lib`               |
 
 Rule of thumb for placing a util: if it has no app/domain knowledge and no
 imports outside `lib`, it belongs in `src/lib/utils/`; otherwise `src/shared/utils/`.

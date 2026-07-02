@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import type { ServerMessage } from '../../../shared/signaling/protocol';
 
 /** Open a hibernatable WS straight to the DO (bypasses the Worker auth layer). */
@@ -58,19 +58,33 @@ describe('SignalingRoom', () => {
 
     a.send({ t: 'join', peerId: 'peer-a' });
     // Joins broadcast to every socket, watchers included.
-    expect(await a.next()).toEqual({ t: 'peers', peers: [{ peerId: 'peer-a' }] });
-    expect(await b.next()).toEqual({ t: 'peers', peers: [{ peerId: 'peer-a' }] });
+    expect(await a.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+    });
+    expect(await b.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+    });
 
     // A late watcher's connect-time snapshot reflects current occupancy.
     const c = await connect('room-1');
-    expect(await c.next()).toEqual({ t: 'peers', peers: [{ peerId: 'peer-a' }] });
+    expect(await c.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+    });
 
     b.send({ t: 'join', peerId: 'peer-b' });
     for (const peer of [a, b, c]) {
       expect(memberIds(await peer.next())).toEqual(['peer-a', 'peer-b']);
     }
 
-    a.send({ t: 'relay', to: 'peer-b', channel: 'sdp', data: { sdp: 'offer' } });
+    a.send({
+      t: 'relay',
+      to: 'peer-b',
+      channel: 'sdp',
+      data: { sdp: 'offer' },
+    });
     expect(await b.next()).toEqual({
       t: 'relay',
       from: 'peer-a',

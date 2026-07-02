@@ -2,14 +2,14 @@
   "name": "hangvidu-cloudflare",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "description": "Consolidated Cloudflare Worker for HangVidU data, files, and realtime coordination.",
+  "type": "module",
   "scripts": {
     "predev": "pnpm migrate:local",
     "dev": "wrangler dev --env-file .dev.vars.example --var APP_ENV:development --port 8788 --persist-to .wrangler/state --local-protocol https --https-cert-path ../../.certs/localhost.pem --https-key-path ../../.certs/localhost-key.pem",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "test": "vitest --run",
+    "test": "vp test --run",
     "migrate:local": "wrangler d1 migrations apply hangvidu-data --local --persist-to .wrangler/state",
     "migrate:remote": "wrangler d1 migrations apply hangvidu-data --remote",
     "view:local": "find .wrangler/state/v3/d1/miniflare-D1DatabaseObject -maxdepth 1 -type f -name '*.sqlite' ! -name 'metadata.sqlite' -exec open {} \\;",
@@ -19,8 +19,9 @@
     "@cloudflare/vitest-pool-workers": "^0.16.20",
     "@cloudflare/workers-types": "^4.20260630.1",
     "typescript": "^6.0.3",
-    "vite": "8.1.2",
-    "vitest": "^4.1.9",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
     "wrangler": "^4.102.0"
   }
 }

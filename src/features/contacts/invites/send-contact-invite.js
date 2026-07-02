@@ -55,9 +55,7 @@ function isAlreadyInvitedError(error) {
   const { normalizedCode, normalizedMessage } = getErrorParts(error);
 
   return DUPLICATE_ERROR_TOKENS.some((token) => {
-    return (
-      normalizedCode.includes(token) || normalizedMessage.includes(token)
-    );
+    return normalizedCode.includes(token) || normalizedMessage.includes(token);
   });
 }
 

@@ -25,7 +25,11 @@ export function createReactions(config = DEFAULT_CONFIG) {
       const current = manager.getUserReactionType(messageId);
 
       if (current === reactionType || (source === 'doubleTap' && current)) {
-        ui.renderReactions(element, messageId, manager.removeReaction(messageId));
+        ui.renderReactions(
+          element,
+          messageId,
+          manager.removeReaction(messageId),
+        );
         onChange?.({ messageId, userId, reactionKey: null });
         return;
       }

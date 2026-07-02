@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vite-plus/test';
 import { Emitter } from '../emitter.js';
 import { ListenerRegistry } from '../listener-registry.js';
 
@@ -13,7 +13,9 @@ describe('Emitter', () => {
     it('validates registry and error hook', () => {
       expect(() => new Emitter(null)).toThrow(TypeError);
       expect(() => new Emitter({})).toThrow(TypeError);
-      expect(() => new Emitter(new ListenerRegistry(), { onListenerError: 'bad' })).toThrow(TypeError);
+      expect(
+        () => new Emitter(new ListenerRegistry(), { onListenerError: 'bad' }),
+      ).toThrow(TypeError);
       expect(() => new Emitter(new ListenerRegistry())).not.toThrow();
     });
   });
@@ -89,16 +91,22 @@ describe('Emitter', () => {
       const cb = vi.fn().mockResolvedValue('ok');
       const emitter = new Emitter(makeRegistryWith('evt', cb));
 
-      await expect(emitter.emitAsync('evt', { id: 1 })).resolves.toBeUndefined();
+      await expect(
+        emitter.emitAsync('evt', { id: 1 }),
+      ).resolves.toBeUndefined();
       expect(cb).toHaveBeenCalledWith({ id: 1 });
     });
 
     it('returns settled results when requested', async () => {
-      const emitter = new Emitter(makeRegistryWith('evt', vi.fn().mockResolvedValue(42)));
-      await expect(emitter.emitAsync('evt', {}, { returnSettled: true })).resolves.toEqual([
-        { status: 'fulfilled', value: 42 },
-      ]);
-      await expect(emitter.emitAsync('none', {}, { returnSettled: true })).resolves.toEqual([]);
+      const emitter = new Emitter(
+        makeRegistryWith('evt', vi.fn().mockResolvedValue(42)),
+      );
+      await expect(
+        emitter.emitAsync('evt', {}, { returnSettled: true }),
+      ).resolves.toEqual([{ status: 'fulfilled', value: 42 }]);
+      await expect(
+        emitter.emitAsync('none', {}, { returnSettled: true }),
+      ).resolves.toEqual([]);
     });
 
     it('reports failures and throws AggregateError when throwOnError=true', async () => {

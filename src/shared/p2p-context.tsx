@@ -7,9 +7,7 @@ export function P2PProvider(props: ParentProps) {
   const p2p = useP2PRoom();
 
   return (
-    <P2PContext.Provider value={p2p}>
-      {props.children}
-    </P2PContext.Provider>
+    <P2PContext.Provider value={p2p}>{props.children}</P2PContext.Provider>
   );
 }
 
