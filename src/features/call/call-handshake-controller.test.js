@@ -289,4 +289,38 @@ describe('CallHandshakeController', () => {
     expect(mocks.onCalleeResponse).not.toHaveBeenCalled();
     expect(p2p.join).not.toHaveBeenCalled();
   });
+
+  it('stops stale caller media when cleanup wins the permission race', async () => {
+    const media = deferred();
+    const stop = vi.fn();
+    mocks.getUserMedia.mockReturnValue(media.promise);
+    const p2p = {
+      join: vi.fn(),
+      close: vi.fn(),
+      state: vi.fn(() => 'idle'),
+      room: vi.fn(),
+    };
+    const controller = new CallHandshakeController({
+      p2p,
+      createSignaling: vi.fn(),
+      getCallerName: () => 'Caller',
+      onStateChange: vi.fn(),
+      onCalleeBusy: vi.fn(),
+    });
+
+    const start = controller.sendOutgoingCallInvite({
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: false,
+    });
+    await flushPromises();
+
+    controller.cleanup();
+    media.resolve({ getTracks: () => [{ stop }] });
+    await start;
+
+    expect(stop).toHaveBeenCalledOnce();
+    expect(mocks.sendOutgoingCallInvite).not.toHaveBeenCalled();
+    expect(mocks.onCalleeResponse).not.toHaveBeenCalled();
+  });
 });

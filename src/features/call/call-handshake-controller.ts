@@ -56,6 +56,7 @@ export class CallHandshakeController {
   private unsubCalleeResponse: (() => void) | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
   private pendingOutgoingLocalStream: MediaStream | undefined;
+  private outgoingMediaAttempt = 0;
   private lastBoundUID: string | undefined;
 
   constructor({
@@ -166,6 +167,8 @@ export class CallHandshakeController {
       baseUrl: DATA_URL,
       getToken: getLoggedInUserToken,
     });
+    this.stopPendingOutgoingLocalStream();
+    const mediaAttempt = ++this.outgoingMediaAttempt;
 
     const { calleeId, calleeName, audioOnly } = details;
     const callerName = this.getCallerName();
@@ -192,7 +195,12 @@ export class CallHandshakeController {
 
     let localStream: MediaStream;
     try {
+      if (mediaAttempt !== this.outgoingMediaAttempt) return;
       localStream = await this.getCallLocalStream(audioOnly);
+      if (mediaAttempt !== this.outgoingMediaAttempt) {
+        this.stopMediaStream(localStream);
+        return;
+      }
       this.pendingOutgoingLocalStream = localStream;
     } catch (err) {
       console.error('Error getting caller media before starting call:', err);
@@ -466,6 +474,7 @@ export class CallHandshakeController {
   }
 
   cleanup(): void {
+    this.outgoingMediaAttempt += 1;
     this.unsubscribeIncomingCall?.();
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();
