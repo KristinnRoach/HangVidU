@@ -5,6 +5,7 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 import mkcert from 'vite-plugin-mkcert';
 import solid from 'vite-plugin-solid';
+import tailwindcss from '@tailwindcss/vite';
 import boundariesConfig from './eslint.boundaries.config.js';
 
 // Architecture boundaries: eslint.boundaries.config.js is the single source
@@ -197,6 +198,7 @@ export default defineConfig(({ mode }) => {
         ? [mkcert({ savePath: path.resolve(__dirname, '.vite-plugin-mkcert') })]
         : []),
       solid(),
+      tailwindcss(),
       VitePWA({
         includeAssets: ['index.html', 'favicon.ico'],
         registerType: 'autoUpdate',
