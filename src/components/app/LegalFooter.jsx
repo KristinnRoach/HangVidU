@@ -1,5 +1,4 @@
 import { useI18n } from '../../shared/i18n/index.js';
-import styles from './Footer.module.css';
 
 export default function LegalFooter() {
   const { t } = useI18n();
@@ -7,11 +6,13 @@ export default function LegalFooter() {
   return (
     <footer
       id="legal-footer"
-      class={styles.legalFooter}
+      class="absolute right-2 bottom-1 z-0 flex h-7 items-center justify-center gap-1.5 rounded-[10px] bg-transparent px-2.5 py-[5px] font-sans text-xs font-[325] pointer-events-none
+        hover:pointer-events-auto hover:text-text-primary hover:opacity-90 hover:shadow-[0_2px_8px_rgb(0_0_0/25%)] hover:outline-1 hover:outline-primary-subtle hover:outline-offset-2
+        focus-within:pointer-events-auto focus-within:opacity-90"
       aria-label={t('nav.legal_links')}
     >
       <a
-        class={styles.legalFooterLink}
+        class="pointer-events-auto text-[#cdcdcdd2] no-underline hover:text-text-primary hover:underline"
         href="/privacy-policy.html"
         target="_blank"
         rel="noopener noreferrer"
@@ -20,9 +21,11 @@ export default function LegalFooter() {
       >
         {t('nav.privacy.short')}
       </a>
-      <span class={styles.legalFooterSeparator}>&bull;</span>
+      <span class="pointer-events-none cursor-none text-text-muted">
+        &bull;
+      </span>
       <a
-        class={styles.legalFooterLink}
+        class="pointer-events-auto text-[#cdcdcdd2] no-underline hover:text-text-primary hover:underline"
         href="/terms-of-service.html"
         target="_blank"
         rel="noopener noreferrer"
