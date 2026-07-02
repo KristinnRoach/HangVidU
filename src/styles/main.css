@@ -1,41 +1,55 @@
 /* src/style.css */
 
-@import './init/reset.css';
-@import './init/typography.css';
-@import './init/scrollbar.css';
-@import './element/button.css';
-@import './element/input.css';
+/* Layer order: later wins. Legacy app CSS sits below utilities so
+   Tailwind classes always win over legacy element/component selectors.
+   NOTE: *.module.css files are unlayered and still beat utilities —
+   migrate a component fully rather than mixing the two. */
+@layer theme, base, app, utilities;
+
+/* Tailwind v4 */
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+/* Design tokens (@theme + legacy aliases) — processed by Tailwind, unlayered */
 @import './theme.css';
-@import './animations.css';
-@import './utilities.css';
-@import './layout/wrappers.css';
-@import './layout/grid.css';
 
-@import './components/public-homepage.css';
-@import './components/call-lobby.css';
-@import './components/contacts-list.css';
-@import '../features/conversations/reactions/reactions.css';
-@import './components/search.css';
-@import './components/notifications.css';
-@import './components/toast.css';
-@import './components/dialog/incoming-call.css';
-@import './components/dialog/call-ui.css';
-@import './components/dialog/image-preview-dialog.css';
-@import './components/dialog/confirm-dialog.css';
-@import './components/dialog/edit-contact-dialog.css';
+/* Legacy app CSS — shrinks as components migrate to utilities */
+@import './init/reset.css' layer(app);
+@import './init/typography.css' layer(app);
+@import './init/scrollbar.css' layer(app);
+@import './element/button.css' layer(app);
+@import './element/input.css' layer(app);
+@import './animations.css' layer(app);
+@import './utilities.css' layer(app);
+@import './layout/wrappers.css' layer(app);
+@import './layout/grid.css' layer(app);
 
-/* LEGACY - Default visible state for elements that toggle visibility */
-.video-box,
-#yt-video-box,
-#shared-video-box,
-#yt-video-box iframe,
-#main-messages-toggle-btn,
-.messages-box,
-.top-bar-right {
-  opacity: 1;
-  pointer-events: auto;
+@import './components/public-homepage.css' layer(app);
+@import './components/call-lobby.css' layer(app);
+@import './components/contacts-list.css' layer(app);
+@import '../features/conversations/reactions/reactions.css' layer(app);
+@import './components/search.css' layer(app);
+@import './components/notifications.css' layer(app);
+@import './components/toast.css' layer(app);
+@import './components/dialog/incoming-call.css' layer(app);
+@import './components/dialog/call-ui.css' layer(app);
+@import './components/dialog/image-preview-dialog.css' layer(app);
+@import './components/dialog/confirm-dialog.css' layer(app);
+@import './components/dialog/edit-contact-dialog.css' layer(app);
+
+@layer app {
+  /* LEGACY - Default visible state for elements that toggle visibility */
+  .video-box,
+  #yt-video-box,
+  #shared-video-box,
+  #yt-video-box iframe,
+  #main-messages-toggle-btn,
+  .messages-box,
+  .top-bar-right {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
-
-/* #recaptcha-container {} */
 
 /* Todo: Review components to minimize redundant lines of CSS, simplify, consolidate and align styles to current system */

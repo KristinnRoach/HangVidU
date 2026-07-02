@@ -1,29 +1,32 @@
 /* ============================================
-   THEME SYSTEM - Design Tokens
+   THEME SYSTEM - Design Tokens (Tailwind v4 @theme)
+
+   Mechanical port of the legacy :root tokens into Tailwind namespaces.
+   Naming is deliberately unpolished (bg-bg-primary etc.) — the design
+   system gets redesigned once the Tailwind migration is complete.
    ============================================ */
 
-:root {
+@theme {
   /* ===== COLORS - Dark Mode (Default) ===== */
 
   /* Backgrounds */
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2a2a2a;
-  --bg-tertiary: #2d2d2d;
+  --color-bg-primary: #1a1a1a;
+  --color-bg-secondary: #2a2a2a;
+  --color-bg-tertiary: #2d2d2d;
 
-  /* TODO: change to dark/light mode compatible naming  */
-  --bg-darker: rgba(0, 0, 0, 0.5);
-  --bg-brighter: rgba(255, 255, 255, 0.05);
+  --color-bg-darker: rgba(0, 0, 0, 0.5);
+  --color-bg-brighter: rgba(255, 255, 255, 0.05);
 
   /* Text */
-  --text-primary: #eee;
-  --text-secondary: #ccc;
-  --text-tertiary: #aaa;
-  --text-muted: #888;
-  --text-disabled: #666;
+  --color-text-primary: #eee;
+  --color-text-secondary: #ccc;
+  --color-text-tertiary: #aaa;
+  --color-text-muted: #888;
+  --color-text-disabled: #666;
 
   /* Borders */
-  --border-primary: #444;
-  --border-secondary: #555;
+  --color-border-primary: #444;
+  --color-border-secondary: #555;
 
   /* Interactive */
   --color-primary: #4c81af;
@@ -46,14 +49,13 @@
   --color-accent-blue: rgb(55, 162, 255);
   --color-accent-hover: #777;
 
-  /* Shadows */
+  /* ===== SHADOWS ===== */
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
-  --shadow-inset-sm: inset 0 4px 12px rgba(0, 0, 0, 0.15);
-  --shadow-inset-md: inset 0 20px 40px rgba(0, 0, 0, 0.3);
+  --inset-shadow-sm: inset 0 4px 12px rgba(0, 0, 0, 0.15);
+  --inset-shadow-md: inset 0 20px 40px rgba(0, 0, 0, 0.3);
 
-  /* ===== TEXT SHADOWS  ===== */
   --text-shadow-subtle: 0 1px 0 rgba(0, 0, 0, 0.45);
   --text-shadow-medium: 0 2px 4px rgba(0, 0, 0, 0.55);
   --text-shadow-strong: 0 4px 8px rgba(0, 0, 0, 0.65);
@@ -69,25 +71,29 @@
   --spacing-2xl: 24px;
   --spacing-3xl: 32px;
 
-  /* ===== SIZING ===== */
-  --content-width: clamp(200px, 100%, 680px);
-  --topbar-height: 50px;
-
+  /* ===== RADIUS ===== */
   --radius-sm: 4px;
   --radius-md: 5px;
   --radius-lg: 8px;
   --radius-xl: 12px;
-  --radius-full: 50%;
 
   /* ===== TYPOGRAPHY ===== */
-  --font-family-primary: 'Satoshi', 'Roboto', sans-serif;
-  --font-size-xs: 12px;
-  --font-size-sm: 13px;
-  --font-size-base: 14px;
-  --font-size-md: 16px;
-  --font-size-lg: 18px;
-  --font-size-xl: 20px;
-  --font-size-2xl: 2rem;
+  --font-primary: 'Satoshi', 'Roboto', sans-serif;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 2rem;
+}
+
+/* Non-utility tokens (no Tailwind namespace) */
+:root {
+  --content-width: clamp(200px, 100%, 680px);
+  --topbar-height: 50px;
+
+  --radius-full: 50%;
 
   /* ===== Z-INDEX ===== */
   --z-low: 0;
@@ -105,51 +111,35 @@
   interpolate-size: allow-keywords;
 }
 
-/* ===== LIGHT MODE - TEMPORARILY DISABLED ===== */
-/* TODO: Light mode has issues that need fixing. Uncomment the block below to re-enable. */
+/* ============================================
+   LEGACY ALIASES - old var names → @theme tokens.
+   Delete each line once its consumers are migrated to utilities.
+   ============================================ */
+:root {
+  --bg-primary: var(--color-bg-primary);
+  --bg-secondary: var(--color-bg-secondary);
+  --bg-tertiary: var(--color-bg-tertiary);
+  --bg-darker: var(--color-bg-darker);
+  --bg-brighter: var(--color-bg-brighter);
 
-/*
-@media (prefers-color-scheme: light) {
-  :root {
-    interpolate-size: allow-keywords;
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-tertiary);
+  --text-muted: var(--color-text-muted);
+  --text-disabled: var(--color-text-disabled);
 
-    --bg-primary: #f5f5f5;
-    --bg-secondary: #e8e8e8;
-    --bg-tertiary: #e0e0e0;
-    --bg-elevated: #ffffff;
+  --border-primary: var(--color-border-primary);
+  --border-secondary: var(--color-border-secondary);
 
-    --text-primary: #1a1a1a;
-    --text-secondary: #333333;
-    --text-tertiary: #555555;
-    --text-muted: #777777;
-    --text-disabled: #999999;
+  --shadow-inset-sm: var(--inset-shadow-sm);
+  --shadow-inset-md: var(--inset-shadow-md);
 
-    --border-primary: #d0d0d0;
-    --border-secondary: #c0c0c0;
-
-    --color-primary: #3a6a94;
-    --color-primary-hover: #2d5575;
-    --color-primary-subtle: rgba(58, 106, 148, 0.15);
-
-    --color-success: #388e3c;
-    --color-success-hover: #2e7d32;
-
-    --color-danger: #d32f2f;
-    --color-danger-hover: #c62828;
-
-    --color-info: #0277bd;
-    --color-info-hover: #01579b;
-
-    --color-warning: #f57c00;
-
-    --color-accent-blue: rgb(25, 118, 210);
-    --color-accent-hover: #bbb;
-
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
-    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.15);
-    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.2);
-    --shadow-inset-sm: inset 0 2px 6px rgba(0, 0, 0, 0.08);
-    --shadow-inset-md: inset 0 4px 12px rgba(0, 0, 0, 0.12);
-  }
+  --font-family-primary: var(--font-primary);
+  --font-size-xs: var(--text-xs);
+  --font-size-sm: var(--text-sm);
+  --font-size-base: var(--text-base);
+  --font-size-md: var(--text-md);
+  --font-size-lg: var(--text-lg);
+  --font-size-xl: var(--text-xl);
+  --font-size-2xl: var(--text-2xl);
 }
-*/
