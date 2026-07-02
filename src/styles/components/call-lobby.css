@@ -17,6 +17,8 @@
 
 .call-lobby__cta,
 .call-lobby__secondary {
+  border: rgb(151, 200, 238) 2px solid;
+  background-color: rgba(124, 190, 208, 0.234);
   padding: var(--spacing-sm) var(--spacing-xl);
   border-radius: var(--radius-md);
   font-weight: 700;
