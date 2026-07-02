@@ -17,7 +17,18 @@
   </head>
   <body>
     <!-- Static content for crawlers/no-JS (Google OAuth homepage verification); removed when the app mounts -->
-    <div id="static-home">
+    <div
+      id="static-home"
+      style="
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        place-self: center;
+        gap: 16px;
+        padding: 16px;
+        max-width: 500px;
+      "
+    >
       <h1>HangVidU</h1>
       <p>
         HangVidU is a messaging app for peer-to-peer video calls, chat, and
