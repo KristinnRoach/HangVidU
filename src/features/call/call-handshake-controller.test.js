@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   sendIncomingCallPushNotification: vi.fn(),
   sendMissedCallPushNotification: vi.fn(),
   resolveDirectConversationId: vi.fn(),
+  getUserMedia: vi.fn(),
 }));
 
 vi.mock('./call-service.js', () => ({
@@ -68,6 +69,19 @@ describe('CallHandshakeController', () => {
     vi.clearAllMocks();
     mocks.incomingCallback = undefined;
     mocks.responseCallback = undefined;
+    Object.defineProperty(globalThis, 'navigator', {
+      value: {
+        mediaDevices: {
+          getUserMedia: mocks.getUserMedia,
+          getSupportedConstraints: () => ({}),
+        },
+        userAgent: '',
+      },
+      configurable: true,
+    });
+    mocks.getUserMedia.mockResolvedValue({
+      getTracks: () => [{ stop: vi.fn() }],
+    });
     const service = {
       onIncomingCall: mocks.onIncomingCall,
       respondToIncomingCallInvite: mocks.respondToIncomingCallInvite,
@@ -247,5 +261,66 @@ describe('CallHandshakeController', () => {
     join.resolve({ roomId: 'room-1', members: ['caller-id'] });
     await response;
     expect(mocks.ackCallResponse).toHaveBeenCalledWith('room-1');
+  });
+
+  it('does not send the invite when caller media permission fails', async () => {
+    mocks.getUserMedia.mockRejectedValue(new Error('camera blocked'));
+    const p2p = {
+      join: vi.fn(),
+      close: vi.fn(),
+      state: vi.fn(() => 'idle'),
+      room: vi.fn(),
+    };
+    const controller = new CallHandshakeController({
+      p2p,
+      createSignaling: vi.fn(),
+      getCallerName: () => 'Caller',
+      onStateChange: vi.fn(),
+      onCalleeBusy: vi.fn(),
+    });
+
+    await controller.sendOutgoingCallInvite({
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: false,
+    });
+
+    expect(mocks.sendOutgoingCallInvite).not.toHaveBeenCalled();
+    expect(mocks.onCalleeResponse).not.toHaveBeenCalled();
+    expect(p2p.join).not.toHaveBeenCalled();
+  });
+
+  it('stops stale caller media when cleanup wins the permission race', async () => {
+    const media = deferred();
+    const stop = vi.fn();
+    mocks.getUserMedia.mockReturnValue(media.promise);
+    const p2p = {
+      join: vi.fn(),
+      close: vi.fn(),
+      state: vi.fn(() => 'idle'),
+      room: vi.fn(),
+    };
+    const controller = new CallHandshakeController({
+      p2p,
+      createSignaling: vi.fn(),
+      getCallerName: () => 'Caller',
+      onStateChange: vi.fn(),
+      onCalleeBusy: vi.fn(),
+    });
+
+    const start = controller.sendOutgoingCallInvite({
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: false,
+    });
+    await flushPromises();
+
+    controller.cleanup();
+    media.resolve({ getTracks: () => [{ stop }] });
+    await start;
+
+    expect(stop).toHaveBeenCalledOnce();
+    expect(mocks.sendOutgoingCallInvite).not.toHaveBeenCalled();
+    expect(mocks.onCalleeResponse).not.toHaveBeenCalled();
   });
 });
