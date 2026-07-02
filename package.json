@@ -75,7 +75,6 @@
     "@kidlib/p2p": "^0.2.3",
     "@mediabunny/ac3": "^1.49.0",
     "@sentry/browser": "^10.62.0",
-    "@tailwindcss/cli": "^4.3.2",
     "@tailwindcss/vite": "^4.3.2",
     "firebase": "^12.15.0",
     "lucide-solid": "^1.22.0",
