@@ -153,14 +153,6 @@
   opacity: 0.75;
 }
 
-.msgSystem {
-  background-color: transparent;
-  color: #888;
-  font-size: 0.85em;
-  align-self: center;
-  text-align: center;
-}
-
 .msgOwn {
   background-color: #007aff;
   color: white;
@@ -195,26 +187,6 @@
   margin-left: 0.5rem;
   vertical-align: bottom;
   opacity: 0.8;
-}
-
-.msgActions {
-  display: inline-flex;
-  gap: 0.25rem;
-  margin-left: 0.5rem;
-}
-
-.msgActionBtn {
-  padding: 0.15rem 0.5rem;
-  font-size: 0.85em;
-  background-color: #3e3e3e;
-  color: #ddd;
-  border: 1px solid #555;
-  border-radius: 0.25rem;
-  cursor: pointer;
-}
-
-.msgActionBtn:hover {
-  background-color: #4a4a4a;
 }
 
 .form {

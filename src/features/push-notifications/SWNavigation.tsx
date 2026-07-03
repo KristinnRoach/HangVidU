@@ -6,7 +6,7 @@ import {
 import {
   open as openSelectedConversation,
   openDirectConversation,
-} from '../../stores/selectedConversationStore';
+} from '../../stores/conversationStore';
 
 type Props = {
   queueLimit?: number;

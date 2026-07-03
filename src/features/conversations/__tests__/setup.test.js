@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
     subscribe: vi.fn(register),
     stopConversationActivity: vi.fn(),
     resetConversationsState: vi.fn(),
+    resetConversationStore: vi.fn(),
   };
 });
 
@@ -28,6 +29,9 @@ vi.mock('../../../stores/conversation-activity', () => ({
 }));
 vi.mock('../../../stores/conversations-client.js', () => ({
   resetConversationsState: mocks.resetConversationsState,
+}));
+vi.mock('../../../stores/conversationStore', () => ({
+  resetConversationStore: mocks.resetConversationStore,
 }));
 
 describe('conversations setup', () => {
@@ -44,6 +48,7 @@ describe('conversations setup', () => {
     await mocks.handlers.get('evt:auth:session:logged-out')();
 
     expect(mocks.stopConversationActivity).toHaveBeenCalledOnce();
+    expect(mocks.resetConversationStore).toHaveBeenCalledOnce();
     expect(mocks.resetConversationsState).toHaveBeenCalledOnce();
   });
 
