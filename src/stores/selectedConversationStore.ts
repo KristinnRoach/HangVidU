@@ -1,4 +1,5 @@
 import { createSignal } from 'solid-js';
+import { getLoggedInUserId } from '../auth/index.js';
 import type { ConversationSelection } from '../features/conversations/interfaces.js';
 import { resolveDirectConversationId } from './conversations-client';
 import { cacheContactConversationId, getContactById } from './contactsStore.js';
@@ -6,10 +7,52 @@ import { cacheContactConversationId, getContactById } from './contactsStore.js';
 const [selection, setSelection] = createSignal<ConversationSelection | null>(
   null,
 );
+const STORAGE_PREFIX = 'hangvidu:conversations:selected-contact';
 
 export { selection };
 
+function getLocalStorage(): Storage | null {
+  return typeof globalThis.localStorage === 'undefined'
+    ? null
+    : globalThis.localStorage;
+}
+
+function storageKey(userId: string) {
+  return `${STORAGE_PREFIX}:${encodeURIComponent(userId)}`;
+}
+
+function saveSelectedContactId(contactId: string | null): void {
+  try {
+    const userId = getLoggedInUserId();
+    const storage = getLocalStorage();
+    if (!userId || !storage) return;
+
+    const key = storageKey(userId);
+    if (contactId) storage.setItem(key, contactId);
+    else storage.removeItem(key);
+  } catch {
+    // Selection persistence is best-effort; in-memory state remains canonical.
+  }
+}
+
+export function loadSelectedContactId(): string | null {
+  try {
+    const userId = getLoggedInUserId();
+    const storage = getLocalStorage();
+    if (!userId || !storage) return null;
+
+    return storage.getItem(storageKey(userId))?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export function open(next: ConversationSelection): void {
+  saveSelectedContactId(
+    next.remoteParticipantIds?.length === 1
+      ? next.remoteParticipantIds[0]
+      : null,
+  );
   setSelection(next);
 }
 
@@ -60,5 +103,6 @@ export async function openDirectConversation(
     return;
   }
 
+  saveSelectedContactId(contactId);
   setSelection({ ...meta, conversationId, remoteParticipantIds: [contactId] });
 }

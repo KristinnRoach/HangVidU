@@ -36,6 +36,7 @@ import topbarStyles from './TopBar.module.css';
 import type { ConversationSelection } from '../features/conversations/interfaces.js';
 import type { UserId } from '../features/conversations/types.js';
 import {
+  loadSelectedContactId,
   openDirectConversation,
   selection as selectedConversation,
 } from '../stores/selectedConversationStore';
@@ -132,6 +133,18 @@ export default function MainContent() {
     if (!showAuthenticatedUi()) return;
     if (selectedConversation()) return;
     if (contactsState.status !== 'ready') return;
+
+    const storedContactId = loadSelectedContactId();
+    const storedContact = storedContactId
+      ? contactsState.byId[storedContactId]
+      : null;
+    if (storedContact) {
+      void openDirectConversation(storedContact.contactId, {
+        displayUI: false,
+        nickname: getContactLabel(storedContact),
+      });
+      return;
+    }
 
     const contact = getDefaultContact();
     if (!contact) return;
