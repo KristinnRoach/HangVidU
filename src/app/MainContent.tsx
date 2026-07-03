@@ -1,7 +1,7 @@
 import { createSignal, createMemo, createEffect, on, Show } from 'solid-js';
 import { createAutoHide } from '../shared/createAutoHide';
 
-import { User, PhoneCall, Mail } from 'lucide-solid';
+import { User, PhoneCall, Mail, ChevronLeft } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth';
 import { useI18n } from '../shared/i18n';
@@ -297,15 +297,25 @@ function TopBar(props: TopBarProps) {
     >
       <div id="top-bar-left" class={`${topbarStyles.stickyLeft} animated-flex`}>
         <AppLogo />
-        <Show when={props.showAuthenticatedUi}>
-          <IdentityBadge
-            name={identity().name}
-            photoUrl={identity().photoUrl}
-          />
+        {/* keyed: remount on name change so the badge's entry
+            animation replays when the shown identity swaps */}
+        <Show when={props.showAuthenticatedUi && identity().name} keyed>
+          {(name) => (
+            <IdentityBadge name={name} photoUrl={identity().photoUrl} />
+          )}
         </Show>
-        <Show when={isViewSelected('contacts') || isViewSelected('home')}>
+        {/* Collapsed instead of unmounted (Show) so the parent's
+            animated-flex transition applies; hidden outside contacts/home
+            to avoid accidental logout. */}
+        <div
+          classList={{
+            'invisible w-0 overflow-hidden p-0 opacity-0': !(
+              isViewSelected('contacts') || isViewSelected('home')
+            ),
+          }}
+        >
           <AuthControls />
-        </Show>
+        </div>
       </div>
 
       {/* Temp Navigation/Test buttons to demonstrate switching */}
@@ -325,7 +335,11 @@ function TopBar(props: TopBarProps) {
               aria-label={t('nav.contacts')}
               onClick={() => props.setActiveView('contacts')}
             >
-              <User />
+              {props.activeView === 'conversations' ? (
+                <ChevronLeft />
+              ) : (
+                <User />
+              )}
             </button>
             <div
               class={topbarStyles.toolbar}
