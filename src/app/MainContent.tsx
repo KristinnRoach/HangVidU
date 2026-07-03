@@ -27,8 +27,13 @@ import { StartCallButton } from '../features/call/components/CallControls';
 
 import { LoadBoundary } from '../components/app/LoadBoundary';
 import { Spinner } from '../components/app/Spinner';
+import IdentityBadge from '../components/app/IdentityBadge';
 import { conversationActivity } from '../stores/conversation-activity';
-import { getContactsStore, type Contact } from '../stores/contactsStore.js';
+import {
+  getContactById,
+  getContactsStore,
+  type Contact,
+} from '../stores/contactsStore.js';
 
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
@@ -42,6 +47,10 @@ import {
 } from '../stores/selectedConversationStore';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
+
+function getContactLabel(contact: Contact): string | null {
+  return contact.nickname || contact.displayName || contact.username || null;
+}
 
 export default function MainContent() {
   const p2p = useP2PContext();
@@ -78,10 +87,6 @@ export default function MainContent() {
       { defer: true },
     ),
   );
-
-  function getContactLabel(contact: Contact): string | null {
-    return contact.nickname || contact.displayName || contact.username || null;
-  }
 
   function getDefaultContact(): Contact | null {
     const activity = conversationActivity();
@@ -253,6 +258,28 @@ function TopBar(props: TopBarProps) {
     return props.selectedConversation?.remoteParticipantIds?.[0] ?? null;
   });
 
+  // Whose identity the top bar shows: the selected conversation's contact
+  // while in the conversations view, the local user otherwise.
+  const identity = createMemo(() => {
+    if (props.activeView === 'conversations') {
+      const id = calleeId();
+      const contact = id ? getContactById(id) : null;
+      const name = contact
+        ? getContactLabel(contact)
+        : props.selectedConversation?.nickname;
+      if (name) return { name, photoUrl: null };
+    }
+    const profile = getLoggedInUserProfile();
+    return {
+      name:
+        profile?.displayName ||
+        profile?.username ||
+        profile?.email ||
+        t('auth.guest_user'),
+      photoUrl: profile?.photoURL,
+    };
+  });
+
   const isViewSelected = (view: ViewMode) => props.activeView === view;
   const getNavItemClass = (view: ViewMode) => {
     if (!isViewSelected(view)) return topbarStyles.navItem;
@@ -270,7 +297,15 @@ function TopBar(props: TopBarProps) {
     >
       <div id="top-bar-left" class={`${topbarStyles.stickyLeft} animated-flex`}>
         <AppLogo />
-        <AuthControls loggedInProfile={getLoggedInUserProfile} />
+        <Show when={props.showAuthenticatedUi}>
+          <IdentityBadge
+            name={identity().name}
+            photoUrl={identity().photoUrl}
+          />
+        </Show>
+        <Show when={isViewSelected('contacts') || isViewSelected('home')}>
+          <AuthControls />
+        </Show>
       </div>
 
       {/* Temp Navigation/Test buttons to demonstrate switching */}
@@ -372,13 +407,3 @@ function TopBar(props: TopBarProps) {
     </header>
   );
 }
-
-//  if (!selection) {
-//       const { contacts } = useContactsList();
-//       if (contacts.length > 0) {
-//         const firstConv = contacts[0].conversationId;
-//         if (firstConv) {
-//           openConversation({ conversationId: firstConv });
-//         }
-//       }
-//     }
