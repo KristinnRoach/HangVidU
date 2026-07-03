@@ -39,7 +39,7 @@ export default function IdentityBadge(props: IdentityBadgeProps) {
       <Show
         when={props.photoUrl && !avatarFailed()}
         fallback={
-          <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/5 text-xl">
+          <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-xl">
             {avatarInitial()}
           </span>
         }
