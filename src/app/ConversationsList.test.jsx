@@ -4,6 +4,7 @@ import { render, cleanup } from '@solidjs/testing-library';
 const mocks = vi.hoisted(() => ({
   byId: {},
   status: 'ready',
+  activity: new Map(),
   watchUserPresence: vi.fn(() => () => {}),
   dispatchCommand: vi.fn(),
   startCall: vi.fn(),
@@ -24,7 +25,7 @@ vi.mock('../stores/contactsStore.js', () => ({
 }));
 
 vi.mock('../stores/conversation-activity', () => ({
-  conversationActivity: () => new Map(),
+  conversationActivity: () => mocks.activity,
   getLastReadAt: () => 0,
 }));
 
@@ -81,6 +82,7 @@ describe('ConversationsList', { timeout: 60000 }, () => {
       'contact-2': contact('contact-2', 'Bob'),
     };
     mocks.status = 'ready';
+    mocks.activity = new Map();
   });
 
   it('renders a row per contact from hydrated state', async () => {
@@ -124,6 +126,40 @@ describe('ConversationsList', { timeout: 60000 }, () => {
       displayUI: true,
       nickname: 'Alice',
     });
+
+    unmount();
+  });
+
+  it('sorts active conversations first and marks unread rows', async () => {
+    mocks.activity = new Map([
+      [
+        'contact-1',
+        {
+          conversationId: 'conversation-1',
+          latestSentAt: 100,
+          latestSenderId: 'me',
+        },
+      ],
+      [
+        'contact-2',
+        {
+          conversationId: 'conversation-2',
+          latestSentAt: 200,
+          latestSenderId: 'contact-2',
+        },
+      ],
+    ]);
+    const { default: ConversationsList } =
+      await import('./ConversationsList.tsx');
+
+    const { container, unmount } = render(() => <ConversationsList />);
+    const rows = [...container.querySelectorAll('.conversation-entry')];
+
+    expect(
+      rows.map((row) => row.querySelector('.contact-name')?.textContent),
+    ).toEqual(['Bob', 'Alice']);
+    expect(rows[0].querySelector('.unread-badge')).not.toBeNull();
+    expect(rows[1].querySelector('.unread-badge')).toBeNull();
 
     unmount();
   });
