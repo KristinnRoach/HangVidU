@@ -264,9 +264,9 @@ function TopBar(props: TopBarProps) {
     if (props.activeView === 'conversations') {
       const id = calleeId();
       const contact = id ? getContactById(id) : null;
-      const name = contact
-        ? getContactLabel(contact)
-        : props.selectedConversation?.nickname;
+      const name =
+        (contact && getContactLabel(contact)) ||
+        props.selectedConversation?.nickname;
       if (name) return { name, photoUrl: null };
     }
     const profile = getLoggedInUserProfile();
