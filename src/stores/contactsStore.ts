@@ -82,6 +82,11 @@ export function getContactByConversationId(
   return null;
 }
 
+/** Display label precedence for a contact; null when no name is known. */
+export function getContactLabel(contact: Contact): string | null {
+  return contact.nickname || contact.displayName || contact.username || null;
+}
+
 export function getContactsIsHydrated(): boolean {
   return state.status === 'ready';
 }
