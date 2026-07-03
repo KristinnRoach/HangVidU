@@ -665,7 +665,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
     >
       <Show
         when={state.conversationId}
-        fallback={<div class={styles.empty}>Conversation not found</div>}
+        fallback={
+          <div class={styles.conversationNotFound}>Conversation not found</div>
+        }
       >
         <LoadBoundary
           loading={historyLoading()}

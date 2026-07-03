@@ -11,7 +11,14 @@ export default function ContactsList() {
   return (
     <div class="contacts-container">
       <Show when={!isLoading()} fallback={<Spinner size={32} />}>
-        <Show when={contacts.length > 0} fallback={<p>{t('contact.none')}</p>}>
+        <Show
+          when={contacts.length > 0}
+          fallback={
+            <div class="contacts-list empty">
+              <p>{t('contact.none')}</p>
+            </div>
+          }
+        >
           <div class="contacts-list">
             <For each={contacts}>
               {(row) => (

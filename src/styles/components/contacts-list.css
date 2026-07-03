@@ -5,10 +5,6 @@
 .contacts-container {
   background: var(--bg-brighter);
 
-  /* border-top: 2px solid #8d8d8d;
-  border-bottom: 2px solid #8d8d8d;
-  border-radius: 0 0 12px 12px; */
-
   border: 2px solid #8d8d8d;
   border-radius: 12px;
 

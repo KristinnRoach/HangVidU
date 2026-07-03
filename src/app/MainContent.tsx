@@ -27,13 +27,18 @@ import { StartCallButton } from '../features/call/components/CallControls';
 
 import { LoadBoundary } from '../components/app/LoadBoundary';
 import { Spinner } from '../components/app/Spinner';
+import { conversationActivity } from '../stores/conversation-activity';
+import { getContactsStore, type Contact } from '../stores/contactsStore.js';
 
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
 
 import type { ConversationSelection } from '../features/conversations/interfaces.js';
 import type { UserId } from '../features/conversations/types.js';
-import { selection as selectedConversation } from '../stores/selectedConversationStore';
+import {
+  openDirectConversation,
+  selection as selectedConversation,
+} from '../stores/selectedConversationStore';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
 
@@ -41,6 +46,7 @@ export default function MainContent() {
   const p2p = useP2PContext();
   const { isAuthInitialized, user, isLoggedIn, isLoggingIn, isLoggingOut } =
     useAuth();
+  const contactsState = getContactsStore();
 
   const [userView, setUserView] = createSignal<ViewMode>('contacts');
 
@@ -72,6 +78,32 @@ export default function MainContent() {
     ),
   );
 
+  function getContactLabel(contact: Contact): string | null {
+    return contact.nickname || contact.displayName || contact.username || null;
+  }
+
+  function getDefaultContact(): Contact | null {
+    const activity = conversationActivity();
+    return (
+      Object.values(contactsState.byId)
+        .filter((contact): contact is Contact =>
+          Boolean(contact?.contactId && contact.conversationId),
+        )
+        .sort((a, b) => {
+          const aSortKey =
+            activity.get(a.contactId)?.latestSentAt || a.savedAt || 0;
+          const bSortKey =
+            activity.get(b.contactId)?.latestSentAt || b.savedAt || 0;
+          if (aSortKey !== bSortKey) return bSortKey - aSortKey;
+
+          return (
+            getContactLabel(a)?.localeCompare(getContactLabel(b) || '') ?? 0
+          );
+        })
+        .at(0) ?? null
+    );
+  }
+
   // Sanitize against auth + p2p. TODO: replace transition cases with
   // proper Loading UI.
   const activeView = createMemo<ViewMode>(() => {
@@ -95,6 +127,20 @@ export default function MainContent() {
     return s === 'creating' || s === 'watching' || s === 'joining';
   };
   const showAuthenticatedUi = createMemo(() => isLoggedIn() && !isLoggingOut());
+
+  createEffect(() => {
+    if (!showAuthenticatedUi()) return;
+    if (selectedConversation()) return;
+    if (contactsState.status !== 'ready') return;
+
+    const contact = getDefaultContact();
+    if (!contact) return;
+
+    void openDirectConversation(contact.contactId, {
+      displayUI: false,
+      nickname: getContactLabel(contact),
+    });
+  });
 
   return (
     <div class={mainStyles.layoutWrapper}>

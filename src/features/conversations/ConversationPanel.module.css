@@ -16,7 +16,8 @@
   background-color: rgba(0, 122, 255, 0.06);
 }
 
-.messagesEmpty {
+.messagesEmpty,
+.conversationNotFound {
   display: flex;
   flex: 1;
   min-height: 0;
