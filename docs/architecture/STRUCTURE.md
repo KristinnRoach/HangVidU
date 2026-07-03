@@ -50,9 +50,14 @@ There is **no `setup/` layer**. App startup lives in:
 
 ## UI layer layout
 
-- Feature UI lives in **`src/features/<feature>/components/`** (e.g.
-  `contacts/components/ContactsList.tsx`, `presence/components/PresenceIndicator.jsx`).
-- `src/components/` holds **app-level and shared/primitive** UI only
+- Feature UI lives in **`src/features/<feature>/components/`**, but only
+  **self-contained widgets** — components that need no other feature's state
+  (e.g. `presence/components/PresenceIndicator.jsx`,
+  `contacts/components/AddContactModal.tsx`).
+- **Cross-feature composition** (screens and components that assemble widgets
+  from multiple features) lives in **`src/app/`** — the top layer that may
+  import everything (e.g. `app/ConversationsList.tsx`, `app/MainContent.tsx`).
+- `src/components/` holds **shared/primitive** UI only
   (`components/app/`, `components/dialogs/`, `components/media/`,
   `components/base-legacy/`). It must **not** import `features/*`.
 - `src/components/` is **not** a domain layer. Domain logic stays in the owning module.
@@ -60,7 +65,7 @@ There is **no `setup/` layer**. App startup lives in:
 ### Naming conventions
 
 - **PascalCase `.tsx`/`.jsx`** for files that render JSX components
-  (`ContactsList.tsx`, `PresenceIndicator.jsx`).
+  (`ConversationsList.tsx`, `PresenceIndicator.jsx`).
 - **kebab-case** for bridges, command handlers, and stores-only files
   (`edit-contact-modal.jsx`, `invite-listener.js`).
 - **Dialog vs modal**: `XyzDialog.jsx` is the component; `xyz-modal.jsx` is the

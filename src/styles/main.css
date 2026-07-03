@@ -27,7 +27,7 @@
 
 @import './components/public-homepage.css' layer(app);
 @import './components/call-lobby.css' layer(app);
-@import './components/contacts-list.css' layer(app);
+@import './components/conversations-list.css' layer(app);
 @import '../features/conversations/reactions/reactions.css' layer(app);
 @import './components/search.css' layer(app);
 @import './components/notifications.css' layer(app);

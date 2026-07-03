@@ -19,7 +19,7 @@ import PublicHomepage from '../components/app/PublicHomepage';
 // Injected as a child: PublicHomepage (components layer) can't import
 // features/realtime, which the lobby needs.
 import CallLobby from '../features/call/components/CallLobby';
-import ContactsList from '../features/contacts/components/ContactsList';
+import ConversationsList from './ConversationsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/conversations/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs';
@@ -31,6 +31,7 @@ import IdentityBadge from '../components/app/IdentityBadge';
 import { conversationActivity } from '../stores/conversation-activity';
 import {
   getContactById,
+  getContactLabel,
   getContactsStore,
   type Contact,
 } from '../stores/contactsStore.js';
@@ -47,10 +48,6 @@ import {
 } from '../stores/selectedConversationStore';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
-
-function getContactLabel(contact: Contact): string | null {
-  return contact.nickname || contact.displayName || contact.username || null;
-}
 
 export default function MainContent() {
   const p2p = useP2PContext();
@@ -77,7 +74,7 @@ export default function MainContent() {
 
   // Selection-driven view switch: external openers (push-nav, future
   // deep links) set the selection; we flip the view unless explicitly
-  // told not to (displayUI: false, used by ContactsList autoselect).
+  // told not to (displayUI: false, used by the autoselect effect below).
   createEffect(
     on(
       selectedConversation,
@@ -214,7 +211,7 @@ export default function MainContent() {
               hidden={activeView() !== 'contacts'}
               class={mainStyles.activeViewContainer + ' ' + mainStyles.contacts}
             >
-              <ContactsList />
+              <ConversationsList />
             </div>
 
             <div

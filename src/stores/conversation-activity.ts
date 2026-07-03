@@ -41,7 +41,7 @@ const [serverLastRead, setServerLastRead] = createSignal<Map<string, number>>(
   new Map(),
 );
 
-/** Reactive: participant uid -> latest activity. Read in useContacts. */
+/** Reactive: participant uid -> latest activity. Read by app/ConversationsList. */
 export const conversationActivity = activity;
 // ── per-device read state ────────────────────────────────────────────────────
 const readKey = (conversationId: string) =>
