@@ -261,7 +261,7 @@ function TopBar(props: TopBarProps) {
   // Whose identity the top bar shows: the selected conversation's contact
   // while in the conversations view, the local user otherwise.
   const identity = createMemo(() => {
-    if (props.activeView === 'conversations') {
+    if (props.activeView === 'conversations' || props.activeView === 'call') {
       const id = calleeId();
       const contact = id ? getContactById(id) : null;
       const name =
