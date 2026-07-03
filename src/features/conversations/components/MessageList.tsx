@@ -257,6 +257,7 @@ function FileAttachment(props: {
   onImageLoad: () => void;
 }) {
   const state = getConversationState();
+  const { t } = useI18n();
 
   const canPreview = () =>
     Boolean(props.url?.startsWith('blob:')) && isImageAttachment(props.file);
@@ -299,7 +300,9 @@ function FileAttachment(props: {
           onLoad={() => props.onImageLoad()}
           role="button"
           tabIndex={0}
-          aria-label={`Open preview for ${props.file.fileName}`}
+          aria-label={t('conversation.open_preview', {
+            name: props.file.fileName,
+          })}
           ref={(el) => {
             // Single tap opens preview; double tap is left to the reaction
             // gesture so it adds a reaction instead of opening.

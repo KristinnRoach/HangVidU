@@ -76,9 +76,11 @@ export default function ConversationPanel(props: ConversationPanelProps) {
   async function submitFiles(files: File[]) {
     for (const file of files) {
       const result = await sendFileMessage(file);
-      if (result === 'empty-file') window.alert('Choose a non-empty file.');
-      else if (result === 'too-large') window.alert('Choose a smaller file.');
-      else if (result === 'failed') window.alert('File send failed.');
+      if (result === 'empty-file') window.alert(t('conversation.file_empty'));
+      else if (result === 'too-large')
+        window.alert(t('conversation.file_too_large'));
+      else if (result === 'failed')
+        window.alert(t('conversation.file_send_failed'));
       inputEl?.focus();
     }
   }
@@ -93,7 +95,9 @@ export default function ConversationPanel(props: ConversationPanelProps) {
       <Show
         when={state.conversationId}
         fallback={
-          <div class={styles.conversationNotFound}>Conversation not found</div>
+          <div class={styles.conversationNotFound}>
+            {t('conversation.not_found')}
+          </div>
         }
       >
         <LoadBoundary
