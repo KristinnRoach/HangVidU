@@ -1,4 +1,4 @@
-import { Show, createEffect, createMemo, createSignal } from 'solid-js';
+import { Show } from 'solid-js';
 import { useAuth } from '../solid-auth';
 import { signOutUser } from '../index.js';
 import { useI18n } from '../../shared/i18n/index.js';
@@ -8,20 +8,7 @@ import { LogOut } from 'lucide-solid';
 
 import styles from './AuthControls.module.css';
 
-function smartTruncateName(fullName, maxLength = 10) {
-  if (!fullName || fullName.length <= maxLength) {
-    return fullName;
-  }
-
-  const firstName = fullName.split(' ')[0];
-  if (firstName.length <= maxLength) {
-    return firstName;
-  }
-
-  return `${firstName.slice(0, maxLength - 3)}...`;
-}
-
-export default function AuthControls(props) {
+export default function AuthControls() {
   const { t } = useI18n();
   const {
     isLoggedIn,
@@ -30,27 +17,6 @@ export default function AuthControls(props) {
     isLoggingOut,
     isAuthInitialized,
   } = useAuth();
-  const [avatarFailed, setAvatarFailed] = createSignal(false);
-
-  const displayName = createMemo(() => {
-    const profile = props.loggedInProfile?.();
-    const name =
-      profile?.displayName ||
-      profile?.username ||
-      profile?.email ||
-      t('auth.guest_user');
-    return smartTruncateName(name);
-  });
-
-  const photoUrl = createMemo(() => props.loggedInProfile?.()?.photoURL || '');
-  const avatarInitial = createMemo(() =>
-    (displayName() || t('auth.guest_user')).trim().slice(0, 1).toUpperCase(),
-  );
-
-  createEffect(() => {
-    photoUrl();
-    setAvatarFailed(false);
-  });
 
   async function requestLogout() {
     try {
@@ -75,27 +41,6 @@ export default function AuthControls(props) {
       </Show>
 
       <Show when={isLoggedIn()}>
-        <div class={styles.userInfo}>
-          <Show
-            when={photoUrl() && !avatarFailed()}
-            fallback={
-              <span class={styles.userAvatarPlaceholder}>
-                {avatarInitial()}
-              </span>
-            }
-          >
-            <img
-              src={photoUrl()}
-              alt={displayName()}
-              class={styles.userAvatar}
-              referrerpolicy="no-referrer"
-              onError={() => setAvatarFailed(true)}
-            />
-          </Show>
-
-          {/* TODO: Decide whether to keep name */}
-          <span class={styles.displayName}>{displayName()}</span>
-        </div>
         <button
           id="goog-logout-btn"
           class={styles.logoutBtn}

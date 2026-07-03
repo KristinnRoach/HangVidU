@@ -1,7 +1,7 @@
 import { createSignal, createMemo, createEffect, on, Show } from 'solid-js';
 import { createAutoHide } from '../shared/createAutoHide';
 
-import { User, PhoneCall, Mail } from 'lucide-solid';
+import { User, PhoneCall, Mail, ChevronLeft } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth';
 import { useI18n } from '../shared/i18n';
@@ -27,8 +27,13 @@ import { StartCallButton } from '../features/call/components/CallControls';
 
 import { LoadBoundary } from '../components/app/LoadBoundary';
 import { Spinner } from '../components/app/Spinner';
+import IdentityBadge from '../components/app/IdentityBadge';
 import { conversationActivity } from '../stores/conversation-activity';
-import { getContactsStore, type Contact } from '../stores/contactsStore.js';
+import {
+  getContactById,
+  getContactsStore,
+  type Contact,
+} from '../stores/contactsStore.js';
 
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
@@ -42,6 +47,10 @@ import {
 } from '../stores/selectedConversationStore';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
+
+function getContactLabel(contact: Contact): string | null {
+  return contact.nickname || contact.displayName || contact.username || null;
+}
 
 export default function MainContent() {
   const p2p = useP2PContext();
@@ -78,10 +87,6 @@ export default function MainContent() {
       { defer: true },
     ),
   );
-
-  function getContactLabel(contact: Contact): string | null {
-    return contact.nickname || contact.displayName || contact.username || null;
-  }
 
   function getDefaultContact(): Contact | null {
     const activity = conversationActivity();
@@ -253,6 +258,28 @@ function TopBar(props: TopBarProps) {
     return props.selectedConversation?.remoteParticipantIds?.[0] ?? null;
   });
 
+  // Whose identity the top bar shows: the selected conversation's contact
+  // while in the conversations view, the local user otherwise.
+  const identity = createMemo(() => {
+    if (props.activeView === 'conversations' || props.activeView === 'call') {
+      const id = calleeId();
+      const contact = id ? getContactById(id) : null;
+      const name =
+        (contact && getContactLabel(contact)) ||
+        props.selectedConversation?.nickname;
+      if (name) return { name, photoUrl: null };
+    }
+    const profile = getLoggedInUserProfile();
+    return {
+      name:
+        profile?.displayName ||
+        profile?.username ||
+        profile?.email ||
+        t('auth.guest_user'),
+      photoUrl: profile?.photoURL,
+    };
+  });
+
   const isViewSelected = (view: ViewMode) => props.activeView === view;
   const getNavItemClass = (view: ViewMode) => {
     if (!isViewSelected(view)) return topbarStyles.navItem;
@@ -270,7 +297,26 @@ function TopBar(props: TopBarProps) {
     >
       <div id="top-bar-left" class={`${topbarStyles.stickyLeft} animated-flex`}>
         <AppLogo />
-        <AuthControls loggedInProfile={getLoggedInUserProfile} />
+        {/* keyed: remount on name change so the badge's entry
+            animation replays when the shown identity swaps */}
+        <Show when={props.showAuthenticatedUi && identity().name} keyed>
+          {(name) => (
+            <IdentityBadge name={name} photoUrl={identity().photoUrl} />
+          )}
+        </Show>
+        {/* Collapsed instead of unmounted (Show) so the parent's
+            animated-flex transition applies; hidden outside contacts/home
+            to avoid accidental logout. */}
+        <div
+          class="max-w-60 overflow-hidden"
+          classList={{
+            'invisible max-w-0 opacity-0': !(
+              isViewSelected('contacts') || isViewSelected('home')
+            ),
+          }}
+        >
+          <AuthControls />
+        </div>
       </div>
 
       {/* Temp Navigation/Test buttons to demonstrate switching */}
@@ -290,7 +336,11 @@ function TopBar(props: TopBarProps) {
               aria-label={t('nav.contacts')}
               onClick={() => props.setActiveView('contacts')}
             >
-              <User />
+              {props.activeView === 'conversations' ? (
+                <ChevronLeft />
+              ) : (
+                <User />
+              )}
             </button>
             <div
               class={topbarStyles.toolbar}
@@ -372,13 +422,3 @@ function TopBar(props: TopBarProps) {
     </header>
   );
 }
-
-//  if (!selection) {
-//       const { contacts } = useContactsList();
-//       if (contacts.length > 0) {
-//         const firstConv = contacts[0].conversationId;
-//         if (firstConv) {
-//           openConversation({ conversationId: firstConv });
-//         }
-//       }
-//     }
