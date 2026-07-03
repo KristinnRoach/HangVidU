@@ -308,8 +308,9 @@ function TopBar(props: TopBarProps) {
             animated-flex transition applies; hidden outside contacts/home
             to avoid accidental logout. */}
         <div
+          class="max-w-60 overflow-hidden"
           classList={{
-            'invisible w-0 overflow-hidden p-0 opacity-0': !(
+            'invisible max-w-0 opacity-0': !(
               isViewSelected('contacts') || isViewSelected('home')
             ),
           }}
