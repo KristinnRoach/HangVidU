@@ -1,12 +1,7 @@
 // Transport and state contracts for the conversations feature.
 // No Firebase, no runtime deps — adapters implement these and are swapped freely.
 
-import type {
-  ConversationId,
-  DeliveryPolicy,
-  MessageEnvelope,
-  UserId,
-} from './types.js';
+import type { ConversationId, MessageEnvelope, UserId } from './types.js';
 
 // ─── Wire types ───────────────────────────────────────────────────────────────
 
@@ -20,13 +15,6 @@ export type IncomingMessage = MessageEnvelope & {
   reactions: ReactionSummary[];
 };
 export type OutgoingMessage = MessageEnvelope;
-
-/** Wire format for chat messages sent over a datachannel (private mode). */
-export type P2PChatEnvelope = {
-  protocol: 'hangvidu.messaging.v1';
-  type: 'message';
-  message: MessageEnvelope;
-};
 
 // ─── Persistent backend ───────────────────────────────────────────────────────
 
@@ -77,72 +65,9 @@ export type MessageRepository = {
   ): void | Promise<void>;
 };
 
-// ─── Private (datachannel) transport ──────────────────────────────────────────
-
-/**
- * Raw datachannel bridge — no envelope format enforced here.
- * The caller serialises/deserialises. Kept separate from MessageRepository so
- * private mode works with zero backend involvement.
- */
-export type PrivateMessageTransport = {
-  send(data: string): void;
-  onMessage(callback: (data: string) => void): () => void;
-};
-
-// ─── Private session signaling ────────────────────────────────────────────────
-
-export type PrivateSessionCallbacks = {
-  onRequest(fromUserId: UserId, sessionId: string): void;
-  onResponse(accepted: boolean): void;
-  onCancel?(): void;
-};
-
-/**
- * Invite/accept/decline/cancel handshake for switching to private (datachannel)
- * mode within an existing conversation.
- *
- * Same contract shape as ChatExample's InvitationSignaling — interchangeable.
- */
-export type PrivateSessionSignaling = {
-  send(
-    conversationId: ConversationId,
-    fromUserId: UserId,
-    sessionId: string,
-  ): void | Promise<void>;
-  respond(
-    conversationId: ConversationId,
-    accepted: boolean,
-  ): void | Promise<void>;
-  cancel(conversationId: ConversationId): void | Promise<void>;
-  subscribe(
-    conversationId: ConversationId,
-    myUserId: UserId,
-    callbacks: PrivateSessionCallbacks,
-  ): (() => void) | Promise<() => void>;
-};
-
-// ─── Call channel bridge ──────────────────────────────────────────────────────
-
-/**
- * Thin adapter from the active P2P call's datachannel to the chat module.
- * Implemented by wrapping SolidP2PRoom. Same shape as ChatExample's
- * CallChannelAdapter — a createCallChannelBridge(p2p) factory will produce this.
- */
-export type CallChannelBridge = {
-  getPeerCount(): number;
-  broadcast(data: string): void;
-  onMessage(callback: (data: string) => void): () => void;
-  onMemberJoined?(callback: (detail: { memberId: UserId }) => void): () => void;
-  onMemberLeft?(callback: (detail: { memberId: UserId }) => void): () => void;
-};
-
 // ─── State types ──────────────────────────────────────────────────────────────
 
-export type MessageSource = 'persisted' | 'private' | 'system';
 export type MessageStatus = 'sending' | 'sent' | 'failed';
-export type TransportMode = 'persisted' | 'private';
-
-export type MessageAction = { label: string; onClick: () => void };
 
 export type MessageAttachment = {
   type: 'file';
@@ -161,13 +86,6 @@ export type MessageAttachment = {
   };
 };
 
-export type ConversationSelection = {
-  conversationId: ConversationId;
-  remoteParticipantIds?: UserId[];
-  nickname?: string | null;
-  displayUI?: boolean;
-};
-
 export type ChatMessage = {
   id: string;
   conversationId: ConversationId;
@@ -176,19 +94,5 @@ export type ChatMessage = {
   senderId: UserId;
   sentAt: number;
   status: MessageStatus;
-  source: MessageSource;
-  delivery: DeliveryPolicy;
   reactions: ReactionSummary[];
-  actions?: MessageAction[];
-};
-
-export type ConversationChatState = {
-  conversationId: ConversationId | null;
-  myUserId: UserId | null;
-  draft: string;
-  messages: ChatMessage[];
-  sending: boolean;
-  transportMode: TransportMode;
-  unreadCount: number;
-  isPendingPrivateResponse: boolean;
 };

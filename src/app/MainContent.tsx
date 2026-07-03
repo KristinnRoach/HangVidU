@@ -21,7 +21,7 @@ import PublicHomepage from '../components/app/PublicHomepage';
 import CallLobby from '../features/call/components/CallLobby';
 import ConversationsList from './ConversationsList';
 import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
-import ConversationPanel from '../features/conversations/ConversationPanel';
+import ConversationPanel from '../features/conversations/components/ConversationPanel';
 import CallDialogs from '../features/call/components/CallDialogs';
 import { StartCallButton } from '../features/call/components/CallControls';
 
@@ -39,19 +39,18 @@ import {
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
 
-import type { ConversationSelection } from '../features/conversations/interfaces.js';
-import type { UserId } from '../features/conversations/types.js';
 import {
   loadSelectedContactId,
   openDirectConversation,
   selection as selectedConversation,
-} from '../stores/selectedConversationStore';
+  type ConversationSelection,
+} from '../stores/conversationStore';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
 
 export default function MainContent() {
   const p2p = useP2PContext();
-  const { isAuthInitialized, user, isLoggedIn, isLoggingIn, isLoggingOut } =
+  const { isAuthInitialized, isLoggedIn, isLoggingIn, isLoggingOut } =
     useAuth();
   const contactsState = getContactsStore();
 
@@ -218,11 +217,7 @@ export default function MainContent() {
               hidden={activeView() !== 'conversations'}
               class={mainStyles.activeViewContainer + ' ' + mainStyles.chat}
             >
-              <ConversationPanel
-                selection={selectedConversation()}
-                myUserId={(user()?.uid as UserId | undefined) ?? null}
-                visible={activeView() === 'conversations'}
-              />
+              <ConversationPanel visible={activeView() === 'conversations'} />
             </div>
           </Show>
         </main>

@@ -4,6 +4,7 @@ import {
   stopConversationActivity,
 } from '../../stores/conversation-activity';
 import { resetConversationsState } from '../../stores/conversations-client.js';
+import { resetConversationStore } from '../../stores/conversationStore';
 import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
 
 /**
@@ -37,6 +38,14 @@ export const setup = createSingleFlightSetup({
           stopConversationActivity();
         } catch (error) {
           console.warn('[conversations] activity teardown failed:', error);
+        }
+        try {
+          resetConversationStore();
+        } catch (error) {
+          console.warn(
+            '[conversations] active-conversation reset failed:',
+            error,
+          );
         }
         try {
           resetConversationsState();

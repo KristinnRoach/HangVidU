@@ -33,9 +33,8 @@ vi.mock('../auth/index.js', () => ({
   getLoggedInUserId: () => 'me',
 }));
 
-vi.mock('../stores/selectedConversationStore', () => ({
+vi.mock('../stores/conversationStore', () => ({
   openDirectConversation: mocks.openDirectConversation,
-  clear: vi.fn(),
   selection: () => null,
 }));
 

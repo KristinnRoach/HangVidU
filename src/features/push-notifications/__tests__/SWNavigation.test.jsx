@@ -23,10 +23,9 @@ vi.mock('../../../stores/contactsStore', () => ({
   getContactsIsHydrated: mocks.getContactsIsHydrated,
 }));
 
-vi.mock('../../../stores/selectedConversationStore', () => ({
+vi.mock('../../../stores/conversationStore', () => ({
   open: mocks.openSelectedConversation,
   openDirectConversation: mocks.openDirectConversation,
-  clear: vi.fn(),
   selection: () => null,
 }));
 

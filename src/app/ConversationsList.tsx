@@ -11,7 +11,7 @@ import {
   conversationActivity,
   getLastReadAt,
 } from '../stores/conversation-activity';
-import { openDirectConversation } from '../stores/selectedConversationStore';
+import { openDirectConversation } from '../stores/conversationStore';
 import PresenceIndicator from '../features/presence/components/PresenceIndicator';
 import { StartCallButton } from '../features/call/components/CallControls';
 
