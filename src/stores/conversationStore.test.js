@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   getLoggedInUserProfile: vi.fn(),
   createD1MessageRepositoryFromEnv: vi.fn(),
   markConversationRead: vi.fn(),
-  recordConversationActivity: vi.fn(),
+  recordConversationListMessage: vi.fn(),
   resolveDirectConversationId: vi.fn(),
   getContactById: vi.fn(),
   cacheContactConversationId: vi.fn(),
@@ -24,9 +24,9 @@ vi.mock('./userProfileStore', () => ({
 vi.mock('./message-repository', () => ({
   createD1MessageRepositoryFromEnv: mocks.createD1MessageRepositoryFromEnv,
 }));
-vi.mock('./conversation-activity', () => ({
+vi.mock('./conversation-list-state', () => ({
   markConversationRead: mocks.markConversationRead,
-  recordConversationActivity: mocks.recordConversationActivity,
+  recordConversationListMessage: mocks.recordConversationListMessage,
 }));
 vi.mock('./conversations-client', () => ({
   resolveDirectConversationId: mocks.resolveDirectConversationId,
@@ -176,7 +176,7 @@ describe('conversationStore', () => {
 
     watch.emit([envelope({ messageId: 'msg-1', sentAt: 5 })]);
 
-    expect(mocks.recordConversationActivity).toHaveBeenCalledWith(
+    expect(mocks.recordConversationListMessage).toHaveBeenCalledWith(
       'contact-1',
       'conversation-1',
       5,

@@ -15,7 +15,8 @@ const mocks = vi.hoisted(() => {
   return {
     handlers,
     subscribe: vi.fn(register),
-    stopConversationActivity: vi.fn(),
+    startConversationListSync: vi.fn(),
+    stopConversationListSync: vi.fn(),
     resetConversationsState: vi.fn(),
     resetConversationStore: vi.fn(),
   };
@@ -24,8 +25,9 @@ const mocks = vi.hoisted(() => {
 vi.mock('../../../shared/events/index.js', () => ({
   subscribe: mocks.subscribe,
 }));
-vi.mock('../../../stores/conversation-activity', () => ({
-  stopConversationActivity: mocks.stopConversationActivity,
+vi.mock('../../../stores/conversation-list-state', () => ({
+  startConversationListSync: mocks.startConversationListSync,
+  stopConversationListSync: mocks.stopConversationListSync,
 }));
 vi.mock('../../../stores/conversations-client.js', () => ({
   resetConversationsState: mocks.resetConversationsState,
@@ -47,14 +49,14 @@ describe('conversations setup', () => {
 
     await mocks.handlers.get('evt:auth:session:logged-out')();
 
-    expect(mocks.stopConversationActivity).toHaveBeenCalledOnce();
+    expect(mocks.stopConversationListSync).toHaveBeenCalledOnce();
     expect(mocks.resetConversationStore).toHaveBeenCalledOnce();
     expect(mocks.resetConversationsState).toHaveBeenCalledOnce();
   });
 
   it('resets conversation state when activity teardown throws', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    mocks.stopConversationActivity.mockImplementation(() => {
+    mocks.stopConversationListSync.mockImplementation(() => {
       throw new Error('stop failed');
     });
 
@@ -64,7 +66,7 @@ describe('conversations setup', () => {
 
       await mocks.handlers.get('evt:auth:session:logged-out')();
 
-      expect(mocks.stopConversationActivity).toHaveBeenCalledOnce();
+      expect(mocks.stopConversationListSync).toHaveBeenCalledOnce();
       expect(mocks.resetConversationsState).toHaveBeenCalledOnce();
     } finally {
       warn.mockRestore();

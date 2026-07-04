@@ -28,7 +28,7 @@ import { StartCallButton } from '../features/call/components/CallControls';
 import { LoadBoundary } from '../components/app/LoadBoundary';
 import { Spinner } from '../components/app/Spinner';
 import IdentityBadge from '../components/app/IdentityBadge';
-import { conversationActivity } from '../stores/conversation-activity';
+import { conversationListState } from '../stores/conversation-list-state';
 import {
   getContactById,
   getContactLabel,
@@ -85,7 +85,7 @@ export default function MainContent() {
   );
 
   function getDefaultContact(): Contact | null {
-    const activity = conversationActivity();
+    const listState = conversationListState();
     return (
       Object.values(contactsState.byId)
         .filter((contact): contact is Contact =>
@@ -93,9 +93,9 @@ export default function MainContent() {
         )
         .sort((a, b) => {
           const aSortKey =
-            activity.get(a.contactId)?.latestSentAt || a.savedAt || 0;
+            listState.get(a.contactId)?.latestSentAt || a.savedAt || 0;
           const bSortKey =
-            activity.get(b.contactId)?.latestSentAt || b.savedAt || 0;
+            listState.get(b.contactId)?.latestSentAt || b.savedAt || 0;
           if (aSortKey !== bSortKey) return bSortKey - aSortKey;
 
           return (

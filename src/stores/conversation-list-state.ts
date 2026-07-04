@@ -1,12 +1,13 @@
-// Conversation-list activity: drives MRU reorder + the unread badge.
+// Conversation-list state: drives MRU reorder + the unread badge.
 //
-// Two inputs, one reactive map keyed by the OTHER participant's uid (DMs):
+// Two inputs, one reactive map keyed by the row id. Current rows are DMs, so the
+// row id is the OTHER participant's uid:
 //   - seed: GET /conversations once on start (and on demand), carrying each
 //     conversation's latest message time + sender.
 //   - live: the per-user mailbox pushes an `activity` envelope on every message
 //     to a conversation you're in (see shared/user-mailbox/protocol). For a DM
 //     the envelope only reaches the *other* member, so senderId is exactly the
-//     participant we key on.
+//     current row id.
 //
 // Read state (lastReadAt) is per-device localStorage for now; markConversationRead
 // bumps a version signal so the unread derivation re-runs without a refetch.
@@ -23,15 +24,15 @@ import {
 } from '../realtime/user-mailbox';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 
-interface ParticipantActivity {
+interface ConversationListEntryState {
   conversationId: string;
   latestSentAt: number;
   latestSenderId: string | null;
 }
 
-const [activity, setActivity] = createSignal<Map<string, ParticipantActivity>>(
-  new Map(),
-);
+const [listState, setListState] = createSignal<
+  Map<string, ConversationListEntryState>
+>(new Map());
 const [readVersion, setReadVersion] = createSignal(0);
 // Server-owned read markers (conversationId -> lastReadAt), seeded from
 // GET /conversations. Makes the unread badge cross-device: a read on another
@@ -41,8 +42,8 @@ const [serverLastRead, setServerLastRead] = createSignal<Map<string, number>>(
   new Map(),
 );
 
-/** Reactive: participant uid -> latest activity. Read by app/ConversationsList. */
-export const conversationActivity = activity;
+/** Reactive: row id -> latest list state. Read by app/ConversationsList. */
+export const conversationListState = listState;
 // ── per-device read state ────────────────────────────────────────────────────
 const readKey = (conversationId: string) =>
   `hangvidu:lastRead:${conversationId}`;
@@ -80,33 +81,34 @@ export function markConversationRead(
 }
 
 // ── seed + live wiring ───────────────────────────────────────────────────────
-function upsert(participantId: string, next: ParticipantActivity): void {
-  setActivity((prev) => {
-    const cur = prev.get(participantId);
+function upsert(rowKey: string, next: ConversationListEntryState): void {
+  setListState((prev) => {
+    const cur = prev.get(rowKey);
     if (cur && cur.latestSentAt >= next.latestSentAt) return prev; // older: ignore
-    return new Map(prev).set(participantId, next);
+    return new Map(prev).set(rowKey, next);
   });
 }
 
 /**
  * Record activity for a DM from the open conversation's message stream. Covers
  * the sender's OWN send, which never comes back over the mailbox (the server
- * fans `activity` to other members only). `participantId` is the peer's uid.
+ * fans `activity` to other members only). For current DM rows, `rowKey` is the
+ * peer's uid.
  */
-export function recordConversationActivity(
-  participantId: string,
+export function recordConversationListMessage(
+  rowKey: string,
   conversationId: string,
   latestSentAt: number,
   latestSenderId: string | null,
 ): void {
-  upsert(participantId, { conversationId, latestSentAt, latestSenderId });
+  upsert(rowKey, { conversationId, latestSentAt, latestSenderId });
 }
 
-/** Refetch the current activity snapshot (seed). */
-export async function refreshConversationActivity(): Promise<void> {
+/** Refetch the current conversation-list state snapshot (seed). */
+export async function refreshConversationListState(): Promise<void> {
   const me = getLoggedInUserId();
   if (!me) {
-    setActivity(new Map());
+    setListState(new Map());
     setServerLastRead(new Map());
     return;
   }
@@ -114,7 +116,7 @@ export async function refreshConversationActivity(): Promise<void> {
     const conversations = await getConversationsClient().list();
     if (getLoggedInUserId() !== me) return;
 
-    const map = new Map<string, ParticipantActivity>();
+    const map = new Map<string, ConversationListEntryState>();
     const reads = new Map<string, number>();
     for (const c of conversations) {
       if (c.kind !== 'direct') continue; // contacts list is DMs only for now
@@ -128,17 +130,17 @@ export async function refreshConversationActivity(): Promise<void> {
       reads.set(c.id, c.last_read_at ?? 0);
     }
     setServerLastRead(reads);
-    setActivity((current) => {
-      for (const [participantId, existing] of current) {
-        const fetched = map.get(participantId);
+    setListState((current) => {
+      for (const [rowKey, existing] of current) {
+        const fetched = map.get(rowKey);
         if (fetched && existing.latestSentAt > fetched.latestSentAt) {
-          map.set(participantId, existing);
+          map.set(rowKey, existing);
         }
       }
       return map;
     });
   } catch (error) {
-    console.warn('[conversation-activity] seed failed', error);
+    console.warn('[conversation-list-state] seed failed', error);
   }
 }
 
@@ -147,12 +149,12 @@ let unsubscribeMailbox: (() => void) | undefined;
 
 function refreshWhenVisible(): void {
   if (document.visibilityState === 'visible') {
-    void refreshConversationActivity();
+    void refreshConversationListState();
   }
 }
 
-/** Release login-scoped activity state and the shared mailbox. */
-export function stopConversationActivity(): void {
+/** Release login-scoped list state and the shared mailbox. */
+export function stopConversationListSync(): void {
   unsubscribeMailbox?.();
   unsubscribeMailbox = undefined;
   if (typeof document !== 'undefined') {
@@ -160,16 +162,16 @@ export function stopConversationActivity(): void {
   }
   closeUserMailbox();
   started = false;
-  setActivity(new Map());
+  setListState(new Map());
   setServerLastRead(new Map());
 }
 
 /** Idempotent: seed once + open the live mailbox subscription. */
-export function startConversationActivity(): void {
+export function startConversationListSync(): void {
   if (started) return;
   started = true;
 
-  void refreshConversationActivity();
+  void refreshConversationListState();
 
   unsubscribeMailbox = subscribeToUserMailbox(
     {
@@ -180,7 +182,7 @@ export function startConversationActivity(): void {
     (envelope) => {
       if (envelope.t !== 'activity') return; // ignore call invites/responses
       // DM: the envelope reaches only the other member, so senderId IS the
-      // participant this row is keyed on.
+      // row id.
       upsert(envelope.senderId, {
         conversationId: envelope.conversationId,
         latestSentAt: envelope.sentAt,

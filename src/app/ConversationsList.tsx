@@ -8,9 +8,9 @@ import {
   type Contact,
 } from '../stores/contactsStore.js';
 import {
-  conversationActivity,
+  conversationListState,
   getLastReadAt,
-} from '../stores/conversation-activity';
+} from '../stores/conversation-list-state';
 import { openDirectConversation } from '../stores/conversationStore';
 import PresenceIndicator from '../features/presence/components/PresenceIndicator';
 import { StartCallButton } from '../features/call/components/CallControls';
@@ -38,12 +38,12 @@ function createConversationRows() {
 
   return createMemo<ConversationRow[]>(() => {
     const me = getLoggedInUserId();
-    const activity = conversationActivity(); // reactive: participant uid -> activity
+    const listState = conversationListState(); // reactive: row id -> list state
 
     return Object.values(contactsState.byId)
       .map((contact: Contact) => {
         const id = contact.contactId ?? '';
-        const act = activity.get(id);
+        const act = listState.get(id);
         const lastReadAt = act ? getLastReadAt(act.conversationId) : 0;
         const hasUnread =
           !!act &&

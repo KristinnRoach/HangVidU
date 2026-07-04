@@ -211,7 +211,7 @@ export function createD1MessageRepository(
     },
 
     // Durable cross-device read marker (#563). The store's local optimistic
-    // clear (conversation-activity) covers the in-tab badge; this persists it
+    // clear (conversation-list-state) covers the in-tab badge; this persists it
     // server-side so other devices clear on their next conversation-list load.
     async markConversationRead(conversationId) {
       await client.markRead(conversationId);

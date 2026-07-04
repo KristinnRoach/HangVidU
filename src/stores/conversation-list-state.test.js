@@ -22,14 +22,14 @@ vi.mock('../infra/hangvidu-api-url', () => ({
 import { getLoggedInUserId } from '../auth/index.js';
 import { getConversationsClient } from './conversations-client';
 import {
-  conversationActivity,
+  conversationListState,
   getLastReadAt,
   markConversationRead,
-  recordConversationActivity,
-  refreshConversationActivity,
-  startConversationActivity,
-  stopConversationActivity,
-} from './conversation-activity';
+  recordConversationListMessage,
+  refreshConversationListState,
+  startConversationListSync,
+  stopConversationListSync,
+} from './conversation-list-state';
 
 describe('markConversationRead', () => {
   beforeEach(() => {
@@ -39,7 +39,7 @@ describe('markConversationRead', () => {
       setItem: (key, value) => values.set(key, String(value)),
     });
     mocks.subscribe.mockReturnValue(mocks.unsubscribe);
-    stopConversationActivity();
+    stopConversationListSync();
     vi.clearAllMocks();
   });
 
@@ -64,16 +64,16 @@ describe('markConversationRead', () => {
       ]),
     });
 
-    recordConversationActivity('peer', 'conversation-1', 2000, 'me');
-    await refreshConversationActivity();
+    recordConversationListMessage('peer', 'conversation-1', 2000, 'me');
+    await refreshConversationListState();
 
-    expect(conversationActivity().get('peer')?.latestSentAt).toBe(2000);
+    expect(conversationListState().get('peer')?.latestSentAt).toBe(2000);
   });
 
   it('can subscribe again after being stopped', () => {
-    startConversationActivity();
-    stopConversationActivity();
-    startConversationActivity();
+    startConversationListSync();
+    stopConversationListSync();
+    startConversationListSync();
 
     expect(mocks.unsubscribe).toHaveBeenCalledOnce();
     expect(mocks.close).toHaveBeenCalledOnce();
