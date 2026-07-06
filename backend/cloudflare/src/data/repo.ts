@@ -331,7 +331,7 @@ async function memberConversationId(
   db: D1Database,
   ownerId: string,
   contactId: string,
-  candidate: string | undefined,
+  candidate: string | null | undefined,
 ): Promise<string | null> {
   if (!candidate) return null;
   const row = await db
@@ -342,7 +342,7 @@ async function memberConversationId(
 }
 
 /** Insert-or-replace one contact owned by `ownerId`. */
-export function contactUpsert(
+function contactUpsert(
   db: D1Database,
   ownerId: string,
   c: NewContact,

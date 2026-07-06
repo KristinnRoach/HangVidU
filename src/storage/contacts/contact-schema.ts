@@ -9,7 +9,7 @@ export const ContactIdSchema = z.preprocess(
   z.string().min(1, 'contactId must be a non-empty string'),
 );
 
-export const ContactConversationIdSchema = z.preprocess((value) => {
+const ContactConversationIdSchema = z.preprocess((value) => {
   if (value == null) {
     return null;
   }
@@ -22,7 +22,7 @@ export const ContactConversationIdSchema = z.preprocess((value) => {
   return normalized || null;
 }, z.string().min(1).nullable());
 
-export const ContactTimestampSchema = z.number().finite().nonnegative();
+const ContactTimestampSchema = z.number().finite().nonnegative();
 
 const ContactLabelSchema = z.preprocess(
   (value) => (typeof value === 'string' ? value.trim() : ''),
