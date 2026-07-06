@@ -32,6 +32,7 @@ function dispatchPath(path: string) {
     const contact = contactId ? getContactById(contactId) : null;
     openSelectedConversation({
       conversationId,
+      kind: 'direct',
       remoteParticipantIds: contactId ? [contactId] : [],
       displayUI: true,
       nickname: contact?.nickname ?? undefined,

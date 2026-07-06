@@ -4,6 +4,7 @@ import { createAutoHide } from '../shared/createAutoHide';
 import { User, PhoneCall, Mail, ChevronLeft } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth';
+import { getLoggedInUserId } from '../auth/index.js';
 import { useI18n } from '../shared/i18n';
 
 import AppLogo from '../components/app/AppLogo';
@@ -28,20 +29,23 @@ import { StartCallButton } from '../features/call/components/CallControls';
 import { LoadBoundary } from '../components/app/LoadBoundary';
 import { Spinner } from '../components/app/Spinner';
 import IdentityBadge from '../components/app/IdentityBadge';
-import { conversationListState } from '../stores/conversation-list-state';
+import {
+  conversationListSeeded,
+  conversationListState,
+  type ConversationSummary,
+} from '../stores/conversation-list-state';
 import {
   getContactById,
   getContactLabel,
   getContactsStore,
-  type Contact,
 } from '../stores/contactsStore.js';
 
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
 
 import {
-  loadSelectedContactId,
-  openDirectConversation,
+  loadSelectedConversationId,
+  openConversation,
   selection as selectedConversation,
   type ConversationSelection,
 } from '../stores/conversationStore';
@@ -84,24 +88,46 @@ export default function MainContent() {
     ),
   );
 
-  function getDefaultContact(): Contact | null {
-    const listState = conversationListState();
+  function getConversationLabel(summary: ConversationSummary): string | null {
+    const me = getLoggedInUserId();
+    if (summary.kind === 'direct') {
+      const peer = summary.members.find((member) => member.user_id !== me);
+      const contact = peer ? contactsState.byId[peer.user_id] : null;
+      return (
+        (contact ? getContactLabel(contact) : null) ||
+        peer?.display_name ||
+        null
+      );
+    }
     return (
-      Object.values(contactsState.byId)
-        .filter((contact): contact is Contact =>
-          Boolean(contact?.contactId && contact.conversationId),
-        )
-        .sort((a, b) => {
-          const aSortKey =
-            listState.get(a.contactId)?.latestSentAt || a.savedAt || 0;
-          const bSortKey =
-            listState.get(b.contactId)?.latestSentAt || b.savedAt || 0;
-          if (aSortKey !== bSortKey) return bSortKey - aSortKey;
+      summary.title ||
+      summary.members
+        .map((member) => member.display_name)
+        .filter((name): name is string => Boolean(name))
+        .join(', ') ||
+      null
+    );
+  }
 
-          return (
-            getContactLabel(a)?.localeCompare(getContactLabel(b) || '') ?? 0
-          );
-        })
+  function openSummary(summary: ConversationSummary): void {
+    if (!summary.kind) return;
+    const me = getLoggedInUserId();
+    openConversation({
+      conversationId: summary.conversationId,
+      kind: summary.kind,
+      remoteParticipantIds: summary.members
+        .map((member) => member.user_id)
+        .filter((id) => id !== me),
+      nickname: getConversationLabel(summary),
+      displayUI: false,
+    });
+  }
+
+  function getDefaultConversation(): ConversationSummary | null {
+    return (
+      [...conversationListState().values()]
+        .filter((summary) => Boolean(summary.kind))
+        .sort((a, b) => b.latestSentAt - a.latestSentAt)
         .at(0) ?? null
     );
   }
@@ -133,27 +159,21 @@ export default function MainContent() {
   createEffect(() => {
     if (!showAuthenticatedUi()) return;
     if (selectedConversation()) return;
-    if (contactsState.status !== 'ready') return;
+    if (!conversationListSeeded()) return;
 
-    const storedContactId = loadSelectedContactId();
-    const storedContact = storedContactId
-      ? contactsState.byId[storedContactId]
+    const storedConversationId = loadSelectedConversationId();
+    const storedSummary = storedConversationId
+      ? conversationListState().get(storedConversationId)
       : null;
-    if (storedContact) {
-      void openDirectConversation(storedContact.contactId, {
-        displayUI: false,
-        nickname: getContactLabel(storedContact),
-      });
+    if (storedSummary) {
+      openSummary(storedSummary);
       return;
     }
 
-    const contact = getDefaultContact();
-    if (!contact) return;
+    const summary = getDefaultConversation();
+    if (!summary) return;
 
-    void openDirectConversation(contact.contactId, {
-      displayUI: false,
-      nickname: getContactLabel(contact),
-    });
+    openSummary(summary);
   });
 
   return (
@@ -247,7 +267,8 @@ function TopBar(props: TopBarProps) {
   const { t } = useI18n();
 
   const calleeId = createMemo(() => {
-    return props.selectedConversation?.remoteParticipantIds?.[0] ?? null;
+    if (props.selectedConversation?.kind !== 'direct') return null;
+    return props.selectedConversation.remoteParticipantIds?.[0] ?? null;
   });
 
   // Whose identity the top bar shows: the selected conversation's contact

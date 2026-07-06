@@ -3,21 +3,18 @@ import { render, cleanup } from '@solidjs/testing-library';
 
 const mocks = vi.hoisted(() => ({
   byId: {},
-  status: 'ready',
+  seeded: true,
   activity: new Map(),
   watchUserPresence: vi.fn(() => () => {}),
   dispatchCommand: vi.fn(),
   startCall: vi.fn(),
-  openDirectConversation: vi.fn(),
+  openConversation: vi.fn(),
 }));
 
 vi.mock('../stores/contactsStore.js', () => ({
   getContactsStore: () => ({
     get byId() {
       return mocks.byId;
-    },
-    get status() {
-      return mocks.status;
     },
   }),
   getContactLabel: (contact) =>
@@ -26,6 +23,7 @@ vi.mock('../stores/contactsStore.js', () => ({
 
 vi.mock('../stores/conversation-list-state', () => ({
   conversationListState: () => mocks.activity,
+  conversationListSeeded: () => mocks.seeded,
   getLastReadAt: () => 0,
 }));
 
@@ -34,7 +32,7 @@ vi.mock('../auth/index.js', () => ({
 }));
 
 vi.mock('../stores/conversationStore', () => ({
-  openDirectConversation: mocks.openDirectConversation,
+  openConversation: mocks.openConversation,
   selection: () => null,
 }));
 
@@ -80,11 +78,34 @@ describe('ConversationsList', { timeout: 60000 }, () => {
       'contact-1': contact('contact-1', 'Alice'),
       'contact-2': contact('contact-2', 'Bob'),
     };
-    mocks.status = 'ready';
-    mocks.activity = new Map();
+    mocks.seeded = true;
+    mocks.activity = new Map([
+      [
+        'conversation-1',
+        {
+          conversationId: 'conversation-1',
+          kind: 'direct',
+          title: null,
+          members: [{ user_id: 'me' }, { user_id: 'contact-1' }],
+          latestSentAt: 100,
+          latestSenderId: 'me',
+        },
+      ],
+      [
+        'conversation-2',
+        {
+          conversationId: 'conversation-2',
+          kind: 'direct',
+          title: null,
+          members: [{ user_id: 'me' }, { user_id: 'contact-2' }],
+          latestSentAt: 50,
+          latestSenderId: 'contact-2',
+        },
+      ],
+    ]);
   });
 
-  it('renders a row per contact from hydrated state', async () => {
+  it('renders a row per conversation from hydrated state', async () => {
     const { default: ConversationsList } =
       await import('./ConversationsList.tsx');
 
@@ -100,7 +121,7 @@ describe('ConversationsList', { timeout: 60000 }, () => {
 
   it('renders loading state before hydrated empty state', async () => {
     mocks.byId = {};
-    mocks.status = 'loading';
+    mocks.seeded = false;
     const { default: ConversationsList } =
       await import('./ConversationsList.tsx');
 
@@ -121,7 +142,10 @@ describe('ConversationsList', { timeout: 60000 }, () => {
     const firstContactName = container.querySelector('.contact-name');
     firstContactName?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(mocks.openDirectConversation).toHaveBeenCalledWith('contact-1', {
+    expect(mocks.openConversation).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      kind: 'direct',
+      remoteParticipantIds: ['contact-1'],
       displayUI: true,
       nickname: 'Alice',
     });
@@ -132,17 +156,23 @@ describe('ConversationsList', { timeout: 60000 }, () => {
   it('sorts active conversations first and marks unread rows', async () => {
     mocks.activity = new Map([
       [
-        'contact-1',
+        'conversation-1',
         {
           conversationId: 'conversation-1',
+          kind: 'direct',
+          title: null,
+          members: [{ user_id: 'me' }, { user_id: 'contact-1' }],
           latestSentAt: 100,
           latestSenderId: 'me',
         },
       ],
       [
-        'contact-2',
+        'conversation-2',
         {
           conversationId: 'conversation-2',
+          kind: 'direct',
+          title: null,
+          members: [{ user_id: 'me' }, { user_id: 'contact-2' }],
           latestSentAt: 200,
           latestSenderId: 'contact-2',
         },
@@ -159,6 +189,38 @@ describe('ConversationsList', { timeout: 60000 }, () => {
     ).toEqual(['Bob', 'Alice']);
     expect(rows[0].querySelector('.unread-badge')).not.toBeNull();
     expect(rows[1].querySelector('.unread-badge')).toBeNull();
+
+    unmount();
+  });
+
+  it('renders a titled unread group row without call or presence controls', async () => {
+    mocks.activity = new Map([
+      [
+        'group-1',
+        {
+          conversationId: 'group-1',
+          kind: 'group',
+          title: 'Project Room',
+          members: [
+            { user_id: 'me', display_name: 'Me' },
+            { user_id: 'contact-1', display_name: 'Alice' },
+            { user_id: 'contact-2', display_name: 'Bob' },
+          ],
+          latestSentAt: 300,
+          latestSenderId: 'contact-2',
+        },
+      ],
+    ]);
+    const { default: ConversationsList } =
+      await import('./ConversationsList.tsx');
+
+    const { container, unmount } = render(() => <ConversationsList />);
+    const row = container.querySelector('.conversation-entry');
+
+    expect(row?.textContent).toContain('Project Room');
+    expect(row?.querySelector('.unread-badge')).not.toBeNull();
+    expect(row?.querySelector('.contact-call-btn')).toBeNull();
+    expect(row?.querySelector('.presence-indicator')).toBeNull();
 
     unmount();
   });

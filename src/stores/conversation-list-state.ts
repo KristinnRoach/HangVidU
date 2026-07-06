@@ -1,13 +1,10 @@
 // Conversation-list state: drives MRU reorder + the unread badge.
 //
-// Two inputs, one reactive map keyed by the row id. Current rows are DMs, so the
-// row id is the OTHER participant's uid:
+// Two inputs, one reactive map keyed by conversationId:
 //   - seed: GET /conversations once on start (and on demand), carrying each
 //     conversation's latest message time + sender.
 //   - live: the per-user mailbox pushes an `activity` envelope on every message
-//     to a conversation you're in (see shared/user-mailbox/protocol). For a DM
-//     the envelope only reaches the *other* member, so senderId is exactly the
-//     current row id.
+//     to a conversation you're in (see shared/user-mailbox/protocol).
 //
 // Read state (lastReadAt) is per-device localStorage for now; markConversationRead
 // bumps a version signal so the unread derivation re-runs without a refetch.
@@ -23,16 +20,21 @@ import {
   subscribeToUserMailbox,
 } from '../realtime/user-mailbox';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
+import type { ConversationMember } from '../storage/conversations/data-client';
 
-interface ConversationListEntryState {
+export type ConversationSummary = {
   conversationId: string;
+  kind: 'direct' | 'group' | null;
+  title: string | null;
+  members: ConversationMember[];
   latestSentAt: number;
   latestSenderId: string | null;
-}
+};
 
 const [listState, setListState] = createSignal<
-  Map<string, ConversationListEntryState>
+  Map<string, ConversationSummary>
 >(new Map());
+const [seeded, setSeeded] = createSignal(false);
 const [readVersion, setReadVersion] = createSignal(0);
 // Server-owned read markers (conversationId -> lastReadAt), seeded from
 // GET /conversations. Makes the unread badge cross-device: a read on another
@@ -42,8 +44,9 @@ const [serverLastRead, setServerLastRead] = createSignal<Map<string, number>>(
   new Map(),
 );
 
-/** Reactive: row id -> latest list state. Read by app/ConversationsList. */
+/** Reactive: conversationId -> latest list state. Read by app/ConversationsList. */
 export const conversationListState = listState;
+export const conversationListSeeded = seeded;
 // ── per-device read state ────────────────────────────────────────────────────
 const readKey = (conversationId: string) =>
   `hangvidu:lastRead:${conversationId}`;
@@ -81,27 +84,39 @@ export function markConversationRead(
 }
 
 // ── seed + live wiring ───────────────────────────────────────────────────────
-function upsert(rowKey: string, next: ConversationListEntryState): void {
+function upsert(
+  conversationId: string,
+  next: Partial<ConversationSummary>,
+): void {
   setListState((prev) => {
-    const cur = prev.get(rowKey);
-    if (cur && cur.latestSentAt >= next.latestSentAt) return prev; // older: ignore
-    return new Map(prev).set(rowKey, next);
+    const cur = prev.get(conversationId);
+    const latestSentAt = next.latestSentAt ?? cur?.latestSentAt ?? 0;
+    if (cur && cur.latestSentAt > latestSentAt) return prev; // older: ignore
+    return new Map(prev).set(conversationId, {
+      conversationId,
+      kind: 'kind' in next ? (next.kind ?? null) : (cur?.kind ?? null),
+      title: 'title' in next ? (next.title ?? null) : (cur?.title ?? null),
+      members: 'members' in next ? (next.members ?? []) : (cur?.members ?? []),
+      latestSentAt,
+      latestSenderId:
+        'latestSenderId' in next
+          ? (next.latestSenderId ?? null)
+          : (cur?.latestSenderId ?? null),
+    });
   });
 }
 
 /**
- * Record activity for a DM from the open conversation's message stream. Covers
+ * Record activity for the open conversation's message stream. Covers
  * the sender's OWN send, which never comes back over the mailbox (the server
- * fans `activity` to other members only). For current DM rows, `rowKey` is the
- * peer's uid.
+ * fans `activity` to other members only).
  */
 export function recordConversationListMessage(
-  rowKey: string,
   conversationId: string,
   latestSentAt: number,
   latestSenderId: string | null,
 ): void {
-  upsert(rowKey, { conversationId, latestSentAt, latestSenderId });
+  upsert(conversationId, { latestSentAt, latestSenderId });
 }
 
 /** Refetch the current conversation-list state snapshot (seed). */
@@ -110,20 +125,21 @@ export async function refreshConversationListState(): Promise<void> {
   if (!me) {
     setListState(new Map());
     setServerLastRead(new Map());
+    setSeeded(false);
     return;
   }
   try {
     const conversations = await getConversationsClient().list();
     if (getLoggedInUserId() !== me) return;
 
-    const map = new Map<string, ConversationListEntryState>();
+    const map = new Map<string, ConversationSummary>();
     const reads = new Map<string, number>();
     for (const c of conversations) {
-      if (c.kind !== 'direct') continue; // contacts list is DMs only for now
-      const other = c.members.find((m) => m.user_id !== me);
-      if (!other) continue;
-      map.set(other.user_id, {
+      map.set(c.id, {
         conversationId: c.id,
+        kind: c.kind,
+        title: c.title ?? null,
+        members: c.members,
         latestSentAt: c.latest_sent_at ?? c.updated_at,
         latestSenderId: c.latest_sender_id ?? null,
       });
@@ -139,6 +155,7 @@ export async function refreshConversationListState(): Promise<void> {
       }
       return map;
     });
+    setSeeded(true);
   } catch (error) {
     console.warn('[conversation-list-state] seed failed', error);
   }
@@ -164,6 +181,7 @@ export function stopConversationListSync(): void {
   started = false;
   setListState(new Map());
   setServerLastRead(new Map());
+  setSeeded(false);
 }
 
 /** Idempotent: seed once + open the live mailbox subscription. */
@@ -181,10 +199,7 @@ export function startConversationListSync(): void {
     },
     (envelope) => {
       if (envelope.t !== 'activity') return; // ignore call invites/responses
-      // DM: the envelope reaches only the other member, so senderId IS the
-      // row id.
-      upsert(envelope.senderId, {
-        conversationId: envelope.conversationId,
+      upsert(envelope.conversationId, {
         latestSentAt: envelope.sentAt,
         latestSenderId: envelope.senderId,
       });

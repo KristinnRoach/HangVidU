@@ -49,6 +49,7 @@ import type { ReactionChange } from '../features/conversations/reactions/solid/s
 
 export type ConversationSelection = {
   conversationId: ConversationId;
+  kind: 'direct' | 'group';
   remoteParticipantIds?: UserId[];
   nickname?: string | null;
   displayUI?: boolean;
@@ -102,9 +103,9 @@ export function getConversationState() {
   return state;
 }
 
-// ---------- selected-contact persistence ----------
+// ---------- selected-conversation persistence ----------
 
-const STORAGE_PREFIX = 'hangvidu:conversations:selected-contact';
+const STORAGE_PREFIX = 'hangvidu:conversations:selected';
 
 function getLocalStorage(): Storage | null {
   return typeof globalThis.localStorage === 'undefined'
@@ -116,21 +117,21 @@ function storageKey(userId: string) {
   return `${STORAGE_PREFIX}:${encodeURIComponent(userId)}`;
 }
 
-function saveSelectedContactId(contactId: string | null): void {
+function saveSelectedConversationId(conversationId: string | null): void {
   try {
     const userId = getLoggedInUserId();
     const storage = getLocalStorage();
     if (!userId || !storage) return;
 
     const key = storageKey(userId);
-    if (contactId) storage.setItem(key, contactId);
+    if (conversationId) storage.setItem(key, conversationId);
     else storage.removeItem(key);
   } catch {
     // Selection persistence is best-effort; in-memory state remains canonical.
   }
 }
 
-export function loadSelectedContactId(): string | null {
+export function loadSelectedConversationId(): string | null {
   try {
     const userId = getLoggedInUserId();
     const storage = getLocalStorage();
@@ -302,18 +303,13 @@ function startWatch(
           myUserId,
           sentAt: latest.sentAt,
         });
-        // Keep the contact-list row ordered for the open conversation —
-        // covers the user's own send (never echoed over the mailbox). DM
-        // only: peer uid is the activity map key.
-        const peers = sel.remoteParticipantIds;
-        if (peers?.length === 1) {
-          recordConversationListMessage(
-            peers[0],
-            conversationId,
-            latest.sentAt,
-            latest.senderId,
-          );
-        }
+        // Keep the list row ordered for the open conversation; covers the
+        // user's own send, which is never echoed over the mailbox.
+        recordConversationListMessage(
+          conversationId,
+          latest.sentAt,
+          latest.senderId,
+        );
       }
     },
     (error) => {
@@ -324,7 +320,7 @@ function startWatch(
       const contactId = sel.remoteParticipantIds?.[0];
       if (
         (error as { status?: number })?.status === 404 &&
-        sel.remoteParticipantIds?.length === 1 &&
+        sel.kind === 'direct' &&
         contactId
       ) {
         void cacheContactConversationId(contactId, null).then(() =>
@@ -387,18 +383,16 @@ function activate(next: ConversationSelection | null) {
 
 // ---------- selection actions ----------
 
-export function open(next: ConversationSelection): void {
-  saveSelectedContactId(
-    next.remoteParticipantIds?.length === 1
-      ? next.remoteParticipantIds[0]
-      : null,
-  );
+export function openConversation(next: ConversationSelection): void {
+  saveSelectedConversationId(next.conversationId);
   activate(next);
 }
 
+export const open = openConversation;
+
 type OpenDirectMeta = Omit<
   ConversationSelection,
-  'conversationId' | 'remoteParticipantIds'
+  'conversationId' | 'kind' | 'remoteParticipantIds'
 >;
 
 /**
@@ -439,8 +433,12 @@ export async function openDirectConversation(
     return;
   }
 
-  saveSelectedContactId(contactId);
-  activate({ ...meta, conversationId, remoteParticipantIds: [contactId] });
+  openConversation({
+    ...meta,
+    conversationId,
+    kind: 'direct',
+    remoteParticipantIds: [contactId],
+  });
 }
 
 /** Release the active conversation and all its state. Called on logout. */
