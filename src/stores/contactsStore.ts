@@ -9,7 +9,10 @@ import {
   createContactsLocalStorageRepository,
   createContactsD1Repository,
 } from '../storage/contacts/index.js';
-import type { ContactRecord } from '../storage/contacts/contact-schema.js';
+import type {
+  ContactPatch,
+  ContactRecord,
+} from '../storage/contacts/contact-schema.js';
 
 export type Contact = ContactRecord;
 
@@ -58,7 +61,7 @@ function recordsById(records: Contact[]): Record<string, Contact> {
 
 async function patchContactState(
   contactId: string,
-  patch: Partial<Pick<Contact, 'nickname' | 'conversationId'>>,
+  patch: Pick<ContactPatch, 'nickname' | 'conversationId'>,
   action: string,
 ): Promise<Contact | null> {
   try {

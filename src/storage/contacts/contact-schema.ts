@@ -24,10 +24,7 @@ const ContactConversationIdSchema = z.preprocess((value) => {
 
 const ContactTimestampSchema = z.number().finite().nonnegative();
 
-const ContactLabelSchema = z.preprocess(
-  (value) => (typeof value === 'string' ? value.trim() : ''),
-  z.string(),
-);
+const ContactLabelSchema = z.preprocess(trimString, z.string());
 
 const ContactPatchConversationIdSchema = z.string().min(1);
 
