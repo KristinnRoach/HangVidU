@@ -1,8 +1,6 @@
-## Contacts Storage Draft
+## Contacts Storage
 
-This folder is a standalone draft for the contacts storage pattern.
-
-It does not replace the current contacts implementation yet.
+This folder owns the storage boundary for contacts.
 
 ### Goal
 
@@ -60,10 +58,10 @@ patches.
 
 - storage schema lives here, once
 - storage normalization helpers parse through that schema
-- service code should use storage outputs, not duplicate the same record schema
+- callers should use storage outputs, not duplicate the same record schema
 
-If the service later needs its own command/input validation, that should be a
-separate service-layer schema, not a second copy of the storage record schema.
+If another layer later needs its own command/input validation, that should be a
+separate schema, not a second copy of the storage record schema.
 
 ### Deferred On Purpose
 

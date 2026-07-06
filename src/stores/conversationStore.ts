@@ -315,20 +315,18 @@ function startWatch(
     (error) => {
       if (disposed || conversationId !== state.conversationId) return;
       // Stale cached conversationId (env switch, deleted conversation):
-      // clear the cache and re-resolve once. resolve-direct is
-      // resolve-or-create, so the retry can't 404 again in a loop.
+      // resolve-or-create will replace the cached id on retry.
       const contactId = sel.remoteParticipantIds?.[0];
       if (
         (error as { status?: number })?.status === 404 &&
         sel.kind === 'direct' &&
         contactId
       ) {
-        void cacheContactConversationId(contactId, null).then(() =>
-          openDirectConversation(contactId, {
-            nickname: sel.nickname,
-            displayUI: sel.displayUI,
-          }),
-        );
+        void openDirectConversation(contactId, {
+          nickname: sel.nickname,
+          displayUI: sel.displayUI,
+          forceResolve: true,
+        });
         return;
       }
       setState({ history: 'error', historyError: error });
@@ -391,7 +389,7 @@ export function openConversation(next: ConversationSelection): void {
 type OpenDirectMeta = Omit<
   ConversationSelection,
   'conversationId' | 'kind' | 'remoteParticipantIds'
->;
+> & { forceResolve?: boolean };
 
 /**
  * Open a contact's DM conversation. This is the single place the messaging
@@ -406,10 +404,11 @@ export async function openDirectConversation(
   contactId: string,
   meta?: OpenDirectMeta,
 ): Promise<void> {
+  const { forceResolve = false, ...selectionMeta } = meta ?? {};
   let conversationId: string | null =
     getContactById(contactId)?.conversationId ?? null;
 
-  if (!conversationId) {
+  if (!conversationId || forceResolve) {
     try {
       // Network + auth call; can reject. Callers fire-and-forget, so catch
       // here to keep failures on the warn-and-return path instead of an
@@ -432,7 +431,7 @@ export async function openDirectConversation(
   }
 
   openConversation({
-    ...meta,
+    ...selectionMeta,
     conversationId,
     kind: 'direct',
     remoteParticipantIds: [contactId],

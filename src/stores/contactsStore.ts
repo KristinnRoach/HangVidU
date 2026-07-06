@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { createStore } from 'solid-js/store';
 import {
   getIsLoggedIn,
@@ -7,12 +6,15 @@ import {
 } from '../auth/index.js';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 import {
-  ContactRecordSchema,
   createContactsLocalStorageRepository,
   createContactsD1Repository,
 } from '../storage/contacts/index.js';
+import type {
+  ContactPatch,
+  ContactRecord,
+} from '../storage/contacts/contact-schema.js';
 
-export type Contact = z.infer<typeof ContactRecordSchema>;
+export type Contact = ContactRecord;
 
 type ContactsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -47,6 +49,29 @@ function logFailure(
   context: Record<string, unknown> = {},
 ) {
   console.warn(`[contacts] ${action} failed`, { ...context, error });
+}
+
+function recordsById(records: Contact[]): Record<string, Contact> {
+  const byId: Record<string, Contact> = {};
+  for (const record of records) {
+    if (record?.contactId) byId[record.contactId] = record;
+  }
+  return byId;
+}
+
+async function patchContactState(
+  contactId: string,
+  patch: Pick<ContactPatch, 'nickname' | 'conversationId'>,
+  action: string,
+): Promise<Contact | null> {
+  try {
+    const updated = await getRepo().patch(contactId, patch);
+    if (updated) setState('byId', contactId, updated);
+    return updated;
+  } catch (error) {
+    logFailure(action, error, { contactId });
+    return null;
+  }
 }
 
 // ---------- reads ----------
@@ -85,16 +110,7 @@ export function getContactsIsHydrated(): boolean {
 // ---------- mutations ----------
 
 export async function updateContact(contactId: string, nickname: string) {
-  try {
-    const repo = getRepo();
-    const updated = await repo.patch(contactId, { nickname });
-    if (!updated) return null;
-    setState('byId', contactId, updated);
-    return updated;
-  } catch (error) {
-    logFailure('updateContact', error, { contactId });
-    return null;
-  }
+  return patchContactState(contactId, { nickname }, 'updateContact');
 }
 
 /**
@@ -105,14 +121,13 @@ export async function updateContact(contactId: string, nickname: string) {
  */
 export async function cacheContactConversationId(
   contactId: string,
-  conversationId: string | null,
+  conversationId: string,
 ): Promise<void> {
-  try {
-    const updated = await getRepo().patch(contactId, { conversationId });
-    if (updated) setState('byId', contactId, updated);
-  } catch (error) {
-    logFailure('cacheContactConversationId', error, { contactId });
-  }
+  await patchContactState(
+    contactId,
+    { conversationId },
+    'cacheContactConversationId',
+  );
 }
 
 export async function handleHangUp(
@@ -164,10 +179,7 @@ export async function hydrateContacts(): Promise<void> {
     try {
       const records = await getRepo(ownerId).list();
       if (requestId !== hydrationRequestId) return;
-      const byId: Record<string, Contact> = {};
-      for (const record of records) {
-        if (record?.contactId) byId[record.contactId] = record;
-      }
+      const byId = recordsById(records);
       hydratedScopeKey = scopeKey;
       setState({ byId, status: 'ready' });
     } catch (error) {
@@ -199,10 +211,7 @@ export async function reloadContacts(): Promise<void> {
   try {
     const records = await getRepo(ownerId).list();
     if (requestId !== hydrationRequestId) return;
-    const byId: Record<string, Contact> = {};
-    for (const record of records) {
-      if (record?.contactId) byId[record.contactId] = record;
-    }
+    const byId = recordsById(records);
     hydratedScopeKey = scopeKey;
     setState({ byId, status: 'ready' });
   } catch (error) {

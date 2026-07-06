@@ -342,7 +342,7 @@ async function memberConversationId(
 }
 
 /** Insert-or-replace one contact owned by `ownerId`. */
-export function contactUpsert(
+function contactUpsert(
   db: D1Database,
   ownerId: string,
   c: NewContact,
@@ -439,11 +439,11 @@ export async function connectUsers(
 
 export interface ContactPatch {
   nickname?: string;
-  conversationId?: string | null;
+  conversationId?: string;
   lastInteractionAt?: number;
 }
 
-/** Partial update; null sentinel via COALESCE leaves unprovided fields intact. */
+/** Partial update. Omitted fields stay unchanged. */
 export async function patchContact(
   db: D1Database,
   ownerId: string,
