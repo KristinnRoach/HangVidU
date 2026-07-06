@@ -1,4 +1,3 @@
-import { ContactsDBInterface } from '../contacts-db-interface.js';
 import { createWorkerRequest } from '../../worker-request.js';
 
 /**
@@ -9,12 +8,11 @@ import { createWorkerRequest } from '../../worker-request.js';
  * Wire shape mirrors ContactRecordSchema, so the worker's rows pass straight
  * through; the repository normalizes them.
  */
-export class ContactsD1Adapter extends ContactsDBInterface {
+export class ContactsD1Adapter {
   /**
    * @param {{ baseUrl: string, getToken: () => Promise<string|null> }} options
    */
   constructor({ baseUrl, getToken }) {
-    super();
     this._request = createWorkerRequest({ baseUrl, getToken });
   }
 
@@ -63,12 +61,4 @@ export class ContactsD1Adapter extends ContactsDBInterface {
       `/users/me/contacts/${encodeURIComponent(contactId)}`,
     );
   }
-}
-
-/**
- * @param {ConstructorParameters<typeof ContactsD1Adapter>[0]} options
- * @returns {ContactsD1Adapter}
- */
-export function createContactsD1Adapter(options) {
-  return new ContactsD1Adapter(options);
 }

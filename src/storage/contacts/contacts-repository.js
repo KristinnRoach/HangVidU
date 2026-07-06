@@ -32,9 +32,6 @@ function assertAdapter(adapter) {
  * TODO: Add direct contract tests for get/patch/remove semantics.
  */
 export class ContactsRepository {
-  /**
-   * @param {import('./contacts-db-interface.js').ContactsDBInterface} adapter
-   */
   constructor(adapter) {
     this.adapter = assertAdapter(adapter);
   }
@@ -114,12 +111,4 @@ export class ContactsRepository {
     await this.adapter.remove(normalizedContactId);
     return true;
   }
-}
-
-/**
- * @param {import('./contacts-db-interface.js').ContactsDBInterface} adapter
- * @returns {ContactsRepository}
- */
-export function createContactsRepository(adapter) {
-  return new ContactsRepository(adapter);
 }

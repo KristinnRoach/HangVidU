@@ -14,7 +14,6 @@ import { z } from 'zod';
  */
 
 /**
- * TODO: revisit
  * Partial update shape for persisted contacts.
  * @typedef {Object} ContactPatch
  * @property {string} [nickname]
@@ -31,12 +30,6 @@ function trimString(value) {
 export const ContactIdSchema = z.preprocess(
   trimString,
   z.string().min(1, 'contactId must be a non-empty string'),
-);
-
-/** @type {import('zod').ZodType<string>} */
-export const ContactNicknameSchema = z.preprocess(
-  (value) => (typeof value === 'string' ? value.trim() : ''),
-  z.string(),
 );
 
 /** @type {import('zod').ZodType<string|null>} */
@@ -56,9 +49,8 @@ export const ContactConversationIdSchema = z.preprocess((value) => {
 /** @type {import('zod').ZodType<number>} */
 export const ContactTimestampSchema = z.number().finite().nonnegative();
 
-// TODO: Consider removing if redundant to keep both nickname and label. Keeping until users deployed on D1 and stable.
 /** @type {import('zod').ZodType<string>} */
-export const ContactLabelSchema = z.preprocess(
+const ContactLabelSchema = z.preprocess(
   (value) => (typeof value === 'string' ? value.trim() : ''),
   z.string(),
 );
@@ -77,7 +69,7 @@ export const ContactRecordSchema = z.object({
 /** @type {import('zod').ZodType<ContactPatch>} */
 export const ContactPatchSchema = z
   .object({
-    nickname: ContactNicknameSchema.optional(),
+    nickname: ContactLabelSchema.optional(),
     conversationId: ContactConversationIdSchema.optional(),
     savedAt: ContactTimestampSchema.optional(),
     lastInteractionAt: ContactTimestampSchema.optional(),

@@ -1,4 +1,3 @@
-import { ContactsDBInterface } from '../contacts-db-interface.js';
 import {
   mergeContactRecord,
   normalizeContactRecord,
@@ -23,7 +22,7 @@ function assertStorageKey(storageKey) {
 /**
  * localStorage adapter for contacts storage.
  */
-export class ContactsLocalAdapter extends ContactsDBInterface {
+export class ContactsLocalAdapter {
   /**
    * @param {{
    *   storage?: Pick<Storage, 'getItem' | 'setItem'>,
@@ -31,7 +30,6 @@ export class ContactsLocalAdapter extends ContactsDBInterface {
    * }} [options]
    */
   constructor({ storage = getDefaultStorage(), storageKey = 'contacts' } = {}) {
-    super();
     this.storage = storage;
     this.storageKey = assertStorageKey(storageKey);
   }
@@ -124,12 +122,4 @@ export class ContactsLocalAdapter extends ContactsDBInterface {
     delete map[contactId];
     this.#writeMap(map);
   }
-}
-
-/**
- * @param {ConstructorParameters<typeof ContactsLocalAdapter>[0]} [options]
- * @returns {ContactsLocalAdapter}
- */
-export function createContactsLocalAdapter(options) {
-  return new ContactsLocalAdapter(options);
 }

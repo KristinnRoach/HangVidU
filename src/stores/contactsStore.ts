@@ -49,6 +49,29 @@ function logFailure(
   console.warn(`[contacts] ${action} failed`, { ...context, error });
 }
 
+function recordsById(records: Contact[]): Record<string, Contact> {
+  const byId: Record<string, Contact> = {};
+  for (const record of records) {
+    if (record?.contactId) byId[record.contactId] = record;
+  }
+  return byId;
+}
+
+async function patchContactState(
+  contactId: string,
+  patch: Partial<Pick<Contact, 'nickname' | 'conversationId'>>,
+  action: string,
+): Promise<Contact | null> {
+  try {
+    const updated = await getRepo().patch(contactId, patch);
+    if (updated) setState('byId', contactId, updated);
+    return updated;
+  } catch (error) {
+    logFailure(action, error, { contactId });
+    return null;
+  }
+}
+
 // ---------- reads ----------
 
 export function getContactsStore() {
@@ -85,16 +108,7 @@ export function getContactsIsHydrated(): boolean {
 // ---------- mutations ----------
 
 export async function updateContact(contactId: string, nickname: string) {
-  try {
-    const repo = getRepo();
-    const updated = await repo.patch(contactId, { nickname });
-    if (!updated) return null;
-    setState('byId', contactId, updated);
-    return updated;
-  } catch (error) {
-    logFailure('updateContact', error, { contactId });
-    return null;
-  }
+  return patchContactState(contactId, { nickname }, 'updateContact');
 }
 
 /**
@@ -107,12 +121,11 @@ export async function cacheContactConversationId(
   contactId: string,
   conversationId: string | null,
 ): Promise<void> {
-  try {
-    const updated = await getRepo().patch(contactId, { conversationId });
-    if (updated) setState('byId', contactId, updated);
-  } catch (error) {
-    logFailure('cacheContactConversationId', error, { contactId });
-  }
+  await patchContactState(
+    contactId,
+    { conversationId },
+    'cacheContactConversationId',
+  );
 }
 
 export async function handleHangUp(
@@ -164,10 +177,7 @@ export async function hydrateContacts(): Promise<void> {
     try {
       const records = await getRepo(ownerId).list();
       if (requestId !== hydrationRequestId) return;
-      const byId: Record<string, Contact> = {};
-      for (const record of records) {
-        if (record?.contactId) byId[record.contactId] = record;
-      }
+      const byId = recordsById(records);
       hydratedScopeKey = scopeKey;
       setState({ byId, status: 'ready' });
     } catch (error) {
@@ -199,10 +209,7 @@ export async function reloadContacts(): Promise<void> {
   try {
     const records = await getRepo(ownerId).list();
     if (requestId !== hydrationRequestId) return;
-    const byId: Record<string, Contact> = {};
-    for (const record of records) {
-      if (record?.contactId) byId[record.contactId] = record;
-    }
+    const byId = recordsById(records);
     hydratedScopeKey = scopeKey;
     setState({ byId, status: 'ready' });
   } catch (error) {

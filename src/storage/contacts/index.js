@@ -1,25 +1,8 @@
-import { ContactsRepository } from './contacts-repository.js';
 import { ContactsLocalAdapter } from './adapters/contacts-local-adapter.js';
 import { ContactsD1Adapter } from './adapters/contacts-d1-adapter.js';
+import { ContactsRepository } from './contacts-repository.js';
 
-export { ContactsRepository } from './contacts-repository.js';
-export { ContactsDBInterface } from './contacts-db-interface.js';
-export { ContactsD1Adapter } from './adapters/contacts-d1-adapter.js';
-export { ContactsLocalAdapter } from './adapters/contacts-local-adapter.js';
-export {
-  assertContactId,
-  mergeContactRecord,
-  normalizeContactPatch,
-  normalizeContactRecord,
-} from './contact-transform.js';
-export {
-  ContactIdSchema,
-  ContactConversationIdSchema,
-  ContactNicknameSchema,
-  ContactPatchSchema,
-  ContactRecordSchema,
-  ContactTimestampSchema,
-} from './contact-schema.js';
+export { ContactRecordSchema } from './contact-schema.js';
 
 /**
  * Create a contacts repository backed by the hangvidu-data Worker (D1).
