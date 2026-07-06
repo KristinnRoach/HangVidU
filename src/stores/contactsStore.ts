@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { createStore } from 'solid-js/store';
 import {
   getIsLoggedIn,
@@ -7,12 +6,12 @@ import {
 } from '../auth/index.js';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 import {
-  ContactRecordSchema,
   createContactsLocalStorageRepository,
   createContactsD1Repository,
 } from '../storage/contacts/index.js';
+import type { ContactRecord } from '../storage/contacts/contact-schema.js';
 
-export type Contact = z.infer<typeof ContactRecordSchema>;
+export type Contact = ContactRecord;
 
 type ContactsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
