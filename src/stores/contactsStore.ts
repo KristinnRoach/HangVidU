@@ -118,7 +118,7 @@ export async function updateContact(contactId: string, nickname: string) {
  */
 export async function cacheContactConversationId(
   contactId: string,
-  conversationId: string | null,
+  conversationId: string,
 ): Promise<void> {
   await patchContactState(
     contactId,

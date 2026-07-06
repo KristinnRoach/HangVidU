@@ -331,7 +331,7 @@ async function memberConversationId(
   db: D1Database,
   ownerId: string,
   contactId: string,
-  candidate: string | null | undefined,
+  candidate: string | undefined,
 ): Promise<string | null> {
   if (!candidate) return null;
   const row = await db
@@ -439,11 +439,11 @@ export async function connectUsers(
 
 export interface ContactPatch {
   nickname?: string;
-  conversationId?: string | null;
+  conversationId?: string;
   lastInteractionAt?: number;
 }
 
-/** Partial update; null sentinel via COALESCE leaves unprovided fields intact. */
+/** Partial update. Omitted fields stay unchanged. */
 export async function patchContact(
   db: D1Database,
   ownerId: string,

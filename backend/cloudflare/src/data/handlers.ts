@@ -368,10 +368,7 @@ export async function handleDataRequest(
       const updated = await patchContact(env.DB, callerId, contactId, {
         nickname:
           typeof body?.nickname === 'string' ? body.nickname : undefined,
-        conversationId:
-          'conversationId' in (body ?? {})
-            ? str(body?.conversationId)
-            : undefined,
+        conversationId: str(body?.conversationId) ?? undefined,
         lastInteractionAt: numOrUndef(body?.lastInteractionAt),
       });
       if (!updated) return json({ error: 'not_found' }, 404, cors);

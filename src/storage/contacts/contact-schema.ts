@@ -29,6 +29,8 @@ const ContactLabelSchema = z.preprocess(
   z.string(),
 );
 
+const ContactPatchConversationIdSchema = z.string().min(1);
+
 export const ContactRecordSchema = z.object({
   contactId: ContactIdSchema,
   nickname: ContactLabelSchema,
@@ -42,7 +44,7 @@ export const ContactRecordSchema = z.object({
 export const ContactPatchSchema = z
   .object({
     nickname: ContactLabelSchema.optional(),
-    conversationId: ContactConversationIdSchema.optional(),
+    conversationId: ContactPatchConversationIdSchema.optional(),
     lastInteractionAt: ContactTimestampSchema.optional(),
   })
   .strict();
