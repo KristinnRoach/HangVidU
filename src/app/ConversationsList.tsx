@@ -29,8 +29,12 @@ function shortName(name: string): string {
     : name;
 }
 
-function memberNameJoin(members: { display_name: string | null }[]): string {
+function memberNameJoin(
+  members: { user_id: string; display_name: string | null }[],
+  me: string | null,
+): string {
   return members
+    .filter((member) => member.user_id !== me)
     .map((member) => member.display_name)
     .filter((name): name is string => Boolean(name))
     .map(shortName)
@@ -59,7 +63,7 @@ function createConversationRows() {
             ? (contact ? getContactLabel(contact) : null) ||
               peer?.display_name ||
               null
-            : summary.title || memberNameJoin(summary.members) || null;
+            : summary.title || memberNameJoin(summary.members, me) || null;
         const lastReadAt = getLastReadAt(summary.conversationId);
         const hasUnread =
           Boolean(me) &&

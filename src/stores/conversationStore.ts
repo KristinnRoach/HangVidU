@@ -508,6 +508,7 @@ export async function sendMessage(
   setState({ draft: '', sending: true });
 
   const recipientIds = selection()?.remoteParticipantIds ?? [];
+  const conversationKind = selection()?.kind;
 
   let sent = false;
   try {
@@ -536,6 +537,7 @@ export async function sendMessage(
       void getPushNotifications()?.sendMessageNotification({
         recipientIds,
         conversationId,
+        conversationKind,
         senderId: myUserId,
         senderName,
         messageText,

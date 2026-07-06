@@ -193,14 +193,14 @@ describe('ConversationsList', { timeout: 60000 }, () => {
     unmount();
   });
 
-  it('renders a titled unread group row without call or presence controls', async () => {
+  it('renders an unread group row without self, call, or presence controls', async () => {
     mocks.activity = new Map([
       [
         'group-1',
         {
           conversationId: 'group-1',
           kind: 'group',
-          title: 'Project Room',
+          title: null,
           members: [
             { user_id: 'me', display_name: 'Me' },
             { user_id: 'contact-1', display_name: 'Alice' },
@@ -217,7 +217,8 @@ describe('ConversationsList', { timeout: 60000 }, () => {
     const { container, unmount } = render(() => <ConversationsList />);
     const row = container.querySelector('.conversation-entry');
 
-    expect(row?.textContent).toContain('Project Room');
+    expect(row?.textContent).toContain('Alice, Bob');
+    expect(row?.textContent).not.toContain('Me');
     expect(row?.querySelector('.unread-badge')).not.toBeNull();
     expect(row?.querySelector('.contact-call-btn')).toBeNull();
     expect(row?.querySelector('.presence-indicator')).toBeNull();

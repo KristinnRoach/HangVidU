@@ -74,6 +74,7 @@ function buildMessagePayload(messageData = {}) {
       senderName: messageData.senderName || 'Someone',
       messagePreview: messageData.messagePreview || '',
       conversationId: messageData.conversationId || '',
+      conversationKind: messageData.conversationKind || '',
       timestamp: Date.now().toString(),
     },
   };

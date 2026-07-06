@@ -210,6 +210,7 @@ describe('conversationStore', () => {
       expect.objectContaining({
         recipientIds: ['contact-1'],
         conversationId: 'conversation-1',
+        conversationKind: 'direct',
         messageText: 'hello',
       }),
     );

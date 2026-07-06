@@ -112,4 +112,29 @@ describe('SWNavigation', () => {
       expect.any(Function),
     );
   });
+
+  it('preserves group kind on conversation deep links', async () => {
+    const { unmount } = render(() => <SWNavigation />);
+
+    messageListener?.({
+      data: {
+        type: 'NAVIGATE',
+        path: '/?conversationId=group-1&kind=group',
+      },
+    });
+
+    setHydrated(true);
+
+    await waitFor(() => {
+      expect(mocks.openSelectedConversation).toHaveBeenCalledWith({
+        conversationId: 'group-1',
+        kind: 'group',
+        remoteParticipantIds: [],
+        displayUI: true,
+        nickname: undefined,
+      });
+    });
+
+    unmount();
+  });
 });

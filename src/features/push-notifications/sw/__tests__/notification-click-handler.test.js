@@ -52,7 +52,7 @@ describe('notification click routing', () => {
     ).toBe('/?contact=caller-2');
   });
 
-  it('routes message notifications to the sender conversation context', () => {
+  it('routes direct message notifications to the sender conversation context', () => {
     expect(
       getNotificationNavigationPath(
         {
@@ -63,6 +63,20 @@ describe('notification click routing', () => {
         'view',
       ),
     ).toBe('/?contact=sender-1&conversationId=conversation-1');
+  });
+
+  it('routes group message notifications by conversation id', () => {
+    expect(
+      getNotificationNavigationPath(
+        {
+          type: 'message',
+          senderId: 'sender-1',
+          conversationId: 'conversation-1',
+          conversationKind: 'group',
+        },
+        'view',
+      ),
+    ).toBe('/?conversationId=conversation-1&kind=group');
   });
 
   it('falls back to the app root when notification data is incomplete', () => {

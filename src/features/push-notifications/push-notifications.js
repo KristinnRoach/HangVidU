@@ -448,6 +448,7 @@ export class PushNotifications {
       return await callCloudFunction('sendMessageNotification', {
         recipientIds,
         conversationId,
+        conversationKind: rest.conversationKind,
         senderId: rest.senderId,
         senderName: formatted.senderName,
         messagePreview: formatted.messageText,

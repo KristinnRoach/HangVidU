@@ -102,6 +102,7 @@ export default function MainContent() {
     return (
       summary.title ||
       summary.members
+        .filter((member) => member.user_id !== me)
         .map((member) => member.display_name)
         .filter((name): name is string => Boolean(name))
         .join(', ') ||
