@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { createStore } from 'solid-js/store';
 import {
   getIsLoggedIn,
@@ -6,22 +7,12 @@ import {
 } from '../auth/index.js';
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 import {
+  ContactRecordSchema,
   createContactsLocalStorageRepository,
   createContactsD1Repository,
 } from '../storage/contacts/index.js';
 
-/* TODO: Once storage/contacts/* is converted to typescript:
-         import schema from storage and avoid drift (if should stay identical) => export type Contact = z.infer<typeof ContactRecordSchema>;*/
-
-export type Contact = {
-  contactId: string;
-  nickname: string;
-  displayName: string;
-  username: string;
-  conversationId: string | null;
-  savedAt: number;
-  lastInteractionAt: number;
-};
+export type Contact = z.infer<typeof ContactRecordSchema>;
 
 type ContactsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
