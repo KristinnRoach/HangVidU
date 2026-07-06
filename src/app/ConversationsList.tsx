@@ -2,22 +2,22 @@ import { For, Show, createMemo } from 'solid-js';
 import { Spinner } from '../components/app/Spinner';
 import { useI18n } from '../shared/i18n';
 import { getLoggedInUserId } from '../auth/index.js';
+import { getContactLabel, getContactsStore } from '../stores/contactsStore.js';
 import {
-  getContactLabel,
-  getContactsStore,
-  type Contact,
-} from '../stores/contactsStore.js';
-import {
+  conversationListSeeded,
   conversationListState,
   getLastReadAt,
 } from '../stores/conversation-list-state';
-import { openDirectConversation } from '../stores/conversationStore';
+import { openConversation } from '../stores/conversationStore';
 import PresenceIndicator from '../features/presence/components/PresenceIndicator';
 import { StartCallButton } from '../features/call/components/CallControls';
 
 type ConversationRow = {
-  id: string;
+  conversationId: string;
+  kind: 'direct' | 'group';
   label: string | null;
+  peerUserId?: string;
+  remoteParticipantIds: string[];
   hasUnread: boolean;
 };
 
@@ -29,35 +29,62 @@ function shortName(name: string): string {
     : name;
 }
 
-/**
- * Contacts × conversation activity × read markers → MRU-sorted rows with
- * unread flags. DM-only for now: one row per contact.
- */
+function memberNameJoin(
+  members: { user_id: string; display_name: string | null }[],
+  me: string | null,
+): string {
+  return members
+    .filter((member) => member.user_id !== me)
+    .map((member) => member.display_name)
+    .filter((name): name is string => Boolean(name))
+    .map(shortName)
+    .join(', ');
+}
+
 function createConversationRows() {
   const contactsState = getContactsStore();
 
   return createMemo<ConversationRow[]>(() => {
     const me = getLoggedInUserId();
-    const listState = conversationListState(); // reactive: row id -> list state
+    const listState = conversationListState();
 
-    return Object.values(contactsState.byId)
-      .map((contact: Contact) => {
-        const id = contact.contactId ?? '';
-        const act = listState.get(id);
-        const lastReadAt = act ? getLastReadAt(act.conversationId) : 0;
+    return [...listState.values()]
+      .flatMap((summary) => {
+        if (!summary.kind) return [];
+        const remoteParticipantIds = summary.members
+          .map((member) => member.user_id)
+          .filter((id) => id !== me);
+        const peer = summary.members.find((member) => member.user_id !== me);
+        const peerUserId =
+          summary.kind === 'direct' ? peer?.user_id : undefined;
+        const contact = peerUserId ? contactsState.byId[peerUserId] : null;
+        const label =
+          summary.kind === 'direct'
+            ? (contact ? getContactLabel(contact) : null) ||
+              peer?.display_name ||
+              null
+            : summary.title || memberNameJoin(summary.members, me) || null;
+        const lastReadAt = getLastReadAt(summary.conversationId);
         const hasUnread =
-          !!act &&
           Boolean(me) &&
-          act.latestSenderId !== null &&
-          act.latestSenderId !== me &&
-          act.latestSentAt > lastReadAt;
-        const label = getContactLabel(contact);
+          summary.latestSenderId !== null &&
+          summary.latestSenderId !== me &&
+          summary.latestSentAt > lastReadAt;
 
-        return {
-          row: { id, label, hasUnread },
-          sortKey: act?.latestSentAt || contact.savedAt || 0,
-          sortLabel: (label ?? '').toLowerCase(),
-        };
+        return [
+          {
+            row: {
+              conversationId: summary.conversationId,
+              kind: summary.kind,
+              label,
+              peerUserId,
+              remoteParticipantIds,
+              hasUnread,
+            },
+            sortKey: summary.latestSentAt,
+            sortLabel: (label ?? '').toLowerCase(),
+          },
+        ];
       })
       .sort(
         (a, b) =>
@@ -69,10 +96,8 @@ function createConversationRows() {
 
 export default function ConversationsList() {
   const { t } = useI18n();
-  const contactsState = getContactsStore();
   const rows = createConversationRows();
-  const isLoading = () =>
-    contactsState.status === 'idle' || contactsState.status === 'loading';
+  const isLoading = () => !conversationListSeeded();
 
   return (
     <div class="conversations-container">
@@ -94,16 +119,16 @@ export default function ConversationsList() {
   );
 }
 
-/** One DM row: call button, name (opens the conversation), unread + presence. */
+/** One conversation row. DM rows get call + presence affordances. */
 function ConversationRow(props: { row: ConversationRow }) {
   const { t } = useI18n();
   const label = () => props.row.label ?? t('shared.unknown');
 
   const onOpenConversation = () => {
-    if (!props.row.id) return;
-    // The opaque DM conversation id is resolved from the contact id inside the
-    // store (resolve-or-create) — see openDirectConversation.
-    void openDirectConversation(props.row.id, {
+    openConversation({
+      conversationId: props.row.conversationId,
+      kind: props.row.kind,
+      remoteParticipantIds: props.row.remoteParticipantIds,
       displayUI: true,
       nickname: label(),
     });
@@ -111,15 +136,19 @@ function ConversationRow(props: { row: ConversationRow }) {
 
   return (
     <div class="conversation-entry">
-      <StartCallButton
-        calleeId={props.row.id}
-        calleeName={label()}
-        audioOnly={false}
-      />
+      <Show when={props.row.peerUserId}>
+        {(peerUserId) => (
+          <StartCallButton
+            calleeId={peerUserId()}
+            calleeName={label()}
+            audioOnly={false}
+          />
+        )}
+      </Show>
       <button
         type="button"
         class="contact-name"
-        data-contact-id={props.row.id}
+        data-conversation-id={props.row.conversationId}
         onClick={onOpenConversation}
         aria-label={label()}
       >
@@ -136,7 +165,9 @@ function ConversationRow(props: { row: ConversationRow }) {
           <span aria-hidden="true">•</span>
         </span>
       </Show>
-      <PresenceIndicator userId={props.row.id} />
+      <Show when={props.row.peerUserId}>
+        {(peerUserId) => <PresenceIndicator userId={peerUserId()} />}
+      </Show>
     </div>
   );
 }

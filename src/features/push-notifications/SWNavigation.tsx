@@ -4,7 +4,7 @@ import {
   getContactsIsHydrated,
 } from '../../stores/contactsStore';
 import {
-  open as openSelectedConversation,
+  openConversation as openSelectedConversation,
   openDirectConversation,
 } from '../../stores/conversationStore';
 
@@ -26,12 +26,15 @@ function dispatchPath(path: string) {
   const url = new URL(path, window.location.origin);
   const conversationId = trimmedParam(url.searchParams, 'conversationId');
   const contactId = trimmedParam(url.searchParams, 'contact');
+  const kind =
+    trimmedParam(url.searchParams, 'kind') === 'group' ? 'group' : 'direct';
 
   // Links may carry an opaque conversationId directly; open it as-is.
   if (conversationId) {
     const contact = contactId ? getContactById(contactId) : null;
     openSelectedConversation({
       conversationId,
+      kind,
       remoteParticipantIds: contactId ? [contactId] : [],
       displayUI: true,
       nickname: contact?.nickname ?? undefined,

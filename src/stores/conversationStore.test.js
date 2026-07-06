@@ -102,12 +102,12 @@ describe('conversationStore', () => {
     });
   });
 
-  it('persists the selected contact id for direct opens', async () => {
+  it('persists the selected conversation id for direct opens', async () => {
     const store = await import('./conversationStore.ts');
 
     await store.openDirectConversation('contact-1', { displayUI: false });
 
-    expect(store.loadSelectedContactId()).toBe('contact-1');
+    expect(store.loadSelectedConversationId()).toBe('conversation-1');
     expect(repo.watchRecentMessages).toHaveBeenCalledWith(
       'conversation-1',
       expect.any(Function),
@@ -115,16 +115,17 @@ describe('conversationStore', () => {
     );
   });
 
-  it('persists direct selections opened from raw selection state', async () => {
+  it('persists selections opened from raw selection state', async () => {
     const store = await import('./conversationStore.ts');
 
-    store.open({
-      conversationId: 'conversation-1',
-      remoteParticipantIds: ['contact-2'],
+    store.openConversation({
+      conversationId: 'group-1',
+      kind: 'group',
+      remoteParticipantIds: ['contact-2', 'contact-3'],
       displayUI: true,
     });
 
-    expect(store.loadSelectedContactId()).toBe('contact-2');
+    expect(store.loadSelectedConversationId()).toBe('group-1');
   });
 
   it('merges watcher snapshots in chronological order and maps file envelopes', async () => {
@@ -177,7 +178,6 @@ describe('conversationStore', () => {
     watch.emit([envelope({ messageId: 'msg-1', sentAt: 5 })]);
 
     expect(mocks.recordConversationListMessage).toHaveBeenCalledWith(
-      'contact-1',
       'conversation-1',
       5,
       'user-a',
@@ -210,6 +210,7 @@ describe('conversationStore', () => {
       expect.objectContaining({
         recipientIds: ['contact-1'],
         conversationId: 'conversation-1',
+        conversationKind: 'direct',
         messageText: 'hello',
       }),
     );

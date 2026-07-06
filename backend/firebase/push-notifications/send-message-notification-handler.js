@@ -20,6 +20,7 @@ async function handleSendMessageNotification(req, res) {
     const {
       recipientIds,
       conversationId,
+      conversationKind,
       senderId,
       senderName,
       messagePreview,
@@ -37,6 +38,7 @@ async function handleSendMessageNotification(req, res) {
 
     const payload = buildMessagePayload({
       conversationId,
+      conversationKind,
       senderId: authenticatedUid,
       senderName,
       messagePreview,

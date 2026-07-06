@@ -64,10 +64,41 @@ describe('markConversationRead', () => {
       ]),
     });
 
-    recordConversationListMessage('peer', 'conversation-1', 2000, 'me');
+    recordConversationListMessage('conversation-1', 2000, 'me');
     await refreshConversationListState();
 
-    expect(conversationListState().get('peer')?.latestSentAt).toBe(2000);
+    expect(conversationListState().get('conversation-1')?.latestSentAt).toBe(
+      2000,
+    );
+  });
+
+  it('keeps group conversations from the seed', async () => {
+    vi.mocked(getLoggedInUserId).mockReturnValue('me');
+    vi.mocked(getConversationsClient).mockReturnValue({
+      list: vi.fn().mockResolvedValue([
+        {
+          id: 'group-1',
+          kind: 'group',
+          title: 'Project Room',
+          updated_at: 1000,
+          members: [
+            { user_id: 'me', display_name: 'Me' },
+            { user_id: 'peer', display_name: 'Peer' },
+          ],
+          latest_sent_at: 1000,
+          latest_sender_id: 'peer',
+        },
+      ]),
+    });
+
+    await refreshConversationListState();
+
+    expect(conversationListState().get('group-1')).toMatchObject({
+      conversationId: 'group-1',
+      kind: 'group',
+      title: 'Project Room',
+      latestSenderId: 'peer',
+    });
   });
 
   it('can subscribe again after being stopped', () => {
