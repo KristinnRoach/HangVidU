@@ -20,7 +20,7 @@ CREATE UNIQUE INDEX idx_users_username
 CREATE UNIQUE INDEX idx_users_email_hash ON users(email_hash);
 
 -- Saved contacts. Columns mirror ContactRecordSchema in
--- src/storage/contacts/contact-schema.js (contactId → contact_id, etc.).
+-- src/storage/contacts/contact-schema.ts (contactId → contact_id, etc.).
 CREATE TABLE contacts (
   owner_id            TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   contact_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

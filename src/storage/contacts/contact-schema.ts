@@ -43,7 +43,6 @@ export const ContactPatchSchema = z
   .object({
     nickname: ContactLabelSchema.optional(),
     conversationId: ContactConversationIdSchema.optional(),
-    savedAt: ContactTimestampSchema.optional(),
     lastInteractionAt: ContactTimestampSchema.optional(),
   })
   .strict();
