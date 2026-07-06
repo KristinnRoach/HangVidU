@@ -6,5 +6,5 @@
   handles small contact metadata updates such as `updateContact()` and
   `handleHangUp()`.
 
-- Conversation-list activity (sort key and unread badge) comes from
-  `stores/conversation-activity`, not the contacts store.
+- Conversation-list state (sort key and unread badge) comes from
+  `stores/conversation-list-state`, not the contacts store.

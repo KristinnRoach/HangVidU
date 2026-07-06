@@ -24,8 +24,8 @@ vi.mock('../stores/contactsStore.js', () => ({
     contact.nickname || contact.displayName || contact.username || null,
 }));
 
-vi.mock('../stores/conversation-activity', () => ({
-  conversationActivity: () => mocks.activity,
+vi.mock('../stores/conversation-list-state', () => ({
+  conversationListState: () => mocks.activity,
   getLastReadAt: () => 0,
 }));
 

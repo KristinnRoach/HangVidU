@@ -11,8 +11,8 @@ import { getLoggedInUserProfile } from './userProfileStore';
 import { createD1MessageRepositoryFromEnv } from './message-repository';
 import {
   markConversationRead,
-  recordConversationActivity,
-} from './conversation-activity';
+  recordConversationListMessage,
+} from './conversation-list-state';
 import { resolveDirectConversationId } from './conversations-client';
 import { cacheContactConversationId, getContactById } from './contactsStore.js';
 import {
@@ -307,7 +307,7 @@ function startWatch(
         // only: peer uid is the activity map key.
         const peers = sel.remoteParticipantIds;
         if (peers?.length === 1) {
-          recordConversationActivity(
+          recordConversationListMessage(
             peers[0],
             conversationId,
             latest.sentAt,

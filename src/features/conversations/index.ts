@@ -1,8 +1,8 @@
 import { subscribe } from '../../shared/events/index.js';
 import {
-  startConversationActivity,
-  stopConversationActivity,
-} from '../../stores/conversation-activity';
+  startConversationListSync,
+  stopConversationListSync,
+} from '../../stores/conversation-list-state';
 import { resetConversationsState } from '../../stores/conversations-client.js';
 import { resetConversationStore } from '../../stores/conversationStore';
 import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
@@ -23,9 +23,9 @@ export const setup = createSingleFlightSetup({
       'evt:auth:session:logged-in',
       () => {
         try {
-          startConversationActivity();
+          startConversationListSync();
         } catch (error) {
-          console.warn('[conversations] activity start failed:', error);
+          console.warn('[conversations] list sync start failed:', error);
         }
       },
       { signal },
@@ -35,9 +35,9 @@ export const setup = createSingleFlightSetup({
       'evt:auth:session:logged-out',
       () => {
         try {
-          stopConversationActivity();
+          stopConversationListSync();
         } catch (error) {
-          console.warn('[conversations] activity teardown failed:', error);
+          console.warn('[conversations] list sync teardown failed:', error);
         }
         try {
           resetConversationStore();
