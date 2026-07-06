@@ -199,10 +199,15 @@ export function startConversationListSync(): void {
     },
     (envelope) => {
       if (envelope.t !== 'activity') return; // ignore call invites/responses
+      const known = listState().has(envelope.conversationId);
       upsert(envelope.conversationId, {
         latestSentAt: envelope.sentAt,
         latestSenderId: envelope.senderId,
       });
+      // A conversation created after the seed (new group, newly accepted
+      // contact) arrives here without kind/title/members, and the list hides
+      // kind-less entries — reseed once to fill them in.
+      if (!known) void refreshConversationListState();
     },
   );
 

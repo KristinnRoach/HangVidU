@@ -4,7 +4,7 @@ import {
   getContactsIsHydrated,
 } from '../../stores/contactsStore';
 import {
-  open as openSelectedConversation,
+  openConversation as openSelectedConversation,
   openDirectConversation,
 } from '../../stores/conversationStore';
 

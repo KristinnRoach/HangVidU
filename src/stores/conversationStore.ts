@@ -388,8 +388,6 @@ export function openConversation(next: ConversationSelection): void {
   activate(next);
 }
 
-export const open = openConversation;
-
 type OpenDirectMeta = Omit<
   ConversationSelection,
   'conversationId' | 'kind' | 'remoteParticipantIds'

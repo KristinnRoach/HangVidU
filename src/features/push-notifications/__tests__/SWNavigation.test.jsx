@@ -24,7 +24,7 @@ vi.mock('../../../stores/contactsStore', () => ({
 }));
 
 vi.mock('../../../stores/conversationStore', () => ({
-  open: mocks.openSelectedConversation,
+  openConversation: mocks.openSelectedConversation,
   openDirectConversation: mocks.openDirectConversation,
   selection: () => null,
 }));
