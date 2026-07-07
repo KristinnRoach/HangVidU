@@ -3,16 +3,16 @@ import {
   getIsLoggedIn,
   getLoggedInUserId,
   getLoggedInUserToken,
-} from '../auth/index.js';
-import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url.js';
+} from '@auth/index.js';
+import { getHangViduApiBaseUrl } from '@infra/hangvidu-api-url.js';
 import {
   createContactsLocalStorageRepository,
   createContactsD1Repository,
-} from '../storage/contacts/index.js';
+} from '@storage/contacts/index.js';
 import type {
   ContactPatch,
   ContactRecord,
-} from '../storage/contacts/contact-schema.js';
+} from '@storage/contacts/contact-schema.js';
 
 export type Contact = ContactRecord;
 

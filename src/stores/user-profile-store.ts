@@ -4,22 +4,23 @@
 
 import { ref, set } from 'firebase/database';
 import { createSignal } from 'solid-js';
+import { convertToEnglishLetters } from '../../shared/utils/transliteration.js';
+
 import {
   getAuthProviderProfileSeed,
   getAuthState,
   getLoggedInUserToken,
-} from '../auth/index.js';
-import { rtdb } from '../infra/firebase-rtdb.js';
-import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url.js';
+} from '@auth/index.js';
+import { rtdb } from '@infra/firebase-rtdb.js';
+import { getHangViduApiBaseUrl } from '@infra/hangvidu-api-url.js';
 import { hashEmail } from '@lib/utils/email-hash.js';
-import { convertToEnglishLetters } from '../../shared/utils/transliteration.js';
-import { subscribe } from '../shared/events/index.js';
+import { subscribe } from '@shared/events/index.js';
 import {
   createUserProfileRepository,
   createUserProfileD1Adapter,
   createUserDiscovery,
-} from '../storage/user/index.js';
-import { createWorkerRequest } from '../storage/worker-request.js';
+} from '@storage/user/index.js';
+import { createWorkerRequest } from '@storage/worker-request.js';
 
 type AuthUser = {
   uid: string;
