@@ -5,14 +5,14 @@
 // composed here and handed to the feature adapter.
 
 import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
-import { getConversationsClient } from './conversations-client';
-import { createConversationChannel } from '../realtime/conversation-channel';
+import { getConversationsClient } from './conversations-client.js';
+import { createConversationChannel } from '../realtime/conversation-channel.js';
 import {
   createD1MessageRepository,
   type D1MessageClient,
-} from '../features/conversations/adapters/d1';
+} from '../features/conversations/adapters/d1.js';
 import type { MessageRepository } from '../features/conversations/interfaces.js';
-import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
+import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url.js';
 
 export function createD1MessageRepositoryFromEnv(): MessageRepository {
   const http = getConversationsClient();

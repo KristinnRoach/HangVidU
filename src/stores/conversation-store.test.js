@@ -24,7 +24,7 @@ vi.mock('../auth/index.js', () => ({
 vi.mock('./user-profile-store', () => ({
   getLoggedInUserProfile: mocks.getLoggedInUserProfile,
 }));
-vi.mock('./message-repository', () => ({
+vi.mock('./setup-message-repo', () => ({
   createD1MessageRepositoryFromEnv: mocks.createD1MessageRepositoryFromEnv,
 }));
 vi.mock('./conversation-list-state', () => ({

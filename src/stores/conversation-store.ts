@@ -8,7 +8,7 @@ import { createSignal } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { getLoggedInUserId } from '../auth/index.js';
 import { getLoggedInUserProfile } from './user-profile-store.js';
-import { createD1MessageRepositoryFromEnv } from './message-repository.js';
+import { createD1MessageRepositoryFromEnv } from './setup-message-repo.js';
 import {
   conversationListState,
   conversationPeers,
