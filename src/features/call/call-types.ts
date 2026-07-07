@@ -1,6 +1,6 @@
-import type { CallInvite } from './model/call-schema.js';
+import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 
-export type pendingOutgoingCall = {
+export type PendingOutgoingCall = {
   calleeId: string;
   calleeName: string;
   callerId: string;
@@ -19,9 +19,9 @@ export type CallHandshakeState =
   | null
   | {
       direction: 'incoming';
-      call: CallInvite;
+      call: MailboxInvite;
     }
   | {
       direction: 'outgoing';
-      call: pendingOutgoingCall;
+      call: PendingOutgoingCall;
     };

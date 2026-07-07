@@ -6,7 +6,7 @@ import {
 import { getLoggedInUserId, getLoggedInUserToken } from '../../auth/index.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import type { CreateRoomSignalingOptions, P2PRoomSignaling } from '@kidlib/p2p';
-import { CallResponseType, type CallInvite } from './model/call-schema.js';
+import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 import {
   sendIncomingCallPushNotification,
   sendMissedCallPushNotification,
@@ -17,7 +17,7 @@ import {
 } from './media-constraints.js';
 import type {
   CallHandshakeState,
-  pendingOutgoingCall,
+  PendingOutgoingCall,
   StartCallDetails,
 } from './call-types.js';
 import { resolveDirectConversationId } from '../../stores/conversations-client.js';
@@ -134,7 +134,7 @@ export class CallHandshakeController {
           .respondToIncomingCallInvite({
             roomId: call.roomId,
             callerId: call.callerId,
-            responseType: CallResponseType.BUSY,
+            responseType: 'busy',
           })
           .catch((err) =>
             console.error('Error responding busy to incoming call:', err),
@@ -148,7 +148,7 @@ export class CallHandshakeController {
     });
   }
 
-  private isBusyForIncomingCall(call: CallInvite): boolean {
+  private isBusyForIncomingCall(call: MailboxInvite): boolean {
     const state = this._handshakeState;
     if (state && state.direction === 'incoming') {
       return state.call.roomId !== call.roomId;
@@ -184,7 +184,7 @@ export class CallHandshakeController {
       return;
     }
 
-    const nextOutgoingCall: pendingOutgoingCall = {
+    const nextOutgoingCall: PendingOutgoingCall = {
       calleeId,
       calleeName,
       callerId: localUID,
@@ -364,7 +364,7 @@ export class CallHandshakeController {
 
   private scheduleOutgoingCallTimeout(
     callService: NonNullable<ReturnType<typeof getCallService>>,
-    call: pendingOutgoingCall,
+    call: PendingOutgoingCall,
   ): void {
     this.clearOutgoingCallTimeout();
     this.outgoingCallTimeoutId = setTimeout(() => {
@@ -427,7 +427,7 @@ export class CallHandshakeController {
         svc.respondToIncomingCallInvite({
           roomId: state.call.roomId,
           callerId: state.call.callerId,
-          responseType: CallResponseType.ACCEPTED,
+          responseType: 'accepted',
         }),
       )
       .catch((err) => {
@@ -446,7 +446,7 @@ export class CallHandshakeController {
       .respondToIncomingCallInvite({
         roomId: state.call.roomId,
         callerId: state.call.callerId,
-        responseType: CallResponseType.REJECTED,
+        responseType: 'rejected',
       })
       .catch((err) => console.error('Error declining incoming call:', err));
   };

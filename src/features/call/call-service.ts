@@ -1,11 +1,14 @@
 import { subscribeToUserMailbox } from '../../realtime/user-mailbox';
-import type { MailboxEnvelope } from '../../../shared/user-mailbox/protocol';
-import type { CallInvite, CallResponse } from './model/call-schema';
+import type {
+  MailboxEnvelope,
+  MailboxInvite,
+  MailboxResponse,
+} from '../../../shared/user-mailbox/protocol';
 import { CALLING_TTL_MS } from '../../../shared/constants';
 import { reportApiAuthFailure } from '../../infra/api-auth-failure.js';
 
 export type IncomingCallEvent =
-  | { type: 'invite'; invite: CallInvite }
+  | { type: 'invite'; invite: MailboxInvite }
   | { type: 'cancel'; roomId: string; by: string }
   | { type: 'handled'; roomId: string; by: string };
 
@@ -112,7 +115,7 @@ export class CallService {
     return this.subscribe((envelope) => {
       if (envelope.t === 'invite') {
         if (!notExpired(envelope.invite.expiresAt)) return;
-        callback({ type: 'invite', invite: envelope.invite as CallInvite });
+        callback({ type: 'invite', invite: envelope.invite });
       } else if (envelope.t === 'cancel' || envelope.t === 'handled') {
         callback({
           type: envelope.t,
@@ -150,7 +153,7 @@ export class CallService {
   }: {
     roomId: string;
     callerId: string;
-    responseType: CallResponse['responseType'];
+    responseType: MailboxResponse['responseType'];
   }): Promise<void> {
     await this.post('/calls/response', {
       conversationId: roomId,
@@ -175,12 +178,12 @@ export class CallService {
 
   /** Responses addressed to this user (the caller); filters expired/stale. */
   onCalleeResponse(
-    callback: (response: CallResponse | null) => void,
+    callback: (response: MailboxResponse | null) => void,
   ): () => void {
     return this.subscribe((envelope) => {
       if (envelope.t !== 'response') return;
       if (!notExpired(envelope.response.expiresAt)) return;
-      callback(envelope.response as CallResponse);
+      callback(envelope.response);
     });
   }
 
