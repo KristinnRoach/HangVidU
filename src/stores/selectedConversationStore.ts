@@ -10,11 +10,20 @@ import { getLoggedInUserId } from '../auth/index.js';
 import { getLoggedInUserProfile } from './userProfileStore';
 import { createD1MessageRepositoryFromEnv } from './message-repository';
 import {
+  conversationListState,
+  conversationPeers,
+  ensureDirectConversationListed,
   markConversationRead,
   recordConversationListMessage,
+  refreshConversationListState,
+  type Conversation,
 } from './conversation-list-state';
 import { resolveDirectConversationId } from './conversations-client';
-import { cacheContactConversationId, getContactById } from './contactsStore.js';
+import {
+  cacheContactConversationId,
+  getContactById,
+  getContactLabel,
+} from './contactsStore.js';
 import {
   deleteConversationFile,
   uploadConversationFile,
@@ -49,10 +58,7 @@ import type { ReactionChange } from '../features/conversations/reactions/solid/s
 
 export type ConversationSelection = {
   conversationId: ConversationId;
-  kind: 'direct' | 'group';
-  remoteParticipantIds?: UserId[];
-  nickname?: string | null;
-  displayUI?: boolean;
+  displayUI: boolean;
 };
 
 type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -85,6 +91,15 @@ const [selection, setSelection] = createSignal<ConversationSelection | null>(
   null,
 );
 export { selection };
+
+/**
+ * Reactive: the selected conversation's list record (kind, members, title),
+ * or null while it hasn't landed in conversation-list-state yet.
+ */
+export function selectedConversation(): Conversation | null {
+  const sel = selection();
+  return sel ? (conversationListState().get(sel.conversationId) ?? null) : null;
+}
 
 const [latestReadCandidate, setLatestReadCandidate] = createSignal<{
   conversationId: ConversationId;
@@ -197,6 +212,18 @@ function isChatMessage(message: ChatMessage | null): message is ChatMessage {
   return Boolean(message);
 }
 
+function fileAttachment(payload: FileMessagePayload) {
+  return {
+    type: 'file' as const,
+    fileName: payload.fileName,
+    mimeType: payload.mimeType,
+    fileSize: payload.fileSize,
+    width: payload.width,
+    height: payload.height,
+    storage: payload.storage,
+  };
+}
+
 function envelopeToChatMessage(message: IncomingMessage): ChatMessage | null {
   if (message.payload.type === 'system' || message.payload.type === 'event') {
     return null;
@@ -208,15 +235,7 @@ function envelopeToChatMessage(message: IncomingMessage): ChatMessage | null {
       : (message.payload.text ?? '');
   const attachment =
     message.payload.type === 'file'
-      ? {
-          type: 'file' as const,
-          fileName: message.payload.fileName,
-          mimeType: message.payload.mimeType,
-          fileSize: message.payload.fileSize,
-          width: message.payload.width,
-          height: message.payload.height,
-          storage: message.payload.storage,
-        }
+      ? fileAttachment(message.payload)
       : undefined;
 
   return {
@@ -279,7 +298,7 @@ let stopWatch: (() => void) | undefined;
 function startWatch(
   conversationId: ConversationId,
   myUserId: UserId,
-  sel: ConversationSelection,
+  displayUI: boolean,
 ) {
   let disposed = false;
   let cleanup: (() => void) | undefined;
@@ -316,15 +335,14 @@ function startWatch(
       if (disposed || conversationId !== state.conversationId) return;
       // Stale cached conversationId (env switch, deleted conversation):
       // resolve-or-create will replace the cached id on retry.
-      const contactId = sel.remoteParticipantIds?.[0];
-      if (
-        (error as { status?: number })?.status === 404 &&
-        sel.kind === 'direct' &&
-        contactId
-      ) {
+      const conversation = conversationListState().get(conversationId);
+      const contactId =
+        conversation?.kind === 'direct'
+          ? conversationPeers(conversation)[0]
+          : undefined;
+      if ((error as { status?: number })?.status === 404 && contactId) {
         void openDirectConversation(contactId, {
-          nickname: sel.nickname,
-          displayUI: sel.displayUI,
+          displayUI,
           forceResolve: true,
         });
         return;
@@ -376,20 +394,23 @@ function activate(next: ConversationSelection | null) {
     history: 'loading',
     historyError: null,
   });
-  startWatch(next.conversationId, myUserId, next);
+  startWatch(next.conversationId, myUserId, next.displayUI);
 }
 
 // ---------- selection actions ----------
 
-export function openConversation(next: ConversationSelection): void {
-  saveSelectedConversationId(next.conversationId);
-  activate(next);
+export function openConversation(
+  conversationId: ConversationId,
+  opts?: { displayUI?: boolean },
+): void {
+  saveSelectedConversationId(conversationId);
+  // Deep links / push nav can open an id the seed hasn't delivered yet;
+  // reseed so kind/members/label fill in.
+  if (!conversationListState().get(conversationId)?.kind) {
+    void refreshConversationListState();
+  }
+  activate({ conversationId, displayUI: opts?.displayUI ?? true });
 }
-
-type OpenDirectMeta = Omit<
-  ConversationSelection,
-  'conversationId' | 'kind' | 'remoteParticipantIds'
-> & { forceResolve?: boolean };
 
 /**
  * Open a contact's DM conversation. This is the single place the messaging
@@ -402,13 +423,12 @@ type OpenDirectMeta = Omit<
  */
 export async function openDirectConversation(
   contactId: string,
-  meta?: OpenDirectMeta,
+  opts?: { displayUI?: boolean; forceResolve?: boolean },
 ): Promise<void> {
-  const { forceResolve = false, ...selectionMeta } = meta ?? {};
-  let conversationId: string | null =
-    getContactById(contactId)?.conversationId ?? null;
+  const contact = getContactById(contactId);
+  let conversationId: string | null = contact?.conversationId ?? null;
 
-  if (!conversationId || forceResolve) {
+  if (!conversationId || opts?.forceResolve) {
     try {
       // Network + auth call; can reject. Callers fire-and-forget, so catch
       // here to keep failures on the warn-and-return path instead of an
@@ -430,12 +450,12 @@ export async function openDirectConversation(
     return;
   }
 
-  openConversation({
-    ...selectionMeta,
-    conversationId,
-    kind: 'direct',
-    remoteParticipantIds: [contactId],
+  ensureDirectConversationListed(conversationId, {
+    user_id: contactId,
+    display_name: contact ? getContactLabel(contact) : null,
+    joined_at: 0,
   });
+  openConversation(conversationId, { displayUI: opts?.displayUI });
 }
 
 /** Release the active conversation and all its state. Called on logout. */
@@ -480,17 +500,7 @@ export async function sendMessage(
   const optimisticText =
     payload.type === 'text' ? payload.text : (payload.text ?? '');
   const attachment =
-    payload.type === 'file'
-      ? {
-          type: 'file' as const,
-          fileName: payload.fileName,
-          mimeType: payload.mimeType,
-          fileSize: payload.fileSize,
-          width: payload.width,
-          height: payload.height,
-          storage: payload.storage,
-        }
-      : undefined;
+    payload.type === 'file' ? fileAttachment(payload) : undefined;
 
   addOptimisticMessage({
     id: tempId,
@@ -504,8 +514,11 @@ export async function sendMessage(
   });
   setState({ draft: '', sending: true });
 
-  const recipientIds = selection()?.remoteParticipantIds ?? [];
-  const conversationKind = selection()?.kind;
+  const conversation = conversationListState().get(conversationId);
+  const recipientIds = conversation
+    ? (conversationPeers(conversation) as UserId[])
+    : [];
+  const conversationKind = conversation?.kind ?? undefined;
 
   let sent = false;
   try {

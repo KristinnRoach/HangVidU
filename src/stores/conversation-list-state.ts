@@ -15,6 +15,7 @@
 import { createSignal } from 'solid-js';
 import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
 import { getConversationsClient } from './conversations-client';
+import { getContactById, getContactLabel } from './contactsStore.js';
 import {
   closeUserMailbox,
   subscribeToUserMailbox,
@@ -22,7 +23,7 @@ import {
 import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
 import type { ConversationMember } from '../storage/conversations/data-client';
 
-export type ConversationSummary = {
+export type Conversation = {
   conversationId: string;
   kind: 'direct' | 'group' | null;
   title: string | null;
@@ -31,9 +32,9 @@ export type ConversationSummary = {
   latestSenderId: string | null;
 };
 
-const [listState, setListState] = createSignal<
-  Map<string, ConversationSummary>
->(new Map());
+const [listState, setListState] = createSignal<Map<string, Conversation>>(
+  new Map(),
+);
 const [seeded, setSeeded] = createSignal(false);
 const [readVersion, setReadVersion] = createSignal(0);
 // Server-owned read markers (conversationId -> lastReadAt), seeded from
@@ -47,6 +48,49 @@ const [serverLastRead, setServerLastRead] = createSignal<Map<string, number>>(
 /** Reactive: conversationId -> latest list state. Read by app/ConversationsList. */
 export const conversationListState = listState;
 export const conversationListSeeded = seeded;
+
+// ── derivations ──────────────────────────────────────────────────────────────
+
+/** Member ids minus the logged-in user. */
+export function conversationPeers(conversation: Conversation): string[] {
+  const me = getLoggedInUserId();
+  return conversation.members
+    .map((member) => member.user_id)
+    .filter((id) => id !== me);
+}
+
+const MAX_NAME_CHARS = 18;
+
+/** Truncate a display name for tight list/row layouts. */
+export function shortName(name: string): string {
+  return name.length > MAX_NAME_CHARS
+    ? name.slice(0, MAX_NAME_CHARS - 2) + '..'
+    : name;
+}
+
+/**
+ * Display label: DMs prefer the contact label (nickname et al) over the
+ * member's directory name; groups prefer the title over joined first names.
+ * Null when no name is known.
+ */
+export function conversationLabel(conversation: Conversation): string | null {
+  const me = getLoggedInUserId();
+  const others = conversation.members.filter((member) => member.user_id !== me);
+  if (conversation.kind === 'direct') {
+    const peer = others[0];
+    const contact = peer ? getContactById(peer.user_id) : null;
+    return (contact && getContactLabel(contact)) || peer?.display_name || null;
+  }
+  return (
+    conversation.title ||
+    others
+      .map((member) => member.display_name)
+      .filter((name): name is string => Boolean(name))
+      .map(shortName)
+      .join(', ') ||
+    null
+  );
+}
 // ── per-device read state ────────────────────────────────────────────────────
 const readKey = (conversationId: string) =>
   `hangvidu:lastRead:${conversationId}`;
@@ -84,10 +128,7 @@ export function markConversationRead(
 }
 
 // ── seed + live wiring ───────────────────────────────────────────────────────
-function upsert(
-  conversationId: string,
-  next: Partial<ConversationSummary>,
-): void {
+function upsert(conversationId: string, next: Partial<Conversation>): void {
   setListState((prev) => {
     const cur = prev.get(conversationId);
     const latestSentAt = next.latestSentAt ?? cur?.latestSentAt ?? 0;
@@ -119,6 +160,19 @@ export function recordConversationListMessage(
   upsert(conversationId, { latestSentAt, latestSenderId });
 }
 
+/**
+ * Stub a just-resolved DM into the list so kind/peers/label are available
+ * immediately (fresh contact opened before the next seed delivers it). No-op
+ * when the conversation is already listed with a kind.
+ */
+export function ensureDirectConversationListed(
+  conversationId: string,
+  peer: ConversationMember,
+): void {
+  if (listState().get(conversationId)?.kind) return;
+  upsert(conversationId, { kind: 'direct', members: [peer] });
+}
+
 /** Refetch the current conversation-list state snapshot (seed). */
 export async function refreshConversationListState(): Promise<void> {
   const me = getLoggedInUserId();
@@ -132,7 +186,7 @@ export async function refreshConversationListState(): Promise<void> {
     const conversations = await getConversationsClient().list();
     if (getLoggedInUserId() !== me) return;
 
-    const map = new Map<string, ConversationSummary>();
+    const map = new Map<string, Conversation>();
     const reads = new Map<string, number>();
     for (const c of conversations) {
       map.set(c.id, {

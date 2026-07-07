@@ -23,7 +23,7 @@ vi.mock('../../../stores/contactsStore', () => ({
   getContactsIsHydrated: mocks.getContactsIsHydrated,
 }));
 
-vi.mock('../../../stores/conversationStore', () => ({
+vi.mock('../../../stores/selectedConversationStore', () => ({
   openConversation: mocks.openSelectedConversation,
   openDirectConversation: mocks.openDirectConversation,
   selection: () => null,
@@ -101,7 +101,6 @@ describe('SWNavigation', () => {
     await waitFor(() => {
       expect(mocks.openDirectConversation).toHaveBeenCalledWith('sender-1', {
         displayUI: true,
-        nickname: 'Sender',
       });
     });
 
@@ -113,7 +112,7 @@ describe('SWNavigation', () => {
     );
   });
 
-  it('preserves group kind on conversation deep links', async () => {
+  it('opens conversation deep links by raw id', async () => {
     const { unmount } = render(() => <SWNavigation />);
 
     messageListener?.({
@@ -126,12 +125,8 @@ describe('SWNavigation', () => {
     setHydrated(true);
 
     await waitFor(() => {
-      expect(mocks.openSelectedConversation).toHaveBeenCalledWith({
-        conversationId: 'group-1',
-        kind: 'group',
-        remoteParticipantIds: [],
+      expect(mocks.openSelectedConversation).toHaveBeenCalledWith('group-1', {
         displayUI: true,
-        nickname: undefined,
       });
     });
 

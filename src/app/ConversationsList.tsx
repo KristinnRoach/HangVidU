@@ -2,13 +2,15 @@ import { For, Show, createMemo } from 'solid-js';
 import { Spinner } from '../components/app/Spinner';
 import { useI18n } from '../shared/i18n';
 import { getLoggedInUserId } from '../auth/index.js';
-import { getContactLabel, getContactsStore } from '../stores/contactsStore.js';
 import {
+  conversationLabel,
   conversationListSeeded,
   conversationListState,
+  conversationPeers,
   getLastReadAt,
+  shortName,
 } from '../stores/conversation-list-state';
-import { openConversation } from '../stores/conversationStore';
+import { openConversation } from '../stores/selectedConversationStore';
 import PresenceIndicator from '../features/presence/components/PresenceIndicator';
 import { StartCallButton } from '../features/call/components/CallControls';
 
@@ -17,71 +19,39 @@ type ConversationRow = {
   kind: 'direct' | 'group';
   label: string | null;
   peerUserId?: string;
-  remoteParticipantIds: string[];
   hasUnread: boolean;
 };
 
-const MAX_NAME_CHARS = 18;
-
-function shortName(name: string): string {
-  return name.length > MAX_NAME_CHARS
-    ? name.slice(0, MAX_NAME_CHARS - 2) + '..'
-    : name;
-}
-
-function memberNameJoin(
-  members: { user_id: string; display_name: string | null }[],
-  me: string | null,
-): string {
-  return members
-    .filter((member) => member.user_id !== me)
-    .map((member) => member.display_name)
-    .filter((name): name is string => Boolean(name))
-    .map(shortName)
-    .join(', ');
-}
-
 function createConversationRows() {
-  const contactsState = getContactsStore();
-
   return createMemo<ConversationRow[]>(() => {
     const me = getLoggedInUserId();
     const listState = conversationListState();
 
     return [...listState.values()]
-      .flatMap((summary) => {
-        if (!summary.kind) return [];
-        const remoteParticipantIds = summary.members
-          .map((member) => member.user_id)
-          .filter((id) => id !== me);
-        const peer = summary.members.find((member) => member.user_id !== me);
+      .flatMap((conversation) => {
+        if (!conversation.kind) return [];
         const peerUserId =
-          summary.kind === 'direct' ? peer?.user_id : undefined;
-        const contact = peerUserId ? contactsState.byId[peerUserId] : null;
-        const label =
-          summary.kind === 'direct'
-            ? (contact ? getContactLabel(contact) : null) ||
-              peer?.display_name ||
-              null
-            : summary.title || memberNameJoin(summary.members, me) || null;
-        const lastReadAt = getLastReadAt(summary.conversationId);
+          conversation.kind === 'direct'
+            ? conversationPeers(conversation)[0]
+            : undefined;
+        const label = conversationLabel(conversation);
+        const lastReadAt = getLastReadAt(conversation.conversationId);
         const hasUnread =
           Boolean(me) &&
-          summary.latestSenderId !== null &&
-          summary.latestSenderId !== me &&
-          summary.latestSentAt > lastReadAt;
+          conversation.latestSenderId !== null &&
+          conversation.latestSenderId !== me &&
+          conversation.latestSentAt > lastReadAt;
 
         return [
           {
             row: {
-              conversationId: summary.conversationId,
-              kind: summary.kind,
+              conversationId: conversation.conversationId,
+              kind: conversation.kind,
               label,
               peerUserId,
-              remoteParticipantIds,
               hasUnread,
             },
-            sortKey: summary.latestSentAt,
+            sortKey: conversation.latestSentAt,
             sortLabel: (label ?? '').toLowerCase(),
           },
         ];
@@ -125,13 +95,7 @@ function ConversationRow(props: { row: ConversationRow }) {
   const label = () => props.row.label ?? t('shared.unknown');
 
   const onOpenConversation = () => {
-    openConversation({
-      conversationId: props.row.conversationId,
-      kind: props.row.kind,
-      remoteParticipantIds: props.row.remoteParticipantIds,
-      displayUI: true,
-      nickname: label(),
-    });
+    openConversation(props.row.conversationId, { displayUI: true });
   };
 
   return (
