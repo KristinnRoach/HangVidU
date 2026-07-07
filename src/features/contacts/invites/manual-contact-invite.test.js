@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   hydrateContacts: vi.fn(),
 }));
 
-vi.mock('../../../stores/userProfileStore.js', () => ({
+vi.mock('../../../stores/user-profile-store.js', () => ({
   lookupRegisteredUserByEmail: mocks.lookupRegisteredUserByEmail,
 }));
 
@@ -15,7 +15,7 @@ vi.mock('./send-contact-invite.js', () => ({
   sendContactInvite: mocks.sendContactInvite,
 }));
 
-vi.mock('../../../stores/contactsStore.js', () => ({
+vi.mock('../../../stores/contacts-store.js', () => ({
   getAllContacts: mocks.getAllContacts,
   hydrateContacts: mocks.hydrateContacts,
 }));

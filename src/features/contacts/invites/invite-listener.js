@@ -9,12 +9,12 @@ import {
 import { getHangViduApiBaseUrl } from '../../../infra/hangvidu-api-url.js';
 import { subscribeToUserMailbox } from '../../../realtime/user-mailbox';
 import { dispatchCommand } from '../../../shared/events/index.js';
-import { reloadContacts } from '../../../stores/contactsStore.js';
+import { reloadContacts } from '../../../stores/contacts-store.js';
 import {
   acceptContactRequest,
   declineContactRequest,
   listIncomingContactRequests,
-} from '../../../stores/userProfileStore.js';
+} from '../../../stores/user-profile-store.js';
 
 const pendingNotificationIds = new Set();
 

@@ -1,4 +1,4 @@
-import { sendContactRequest } from '../../../stores/userProfileStore.js';
+import { sendContactRequest } from '../../../stores/user-profile-store.js';
 
 const DUPLICATE_ERROR_TOKENS = [
   'already_invited',

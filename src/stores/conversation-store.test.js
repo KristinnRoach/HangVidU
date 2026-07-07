@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../auth/index.js', () => ({
   getLoggedInUserId: mocks.getLoggedInUserId,
 }));
-vi.mock('./userProfileStore', () => ({
+vi.mock('./user-profile-store', () => ({
   getLoggedInUserProfile: mocks.getLoggedInUserProfile,
 }));
 vi.mock('./message-repository', () => ({
@@ -41,12 +41,12 @@ vi.mock('./conversation-list-state', () => ({
 vi.mock('./conversations-client', () => ({
   resolveDirectConversationId: mocks.resolveDirectConversationId,
 }));
-vi.mock('./contactsStore.js', () => ({
+vi.mock('./contacts-store.js', () => ({
   getContactById: mocks.getContactById,
   getContactLabel: (contact) => contact?.nickname ?? null,
   cacheContactConversationId: mocks.cacheContactConversationId,
 }));
-vi.mock('./filesStore.js', () => ({
+vi.mock('./files-store.js', () => ({
   uploadConversationFile: mocks.uploadConversationFile,
   deleteConversationFile: mocks.deleteConversationFile,
 }));
@@ -72,7 +72,7 @@ function envelope(overrides) {
   };
 }
 
-describe('selectedConversationStore', () => {
+describe('conversation-store', () => {
   /** Captured per test by the fake repository. */
   let watch;
   let repo;
@@ -131,7 +131,7 @@ describe('selectedConversationStore', () => {
   });
 
   it('persists the selected conversation id for direct opens', async () => {
-    const store = await import('./selectedConversationStore.ts');
+    const store = await import('./conversation-store.js');
 
     await store.openDirectConversation('contact-1', { displayUI: false });
 
@@ -144,7 +144,7 @@ describe('selectedConversationStore', () => {
   });
 
   it('persists selections opened by raw conversation id', async () => {
-    const store = await import('./selectedConversationStore.ts');
+    const store = await import('./conversation-store.js');
 
     store.openConversation('group-1', { displayUI: true });
 
@@ -154,7 +154,7 @@ describe('selectedConversationStore', () => {
   });
 
   it('merges watcher snapshots in chronological order and maps file envelopes', async () => {
-    const store = await import('./selectedConversationStore.ts');
+    const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');
 
     watch.emit([
@@ -197,7 +197,7 @@ describe('selectedConversationStore', () => {
   });
 
   it('records DM activity for the latest watcher message', async () => {
-    const store = await import('./selectedConversationStore.ts');
+    const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');
 
     watch.emit([envelope({ messageId: 'msg-1', sentAt: 5 })]);
@@ -210,7 +210,7 @@ describe('selectedConversationStore', () => {
   });
 
   it('sends the draft under a reserved persistent id and clears it', async () => {
-    const store = await import('./selectedConversationStore.ts');
+    const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');
     store.setConversationDraft('hello');
 
@@ -242,7 +242,7 @@ describe('selectedConversationStore', () => {
   });
 
   it('dedupes the watcher echo against the in-flight optimistic message', async () => {
-    const store = await import('./selectedConversationStore.ts');
+    const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');
     store.setConversationDraft('hello');
 
@@ -267,7 +267,7 @@ describe('selectedConversationStore', () => {
   });
 
   it('marks the optimistic message failed when the send rejects', async () => {
-    const store = await import('./selectedConversationStore.ts');
+    const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');
     store.setConversationDraft('hello');
     repo.send.mockRejectedValue(new Error('offline'));
@@ -281,7 +281,7 @@ describe('selectedConversationStore', () => {
   });
 
   it('isolates push notification failures from the send result', async () => {
-    const store = await import('./selectedConversationStore.ts');
+    const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');
     store.setConversationDraft('hello');
     mocks.sendMessageNotification.mockImplementationOnce(() => {
@@ -294,7 +294,7 @@ describe('selectedConversationStore', () => {
   it('persists drafts per conversation and restores them on reopen', async () => {
     vi.useFakeTimers();
     try {
-      const store = await import('./selectedConversationStore.ts');
+      const store = await import('./conversation-store.js');
       await store.openDirectConversation('contact-1');
 
       store.setConversationDraft('unsent thought');
@@ -319,7 +319,7 @@ describe('selectedConversationStore', () => {
   });
 
   it('reset stops the watch and clears all conversation state', async () => {
-    const store = await import('./selectedConversationStore.ts');
+    const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');
     watch.emit([envelope()]);
 

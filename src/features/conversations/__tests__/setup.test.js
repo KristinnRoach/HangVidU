@@ -32,7 +32,7 @@ vi.mock('../../../stores/conversation-list-state', () => ({
 vi.mock('../../../stores/conversations-client.js', () => ({
   resetConversationsState: mocks.resetConversationsState,
 }));
-vi.mock('../../../stores/selectedConversationStore', () => ({
+vi.mock('../../../stores/conversation-store', () => ({
   resetConversationStore: mocks.resetConversationStore,
 }));
 

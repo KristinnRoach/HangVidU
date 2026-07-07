@@ -20,12 +20,12 @@ vi.mock('../../../shared/utils/google/gis-tokens.js', () => ({
   requestContactsAccess: mocks.requestContactsAccess,
 }));
 
-vi.mock('../../../stores/contactsStore.js', () => ({
+vi.mock('../../../stores/contacts-store.js', () => ({
   getAllContacts: mocks.getAllContacts,
   hydrateContacts: mocks.hydrateContacts,
 }));
 
-vi.mock('../../../stores/userProfileStore.js', () => ({
+vi.mock('../../../stores/user-profile-store.js', () => ({
   findRegisteredUsersByEmails: mocks.findRegisteredUsersByEmails,
 }));
 

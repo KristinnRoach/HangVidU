@@ -6,6 +6,7 @@ import {
 } from '../../../components/base-legacy/notification.js';
 import { inAppNotificationManager } from '../in-app-notification-manager.js';
 import { getPushNotifications } from '../../push-notifications/index.js';
+import { showPushUnsupportedNotification } from './push-unsupported-notification.js';
 import {
   showSuccessToast,
   showWarningToast,
@@ -123,17 +124,7 @@ export function showEnableNotificationsPrompt() {
           }
 
           if (result.reason === 'unsupported') {
-            // Defensive: shouldn't normally reach here, but handle gracefully
-            import('./push-unsupported-notification.js')
-              .then(({ showPushUnsupportedNotification }) => {
-                showPushUnsupportedNotification();
-              })
-              .catch((err) => {
-                console.error(
-                  '[ENABLE NOTIFICATIONS] Failed to load unsupported notification:',
-                  err,
-                );
-              });
+            showPushUnsupportedNotification();
             inAppNotificationManager.remove(NOTIFICATION_ID);
             return;
           }

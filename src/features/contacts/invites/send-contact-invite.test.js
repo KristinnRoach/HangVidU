@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   sendContactRequest: vi.fn(),
 }));
 
-vi.mock('../../../stores/userProfileStore.js', () => ({
+vi.mock('../../../stores/user-profile-store.js', () => ({
   sendContactRequest: mocks.sendContactRequest,
 }));
 

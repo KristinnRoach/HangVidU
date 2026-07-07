@@ -4,7 +4,7 @@ import {
   getLoggedInUserId,
   getLoggedInUserToken,
 } from '../auth/index.js';
-import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
+import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url.js';
 import {
   createContactsLocalStorageRepository,
   createContactsD1Repository,

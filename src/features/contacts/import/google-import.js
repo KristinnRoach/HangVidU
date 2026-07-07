@@ -3,8 +3,8 @@ import { requestContactsAccess } from '../../../shared/utils/google/gis-tokens.j
 import {
   getAllContacts,
   hydrateContacts,
-} from '../../../stores/contactsStore.js';
-import { findRegisteredUsersByEmails } from '../../../stores/userProfileStore.js';
+} from '../../../stores/contacts-store.js';
+import { findRegisteredUsersByEmails } from '../../../stores/user-profile-store.js';
 import { fetchGoogleContacts } from '../../../shared/utils/google/google-contacts.js';
 import { buildImportableContacts } from './import-contacts-utils.js';
 

@@ -5,7 +5,7 @@
 //
 // Factory shape (not a module singleton) so storage stays boundary-clean: the
 // bearer token arrives via an injected `getToken`. The wiring + public function
-// names live in src/stores/userProfileStore.js.
+// names live in src/stores/user-profile-store.js.
 
 import { hashEmail } from '@lib/utils/email-hash.js';
 import { createWorkerRequest } from '../worker-request.js';

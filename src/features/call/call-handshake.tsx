@@ -12,7 +12,7 @@ import { useAuth } from '../../auth/solid-auth.js';
 import { getAuthProviderProfileSeed } from '../../auth/index.js';
 import { useP2PContext } from '../../shared/p2p-context.js';
 import { createRoomSignaling } from '../../realtime/index.js';
-import { getLoggedInUserProfile } from '../../stores/userProfileStore.js';
+import { getLoggedInUserProfile } from '../../stores/user-profile-store.js';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 import { CallHandshakeController } from './call-handshake-controller.js';
 import type {

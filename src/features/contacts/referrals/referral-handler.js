@@ -4,7 +4,7 @@ import {
   signInWithAccountSelection,
   getLoggedInUserId,
 } from '../../../auth/index.js';
-import { reloadContacts } from '../../../stores/contactsStore.js';
+import { reloadContacts } from '../../../stores/contacts-store.js';
 import {
   showInfoToast,
   showSuccessToast,
@@ -12,7 +12,7 @@ import {
 import {
   connectReferral,
   getUserProfileById,
-} from '../../../stores/userProfileStore.js';
+} from '../../../stores/user-profile-store.js';
 import { dispatchCommand } from '../../../shared/events/index.js';
 import { t } from '../../../shared/i18n/index.js';
 

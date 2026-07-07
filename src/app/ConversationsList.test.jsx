@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   openConversation: vi.fn(),
 }));
 
-vi.mock('../stores/contactsStore.js', () => ({
+vi.mock('../stores/contacts-store.js', () => ({
   getContactsStore: () => ({
     get byId() {
       return mocks.byId;
@@ -35,7 +35,7 @@ vi.mock('../auth/index.js', () => ({
   getLoggedInUserToken: () => null,
 }));
 
-vi.mock('../stores/selectedConversationStore', () => ({
+vi.mock('../stores/conversation-store', () => ({
   openConversation: mocks.openConversation,
   selection: () => null,
 }));

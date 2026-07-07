@@ -18,12 +18,12 @@ const mocks = vi.hoisted(() => ({
   openDirectConversation: vi.fn(),
 }));
 
-vi.mock('../../../stores/contactsStore', () => ({
+vi.mock('../../../stores/contacts-store', () => ({
   getContactById: mocks.getContactById,
   getContactsIsHydrated: mocks.getContactsIsHydrated,
 }));
 
-vi.mock('../../../stores/selectedConversationStore', () => ({
+vi.mock('../../../stores/conversation-store', () => ({
   openConversation: mocks.openSelectedConversation,
   openDirectConversation: mocks.openDirectConversation,
   selection: () => null,

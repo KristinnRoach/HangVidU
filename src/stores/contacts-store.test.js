@@ -51,7 +51,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-describe('contactsStore', () => {
+describe('contacts-store', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -61,7 +61,7 @@ describe('contactsStore', () => {
 
   it('does not reuse cached contacts after logout in handleHangUp', async () => {
     mocks.repo.list.mockResolvedValue([contact('contact-1', 'old-conv')]);
-    const store = await import('./contactsStore.js');
+    const store = await import('./contacts-store.js');
 
     await store.hydrateContacts();
     mocks.auth.isLoggedIn = false;
@@ -81,7 +81,7 @@ describe('contactsStore', () => {
       .mockResolvedValueOnce([contact('contact-1', 'conv-1')])
       .mockResolvedValueOnce([contact('contact-2', 'conv-2')]);
 
-    const store = await import('./contactsStore.js');
+    const store = await import('./contacts-store.js');
     const hydrate = store.hydrateContacts();
 
     await Promise.resolve();

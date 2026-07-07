@@ -33,7 +33,7 @@ vi.mock('../referrals/referral-handler.js', () => ({
 vi.mock('../invites/invite-listener.js', () => ({
   setupInviteListener: mocks.setupInviteListener,
 }));
-vi.mock('../../../stores/contactsStore.js', () => ({
+vi.mock('../../../stores/contacts-store.js', () => ({
   hydrateContacts: mocks.hydrateContacts,
   resetContacts: mocks.resetContacts,
 }));

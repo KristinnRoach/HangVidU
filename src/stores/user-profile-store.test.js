@@ -75,7 +75,7 @@ async function flushAsync() {
   await Promise.resolve();
 }
 
-describe('userProfileStore', () => {
+describe('user-profile-store', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -105,7 +105,7 @@ describe('userProfileStore', () => {
       username: 'crystal_quicksand',
     });
 
-    const { getLoggedInUserProfile } = await import('./userProfileStore.js');
+    const { getLoggedInUserProfile } = await import('./user-profile-store.js');
 
     getLoggedInUserProfile();
     await flushAsync();
@@ -149,7 +149,7 @@ describe('userProfileStore', () => {
         username: 'crystal_quicksand',
       });
 
-    const { getLoggedInUserProfile } = await import('./userProfileStore.js');
+    const { getLoggedInUserProfile } = await import('./user-profile-store.js');
 
     getLoggedInUserProfile();
     await flushAsync();

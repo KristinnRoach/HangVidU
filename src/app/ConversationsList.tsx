@@ -10,7 +10,7 @@ import {
   getLastReadAt,
   shortName,
 } from '../stores/conversation-list-state';
-import { openConversation } from '../stores/selectedConversationStore';
+import { openConversation } from '../stores/conversation-store';
 import PresenceIndicator from '../features/presence/components/PresenceIndicator';
 import { StartCallButton } from '../features/call/components/CallControls';
 
