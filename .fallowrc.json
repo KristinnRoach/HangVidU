@@ -1,0 +1,74 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": ["src/index.{ts,tsx,js,jsx}", "src/main.{ts,tsx,js,jsx}"],
+  "ignorePatterns": ["backend/firebase/**"],
+  "workspaces": {
+    "patterns": ["backend/cloudflare"]
+  },
+  "duplicates": {
+    "minOccurrences": 3,
+    "ignore": ["**/lib/**", "**/trash/**"]
+  },
+  "rules": {
+    "unused-dependencies": "warn"
+  },
+  "ignoreDependencies": ["eslint-import-resolver-typescript"],
+  "ignoreExports": [
+    {
+      "file": "src/shared/utils/dev/dev-utils.js",
+      "exports": ["*"]
+    },
+    {
+      "file": "shared/push-notifications/**",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/lib/**",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/storage/conversations/data-client.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/stores/conversation-list-state.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/auth/onetap.js",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/shared/utils/google/google-identity-adapter.js",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/auth/setup.js",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/features/contacts/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/features/conversations/index.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/features/notifications/index.js",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/features/presence/index.js",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/features/push-notifications/index.js",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/features/pwa/index.ts",
+      "exports": ["*"]
+    }
+  ]
+}
