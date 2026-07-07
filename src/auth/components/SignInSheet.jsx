@@ -3,7 +3,7 @@ import { useI18n } from '../../shared/i18n/index.js';
 import GoogleSignInButton from './GoogleSignInButton';
 import UsernamePasswordForm from './UsernamePasswordForm';
 import LegalFooter from '../../components/LegalFooter';
-import LocaleToggle from '../../components/LocaleToggle.jsx';
+import LocaleToggle from '../../components/LocaleToggle';
 import styles from './SignInSheet.module.css';
 
 // Minimal sign-in sheet. Primary provider (Google) is shown first; password
