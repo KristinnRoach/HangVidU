@@ -1,11 +1,6 @@
 import { createEffect, onCleanup, type Accessor } from 'solid-js';
+import type { ReactionSummary } from '../../interfaces.js';
 import { attachReactions, syncReactionSummaries } from '../attachReactions.js';
-
-export type ReactionSummary = {
-  key: string;
-  count: number;
-  reactedByMe: boolean;
-};
 
 export type ReactionChange = {
   messageId: string;
