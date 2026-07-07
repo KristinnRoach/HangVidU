@@ -15,7 +15,7 @@ import {
   isImageAttachment,
   isR2FileAttachment,
 } from '../utils/attachments.js';
-import { createConversationFileObjectUrl } from '../../../stores/files-store.js';
+import { createConversationFileObjectUrl } from '../../../stores/files-store';
 import {
   getConversationState,
   persistMyReaction,
