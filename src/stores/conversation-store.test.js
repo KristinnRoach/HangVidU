@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 const mocks = vi.hoisted(() => ({
   getLoggedInUserId: vi.fn(),
   getLoggedInUserProfile: vi.fn(),
-  createD1MessageRepositoryFromEnv: vi.fn(),
+  createD1MessageRepository: vi.fn(),
   markConversationRead: vi.fn(),
   recordConversationListMessage: vi.fn(),
   ensureDirectConversationListed: vi.fn(),
@@ -24,9 +24,6 @@ vi.mock('../auth/index.js', () => ({
 vi.mock('./user-profile-store', () => ({
   getLoggedInUserProfile: mocks.getLoggedInUserProfile,
 }));
-vi.mock('./setup-message-repo', () => ({
-  createD1MessageRepositoryFromEnv: mocks.createD1MessageRepositoryFromEnv,
-}));
 vi.mock('./conversation-list-state', () => ({
   markConversationRead: mocks.markConversationRead,
   recordConversationListMessage: mocks.recordConversationListMessage,
@@ -40,6 +37,10 @@ vi.mock('./conversation-list-state', () => ({
 }));
 vi.mock('./conversations-client', () => ({
   resolveDirectConversationId: mocks.resolveDirectConversationId,
+  getConversationsClient: () => ({}),
+}));
+vi.mock('@features/conversations/adapters/d1.js', () => ({
+  createD1MessageRepository: mocks.createD1MessageRepository,
 }));
 vi.mock('./contacts-store.js', () => ({
   getContactById: mocks.getContactById,
@@ -103,7 +104,7 @@ describe('conversation-store', () => {
       markConversationRead: vi.fn(),
       setMyReaction: vi.fn(),
     };
-    mocks.createD1MessageRepositoryFromEnv.mockReturnValue(repo);
+    mocks.createD1MessageRepository.mockReturnValue(repo);
 
     mocks.getLoggedInUserId.mockReturnValue('me');
     mocks.getLoggedInUserProfile.mockReturnValue({ displayName: 'Me' });

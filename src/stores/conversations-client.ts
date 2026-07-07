@@ -2,12 +2,12 @@
 // to import both storage (the client) and auth (the token provider), so the
 // concrete wiring lives here and is shared by every consumer.
 
-import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '@auth/index.js';
 import {
   createConversationsClient,
   type ConversationsClient,
-} from '../storage/conversations/data-client';
-import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
+} from '@storage/conversations/data-client';
+import { getHangViduApiBaseUrl } from '@infra/hangvidu-api-url';
 
 let client: ConversationsClient | null = null;
 

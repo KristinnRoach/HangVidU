@@ -6,9 +6,13 @@
 
 import { createSignal } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
-import { getLoggedInUserId } from '../auth/index.js';
+import { compressImage } from '@lib/media/image-compress.js';
+import { getHangViduApiBaseUrl } from '@infra/hangvidu-api-url';
+
+import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
+import { createConversationChannel } from '../realtime/conversation-channel.js';
+
 import { getLoggedInUserProfile } from './user-profile-store.js';
-import { createD1MessageRepositoryFromEnv } from './setup-message-repo.js';
 import {
   conversationListState,
   conversationPeers,
@@ -18,7 +22,10 @@ import {
   refreshConversationListState,
   type Conversation,
 } from './conversation-list-state.js';
-import { resolveDirectConversationId } from './conversations-client.js';
+import {
+  getConversationsClient,
+  resolveDirectConversationId,
+} from './conversations-client.js';
 import {
   cacheContactConversationId,
   getContactById,
@@ -28,33 +35,73 @@ import {
   deleteConversationFile,
   uploadConversationFile,
 } from './files-store.js';
-import { getPushNotifications } from '../features/push-notifications/index.js';
-import { compressImage } from '@lib/media/image-compress.js';
-import { sortMessagesBySentAt } from '../features/conversations/message-ordering.js';
+
+import { getPushNotifications } from '@features/push-notifications/index.js';
+
+import { sortMessagesBySentAt } from '@features/conversations/message-ordering.js';
 import {
   clearLocalDraft,
   loadLocalDraft,
   saveLocalDraft,
-} from '../features/conversations/local-drafts.js';
+} from '@features/conversations/local-drafts.js';
 import {
   IMAGE_COMPRESSION_THRESHOLD_BYTES,
   MAX_R2_FILE_UPLOAD_BYTES,
   attachmentFileName,
   isImageFile,
   readImageDimensions,
-} from '../features/conversations/utils/attachments.js';
+} from '@features/conversations/utils/attachments.js';
 import type {
   ChatMessage,
   IncomingMessage,
   MessageRepository,
-} from '../features/conversations/interfaces.js';
+} from '@features/conversations/interfaces.js';
 import type {
   ConversationId,
   FileMessagePayload,
   TextMessagePayload,
   UserId,
-} from '../features/conversations/types.js';
-import type { ReactionChange } from '../features/conversations/reactions/solid/solid.js';
+} from '@features/conversations/types.js';
+import type { ReactionChange } from '@features/conversations/reactions/solid/solid.js';
+
+import {
+  createD1MessageRepository,
+  type D1MessageClient,
+} from '@features/conversations/adapters/d1.js';
+
+// Assembles the D1 message adapter from the data-worker HTTP
+// client (storage) + the live-push channel (realtime), both authenticated with
+// the logged-in user's token (auth).
+function createD1MessageRepositoryFromEnv(): MessageRepository {
+  const http = getConversationsClient();
+  const baseUrl = getHangViduApiBaseUrl();
+
+  const client: D1MessageClient = {
+    loadMessages: (conversationId) => http.loadMessages(conversationId),
+    sendMessage: (conversationId, input) =>
+      http.sendMessage(conversationId, input),
+    setMyReaction: (conversationId, messageId, reactionKey) =>
+      http.setMyReaction(conversationId, messageId, reactionKey),
+    markRead: async (conversationId) => {
+      await http.markRead(conversationId);
+    },
+    getUserId: getLoggedInUserId,
+    subscribe: (conversationId, onEvent) => {
+      const channel = createConversationChannel({
+        baseUrl,
+        conversationId,
+        getToken: getLoggedInUserToken,
+      });
+      const off = channel.onEvent(onEvent);
+      return () => {
+        off();
+        channel.close();
+      };
+    },
+  };
+
+  return createD1MessageRepository(client);
+}
 
 export type ConversationSelection = {
   conversationId: ConversationId;

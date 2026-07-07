@@ -1,11 +1,11 @@
-import { getLoggedInUserToken } from '../auth/index.js';
-import { getFirebaseAppCheckToken } from '../infra/firebase.js';
+import { getLoggedInUserToken } from '@auth/index.js';
+import { getFirebaseAppCheckToken } from '@infra/firebase.js';
 import {
   createFilesClient,
   type R2StorageDescriptor,
-} from '../storage/files/index.js';
-import type { ConversationId } from '../features/conversations/types.js';
-import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url.js';
+} from '@storage/files/index.js';
+import type { ConversationId } from '@features/conversations/types.js';
+import { getHangViduApiBaseUrl } from '@infra/hangvidu-api-url.js';
 
 let filesClientCache: ReturnType<typeof createFilesClient> | undefined;
 

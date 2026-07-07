@@ -6,16 +6,16 @@ import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth';
 import { useI18n } from '../shared/i18n';
 
-import AppLogo from '../components/app/AppLogo';
+import AppLogo from '../components/AppLogo';
 import AuthControls from '../auth/components/AuthControls';
 import { getLoggedInUserProfile } from '../stores/user-profile-store.js';
 import AddContactButton from '../features/contacts/components/AddContactButton';
 import NotificationsToggle from '../features/notifications/components/NotificationsToggle';
 import InstallButton from '../features/pwa/InstallButton';
-import LegalFooter from '../components/app/LegalFooter';
-import LocaleToggle from '../components/app/LocaleToggle';
+import LegalFooter from '../components/LegalFooter';
+import LocaleToggle from '../components/LocaleToggle';
 
-import PublicHomepage from '../components/app/PublicHomepage';
+import PublicHomepage from './PublicHomepage';
 // Injected as a child: PublicHomepage (components layer) can't import
 // features/realtime, which the lobby needs.
 import CallLobby from '../features/call/components/CallLobby';
@@ -25,9 +25,9 @@ import ConversationPanel from '../features/conversations/components/Conversation
 import CallDialogs from '../features/call/components/CallDialogs';
 import { StartCallButton } from '../features/call/components/CallControls';
 
-import { LoadBoundary } from '../components/app/LoadBoundary';
-import { Spinner } from '../components/app/Spinner';
-import IdentityBadge from '../components/app/IdentityBadge';
+import { LoadBoundary } from '../components/LoadBoundary';
+import { Spinner } from '../components/Spinner';
+import IdentityBadge from '../components/IdentityBadge';
 import {
   conversationLabel,
   conversationListSeeded,

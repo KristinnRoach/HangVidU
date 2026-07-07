@@ -1,4 +1,4 @@
-import { useI18n } from '../../shared/i18n/index.js';
+import { useI18n } from '../shared/i18n/index.js';
 
 export default function AppLogo() {
   const { t } = useI18n();
