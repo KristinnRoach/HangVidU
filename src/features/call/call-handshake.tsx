@@ -13,11 +13,11 @@ import { getAuthProviderProfileSeed } from '../../auth/index.js';
 import { useP2PContext } from '../../shared/p2p-context.js';
 import { createRoomSignaling } from '../../realtime/index.js';
 import { getLoggedInUserProfile } from '../../stores/userProfileStore.js';
-import type { CallInvite } from './model/call-schema.js';
+import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 import { CallHandshakeController } from './call-handshake-controller.js';
 import type {
   CallHandshakeState,
-  pendingOutgoingCall,
+  PendingOutgoingCall,
   StartCallDetails,
 } from './call-types.js';
 
@@ -26,8 +26,8 @@ type CallHandshakeContextValue = {
   hangUp: () => void;
 
   isCalleeBusy: Accessor<boolean>;
-  pendingIncomingCall: Accessor<CallInvite | null>;
-  pendingOutgoingCall: Accessor<pendingOutgoingCall | null>;
+  pendingIncomingCall: Accessor<MailboxInvite | null>;
+  pendingOutgoingCall: Accessor<PendingOutgoingCall | null>;
   exitActiveRoom: () => void;
   cancelOutgoing: () => void;
   acceptIncoming: () => void;
@@ -61,12 +61,12 @@ export function CallHandshakeProvider(props: ParentProps) {
     onCalleeBusy: setIsCalleeBusy,
   });
 
-  const incomingCall = (): CallInvite | null => {
+  const incomingCall = (): MailboxInvite | null => {
     const state = handshakeState();
     return state && state.direction === 'incoming' ? state.call : null;
   };
 
-  const outgoingCall = (): pendingOutgoingCall | null => {
+  const outgoingCall = (): PendingOutgoingCall | null => {
     const state = handshakeState();
     return state && state.direction === 'outgoing' ? state.call : null;
   };

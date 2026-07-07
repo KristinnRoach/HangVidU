@@ -1,8 +1,6 @@
-Updated: 2026-06-26
+Updated: 2026-07-07
 
 ## Guidelines
-
-(separate guidelines and explicit rules if/when beneficial for clarity)
 
 - Keep storage API minimal and generic.
 - Keep backend adapters thin and backend-specific only.
@@ -26,12 +24,8 @@ Updated: 2026-06-26
 
 ## Notes
 
-- Defer profile/account settings UI and contact edit/delete UI polish to a
-  follow-up PR.
 - Consider splitting `contact-transform.js` if it grows enough to justify clearer boundaries, or ambiguous responsibilites are noticable when using.
 - Revisit whether adapter selection helpers belong in storage entrypoints or one level above.
-- Revisit storage-specific migration concerns only when guest/auth persistence rules are ready.
-- Revisit whether storage should stay per-module or consolidate under `src/shared/storage/` only after `src/features/contacts/*` contracts are clearly defined and documented, and after event-driven fundamentals are documented for `appBus` / `EventEmitter` usage, boundaries, and when not to use them.
 - Consider whether contact patch flows need an explicit atomic-update path for adapters that support transactions, or a documented non-atomic limitation if not.
 - Consider whether local adapter read/modify/write operations need explicit serialization, or a documented limitation around concurrent writes.
 - Consider whether the local adapter should recover safely from corrupted JSON in storage instead of throwing raw parse errors.
