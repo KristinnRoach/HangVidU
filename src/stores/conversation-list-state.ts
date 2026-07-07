@@ -70,7 +70,8 @@ export function shortName(name: string): string {
 
 /**
  * Display label: DMs prefer the contact label (nickname et al) over the
- * member's directory name; groups prefer the title over joined first names.
+ * member's directory name; groups prefer the title over joined member names.
+ * Returns full names — callers truncate for tight layouts (shortName).
  * Null when no name is known.
  */
 export function conversationLabel(conversation: Conversation): string | null {
@@ -86,7 +87,6 @@ export function conversationLabel(conversation: Conversation): string | null {
     others
       .map((member) => member.display_name)
       .filter((name): name is string => Boolean(name))
-      .map(shortName)
       .join(', ') ||
     null
   );
