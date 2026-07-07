@@ -88,7 +88,6 @@
     "@tailwindcss/vite": "^4.3.2",
     "@vitest/browser-playwright": "4.1.9",
     "@vitest/coverage-v8": "^4.1.9",
-    "baseline-browser-mapping": "^2.10.40",
     "concurrently": "^10.0.3",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-boundaries": "^6.0.2",
@@ -105,7 +104,6 @@
     "vite-plugin-solid": "^2.11.12",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
-    "workbox-build": "^7.4.1",
     "workbox-precaching": "^7.4.1",
     "workbox-routing": "^7.4.1",
     "workbox-strategies": "^7.4.1"
