@@ -303,6 +303,15 @@ function startWatch(
   let disposed = false;
   let cleanup: (() => void) | undefined;
 
+  // Capture the DM peer now: a concurrent reseed drops server-unknown
+  // conversations from the list, which is exactly the stale-id case the
+  // 404 retry below needs the contact for.
+  const conversation = conversationListState().get(conversationId);
+  const retryContactId =
+    conversation?.kind === 'direct'
+      ? conversationPeers(conversation)[0]
+      : undefined;
+
   const result = getRepo().watchRecentMessages(
     conversationId,
     (messages) => {
@@ -335,13 +344,8 @@ function startWatch(
       if (disposed || conversationId !== state.conversationId) return;
       // Stale cached conversationId (env switch, deleted conversation):
       // resolve-or-create will replace the cached id on retry.
-      const conversation = conversationListState().get(conversationId);
-      const contactId =
-        conversation?.kind === 'direct'
-          ? conversationPeers(conversation)[0]
-          : undefined;
-      if ((error as { status?: number })?.status === 404 && contactId) {
-        void openDirectConversation(contactId, {
+      if ((error as { status?: number })?.status === 404 && retryContactId) {
+        void openDirectConversation(retryContactId, {
           displayUI,
           forceResolve: true,
         });
