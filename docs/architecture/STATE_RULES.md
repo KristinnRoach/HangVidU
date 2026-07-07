@@ -12,7 +12,7 @@ See also: [`NAMING.md`](./NAMING.md), [`STRUCTURE.md`](./STRUCTURE.md), [`EVENTS
 ## When to use a dedicated state file
 
 **Default: a Solid store** (`createStore`) is the reactive in-memory mirror —
-either in `src/stores/` (`contactsStore.ts`) or inside the module for
+either in `src/stores/` (`contacts-store.ts`) or inside the module for
 feature-local state. Read it directly or via a `use<X>()` hook. Most modules need
 nothing more.
 
@@ -58,12 +58,12 @@ It exposes:
 
 ## Adoption status
 
-| Module        | Shape                                    | Notes                                                 |
-| ------------- | ---------------------------------------- | ----------------------------------------------------- |
-| auth          | dedicated `auth-state.js`                | non-Solid consumers subscribe to `evt:auth:session:*` |
-| contacts      | Solid store in `stores/contactsStore.ts` | Solid-only consumers; no `evt:contacts:state:changed` |
-| conversations | —                                        |                                                       |
-| call          | —                                        |                                                       |
+| Module        | Shape                                     | Notes                                                 |
+| ------------- | ----------------------------------------- | ----------------------------------------------------- |
+| auth          | dedicated `auth-state.js`                 | non-Solid consumers subscribe to `evt:auth:session:*` |
+| contacts      | Solid store in `stores/contacts-store.ts` | Solid-only consumers; no `evt:contacts:state:changed` |
+| conversations | —                                         |                                                       |
+| call          | —                                         |                                                       |
 
 ## Migration notes
 

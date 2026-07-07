@@ -7,8 +7,8 @@
 import { createSignal } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { getLoggedInUserId } from '../auth/index.js';
-import { getLoggedInUserProfile } from './userProfileStore';
-import { createD1MessageRepositoryFromEnv } from './message-repository';
+import { getLoggedInUserProfile } from './user-profile-store.js';
+import { createD1MessageRepositoryFromEnv } from './message-repository.js';
 import {
   conversationListState,
   conversationPeers,
@@ -17,17 +17,17 @@ import {
   recordConversationListMessage,
   refreshConversationListState,
   type Conversation,
-} from './conversation-list-state';
-import { resolveDirectConversationId } from './conversations-client';
+} from './conversation-list-state.js';
+import { resolveDirectConversationId } from './conversations-client.js';
 import {
   cacheContactConversationId,
   getContactById,
   getContactLabel,
-} from './contactsStore.js';
+} from './contacts-store.js';
 import {
   deleteConversationFile,
   uploadConversationFile,
-} from './filesStore.js';
+} from './files-store.js';
 import { getPushNotifications } from '../features/push-notifications/index.js';
 import { compressImage } from '@lib/media/image-compress.js';
 import { sortMessagesBySentAt } from '../features/conversations/message-ordering.js';

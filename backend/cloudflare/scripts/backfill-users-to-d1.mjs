@@ -61,7 +61,7 @@ function trimmed(value) {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
 }
 
-// Mirror of the client's suggestHandle slug rule (src/stores/userProfileStore.js):
+// Mirror of the client's suggestHandle slug rule (src/stores/user-profile-store.js):
 // romanize -> lowercase -> [a-z0-9_] -> strip edge underscores -> 3-20 chars ->
 // pad to 3 -> 'user' fallback. Backfill front-loads the handle the next login
 // would have assigned, so Google accounts are discoverable in prod without each

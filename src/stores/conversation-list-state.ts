@@ -15,7 +15,7 @@
 import { createSignal } from 'solid-js';
 import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
 import { getConversationsClient } from './conversations-client';
-import { getContactById, getContactLabel } from './contactsStore.js';
+import { getContactById, getContactLabel } from './contacts-store.js';
 import {
   closeUserMailbox,
   subscribeToUserMailbox,

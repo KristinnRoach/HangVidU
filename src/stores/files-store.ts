@@ -5,7 +5,7 @@ import {
   type R2StorageDescriptor,
 } from '../storage/files/index.js';
 import type { ConversationId } from '../features/conversations/types.js';
-import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
+import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url.js';
 
 let filesClientCache: ReturnType<typeof createFilesClient> | undefined;
 

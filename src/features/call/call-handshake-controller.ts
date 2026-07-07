@@ -24,7 +24,7 @@ import { resolveDirectConversationId } from '../../stores/conversations-client.j
 import {
   cacheContactConversationId,
   getContactById,
-} from '../../stores/contactsStore.js';
+} from '../../stores/contacts-store.js';
 import { CALLING_TTL_MS } from '../../../shared/constants';
 import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
 

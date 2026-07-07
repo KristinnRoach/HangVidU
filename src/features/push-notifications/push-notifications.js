@@ -1,7 +1,7 @@
 // Public app-facing push notifications facade.
 
 import { dispatchCommand, subscribe } from '../../shared/events/index.js';
-import { getContactByConversationId } from '../../stores/contactsStore.js';
+import { getContactByConversationId } from '../../stores/contacts-store.js';
 import { callCloudFunction } from './cloud-functions.js';
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;

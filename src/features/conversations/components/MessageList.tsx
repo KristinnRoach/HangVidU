@@ -15,11 +15,11 @@ import {
   isImageAttachment,
   isR2FileAttachment,
 } from '../utils/attachments.js';
-import { createConversationFileObjectUrl } from '../../../stores/filesStore.js';
+import { createConversationFileObjectUrl } from '../../../stores/files-store.js';
 import {
   getConversationState,
   persistMyReaction,
-} from '../../../stores/selectedConversationStore';
+} from '../../../stores/conversation-store';
 // eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:reactions` directive
 import { reactions } from '../reactions/solid/solid.js';
 import type { ChatMessage, MessageAttachment } from '../interfaces.js';

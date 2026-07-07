@@ -5,7 +5,7 @@ import {
   processReferral,
 } from './referrals/referral-handler.js';
 import { setupInviteListener } from './invites/invite-listener.js';
-import { hydrateContacts, resetContacts } from '../../stores/contactsStore.js';
+import { hydrateContacts, resetContacts } from '../../stores/contacts-store.js';
 
 let inviteCleanup: () => void = () => {};
 let authSessionVersion = 0;

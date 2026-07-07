@@ -7,7 +7,7 @@ import {
   getConversationState,
   markActiveConversationRead,
   sendFileMessage,
-} from '../../../stores/selectedConversationStore';
+} from '../../../stores/conversation-store';
 import { MessageList } from './MessageList';
 import { Composer } from './Composer';
 import styles from './ConversationPanel.module.css';
@@ -39,7 +39,7 @@ type ConversationPanelProps = {
 
 /**
  * View-only shell for the active conversation: state lives in
- * stores/selectedConversationStore; this composes MessageList + Composer and owns the
+ * stores/conversation-store; this composes MessageList + Composer and owns the
  * cross-cutting view concerns (file-drop target, alerts, read-marking).
  */
 export default function ConversationPanel(props: ConversationPanelProps) {

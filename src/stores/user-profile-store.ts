@@ -10,9 +10,9 @@ import {
   getLoggedInUserToken,
 } from '../auth/index.js';
 import { rtdb } from '../infra/firebase-rtdb.js';
-import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
+import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url.js';
 import { hashEmail } from '@lib/utils/email-hash.js';
-import { convertToEnglishLetters } from '../../shared/utils/transliteration';
+import { convertToEnglishLetters } from '../../shared/utils/transliteration.js';
 import { subscribe } from '../shared/events/index.js';
 import {
   createUserProfileRepository,
@@ -118,7 +118,10 @@ const [loggedInUserProfile, setLoggedInUserProfile] =
 let subscribedToAuth = false;
 
 function logProfileLoadFailure(error: unknown) {
-  console.error('[userProfileStore] Failed to load logged-in profile:', error);
+  console.error(
+    '[user-profile-store] Failed to load logged-in profile:',
+    error,
+  );
 }
 
 export function getLoggedInUserProfile(): LoggedInUserProfile | null {

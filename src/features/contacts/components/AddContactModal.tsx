@@ -31,14 +31,14 @@ import { sendContactInvite } from '../invites/send-contact-invite.js';
 import {
   getAllContacts,
   hydrateContacts,
-} from '../../../stores/contactsStore.js';
+} from '../../../stores/contacts-store.js';
 import {
   listIncomingContactRequests,
   listOutgoingContactRequests,
   getLoggedInUserProfile,
   searchUsersByHandle,
   type UserSearchResult,
-} from '../../../stores/userProfileStore.js';
+} from '../../../stores/user-profile-store.js';
 import { sendBulkEmailsViaGmail } from '../../../shared/utils/google/gmail-send.js';
 import { filterImportableContacts } from '../import/import-contacts-utils.js';
 import { createImportContactsComponent } from './import-contacts-component.js';

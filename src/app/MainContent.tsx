@@ -8,7 +8,7 @@ import { useI18n } from '../shared/i18n';
 
 import AppLogo from '../components/app/AppLogo';
 import AuthControls from '../auth/components/AuthControls';
-import { getLoggedInUserProfile } from '../stores/userProfileStore.js';
+import { getLoggedInUserProfile } from '../stores/user-profile-store.js';
 import AddContactButton from '../features/contacts/components/AddContactButton';
 import NotificationsToggle from '../features/notifications/components/NotificationsToggle';
 import InstallButton from '../features/pwa/InstallButton';
@@ -44,7 +44,7 @@ import {
   openConversation,
   selectedConversation,
   selection,
-} from '../stores/selectedConversationStore';
+} from '../stores/conversation-store';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
 
