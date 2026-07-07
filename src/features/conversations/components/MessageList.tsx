@@ -19,7 +19,7 @@ import { createConversationFileObjectUrl } from '../../../stores/filesStore.js';
 import {
   getConversationState,
   persistMyReaction,
-} from '../../../stores/conversationStore';
+} from '../../../stores/selectedConversationStore';
 // eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:reactions` directive
 import { reactions } from '../reactions/solid/solid.js';
 import type { ChatMessage, MessageAttachment } from '../interfaces.js';

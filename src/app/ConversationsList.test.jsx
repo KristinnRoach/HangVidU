@@ -17,11 +17,14 @@ vi.mock('../stores/contactsStore.js', () => ({
       return mocks.byId;
     },
   }),
+  getContactById: (contactId) => mocks.byId[contactId] ?? null,
   getContactLabel: (contact) =>
     contact.nickname || contact.displayName || contact.username || null,
 }));
 
-vi.mock('../stores/conversation-list-state', () => ({
+// Partial mock: keep the real conversationLabel/conversationPeers derivations.
+vi.mock('../stores/conversation-list-state', async (importOriginal) => ({
+  ...(await importOriginal()),
   conversationListState: () => mocks.activity,
   conversationListSeeded: () => mocks.seeded,
   getLastReadAt: () => 0,
@@ -29,9 +32,10 @@ vi.mock('../stores/conversation-list-state', () => ({
 
 vi.mock('../auth/index.js', () => ({
   getLoggedInUserId: () => 'me',
+  getLoggedInUserToken: () => null,
 }));
 
-vi.mock('../stores/conversationStore', () => ({
+vi.mock('../stores/selectedConversationStore', () => ({
   openConversation: mocks.openConversation,
   selection: () => null,
 }));
@@ -142,12 +146,8 @@ describe('ConversationsList', { timeout: 60000 }, () => {
     const firstContactName = container.querySelector('.contact-name');
     firstContactName?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(mocks.openConversation).toHaveBeenCalledWith({
-      conversationId: 'conversation-1',
-      kind: 'direct',
-      remoteParticipantIds: ['contact-1'],
+    expect(mocks.openConversation).toHaveBeenCalledWith('conversation-1', {
       displayUI: true,
-      nickname: 'Alice',
     });
 
     unmount();

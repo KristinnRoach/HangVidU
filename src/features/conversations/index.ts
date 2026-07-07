@@ -4,7 +4,7 @@ import {
   stopConversationListSync,
 } from '../../stores/conversation-list-state';
 import { resetConversationsState } from '../../stores/conversations-client.js';
-import { resetConversationStore } from '../../stores/conversationStore';
+import { resetConversationStore } from '../../stores/selectedConversationStore';
 import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
 
 /**

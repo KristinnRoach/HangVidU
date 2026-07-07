@@ -4,7 +4,6 @@ import { createAutoHide } from '../shared/createAutoHide';
 import { User, PhoneCall, Mail, ChevronLeft } from 'lucide-solid';
 import { useP2PContext } from '../shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth';
-import { getLoggedInUserId } from '../auth/index.js';
 import { useI18n } from '../shared/i18n';
 
 import AppLogo from '../components/app/AppLogo';
@@ -30,15 +29,12 @@ import { LoadBoundary } from '../components/app/LoadBoundary';
 import { Spinner } from '../components/app/Spinner';
 import IdentityBadge from '../components/app/IdentityBadge';
 import {
+  conversationLabel,
   conversationListSeeded,
   conversationListState,
-  type ConversationSummary,
+  conversationPeers,
+  type Conversation,
 } from '../stores/conversation-list-state';
-import {
-  getContactById,
-  getContactLabel,
-  getContactsStore,
-} from '../stores/contactsStore.js';
 
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
@@ -46,9 +42,9 @@ import topbarStyles from './TopBar.module.css';
 import {
   loadSelectedConversationId,
   openConversation,
-  selection as selectedConversation,
-  type ConversationSelection,
-} from '../stores/conversationStore';
+  selectedConversation,
+  selection,
+} from '../stores/selectedConversationStore';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
 
@@ -56,8 +52,6 @@ export default function MainContent() {
   const p2p = useP2PContext();
   const { isAuthInitialized, isLoggedIn, isLoggingIn, isLoggingOut } =
     useAuth();
-  const contactsState = getContactsStore();
-
   const [userView, setUserView] = createSignal<ViewMode>('contacts');
 
   // Switch into the call view on call-start, and out on call-end.
@@ -80,54 +74,18 @@ export default function MainContent() {
   // told not to (displayUI: false, used by the autoselect effect below).
   createEffect(
     on(
-      selectedConversation,
+      selection,
       (sel) => {
-        if (sel && sel.displayUI !== false) setUserView('conversations');
+        if (sel?.displayUI) setUserView('conversations');
       },
       { defer: true },
     ),
   );
 
-  function getConversationLabel(summary: ConversationSummary): string | null {
-    const me = getLoggedInUserId();
-    if (summary.kind === 'direct') {
-      const peer = summary.members.find((member) => member.user_id !== me);
-      const contact = peer ? contactsState.byId[peer.user_id] : null;
-      return (
-        (contact ? getContactLabel(contact) : null) ||
-        peer?.display_name ||
-        null
-      );
-    }
-    return (
-      summary.title ||
-      summary.members
-        .filter((member) => member.user_id !== me)
-        .map((member) => member.display_name)
-        .filter((name): name is string => Boolean(name))
-        .join(', ') ||
-      null
-    );
-  }
-
-  function openSummary(summary: ConversationSummary): void {
-    if (!summary.kind) return;
-    const me = getLoggedInUserId();
-    openConversation({
-      conversationId: summary.conversationId,
-      kind: summary.kind,
-      remoteParticipantIds: summary.members
-        .map((member) => member.user_id)
-        .filter((id) => id !== me),
-      nickname: getConversationLabel(summary),
-      displayUI: false,
-    });
-  }
-
-  function getDefaultConversation(): ConversationSummary | null {
+  function getDefaultConversation(): Conversation | null {
     return (
       [...conversationListState().values()]
-        .filter((summary) => Boolean(summary.kind))
+        .filter((conversation) => Boolean(conversation.kind))
         .sort((a, b) => b.latestSentAt - a.latestSentAt)
         .at(0) ?? null
     );
@@ -159,22 +117,17 @@ export default function MainContent() {
 
   createEffect(() => {
     if (!showAuthenticatedUi()) return;
-    if (selectedConversation()) return;
+    if (selection()) return;
     if (!conversationListSeeded()) return;
 
     const storedConversationId = loadSelectedConversationId();
-    const storedSummary = storedConversationId
+    const stored = storedConversationId
       ? conversationListState().get(storedConversationId)
       : null;
-    if (storedSummary) {
-      openSummary(storedSummary);
-      return;
-    }
+    const conversation = stored ?? getDefaultConversation();
+    if (!conversation?.kind) return;
 
-    const summary = getDefaultConversation();
-    if (!summary) return;
-
-    openSummary(summary);
+    openConversation(conversation.conversationId, { displayUI: false });
   });
 
   return (
@@ -257,7 +210,7 @@ export default function MainContent() {
 interface TopBarProps {
   activeView: ViewMode;
   setActiveView: (view: ViewMode) => void;
-  selectedConversation?: ConversationSelection;
+  selectedConversation?: Conversation;
   isInCall: boolean;
   showAuthenticatedUi: boolean;
   visible: boolean;
@@ -268,19 +221,21 @@ function TopBar(props: TopBarProps) {
   const { t } = useI18n();
 
   const calleeId = createMemo(() => {
-    if (props.selectedConversation?.kind !== 'direct') return null;
-    return props.selectedConversation.remoteParticipantIds?.[0] ?? null;
+    const conversation = props.selectedConversation;
+    if (conversation?.kind !== 'direct') return null;
+    return conversationPeers(conversation)[0] ?? null;
   });
+
+  const selectedLabel = () =>
+    props.selectedConversation
+      ? conversationLabel(props.selectedConversation)
+      : null;
 
   // Whose identity the top bar shows: the selected conversation's contact
   // while in the conversations view, the local user otherwise.
   const identity = createMemo(() => {
     if (props.activeView === 'conversations' || props.activeView === 'call') {
-      const id = calleeId();
-      const contact = id ? getContactById(id) : null;
-      const name =
-        (contact && getContactLabel(contact)) ||
-        props.selectedConversation?.nickname;
+      const name = selectedLabel();
       if (name) return { name, photoUrl: null };
     }
     const profile = getLoggedInUserProfile();
@@ -389,19 +344,14 @@ function TopBar(props: TopBarProps) {
                     <StartCallButton
                       audioOnly={false}
                       calleeId={resolvedCalleeId()}
-                      calleeName={
-                        props?.selectedConversation?.nickname || undefined
-                      }
+                      calleeName={selectedLabel() || undefined}
                     />
                     {/*
                     // TODO: fix audio only call UX before uncommenting
                     <StartCallButton
                       audioOnly={true}
                       calleeId={resolvedCalleeId()}
-                      calleeName={
-                        props?.selectedConversation?.nickname ||
-                        undefined
-                      }
+                      calleeName={selectedLabel() || undefined}
                     /> */}
                   </>
                 )}

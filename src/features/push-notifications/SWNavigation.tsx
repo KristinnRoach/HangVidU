@@ -1,12 +1,9 @@
 import { createEffect, onCleanup, onMount } from 'solid-js';
-import {
-  getContactById,
-  getContactsIsHydrated,
-} from '../../stores/contactsStore';
+import { getContactsIsHydrated } from '../../stores/contactsStore';
 import {
   openConversation as openSelectedConversation,
   openDirectConversation,
-} from '../../stores/conversationStore';
+} from '../../stores/selectedConversationStore';
 
 type Props = {
   queueLimit?: number;
@@ -26,19 +23,10 @@ function dispatchPath(path: string) {
   const url = new URL(path, window.location.origin);
   const conversationId = trimmedParam(url.searchParams, 'conversationId');
   const contactId = trimmedParam(url.searchParams, 'contact');
-  const kind =
-    trimmedParam(url.searchParams, 'kind') === 'group' ? 'group' : 'direct';
 
   // Links may carry an opaque conversationId directly; open it as-is.
   if (conversationId) {
-    const contact = contactId ? getContactById(contactId) : null;
-    openSelectedConversation({
-      conversationId,
-      kind,
-      remoteParticipantIds: contactId ? [contactId] : [],
-      displayUI: true,
-      nickname: contact?.nickname ?? undefined,
-    });
+    openSelectedConversation(conversationId, { displayUI: true });
     return;
   }
 
@@ -46,11 +34,7 @@ function dispatchPath(path: string) {
 
   // Contact-only links resolve-or-create the opaque id through the registry,
   // the same path the in-app open flow uses.
-  const contact = getContactById(contactId);
-  void openDirectConversation(contactId, {
-    displayUI: true,
-    nickname: contact?.nickname ?? undefined,
-  });
+  void openDirectConversation(contactId, { displayUI: true });
 }
 
 /**
