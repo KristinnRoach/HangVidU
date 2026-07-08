@@ -3,7 +3,7 @@ import {
   clearLocalDraft,
   loadLocalDraft,
   saveLocalDraft,
-} from './local-drafts.js';
+} from './draft-persistence.js';
 
 describe('conversations local drafts', () => {
   afterEach(() => {

@@ -1,23 +1,80 @@
-import type { z } from 'zod';
+import type { Reaction } from '@lib/reactions/solid/solid.js';
+import type { IncomingMessage } from '@storage/conversations/message-mapper.js';
 import type {
-  DeliveryPolicySchema,
-  EventMessagePayloadSchema,
-  FileMessagePayloadSchema,
-  ConversationIdSchema,
-  MessageEnvelopeSchema,
-  MessagePayloadSchema,
-  SystemMessagePayloadSchema,
-  TextMessagePayloadSchema,
-  UserIdSchema,
-} from './schema.js';
+  ConversationId,
+  MessageEnvelope,
+  UserId,
+} from '../../storage/conversations/types.js';
 
-export type UserId = z.infer<typeof UserIdSchema>;
-export type ConversationId = z.infer<typeof ConversationIdSchema>;
-export type DeliveryPolicy = z.infer<typeof DeliveryPolicySchema>;
+export type {
+  ConversationId,
+  DeliveryPolicy,
+  EventMessagePayload,
+  FileMessagePayload,
+  MessageEnvelope,
+  MessagePayload,
+  SystemMessagePayload,
+  TextMessagePayload,
+  UserId,
+} from '../../storage/conversations/types.js';
 
-export type TextMessagePayload = z.infer<typeof TextMessagePayloadSchema>;
-export type FileMessagePayload = z.infer<typeof FileMessagePayloadSchema>;
-export type EventMessagePayload = z.infer<typeof EventMessagePayloadSchema>;
-export type SystemMessagePayload = z.infer<typeof SystemMessagePayloadSchema>;
-export type MessagePayload = z.infer<typeof MessagePayloadSchema>;
-export type MessageEnvelope = z.infer<typeof MessageEnvelopeSchema>;
+export type { IncomingMessage } from '@storage/conversations/message-mapper.js';
+export type OutgoingMessage = MessageEnvelope;
+
+export type MessageRepository = {
+  createMessageId(conversationId: ConversationId): string;
+
+  loadMessages(
+    conversationId: ConversationId,
+  ): IncomingMessage[] | Promise<IncomingMessage[]>;
+
+  watchRecentMessages(
+    conversationId: ConversationId,
+    onMessages: (messages: IncomingMessage[]) => void,
+    onError?: (error: unknown) => void,
+  ): (() => void) | Promise<() => void>;
+
+  send(
+    msg: OutgoingMessage,
+  ): { id: string; sentAt: number } | Promise<{ id: string; sentAt: number }>;
+
+  markConversationRead(
+    conversationId: ConversationId,
+    userId: UserId,
+  ): void | Promise<void>;
+
+  setMyReaction(
+    conversationId: ConversationId,
+    messageId: string,
+    userId: UserId,
+    reactionKey: string | null,
+  ): void | Promise<void>;
+};
+
+export type MessageStatus = 'sending' | 'sent' | 'failed';
+
+export type MessageAttachment = {
+  type: 'file';
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  width?: number;
+  height?: number;
+  storage: {
+    provider: 'r2';
+    bucket: string;
+    key: string;
+    [key: string]: unknown;
+  };
+};
+
+export type ChatMessage = {
+  id: string;
+  conversationId: ConversationId;
+  text: string;
+  attachment?: MessageAttachment;
+  senderId: UserId;
+  sentAt: number;
+  status: MessageStatus;
+  reactions: Reaction[];
+};

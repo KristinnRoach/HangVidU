@@ -1,5 +1,4 @@
-import type { ChatMessage } from './interfaces.js';
-import type { MessageEnvelope } from './types.js';
+import type { ChatMessage, MessageEnvelope } from './types.js';
 
 type OrderedMessage = Pick<ChatMessage | MessageEnvelope, 'sentAt'> & {
   id?: string;
@@ -10,7 +9,7 @@ function getStableId(message: OrderedMessage) {
   return message.id ?? message.messageId ?? '';
 }
 
-export function compareMessagesBySentAt(a: OrderedMessage, b: OrderedMessage) {
+function compareMessagesBySentAt(a: OrderedMessage, b: OrderedMessage) {
   const sentAtDiff = a.sentAt - b.sentAt;
   if (sentAtDiff !== 0) return sentAtDiff;
 

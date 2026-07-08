@@ -3,7 +3,7 @@ import { getContactsIsHydrated } from '../../stores/contacts-store';
 import {
   openConversation as openSelectedConversation,
   openDirectConversation,
-} from '../../stores/conversation-store';
+} from '../../stores/conversation/conversation-store';
 
 type Props = {
   queueLimit?: number;

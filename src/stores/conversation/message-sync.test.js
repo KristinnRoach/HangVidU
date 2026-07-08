@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
-import { createD1MessageRepository } from './d1.js';
+import { createMessageSyncRepository } from './message-sync.js';
 
 function wireMessage(reactions = []) {
   return {
@@ -15,7 +15,7 @@ function wireMessage(reactions = []) {
   };
 }
 
-describe('D1 message reactions', () => {
+describe('message sync reactions', () => {
   it('hydrates history and folds shared reaction events into the same window', async () => {
     let onEvent;
     const client = {
@@ -30,7 +30,7 @@ describe('D1 message reactions', () => {
         return () => {};
       }),
     };
-    const repository = createD1MessageRepository(client);
+    const repository = createMessageSyncRepository(client);
     const snapshots = [];
 
     await repository.watchRecentMessages('c1', (messages) =>
@@ -67,7 +67,7 @@ describe('D1 message reactions', () => {
       setMyReaction: vi.fn(async () => []),
       subscribe: vi.fn(),
     };
-    const repository = createD1MessageRepository(client);
+    const repository = createMessageSyncRepository(client);
 
     await repository.setMyReaction('c1', 'm1', 'me', 'laugh');
 
@@ -83,7 +83,7 @@ describe('D1 message reactions', () => {
       markRead: vi.fn(async () => {}),
       subscribe: vi.fn(),
     };
-    const repository = createD1MessageRepository(client);
+    const repository = createMessageSyncRepository(client);
 
     await repository.markConversationRead('c1', 'me');
 

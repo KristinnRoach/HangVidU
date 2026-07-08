@@ -1,35 +1,21 @@
-// Conversation-list state: drives MRU reorder + the unread badge.
-//
-// Two inputs, one reactive map keyed by conversationId:
-//   - seed: GET /conversations once on start (and on demand), carrying each
-//     conversation's latest message time + sender.
-//   - live: the per-user mailbox pushes an `activity` envelope on every message
-//     to a conversation you're in (see shared/user-mailbox/protocol).
-//
-// Read state (lastReadAt) is per-device localStorage for now; markConversationRead
-// bumps a version signal so the unread derivation re-runs without a refetch.
-//
-// Live push rides the user's shared mailbox socket (subscribeToUserMailbox), the
-// same connection CallService uses — no second per-user socket.
-
 import { createSignal } from 'solid-js';
-import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '../../auth/index.js';
 import { getConversationsClient } from './conversations-client';
-import { getContactById, getContactLabel } from './contacts-store.js';
+import { getContactById, getContactLabel } from '../contacts-store.js';
 import {
   closeUserMailbox,
   subscribeToUserMailbox,
-} from '../realtime/user-mailbox';
-import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
-import type { ConversationMember } from '../storage/conversations/data-client';
+} from '../../realtime/user-mailbox';
+import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
+import {
+  conversationLastReadAt,
+  toConversationListItem,
+  type ConversationListItem,
+} from '@storage/conversations/conversation-mapper.js';
+import type { ConversationMember } from '@storage/conversations/data-client';
 
-export type Conversation = {
-  conversationId: string;
-  kind: 'direct' | 'group' | null;
-  title: string | null;
-  members: ConversationMember[];
-  latestSentAt: number;
-  latestSenderId: string | null;
+export type Conversation = Omit<ConversationListItem, 'kind'> & {
+  kind: ConversationListItem['kind'] | null;
 };
 
 const [listState, setListState] = createSignal<Map<string, Conversation>>(
@@ -48,8 +34,6 @@ const [serverLastRead, setServerLastRead] = createSignal<Map<string, number>>(
 /** Reactive: conversationId -> latest list state. Read by app/ConversationsList. */
 export const conversationListState = listState;
 export const conversationListSeeded = seeded;
-
-// ── derivations ──────────────────────────────────────────────────────────────
 
 /** Member ids minus the logged-in user. */
 export function conversationPeers(conversation: Conversation): string[] {
@@ -91,7 +75,6 @@ export function conversationLabel(conversation: Conversation): string | null {
     null
   );
 }
-// ── per-device read state ────────────────────────────────────────────────────
 const readKey = (conversationId: string) =>
   `hangvidu:lastRead:${conversationId}`;
 
@@ -127,7 +110,6 @@ export function markConversationRead(
   if (nextLastReadAt !== lastReadAt) setReadVersion((v) => v + 1);
 }
 
-// ── seed + live wiring ───────────────────────────────────────────────────────
 function upsert(conversationId: string, next: Partial<Conversation>): void {
   setListState((prev) => {
     const cur = prev.get(conversationId);
@@ -189,15 +171,9 @@ export async function refreshConversationListState(): Promise<void> {
     const map = new Map<string, Conversation>();
     const reads = new Map<string, number>();
     for (const c of conversations) {
-      map.set(c.id, {
-        conversationId: c.id,
-        kind: c.kind,
-        title: c.title ?? null,
-        members: c.members,
-        latestSentAt: c.latest_sent_at ?? c.updated_at,
-        latestSenderId: c.latest_sender_id ?? null,
-      });
-      reads.set(c.id, c.last_read_at ?? 0);
+      const item = toConversationListItem(c);
+      map.set(item.conversationId, item);
+      reads.set(item.conversationId, conversationLastReadAt(c));
     }
     setServerLastRead(reads);
     setListState((current) => {

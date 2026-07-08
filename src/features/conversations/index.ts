@@ -2,9 +2,9 @@ import { subscribe } from '../../shared/events/index.js';
 import {
   startConversationListSync,
   stopConversationListSync,
-} from '../../stores/conversation-list-state';
-import { resetConversationsState } from '../../stores/conversations-client.js';
-import { resetConversationStore } from '../../stores/conversation-store.js';
+} from '../../stores/conversation/conversation-list-state';
+import { resetConversationsState } from '../../stores/conversation/conversations-client.js';
+import { resetConversationStore } from '../../stores/conversation/conversation-store.js';
 import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
 
 /**

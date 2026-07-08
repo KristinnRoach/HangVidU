@@ -34,7 +34,7 @@ import {
   conversationListState,
   conversationPeers,
   type Conversation,
-} from '../stores/conversation-list-state';
+} from '../stores/conversation/conversation-list-state';
 
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
@@ -44,7 +44,7 @@ import {
   openConversation,
   selectedConversation,
   selection,
-} from '../stores/conversation-store';
+} from '../stores/conversation/conversation-store';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
 

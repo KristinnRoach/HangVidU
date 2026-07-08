@@ -7,4 +7,4 @@
   `handleHangUp()`.
 
 - Conversation-list state (sort key and unread badge) comes from
-  `stores/conversation-list-state`, not the contacts store.
+  `stores/conversation/conversation-list-state`, not the contacts store.

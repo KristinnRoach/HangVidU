@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 const mocks = vi.hoisted(() => ({
   getLoggedInUserId: vi.fn(),
   getLoggedInUserProfile: vi.fn(),
-  createD1MessageRepository: vi.fn(),
+  createMessageSyncRepository: vi.fn(),
   markConversationRead: vi.fn(),
   recordConversationListMessage: vi.fn(),
   ensureDirectConversationListed: vi.fn(),
@@ -18,10 +18,10 @@ const mocks = vi.hoisted(() => ({
   compressImage: vi.fn(),
 }));
 
-vi.mock('../auth/index.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: mocks.getLoggedInUserId,
 }));
-vi.mock('./user-profile-store', () => ({
+vi.mock('../user-profile-store', () => ({
   getLoggedInUserProfile: mocks.getLoggedInUserProfile,
 }));
 vi.mock('./conversation-list-state', () => ({
@@ -36,22 +36,24 @@ vi.mock('./conversation-list-state', () => ({
       .filter((id) => id !== mocks.getLoggedInUserId()),
 }));
 vi.mock('./conversations-client', () => ({
-  resolveDirectConversationId: mocks.resolveDirectConversationId,
   getConversationsClient: () => ({}),
 }));
-vi.mock('./conversation/d1.js', () => ({
-  createD1MessageRepository: mocks.createD1MessageRepository,
+vi.mock('./dm-ids.js', () => ({
+  resolveDirectConversationId: mocks.resolveDirectConversationId,
 }));
-vi.mock('./contacts-store.js', () => ({
+vi.mock('./message-sync.js', () => ({
+  createMessageSyncRepository: mocks.createMessageSyncRepository,
+}));
+vi.mock('../contacts-store.js', () => ({
   getContactById: mocks.getContactById,
   getContactLabel: (contact) => contact?.nickname ?? null,
   cacheContactConversationId: mocks.cacheContactConversationId,
 }));
-vi.mock('./files-store.js', () => ({
+vi.mock('../files-store.js', () => ({
   uploadConversationFile: mocks.uploadConversationFile,
   deleteConversationFile: mocks.deleteConversationFile,
 }));
-vi.mock('../features/push-notifications/index.js', () => ({
+vi.mock('../../features/push-notifications/index.js', () => ({
   getPushNotifications: () => ({
     sendMessageNotification: mocks.sendMessageNotification,
   }),
@@ -104,7 +106,7 @@ describe('conversation-store', () => {
       markConversationRead: vi.fn(),
       setMyReaction: vi.fn(),
     };
-    mocks.createD1MessageRepository.mockReturnValue(repo);
+    mocks.createMessageSyncRepository.mockReturnValue(repo);
 
     mocks.getLoggedInUserId.mockReturnValue('me');
     mocks.getLoggedInUserProfile.mockReturnValue({ displayName: 'Me' });

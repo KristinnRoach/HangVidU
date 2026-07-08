@@ -16,11 +16,11 @@ import {
 import {
   getConversationState,
   persistMyReaction,
-} from '@stores/conversation-store';
+} from '@stores/conversation/conversation-store';
 import type {
   ChatMessage,
   MessageAttachment,
-} from '@stores/conversation/interfaces.js';
+} from '@stores/conversation/types.js';
 import type { ConversationId } from '@stores/conversation/types.js';
 import { createConversationFileObjectUrl } from '@stores/files-store';
 

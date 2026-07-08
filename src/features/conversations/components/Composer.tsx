@@ -7,7 +7,7 @@ import {
   getConversationState,
   sendMessage,
   setConversationDraft,
-} from '../../../stores/conversation-store';
+} from '../../../stores/conversation/conversation-store';
 import styles from './ConversationPanel.module.css';
 
 type ComposerProps = {
