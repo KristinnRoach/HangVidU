@@ -5,7 +5,7 @@ import {
   buildTemplate,
 } from '../../../components/base-legacy/notification.js';
 import { inAppNotificationManager } from '../in-app-notification-manager.js';
-import { t, onLocaleChange } from '../../../shared/i18n/index.js';
+import { t, onLocaleChange } from '@shared/i18n/index.js';
 
 const NOTIFICATION_ID = 'push-unsupported';
 

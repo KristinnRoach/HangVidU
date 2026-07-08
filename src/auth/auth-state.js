@@ -1,6 +1,6 @@
 // src/auth/auth-state.js — pure auth state, no Firebase imports
 
-import { publish, publishAndAwait, subscribe } from '../shared/events/index.js';
+import { publish, publishAndAwait, subscribe } from '@shared/events/index.js';
 
 let state = {
   status: 'uninitialized', // 'uninitialized' | 'loading' | 'authenticated' | 'unauthenticated'

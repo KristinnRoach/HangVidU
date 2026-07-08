@@ -13,8 +13,8 @@ import {
   connectReferral,
   getUserProfileById,
 } from '../../../stores/user-profile-store.js';
-import { dispatchCommand } from '../../../shared/events/index.js';
-import { t } from '../../../shared/i18n/index.js';
+import { dispatchCommand } from '@shared/events/index.js';
+import { t } from '@shared/i18n/index.js';
 
 /**
  * Store referrer ID when user arrives via referral link.

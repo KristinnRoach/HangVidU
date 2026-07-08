@@ -1,6 +1,6 @@
 import { createEffect, onCleanup, onMount } from 'solid-js';
 import { initOneTap, renderGoogleSignInButton } from '../onetap.js';
-import { useI18n } from '../../shared/i18n/index.js';
+import { useI18n } from '@shared/i18n/index.js';
 
 export default function GoogleSignInButton() {
   const { locale } = useI18n();

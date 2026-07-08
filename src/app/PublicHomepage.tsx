@@ -1,5 +1,5 @@
 import type { ParentProps } from 'solid-js';
-import { useI18n } from '../shared/i18n';
+import { useI18n } from '@shared/i18n';
 import LoginButton from '@auth/components/LoginButton';
 
 export default function PublicHomepage(props: ParentProps) {

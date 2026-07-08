@@ -1,5 +1,5 @@
 import { Show, createSignal } from 'solid-js';
-import { useI18n } from '../../shared/i18n/index.js';
+import { useI18n } from '@shared/i18n/index.js';
 import GoogleSignInButton from './GoogleSignInButton';
 import UsernamePasswordForm from './UsernamePasswordForm';
 import LegalFooter from '../../components/LegalFooter';

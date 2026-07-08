@@ -12,7 +12,7 @@ import {
   showWarningToast,
   showErrorToast,
 } from '../../../components/base-legacy/toast.js';
-import { t, onLocaleChange } from '../../../shared/i18n/index.js';
+import { t, onLocaleChange } from '@shared/i18n/index.js';
 
 const NOTIFICATION_ID = 'enable-notifications';
 

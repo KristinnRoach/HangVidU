@@ -1,5 +1,5 @@
 import { createSignal } from 'solid-js';
-import { useI18n } from '../../../shared/i18n/index.js';
+import { useI18n } from '@shared/i18n/index.js';
 import { UserPlus } from 'lucide-solid';
 import AddContactModal from './AddContactModal';
 

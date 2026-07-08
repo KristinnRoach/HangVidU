@@ -1,4 +1,4 @@
-import { useI18n } from '../shared/i18n';
+import { useI18n } from '@shared/i18n';
 
 export default function LocaleToggle() {
   const { locale, setLocale } = useI18n();

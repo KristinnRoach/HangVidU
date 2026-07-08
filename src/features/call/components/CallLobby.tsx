@@ -3,10 +3,10 @@
 // TODO: design pass deferred until the Tailwind migration.
 import { createSignal, createEffect, on, Show } from 'solid-js';
 
-import { useP2PContext } from '../../../shared/p2p-context.js';
+import { useP2PContext } from '@shared/p2p-context.js';
 import { createRoomSignaling } from '../../../realtime/index.js';
 import { signInAsGuest } from '../../../auth/index.js';
-import { t } from '../../../shared/i18n';
+import { t } from '@shared/i18n';
 import {
   getAudioConstraints,
   getVideoConstraints,

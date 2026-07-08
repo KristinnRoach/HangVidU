@@ -1,10 +1,10 @@
 import { createSignal, createMemo, createEffect, on, Show } from 'solid-js';
-import { createAutoHide } from '../shared/createAutoHide';
+import { createAutoHide } from '@shared/createAutoHide';
 
 import { User, PhoneCall, Mail, ChevronLeft } from 'lucide-solid';
-import { useP2PContext } from '../shared/p2p-context.js';
+import { useP2PContext } from '@shared/p2p-context.js';
 import { useAuth } from '../auth/solid-auth';
-import { useI18n } from '../shared/i18n';
+import { useI18n } from '@shared/i18n';
 
 import AppLogo from '../components/AppLogo';
 import AuthControls from '../auth/components/AuthControls';

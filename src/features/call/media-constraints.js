@@ -1,6 +1,6 @@
 // src/shared/media/constraints.js
 
-import { devDebug } from '../../shared/utils/dev/dev-utils.js';
+import { devDebug } from '@shared/utils/dev/dev-utils.js';
 
 const userMediaAudioConstraints = {
   default: {

@@ -1,5 +1,5 @@
 import { LogIn } from 'lucide-solid';
-import { t } from '../../shared/i18n/index.js';
+import { t } from '@shared/i18n/index.js';
 
 import styles from './SignInSheet.module.css';
 

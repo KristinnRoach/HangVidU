@@ -1,11 +1,11 @@
 import { getAuthState, getLoggedInUserId } from '../../../auth/index.js';
-import { requestContactsAccess } from '../../../shared/utils/google/gis-tokens.js';
+import { requestContactsAccess } from '@shared/utils/google/gis-tokens.js';
 import {
   getAllContacts,
   hydrateContacts,
 } from '../../../stores/contacts-store.js';
 import { findRegisteredUsersByEmails } from '../../../stores/user-profile-store.js';
-import { fetchGoogleContacts } from '../../../shared/utils/google/google-contacts.js';
+import { fetchGoogleContacts } from '@shared/utils/google/google-contacts.js';
 import { buildImportableContacts } from './import-contacts-utils.js';
 
 /**

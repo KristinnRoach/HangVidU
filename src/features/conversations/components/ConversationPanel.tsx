@@ -1,5 +1,5 @@
 import { Show, createEffect, on } from 'solid-js';
-import { useI18n } from '../../../shared/i18n';
+import { useI18n } from '@shared/i18n';
 import { LoadBoundary } from '../../../components/LoadBoundary';
 // eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:fileDrop` directive
 import { fileDrop } from '@shared/utils/ui-utils/fileDrop/onFileDrop.solid.js';

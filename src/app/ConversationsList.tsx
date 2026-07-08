@@ -1,6 +1,6 @@
 import { For, Show, createMemo } from 'solid-js';
 import { Spinner } from '../components/Spinner';
-import { useI18n } from '../shared/i18n';
+import { useI18n } from '@shared/i18n';
 import { getLoggedInUserId } from '../auth/index.js';
 import {
   conversationLabel,

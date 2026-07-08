@@ -1,7 +1,7 @@
 import { createEffect, createSignal, on } from 'solid-js';
 import Modal from '../../../components/dialogs/Modal';
 import { validateUsername } from '../../../auth/index.js';
-import { useI18n } from '../../../shared/i18n';
+import { useI18n } from '@shared/i18n';
 import {
   claimUsername,
   getUserProfileById,

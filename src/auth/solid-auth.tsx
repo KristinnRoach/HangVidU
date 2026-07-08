@@ -8,7 +8,7 @@ import {
   type JSX,
 } from 'solid-js';
 import { getAuthState } from './auth-state.js';
-import { subscribe } from '../shared/events/index.js';
+import { subscribe } from '@shared/events/index.js';
 
 export type AuthStatus =
   | 'uninitialized'

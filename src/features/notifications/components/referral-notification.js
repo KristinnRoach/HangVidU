@@ -4,8 +4,8 @@ import {
   createNotification,
   buildTemplate,
 } from '../../../components/base-legacy/notification.js';
-import { escapeHtml } from '../../../shared/utils/ui-utils/dom-utils.js';
-import { t, onLocaleChange } from '../../../shared/i18n/index.js';
+import { escapeHtml } from '@shared/utils/ui-utils/dom-utils.js';
+import { t, onLocaleChange } from '@shared/i18n/index.js';
 
 /**
  * Create a referral notification prompting sign-in.

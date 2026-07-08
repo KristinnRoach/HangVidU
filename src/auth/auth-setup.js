@@ -10,10 +10,10 @@ import {
   setFirebaseAuthPersistence,
   signInFirebaseAnonymously,
 } from './adapters/firebase-auth-adapter.js';
-import { devDebug } from '../shared/utils/dev/dev-utils.js';
+import { devDebug } from '@shared/utils/dev/dev-utils.js';
 import { initOneTap, cancelOneTap, showOneTapSignin } from './onetap.js';
-import { clearGisTokenCache } from '../shared/utils/google/gis-token-service.js';
-import { getLocale, onLocaleChange } from '../shared/i18n/index.js';
+import { clearGisTokenCache } from '@shared/utils/google/gis-token-service.js';
+import { getLocale, onLocaleChange } from '@shared/i18n/index.js';
 import { logAuthError } from './shared/auth-error-logging.js';
 import { getLoggedInUserToken } from './shared/auth-token.js';
 import {

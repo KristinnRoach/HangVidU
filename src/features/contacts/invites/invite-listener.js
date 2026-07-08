@@ -8,7 +8,7 @@ import {
 } from '../../../components/base-legacy/toast.js';
 import { getHangViduApiBaseUrl } from '../../../infra/hangvidu-api-url.js';
 import { subscribeToUserMailbox } from '../../../realtime/user-mailbox';
-import { dispatchCommand } from '../../../shared/events/index.js';
+import { dispatchCommand } from '@shared/events/index.js';
 import { reloadContacts } from '../../../stores/contacts-store.js';
 import {
   acceptContactRequest,
