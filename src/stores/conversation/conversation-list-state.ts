@@ -21,15 +21,15 @@ import {
   subscribeToUserMailbox,
 } from '../../realtime/user-mailbox';
 import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
-import type { ConversationMember } from '../../storage/conversations/data-client';
+import {
+  conversationLastReadAt,
+  toConversationListItem,
+  type ConversationListItem,
+} from '@storage/conversations/conversation-mapper.js';
+import type { ConversationMember } from '@storage/conversations/data-client';
 
-export type Conversation = {
-  conversationId: string;
-  kind: 'direct' | 'group' | null;
-  title: string | null;
-  members: ConversationMember[];
-  latestSentAt: number;
-  latestSenderId: string | null;
+export type Conversation = Omit<ConversationListItem, 'kind'> & {
+  kind: ConversationListItem['kind'] | null;
 };
 
 const [listState, setListState] = createSignal<Map<string, Conversation>>(
@@ -189,15 +189,9 @@ export async function refreshConversationListState(): Promise<void> {
     const map = new Map<string, Conversation>();
     const reads = new Map<string, number>();
     for (const c of conversations) {
-      map.set(c.id, {
-        conversationId: c.id,
-        kind: c.kind,
-        title: c.title ?? null,
-        members: c.members,
-        latestSentAt: c.latest_sent_at ?? c.updated_at,
-        latestSenderId: c.latest_sender_id ?? null,
-      });
-      reads.set(c.id, c.last_read_at ?? 0);
+      const item = toConversationListItem(c);
+      map.set(item.conversationId, item);
+      reads.set(item.conversationId, conversationLastReadAt(c));
     }
     setServerLastRead(reads);
     setListState((current) => {
