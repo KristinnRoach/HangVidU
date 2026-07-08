@@ -680,7 +680,6 @@ export function persistMyReaction(change: ReactionChange): void {
     getRepo().setMyReaction(
       conversationId,
       change.messageId,
-      change.userId as UserId,
       change.reactionKey,
     ),
   ).catch((error) => {

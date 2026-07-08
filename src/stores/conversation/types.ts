@@ -46,7 +46,6 @@ export type MessageRepository = {
   setMyReaction(
     conversationId: ConversationId,
     messageId: string,
-    userId: UserId,
     reactionKey: string | null,
   ): void | Promise<void>;
 };
@@ -64,7 +63,6 @@ export type MessageAttachment = {
     provider: 'r2';
     bucket: string;
     key: string;
-    [key: string]: unknown;
   };
 };
 

@@ -69,7 +69,7 @@ describe('message sync reactions', () => {
     };
     const repository = createMessageSyncRepository(client);
 
-    await repository.setMyReaction('c1', 'm1', 'me', 'laugh');
+    await repository.setMyReaction('c1', 'm1', 'laugh');
 
     expect(client.setMyReaction).toHaveBeenCalledWith('c1', 'm1', 'laugh');
   });

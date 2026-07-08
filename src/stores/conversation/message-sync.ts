@@ -144,7 +144,7 @@ export function createMessageSyncRepository(
       await client.markRead(conversationId);
     },
 
-    async setMyReaction(conversationId, messageId, _userId, reactionKey) {
+    async setMyReaction(conversationId, messageId, reactionKey) {
       await client.setMyReaction(conversationId, messageId, reactionKey);
     },
   };
