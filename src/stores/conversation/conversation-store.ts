@@ -28,7 +28,7 @@ import {
   uploadConversationFile,
 } from '../files-store.js';
 
-import { getPushNotifications } from '@features/push-notifications/index.js';
+import { getPushNotifications } from '@push/index.js';
 
 import { sortMessagesBySentAt } from './message-ordering.js';
 import {

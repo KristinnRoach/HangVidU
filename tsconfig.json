@@ -13,6 +13,7 @@
       "@features/*": ["./src/features/*"],
       "@infra/*": ["./src/infra/*"],
       "@lib/*": ["./src/lib/*"],
+      "@push/*": ["./src/push/*"],
       "@realtime/*": ["./src/realtime/*"],
       "@shared/*": ["./src/shared/*"],
       "@storage/*": ["./src/storage/*"],

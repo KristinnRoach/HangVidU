@@ -5,7 +5,7 @@ import {
   buildTemplate,
 } from '../../../components/base-legacy/notification.js';
 import { inAppNotificationManager } from '../in-app-notification-manager.js';
-import { getPushNotifications } from '../../push-notifications/index.js';
+import { getPushNotifications } from '@push/index.js';
 import { showPushUnsupportedNotification } from './push-unsupported-notification.js';
 import {
   showSuccessToast,

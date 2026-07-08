@@ -7,7 +7,7 @@ import {
   afterEach,
 } from 'vite-plus/test';
 
-vi.mock('../../auth/index.js', () => ({
+vi.mock('../auth/index.js', () => ({
   getLoggedInUserToken: vi.fn().mockResolvedValue('mock-token-123'),
 }));
 

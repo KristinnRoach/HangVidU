@@ -4,8 +4,8 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';
-import { handlePushEvent } from './features/push-notifications/sw/push-event-handler.js';
-import { handleNotificationClickEvent } from './features/push-notifications/sw/notification-click-handler.js';
+import { handlePushEvent } from './push/sw/push-event-handler.js';
+import { handleNotificationClickEvent } from './push/sw/notification-click-handler.js';
 
 // ============================================================================
 // WORKBOX PWA FUNCTIONALITY

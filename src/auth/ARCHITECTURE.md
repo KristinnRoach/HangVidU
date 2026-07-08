@@ -3,7 +3,7 @@
 Firebase-Auth-backed identity: sign-in/out (Google popup, One Tap,
 username/password), auth state, and ID-token access. Nothing else lives here —
 Google OAuth _scope_ tokens (Contacts/Gmail) are in `shared/utils/google/`, and
-authed Cloud Function calls are in `features/push-notifications/`.
+authed Cloud Function calls are in `src/push/`.
 
 ## Public API
 

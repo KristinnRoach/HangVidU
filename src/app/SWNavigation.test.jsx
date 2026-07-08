@@ -9,7 +9,7 @@ import {
 import { cleanup, render, waitFor } from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
 
-import SWNavigation from '../SWNavigation';
+import SWNavigation from './SWNavigation';
 
 const mocks = vi.hoisted(() => ({
   getContactById: vi.fn(),
@@ -18,12 +18,12 @@ const mocks = vi.hoisted(() => ({
   openDirectConversation: vi.fn(),
 }));
 
-vi.mock('../../../stores/contacts-store', () => ({
+vi.mock('../stores/contacts-store', () => ({
   getContactById: mocks.getContactById,
   getContactsIsHydrated: mocks.getContactsIsHydrated,
 }));
 
-vi.mock('../../../stores/conversation/conversation-store', () => ({
+vi.mock('../stores/conversation/conversation-store', () => ({
   openConversation: mocks.openSelectedConversation,
   openDirectConversation: mocks.openDirectConversation,
   selection: () => null,

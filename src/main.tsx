@@ -3,14 +3,14 @@ import type { JSX } from 'solid-js';
 import { render } from 'solid-js/web';
 
 import App from './App';
-import { initPushNotifications } from './features/push-notifications/push-notifications.js';
+import { initPushNotifications } from './push/push-notifications.js';
 import { initializeAppCheckDeferred } from './infra/firebase.js';
 import { setup as setupAuth } from './auth/setup.js';
 import { setup as setupContacts } from './features/contacts';
 import { setup as setupConversations } from './features/conversations';
 import { setup as setupNotifications } from './features/notifications/index.js';
 import { setup as setupPresence } from './features/presence/index.js';
-import { setup as setupPushNotifications } from './features/push-notifications/index.js';
+import { setup as setupPushNotifications } from './push/index.js';
 import { setup as setupPWA } from './features/pwa';
 
 type Cleanup = () => void;
