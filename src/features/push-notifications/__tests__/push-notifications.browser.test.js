@@ -36,10 +36,6 @@ vi.mock('../cloud-functions.js', () => ({
   }),
 }));
 
-vi.mock('../../../stores/contacts-store.js', () => ({
-  getContactByConversationId: vi.fn(() => null),
-}));
-
 vi.mock('../../../auth/auth-setup.js', () => ({
   auth: {},
   initAuth: vi.fn(),

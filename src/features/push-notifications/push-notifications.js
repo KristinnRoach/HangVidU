@@ -1,7 +1,6 @@
 // Public app-facing push notifications facade.
 
 import { dispatchCommand, subscribe } from '../../shared/events/index.js';
-import { getContactByConversationId } from '../../stores/contacts-store.js';
 import { callCloudFunction } from './cloud-functions.js';
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
@@ -590,18 +589,6 @@ export class PushNotifications {
     const trackedNotificationId = this.getTrackedCallNotificationId(roomId);
 
     let callerLabel = callerName || callerId || 'Unknown caller';
-
-    if (!callerName) {
-      try {
-        const contact = getContactByConversationId(roomId);
-        callerLabel = contact?.nickname || callerId || 'Unknown caller';
-      } catch (error) {
-        console.warn(
-          '[Push Notifications] Failed to resolve caller name:',
-          error,
-        );
-      }
-    }
 
     if (this.options.privacyMode) {
       callerLabel = 'Someone';
