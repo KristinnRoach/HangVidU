@@ -36,8 +36,10 @@ vi.mock('./conversation-list-state', () => ({
       .filter((id) => id !== mocks.getLoggedInUserId()),
 }));
 vi.mock('./conversations-client', () => ({
-  resolveDirectConversationId: mocks.resolveDirectConversationId,
   getConversationsClient: () => ({}),
+}));
+vi.mock('./dm-ids.js', () => ({
+  resolveDirectConversationId: mocks.resolveDirectConversationId,
 }));
 vi.mock('./message-sync.js', () => ({
   createMessageSyncRepository: mocks.createMessageSyncRepository,

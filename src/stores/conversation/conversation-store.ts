@@ -22,10 +22,8 @@ import {
   refreshConversationListState,
   type Conversation,
 } from './conversation-list-state.js';
-import {
-  getConversationsClient,
-  resolveDirectConversationId,
-} from './conversations-client.js';
+import { getConversationsClient } from './conversations-client.js';
+import { resolveDirectConversationId } from './dm-ids.js';
 import {
   cacheContactConversationId,
   getContactById,
