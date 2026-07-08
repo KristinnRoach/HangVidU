@@ -6,7 +6,6 @@ export type IncomingMessage = MessageEnvelope & {
   reactions: Reaction[];
 };
 
-/** Input the adapter hands the data worker for a send. */
 export type SendMessageInput = {
   messageId: string;
   kind: 'text' | 'file';

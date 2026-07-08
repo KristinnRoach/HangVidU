@@ -1,9 +1,3 @@
-// Active-conversation store: the selected conversation plus its live chat
-// state (messages, draft, sends). Module singleton on the contacts pattern —
-// views read `getConversationState()` and call the exported actions; all
-// writes stay inside this module. Selection drives the message-watch
-// lifecycle directly: open* starts the watch, reset (logout) stops it.
-
 import { createSignal } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 import { compressImage } from '@lib/media/image-compress.js';
@@ -156,13 +150,9 @@ function getRepo(): MessageRepository {
   return (repository ??= createMessageRepositoryFromEnv());
 }
 
-// ---------- reads ----------
-
 export function getConversationState() {
   return state;
 }
-
-// ---------- selected-conversation persistence ----------
 
 const STORAGE_PREFIX = 'hangvidu:conversations:selected';
 
@@ -201,8 +191,6 @@ export function loadSelectedConversationId(): string | null {
     return null;
   }
 }
-
-// ---------- draft persistence (debounced) ----------
 
 const DRAFT_SAVE_DELAY_MS = 250;
 
@@ -249,8 +237,6 @@ function clearPersistedDraft() {
   pendingDraft = undefined;
   clearLocalDraft(myUserId, conversationId);
 }
-
-// ---------- message-list mutations ----------
 
 function isChatMessage(message: ChatMessage | null): message is ChatMessage {
   return Boolean(message);
@@ -334,8 +320,6 @@ function markSent(tempId: string, realId: string) {
 function markFailed(tempId: string) {
   setState('messages', (m) => m.id === tempId, 'status', 'failed');
 }
-
-// ---------- watch lifecycle ----------
 
 let stopWatch: (() => void) | undefined;
 
@@ -445,8 +429,6 @@ function activate(next: ConversationSelection | null) {
   startWatch(next.conversationId, myUserId, next.displayUI);
 }
 
-// ---------- selection actions ----------
-
 export function openConversation(
   conversationId: ConversationId,
   opts?: { displayUI?: boolean },
@@ -514,8 +496,6 @@ export function resetConversationStore(): void {
   setLatestReadCandidate(null);
   setState({ ...initial });
 }
-
-// ---------- sending ----------
 
 type SendPayload = TextMessagePayload | FileMessagePayload;
 
@@ -692,8 +672,6 @@ export async function sendFileMessage(file: File): Promise<SendFileResult> {
     setState('preparingFile', false);
   }
 }
-
-// ---------- reactions + read state ----------
 
 export function persistMyReaction(change: ReactionChange): void {
   const conversationId = state.conversationId;

@@ -1,17 +1,3 @@
-// Conversation-list state: drives MRU reorder + the unread badge.
-//
-// Two inputs, one reactive map keyed by conversationId:
-//   - seed: GET /conversations once on start (and on demand), carrying each
-//     conversation's latest message time + sender.
-//   - live: the per-user mailbox pushes an `activity` envelope on every message
-//     to a conversation you're in (see shared/user-mailbox/protocol).
-//
-// Read state (lastReadAt) is per-device localStorage for now; markConversationRead
-// bumps a version signal so the unread derivation re-runs without a refetch.
-//
-// Live push rides the user's shared mailbox socket (subscribeToUserMailbox), the
-// same connection CallService uses — no second per-user socket.
-
 import { createSignal } from 'solid-js';
 import { getLoggedInUserId, getLoggedInUserToken } from '../../auth/index.js';
 import { getConversationsClient } from './conversations-client';
@@ -48,8 +34,6 @@ const [serverLastRead, setServerLastRead] = createSignal<Map<string, number>>(
 /** Reactive: conversationId -> latest list state. Read by app/ConversationsList. */
 export const conversationListState = listState;
 export const conversationListSeeded = seeded;
-
-// ── derivations ──────────────────────────────────────────────────────────────
 
 /** Member ids minus the logged-in user. */
 export function conversationPeers(conversation: Conversation): string[] {
@@ -91,7 +75,6 @@ export function conversationLabel(conversation: Conversation): string | null {
     null
   );
 }
-// ── per-device read state ────────────────────────────────────────────────────
 const readKey = (conversationId: string) =>
   `hangvidu:lastRead:${conversationId}`;
 
@@ -127,7 +110,6 @@ export function markConversationRead(
   if (nextLastReadAt !== lastReadAt) setReadVersion((v) => v + 1);
 }
 
-// ── seed + live wiring ───────────────────────────────────────────────────────
 function upsert(conversationId: string, next: Partial<Conversation>): void {
   setListState((prev) => {
     const cur = prev.get(conversationId);
