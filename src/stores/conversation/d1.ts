@@ -12,16 +12,13 @@
 //
 // Scope: text + file messages and one reaction per user, all with live push.
 
-import type {
-  IncomingMessage,
-  MessageRepository,
-  ReactionSummary,
-} from './interfaces.js';
+import type { IncomingMessage, MessageRepository } from './interfaces.js';
 import type { ConversationId, MessageEnvelope, UserId } from './types.js';
 import type {
   ConversationServerEvent,
   WireMessage,
-} from '../../realtime/conversation-protocol';
+} from '@realtime/conversation-protocol';
+import type { Reaction } from '@lib/reactions/solid/solid.js';
 
 /** Input the adapter hands the client for a send (mirrors the worker body). */
 export interface D1SendInput {
@@ -51,7 +48,7 @@ export interface D1MessageClient {
     conversationId: string,
     messageId: string,
     reactionKey: string | null,
-  ): Promise<ReactionSummary[]>;
+  ): Promise<Reaction[]>;
   /** Advance the caller's server-owned read marker for a conversation. */
   markRead(conversationId: string): Promise<void>;
   getUserId(): string | null;

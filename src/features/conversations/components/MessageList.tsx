@@ -1,32 +1,35 @@
 import { For, Show, createEffect, createSignal, on, onCleanup } from 'solid-js';
 import { Download } from 'lucide-solid';
-import { useI18n } from '../../../shared/i18n';
-import { showImagePreview } from '../../../components/base-legacy/imagePreview.js';
+import { useI18n } from '@shared/i18n';
+// eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:reactions` directive
+import { reactions } from '@lib/reactions/solid/solid.js';
+import { showImagePreview } from '@components/base-legacy/imagePreview.js';
 import { downloadUrl } from '@lib/utils/download-url.js';
 import { detectDoubleClick } from '@shared/utils/ui-utils/detectDoubleClick.js';
-import { linkifyText } from '../utils/linkifyText.jsx';
-import {
-  formatTimestamp,
-  TIMESTAMP_THRESHOLD_MS,
-} from '../utils/format-timestamp.js';
+
 import {
   displayAttachmentFileName,
   formatFileSize,
   isImageAttachment,
   isR2FileAttachment,
 } from '@stores/conversation/attachments.js';
-import { createConversationFileObjectUrl } from '../../../stores/files-store';
 import {
   getConversationState,
   persistMyReaction,
-} from '../../../stores/conversation-store';
-// eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:reactions` directive
-import { reactions } from '../reactions/solid/solid.js';
+} from '@stores/conversation-store';
 import type {
   ChatMessage,
   MessageAttachment,
 } from '@stores/conversation/interfaces.js';
 import type { ConversationId } from '@stores/conversation/types.js';
+import { createConversationFileObjectUrl } from '@stores/files-store';
+
+import { linkifyText } from '../utils/linkifyText.jsx';
+import {
+  formatTimestamp,
+  TIMESTAMP_THRESHOLD_MS,
+} from '../utils/format-timestamp.js';
+
 import styles from './ConversationPanel.module.css';
 
 /**

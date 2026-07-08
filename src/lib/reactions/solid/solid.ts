@@ -1,6 +1,11 @@
 import { createEffect, onCleanup, type Accessor } from 'solid-js';
-import type { ReactionSummary } from '@stores/conversation/interfaces.js';
 import { attachReactions, syncReactionSummaries } from '../attachReactions.js';
+
+export type Reaction = {
+  key: string;
+  count: number;
+  reactedByMe: boolean;
+};
 
 export type ReactionChange = {
   messageId: string;
@@ -11,7 +16,7 @@ export type ReactionChange = {
 export type ReactionsDirectiveOptions = {
   messageId: string;
   userId: string | null;
-  reactions?: ReactionSummary[];
+  reactions?: Reaction[];
   onChange?: (change: ReactionChange) => void;
 };
 

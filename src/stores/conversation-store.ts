@@ -62,7 +62,7 @@ import type {
   TextMessagePayload,
   UserId,
 } from './conversation/types.js';
-import type { ReactionChange } from '@features/conversations/reactions/solid/solid.js';
+import type { ReactionChange } from '@lib/reactions/solid/solid.js';
 
 import {
   createD1MessageRepository,
