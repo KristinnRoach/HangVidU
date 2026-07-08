@@ -5,6 +5,7 @@ import { getPushNotifications } from './push-notifications.js';
 export {
   PushNotifications,
   getPushNotifications,
+  initPushNotifications,
 } from './push-notifications.js';
 
 /**
