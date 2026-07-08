@@ -193,7 +193,10 @@ overrides.push(
   ),
 );
 
-// TODO: If keeping stores as solid state for mirroring storage, keep it clean and remove this (move messaging and any feature storage accessors here)
+// TODO: Drop 'feature' from the allow list once the last two stores→features
+// imports are gone (conversation-store: push-notifications side effect +
+// ReactionChange type from reactions/solid). Target rule: stores never import
+// features; imports flow app → features → stores → storage/realtime/auth.
 overrides.push(
   dependencyRule(
     ['src/stores/*.{js,jsx,ts,tsx}', 'src/stores/**/*.{js,jsx,ts,tsx}'],

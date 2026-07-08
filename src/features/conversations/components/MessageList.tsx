@@ -14,7 +14,7 @@ import {
   formatFileSize,
   isImageAttachment,
   isR2FileAttachment,
-} from '../utils/attachments.js';
+} from '@stores/conversation/attachments.js';
 import { createConversationFileObjectUrl } from '../../../stores/files-store';
 import {
   getConversationState,
@@ -22,8 +22,11 @@ import {
 } from '../../../stores/conversation-store';
 // eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:reactions` directive
 import { reactions } from '../reactions/solid/solid.js';
-import type { ChatMessage, MessageAttachment } from '../interfaces.js';
-import type { ConversationId } from '../types.js';
+import type {
+  ChatMessage,
+  MessageAttachment,
+} from '@stores/conversation/interfaces.js';
+import type { ConversationId } from '@stores/conversation/types.js';
 import styles from './ConversationPanel.module.css';
 
 /**

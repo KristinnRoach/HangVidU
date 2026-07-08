@@ -3,7 +3,7 @@ import {
   ConversationIdSchema,
   EventMessagePayloadSchema,
   MessageEnvelopeSchema,
-} from '../schema.js';
+} from './schema.js';
 
 describe('conversations schema', () => {
   it('normalizes and rejects blank conversation ids', () => {

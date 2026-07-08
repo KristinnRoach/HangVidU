@@ -38,36 +38,36 @@ import {
 
 import { getPushNotifications } from '@features/push-notifications/index.js';
 
-import { sortMessagesBySentAt } from '@features/conversations/message-ordering.js';
+import { sortMessagesBySentAt } from './conversation/message-ordering.js';
 import {
   clearLocalDraft,
   loadLocalDraft,
   saveLocalDraft,
-} from '@features/conversations/local-drafts.js';
+} from './conversation/local-drafts.js';
 import {
   IMAGE_COMPRESSION_THRESHOLD_BYTES,
   MAX_R2_FILE_UPLOAD_BYTES,
   attachmentFileName,
   isImageFile,
   readImageDimensions,
-} from '@features/conversations/utils/attachments.js';
+} from './conversation/attachments.js';
 import type {
   ChatMessage,
   IncomingMessage,
   MessageRepository,
-} from '@features/conversations/interfaces.js';
+} from './conversation/interfaces.js';
 import type {
   ConversationId,
   FileMessagePayload,
   TextMessagePayload,
   UserId,
-} from '@features/conversations/types.js';
+} from './conversation/types.js';
 import type { ReactionChange } from '@features/conversations/reactions/solid/solid.js';
 
 import {
   createD1MessageRepository,
   type D1MessageClient,
-} from '@features/conversations/adapters/d1.js';
+} from './conversation/d1.js';
 
 // Assembles the D1 message adapter from the data-worker HTTP
 // client (storage) + the live-push channel (realtime), both authenticated with

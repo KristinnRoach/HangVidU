@@ -1,7 +1,7 @@
 // Pure attachment helpers for the conversation view: type predicates, display
 // name/size formatting, and best-effort image dimension reads.
 
-import type { MessageAttachment } from '../interfaces.js';
+import type { MessageAttachment } from './interfaces.js';
 
 export const MAX_R2_FILE_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const IMAGE_COMPRESSION_THRESHOLD_BYTES = Math.round(1.5 * 1024 * 1024);

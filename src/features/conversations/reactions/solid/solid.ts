@@ -1,5 +1,5 @@
 import { createEffect, onCleanup, type Accessor } from 'solid-js';
-import type { ReactionSummary } from '../../interfaces.js';
+import type { ReactionSummary } from '@stores/conversation/interfaces.js';
 import { attachReactions, syncReactionSummaries } from '../attachReactions.js';
 
 export type ReactionChange = {

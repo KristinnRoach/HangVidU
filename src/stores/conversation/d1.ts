@@ -16,12 +16,12 @@ import type {
   IncomingMessage,
   MessageRepository,
   ReactionSummary,
-} from '../interfaces.js';
-import type { ConversationId, MessageEnvelope, UserId } from '../types.js';
+} from './interfaces.js';
+import type { ConversationId, MessageEnvelope, UserId } from './types.js';
 import type {
   ConversationServerEvent,
   WireMessage,
-} from '../../../realtime/conversation-protocol';
+} from '../../realtime/conversation-protocol';
 
 /** Input the adapter hands the client for a send (mirrors the worker body). */
 export interface D1SendInput {
