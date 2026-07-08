@@ -1,10 +1,11 @@
-import { handleCommand } from '../../shared/events/index.js';
-import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
+import { handleCommand } from '@shared/events/index.js';
+import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setup.js';
 import { getPushNotifications } from './push-notifications.js';
 
 export {
   PushNotifications,
   getPushNotifications,
+  initPushNotifications,
 } from './push-notifications.js';
 
 /**

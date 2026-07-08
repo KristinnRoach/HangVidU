@@ -83,10 +83,11 @@ overrides.push(
             { type: 'infra' },
             { type: 'stores' },
             { type: 'realtime' },
+            { type: 'push' },
           ],
         },
         message:
-          'Features may import from auth, shared, lib, components, infra, stores, realtime, or other features.',
+          'Features may import from auth, shared, lib, components, infra, stores, realtime, push, or other features.',
       },
     ],
   ),
@@ -193,10 +194,28 @@ overrides.push(
   ),
 );
 
-// TODO: Drop 'feature' from the allow list once the last two stores→features
-// imports are gone (conversation-store: push-notifications side effect +
-// ReactionChange type from reactions/solid). Target rule: stores never import
-// features; imports flow app → features → stores → storage/realtime/auth.
+overrides.push(
+  dependencyRule(
+    ['src/push/*.{js,jsx,ts,tsx}', 'src/push/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'push' },
+        allow: {
+          to: [
+            { type: 'push' },
+            { type: 'shared' },
+            { type: 'lib' },
+            { type: 'infra' },
+            { type: 'auth' },
+          ],
+        },
+        message:
+          'Push is the notification-delivery layer (sibling of realtime/storage) — may only import from push, shared, lib, infra, and auth.',
+      },
+    ],
+  ),
+);
+
 overrides.push(
   dependencyRule(
     ['src/stores/*.{js,jsx,ts,tsx}', 'src/stores/**/*.{js,jsx,ts,tsx}'],
@@ -211,12 +230,12 @@ overrides.push(
             { type: 'lib' },
             { type: 'storage' },
             { type: 'realtime' },
+            { type: 'push' },
             { type: 'infra' },
-            { type: 'feature' },
           ],
         },
         message:
-          'Stores may only import from stores, auth, shared, lib, storage, realtime, infra and feature.',
+          'Stores may only import from stores, auth, shared, lib, storage, realtime, push, and infra.',
       },
     ],
   ),
@@ -318,6 +337,14 @@ export default [
           pattern: [
             'src/realtime/*.{js,jsx,ts,tsx}',
             'src/realtime/**/*.{js,jsx,ts,tsx}',
+          ],
+        },
+        {
+          type: 'push',
+          mode: 'full',
+          pattern: [
+            'src/push/*.{js,jsx,ts,tsx}',
+            'src/push/**/*.{js,jsx,ts,tsx}',
           ],
         },
         {

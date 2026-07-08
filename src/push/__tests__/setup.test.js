@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../../shared/events/index.js', () => ({
+vi.mock('../../shared/events/index.js', () => ({
   handleCommand: mocks.handleCommand,
 }));
 

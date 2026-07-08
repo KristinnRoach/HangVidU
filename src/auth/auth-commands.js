@@ -2,7 +2,7 @@
 
 import { logAuthError } from './shared/auth-error-logging.js';
 import { normalizeAuthErrorCode } from './shared/auth-error-codes.js';
-import { clearGisTokenCache } from '../shared/utils/google/gis-token-service.js';
+import { clearGisTokenCache } from '@shared/utils/google/gis-token-service.js';
 import { beginAuthTransition } from './auth-state.js';
 import { showOneTapSignin } from './onetap.js';
 import {
@@ -14,14 +14,14 @@ import {
 import {
   dispatchCommand,
   dispatchCommandAndAwait,
-} from '../shared/events/index.js';
-import { t } from '../shared/i18n/index.js';
-import { devDebug } from '../shared/utils/dev/dev-utils.js';
+} from '@shared/events/index.js';
+import { t } from '@shared/i18n/index.js';
+import { devDebug } from '@shared/utils/dev/dev-utils.js';
 import {
   detectIOSStandalone,
   openInSafariExternal,
 } from './shared/auth-platform-utils.js';
-import { disableGoogleAutoSignIn } from '../shared/utils/google/google-identity-adapter.js';
+import { disableGoogleAutoSignIn } from '@shared/utils/google/google-identity-adapter.js';
 import {
   isSafariExternalOpenArmed,
   setSafariExternalOpenArmed,

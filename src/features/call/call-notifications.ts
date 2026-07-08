@@ -1,4 +1,4 @@
-import { getPushNotifications } from '../push-notifications/index.js';
+import { getPushNotifications } from '@push/index.js';
 import type { PendingOutgoingCall } from './call-types.js';
 
 export function sendIncomingCallPushNotification(call: PendingOutgoingCall) {

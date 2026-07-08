@@ -55,7 +55,7 @@ vi.mock('../files-store.js', () => ({
   uploadConversationFile: mocks.uploadConversationFile,
   deleteConversationFile: mocks.deleteConversationFile,
 }));
-vi.mock('../../features/push-notifications/index.js', () => ({
+vi.mock('../../push/index.js', () => ({
   getPushNotifications: () => ({
     sendMessageNotification: mocks.sendMessageNotification,
   }),

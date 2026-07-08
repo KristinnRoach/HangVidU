@@ -1,5 +1,5 @@
-import { handleCommand } from '../../shared/events/index.js';
-import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
+import { handleCommand } from '@shared/events/index.js';
+import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setup.js';
 import { inAppNotificationManager } from './in-app-notification-manager.js';
 import { showEnableNotificationsPrompt } from './components/enable-notifications-prompt.js';
 import { createInviteNotification } from './components/invite-notification.js';

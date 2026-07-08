@@ -1,5 +1,5 @@
-import { subscribe } from '../../shared/events/index.js';
-import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
+import { subscribe } from '@shared/events/index.js';
+import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setup.js';
 import {
   captureReferral,
   processReferral,

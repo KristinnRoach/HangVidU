@@ -2,11 +2,11 @@ import { createEffect, createSignal } from 'solid-js';
 import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff } from 'lucide-solid';
 
 import { useCallHandshake } from '../call-handshake';
-import { useP2PContext } from '../../../shared/p2p-context.js';
-import { createAutoHide } from '../../../shared/createAutoHide';
+import { useP2PContext } from '@shared/p2p-context.js';
+import { createAutoHide } from '@shared/createAutoHide';
 
 import styles from './CallControls.module.css';
-import { useI18n } from '../../../shared/i18n';
+import { useI18n } from '@shared/i18n';
 
 type StartCallButtonProps = {
   calleeId: string;

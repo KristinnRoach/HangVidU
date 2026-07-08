@@ -1,9 +1,9 @@
 import { createEffect, onCleanup, onMount } from 'solid-js';
-import { getContactsIsHydrated } from '../../stores/contacts-store';
+import { getContactsIsHydrated } from '../stores/contacts-store';
 import {
   openConversation as openSelectedConversation,
   openDirectConversation,
-} from '../../stores/conversation/conversation-store';
+} from '../stores/conversation/conversation-store';
 
 type Props = {
   queueLimit?: number;

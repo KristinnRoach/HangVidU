@@ -1,4 +1,4 @@
-import { createSingleFlightSetup } from '../../shared/utils/create-single-flight-setup.js';
+import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setup.js';
 import { setupUpdateHandler, stopUpdateChecks } from './update-handlers.js';
 
 /**

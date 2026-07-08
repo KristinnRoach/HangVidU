@@ -1,6 +1,6 @@
 import { For, Show } from 'solid-js';
 import VideoStream from '../../../components/media/VideoStream';
-import { useP2PContext } from '../../../shared/p2p-context.js';
+import { useP2PContext } from '@shared/p2p-context.js';
 import styles from './MemberStreams.module.css';
 
 export default function MemberStreams() {

@@ -5,14 +5,14 @@ import {
   buildTemplate,
 } from '../../../components/base-legacy/notification.js';
 import { inAppNotificationManager } from '../in-app-notification-manager.js';
-import { getPushNotifications } from '../../push-notifications/index.js';
+import { getPushNotifications } from '@push/index.js';
 import { showPushUnsupportedNotification } from './push-unsupported-notification.js';
 import {
   showSuccessToast,
   showWarningToast,
   showErrorToast,
 } from '../../../components/base-legacy/toast.js';
-import { t, onLocaleChange } from '../../../shared/i18n/index.js';
+import { t, onLocaleChange } from '@shared/i18n/index.js';
 
 const NOTIFICATION_ID = 'enable-notifications';
 

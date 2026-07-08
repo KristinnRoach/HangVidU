@@ -12,9 +12,9 @@ import {
   loadGoogleIdentityScript,
   promptGoogleOneTap,
   renderGoogleSignInButton as renderAdapterGoogleSignInButton,
-} from '../shared/utils/google/google-identity-adapter.js';
-import { devDebug } from '../shared/utils/dev/dev-utils.js';
-import { getLocale, t } from '../shared/i18n/index.js';
+} from '@shared/utils/google/google-identity-adapter.js';
+import { devDebug } from '@shared/utils/dev/dev-utils.js';
+import { getLocale, t } from '@shared/i18n/index.js';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_APP_GOOGLE_CLIENT_ID;
 const oneTapCallbacks = new Set();

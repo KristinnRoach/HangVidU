@@ -1,4 +1,4 @@
-import { onClickOutside } from '../../shared/utils/ui-utils/clickOutside.js';
+import { onClickOutside } from '@shared/utils/ui-utils/clickOutside.js';
 import {
   createNotification,
   buildTemplate,

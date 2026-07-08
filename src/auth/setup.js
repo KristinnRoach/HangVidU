@@ -5,7 +5,7 @@
 // main.tsx registered before this setup. It is app wiring, not the auth module
 // surface (that's `src/auth/index.js`).
 
-import { subscribe } from '../shared/events/index.js';
+import { subscribe } from '@shared/events/index.js';
 import { initAuth } from './index.js';
 
 let isReady = false;

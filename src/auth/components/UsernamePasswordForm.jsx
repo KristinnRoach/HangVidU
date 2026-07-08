@@ -4,7 +4,7 @@ import {
   signUpWithUsername,
 } from '../password-auth.js';
 import { resolveErrorLookupKey } from '../shared/auth-error-codes.js';
-import { useI18n } from '../../shared/i18n/index.js';
+import { useI18n } from '@shared/i18n/index.js';
 import styles from './UsernamePasswordForm.module.css';
 
 const FRIENDLY_ERROR_KEYS = {

@@ -1,4 +1,4 @@
-// src/features/push-notifications/firebase-functions-adapter.js
+// src/push/firebase-functions-adapter.js
 // Firebase onRequest Cloud Functions transport adapter.
 
 const FUNCTION_REGION = 'europe-west1';

@@ -63,7 +63,7 @@
       "exports": ["*"]
     },
     {
-      "file": "src/features/push-notifications/index.js",
+      "file": "src/push/index.js",
       "exports": ["*"]
     },
     {

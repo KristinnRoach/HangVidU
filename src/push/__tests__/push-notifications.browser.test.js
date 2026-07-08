@@ -7,7 +7,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
-vi.mock('../../../shared/events/index.js', () => ({
+vi.mock('../../shared/events/index.js', () => ({
   dispatchCommand: vi.fn(),
   subscribe: vi.fn(() => () => {}),
 }));
@@ -36,7 +36,7 @@ vi.mock('../cloud-functions.js', () => ({
   }),
 }));
 
-vi.mock('../../../auth/auth-setup.js', () => ({
+vi.mock('../../auth/auth-setup.js', () => ({
   auth: {},
   initAuth: vi.fn(),
   getLoggedInUserToken: vi.fn().mockResolvedValue('test-id-token'),

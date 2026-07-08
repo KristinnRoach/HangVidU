@@ -1,6 +1,6 @@
 import { onCleanup } from 'solid-js';
 import { Paperclip } from 'lucide-solid';
-import { useI18n } from '../../../shared/i18n';
+import { useI18n } from '@shared/i18n';
 import { isIOSOrAndroidDevice } from '@lib/utils/detect-device.js';
 import { keepVirtualKeyboardOpenOnTap } from '@shared/utils/ui-utils/keepVirtualKeyboardOpenOnTap.js';
 import {
