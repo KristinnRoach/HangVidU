@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   stopUpdateChecks: vi.fn(),
 }));
 
-vi.mock('../update-handlers.js', () => ({
+vi.mock('./update-handlers.js', () => ({
   setupUpdateHandler: mocks.setupUpdateHandler,
   stopUpdateChecks: mocks.stopUpdateChecks,
 }));
@@ -17,7 +17,7 @@ describe('pwa setup', () => {
   });
 
   it('starts update checks once and stops them on teardown', async () => {
-    const { setup } = await import('../index');
+    const { setup } = await import('./index');
     const teardown = await setup();
 
     expect(mocks.setupUpdateHandler).toHaveBeenCalledOnce();

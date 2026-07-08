@@ -218,6 +218,28 @@ overrides.push(
 
 overrides.push(
   dependencyRule(
+    ['src/pwa/*.{js,jsx,ts,tsx}', 'src/pwa/**/*.{js,jsx,ts,tsx}'],
+    [
+      {
+        from: { type: 'pwa' },
+        allow: {
+          to: [
+            { type: 'pwa' },
+            { type: 'shared' },
+            { type: 'lib' },
+            { type: 'infra' },
+            { type: 'auth' },
+          ],
+        },
+        message:
+          'PWA is the service-worker/install delivery layer (sibling of push) — may only import from pwa, shared, lib, infra, and auth.',
+      },
+    ],
+  ),
+);
+
+overrides.push(
+  dependencyRule(
     ['src/stores/*.{js,jsx,ts,tsx}', 'src/stores/**/*.{js,jsx,ts,tsx}'],
     [
       {
@@ -345,6 +367,14 @@ export default [
           pattern: [
             'src/push/*.{js,jsx,ts,tsx}',
             'src/push/**/*.{js,jsx,ts,tsx}',
+          ],
+        },
+        {
+          type: 'pwa',
+          mode: 'full',
+          pattern: [
+            'src/pwa/*.{js,jsx,ts,tsx}',
+            'src/pwa/**/*.{js,jsx,ts,tsx}',
           ],
         },
         {
