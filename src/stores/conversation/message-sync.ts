@@ -59,7 +59,8 @@ export function createMessageSyncRepository(
     const rows = await client.loadMessages(conversationId);
     return rows
       .map(toIncomingMessage)
-      .filter((m): m is IncomingMessage => m !== null);
+      .filter((m): m is IncomingMessage => m !== null)
+      .sort((a, b) => a.sentAt - b.sentAt);
   }
 
   return {
@@ -76,6 +77,8 @@ export function createMessageSyncRepository(
     async watchRecentMessages(conversationId, onMessages, onError) {
       // Window keyed by id so the live echo dedupes against the snapshot.
       const window = new Map<string, IncomingMessage>();
+      const pendingEvents: ConversationServerEvent[] = [];
+      let snapshotLoaded = false;
       const emit = () => {
         const ordered = [...window.values()].sort(
           (a, b) => a.sentAt - b.sentAt,
@@ -91,17 +94,7 @@ export function createMessageSyncRepository(
         }
         onMessages(ordered);
       };
-
-      try {
-        for (const m of await snapshot(conversationId)) {
-          window.set(m.messageId, m);
-        }
-        emit();
-      } catch (error) {
-        onError?.(error);
-      }
-
-      return client.subscribe(conversationId, (event) => {
+      const applyEvent = (event: ConversationServerEvent) => {
         if (event.t === 'message') {
           const incoming = toIncomingMessage(event.message);
           if (!incoming) return;
@@ -126,7 +119,32 @@ export function createMessageSyncRepository(
           })),
         });
         emit();
+      };
+
+      const unsubscribe = client.subscribe(conversationId, (event) => {
+        if (!snapshotLoaded) {
+          pendingEvents.push(event);
+          return;
+        }
+        applyEvent(event);
       });
+
+      try {
+        for (const m of await snapshot(conversationId)) {
+          window.set(m.messageId, m);
+        }
+        snapshotLoaded = true;
+        if (pendingEvents.length) {
+          for (const event of pendingEvents) applyEvent(event);
+        } else {
+          emit();
+        }
+      } catch (error) {
+        snapshotLoaded = true;
+        onError?.(error);
+      }
+
+      return unsubscribe;
     },
 
     async send(message) {

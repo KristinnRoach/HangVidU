@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
   getLoggedInUserId: vi.fn(),
+  getLoggedInUserToken: vi.fn(),
   getLoggedInUserProfile: vi.fn(),
   createMessageSyncRepository: vi.fn(),
   markConversationRead: vi.fn(),
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: mocks.getLoggedInUserId,
+  getLoggedInUserToken: mocks.getLoggedInUserToken,
 }));
 vi.mock('../user-profile-store', () => ({
   getLoggedInUserProfile: mocks.getLoggedInUserProfile,
