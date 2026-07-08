@@ -1,8 +1,3 @@
-import {
-  showInfoToast,
-  showErrorToast,
-} from '../../components/base-legacy/toast.js';
-
 // TODO: Consider reverting to 30min once migration has settled.
 const UPDATE_CHECK_INTERVAL = 20 * 60 * 1000;
 
@@ -60,11 +55,10 @@ async function checkForUpdates() {
  */
 async function attemptAutoUpdate(updateSW) {
   try {
-    showInfoToast('Updating...', { duration: 2000 });
+    // TODO: show toast?
     await updateSW(true);
   } catch (err) {
     console.error('[PWA] Auto-update failed:', err);
-    showErrorToast('Update failed. Try refreshing manually.');
   }
 }
 
