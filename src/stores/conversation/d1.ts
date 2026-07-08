@@ -13,28 +13,17 @@
 // Scope: text + file messages and one reaction per user, all with live push.
 
 import type { IncomingMessage, MessageRepository } from './interfaces.js';
-import type { ConversationId, MessageEnvelope, UserId } from './types.js';
+import type { ConversationId } from './types.js';
 import type {
   ConversationServerEvent,
   WireMessage,
 } from '@realtime/conversation-protocol';
 import type { Reaction } from '@lib/reactions/solid/solid.js';
-
-/** Input the adapter hands the client for a send (mirrors the worker body). */
-export interface D1SendInput {
-  messageId: string;
-  kind: 'text' | 'file';
-  body?: string | null;
-  attachment?: {
-    r2Key: string;
-    bucket: string;
-    fileName: string;
-    mimeType: string;
-    fileSize: number;
-    width?: number | null;
-    height?: number | null;
-  };
-}
+import {
+  toIncomingMessage,
+  toSendMessageInput,
+  type D1SendInput,
+} from '@storage/conversations/message-mapper.js';
 
 /**
  * The slice of the data-worker client + live channel this adapter needs.
@@ -62,66 +51,6 @@ export interface D1MessageClient {
 // Cap the in-memory live window so long-lived sessions don't grow unbounded.
 const RECENT_MESSAGES_WINDOW = 40;
 
-function toIncoming(m: WireMessage): IncomingMessage | null {
-  const base = {
-    messageId: m.id,
-    conversationId: m.conversationId as ConversationId,
-    senderId: m.senderId as UserId,
-    senderName: m.senderName ?? undefined,
-    sentAt: m.sentAt,
-    delivery: 'persistent' as const,
-    reactions: m.reactions,
-  };
-
-  if (m.kind === 'file') {
-    const a = m.attachments[0];
-    if (!a) return null;
-    return {
-      ...base,
-      payload: {
-        type: 'file',
-        fileName: a.fileName,
-        mimeType: a.mimeType,
-        fileSize: a.fileSize,
-        width: a.width ?? undefined,
-        height: a.height ?? undefined,
-        storage: { provider: 'r2', bucket: a.bucket, key: a.r2Key },
-        text: m.body ?? undefined,
-      },
-    };
-  }
-
-  if (typeof m.body !== 'string') return null;
-  return { ...base, payload: { type: 'text', text: m.body } };
-}
-
-/** Build the worker send input from an outgoing envelope (text or file). */
-function toSendInput(message: MessageEnvelope): D1SendInput {
-  const { payload } = message;
-  if (payload.type === 'text') {
-    return { messageId: message.messageId, kind: 'text', body: payload.text };
-  }
-  if (payload.type === 'file') {
-    return {
-      messageId: message.messageId,
-      kind: 'file',
-      body: payload.text ?? null,
-      attachment: {
-        r2Key: payload.storage.key,
-        bucket: payload.storage.bucket,
-        fileName: payload.fileName,
-        mimeType: payload.mimeType,
-        fileSize: payload.fileSize,
-        width: payload.width ?? null,
-        height: payload.height ?? null,
-      },
-    };
-  }
-  throw new Error(
-    `D1 message adapter cannot send payload type: ${payload.type}`,
-  );
-}
-
 export function createD1MessageRepository(
   client: D1MessageClient,
 ): MessageRepository {
@@ -129,7 +58,9 @@ export function createD1MessageRepository(
     conversationId: ConversationId,
   ): Promise<IncomingMessage[]> {
     const rows = await client.loadMessages(conversationId);
-    return rows.map(toIncoming).filter((m): m is IncomingMessage => m !== null);
+    return rows
+      .map(toIncomingMessage)
+      .filter((m): m is IncomingMessage => m !== null);
   }
 
   return {
@@ -173,7 +104,7 @@ export function createD1MessageRepository(
 
       return client.subscribe(conversationId, (event) => {
         if (event.t === 'message') {
-          const incoming = toIncoming(event.message);
+          const incoming = toIncomingMessage(event.message);
           if (!incoming) return;
           window.set(incoming.messageId, incoming);
           emit();
@@ -202,7 +133,7 @@ export function createD1MessageRepository(
     async send(message) {
       const stored = await client.sendMessage(
         message.conversationId,
-        toSendInput(message),
+        toSendMessageInput(message),
       );
       return { id: stored.id, sentAt: stored.sentAt };
     },

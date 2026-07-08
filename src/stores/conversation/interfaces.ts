@@ -2,13 +2,10 @@
 // No Firebase, no runtime deps — adapters implement these and are swapped freely.
 
 import type { Reaction } from '@lib/reactions/solid/solid.js';
+import type { IncomingMessage } from '@storage/conversations/message-mapper.js';
 import type { ConversationId, MessageEnvelope, UserId } from './types.js';
 
-// ─── Wire types ───────────────────────────────────────────────────────────────
-
-export type IncomingMessage = MessageEnvelope & {
-  reactions: Reaction[];
-};
+export type { IncomingMessage } from '@storage/conversations/message-mapper.js';
 export type OutgoingMessage = MessageEnvelope;
 
 // ─── Persistent backend ───────────────────────────────────────────────────────
