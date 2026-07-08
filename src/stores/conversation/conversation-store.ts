@@ -94,7 +94,7 @@ function createMessageRepositoryFromEnv(): MessageRepository {
   return createMessageSyncRepository(client);
 }
 
-export type ConversationSelection = {
+type ConversationSelection = {
   conversationId: ConversationId;
   displayUI: boolean;
 };
