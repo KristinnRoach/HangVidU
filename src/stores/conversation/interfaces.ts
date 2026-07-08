@@ -1,18 +1,13 @@
 // Transport and state contracts for the conversations feature.
 // No Firebase, no runtime deps — adapters implement these and are swapped freely.
 
+import type { Reaction } from '@lib/reactions/solid/solid.js';
 import type { ConversationId, MessageEnvelope, UserId } from './types.js';
 
 // ─── Wire types ───────────────────────────────────────────────────────────────
 
-export type ReactionSummary = {
-  key: string;
-  count: number;
-  reactedByMe: boolean;
-};
-
 export type IncomingMessage = MessageEnvelope & {
-  reactions: ReactionSummary[];
+  reactions: Reaction[];
 };
 export type OutgoingMessage = MessageEnvelope;
 
@@ -94,5 +89,5 @@ export type ChatMessage = {
   senderId: UserId;
   sentAt: number;
   status: MessageStatus;
-  reactions: ReactionSummary[];
+  reactions: Reaction[];
 };

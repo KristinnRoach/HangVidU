@@ -39,7 +39,7 @@ vi.mock('./conversations-client', () => ({
   resolveDirectConversationId: mocks.resolveDirectConversationId,
   getConversationsClient: () => ({}),
 }));
-vi.mock('@features/conversations/adapters/d1.js', () => ({
+vi.mock('./conversation/d1.js', () => ({
   createD1MessageRepository: mocks.createD1MessageRepository,
 }));
 vi.mock('./contacts-store.js', () => ({
