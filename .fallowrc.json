@@ -67,7 +67,7 @@
       "exports": ["*"]
     },
     {
-      "file": "src/features/pwa/index.ts",
+      "file": "src/pwa/index.ts",
       "exports": ["*"]
     }
   ]

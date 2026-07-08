@@ -11,7 +11,7 @@ import AuthControls from '../auth/components/AuthControls';
 import { getLoggedInUserProfile } from '../stores/user-profile-store.js';
 import AddContactButton from '../features/contacts/components/AddContactButton';
 import NotificationsToggle from '../features/notifications/components/NotificationsToggle';
-import InstallButton from '../features/pwa/InstallButton';
+import InstallButton from '../components/InstallButton';
 import LegalFooter from '../components/LegalFooter';
 import LocaleToggle from '../components/LocaleToggle';
 

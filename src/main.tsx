@@ -13,7 +13,7 @@ import { setup as setupContacts } from './features/contacts';
 import { setup as setupConversations } from './features/conversations';
 import { setup as setupNotifications } from './features/notifications';
 import { setup as setupPresence } from './features/presence';
-import { setup as setupPWA } from './features/pwa';
+import { setup as setupPWA } from './pwa';
 
 type Cleanup = () => void;
 
