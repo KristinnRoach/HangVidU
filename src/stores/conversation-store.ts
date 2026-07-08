@@ -43,7 +43,7 @@ import {
   clearLocalDraft,
   loadLocalDraft,
   saveLocalDraft,
-} from './conversation/local-drafts.js';
+} from './conversation/draft-persistence.js';
 import {
   IMAGE_COMPRESSION_THRESHOLD_BYTES,
   MAX_R2_FILE_UPLOAD_BYTES,
