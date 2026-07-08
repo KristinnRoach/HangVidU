@@ -7,7 +7,7 @@ export type IncomingMessage = MessageEnvelope & {
 };
 
 /** Input the adapter hands the data worker for a send. */
-export interface D1SendInput {
+export type SendMessageInput = {
   messageId: string;
   kind: 'text' | 'file';
   body?: string | null;
@@ -20,7 +20,7 @@ export interface D1SendInput {
     width?: number | null;
     height?: number | null;
   };
-}
+};
 
 export function toIncomingMessage(m: WireMessage): IncomingMessage | null {
   const base = {
@@ -55,7 +55,7 @@ export function toIncomingMessage(m: WireMessage): IncomingMessage | null {
   return { ...base, payload: { type: 'text', text: m.body } };
 }
 
-export function toSendMessageInput(message: MessageEnvelope): D1SendInput {
+export function toSendMessageInput(message: MessageEnvelope): SendMessageInput {
   const { payload } = message;
   if (payload.type === 'text') {
     return { messageId: message.messageId, kind: 'text', body: payload.text };
@@ -76,7 +76,5 @@ export function toSendMessageInput(message: MessageEnvelope): D1SendInput {
       },
     };
   }
-  throw new Error(
-    `D1 message adapter cannot send payload type: ${payload.type}`,
-  );
+  throw new Error(`message mapper cannot send payload type: ${payload.type}`);
 }

@@ -1,5 +1,4 @@
-import type { ChatMessage } from './interfaces.js';
-import type { MessageEnvelope } from './types.js';
+import type { ChatMessage, MessageEnvelope } from './types.js';
 
 type OrderedMessage = Pick<ChatMessage | MessageEnvelope, 'sentAt'> & {
   id?: string;

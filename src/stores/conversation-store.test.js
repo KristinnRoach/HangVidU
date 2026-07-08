@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 const mocks = vi.hoisted(() => ({
   getLoggedInUserId: vi.fn(),
   getLoggedInUserProfile: vi.fn(),
-  createD1MessageRepository: vi.fn(),
+  createMessageSyncRepository: vi.fn(),
   markConversationRead: vi.fn(),
   recordConversationListMessage: vi.fn(),
   ensureDirectConversationListed: vi.fn(),
@@ -39,8 +39,8 @@ vi.mock('./conversations-client', () => ({
   resolveDirectConversationId: mocks.resolveDirectConversationId,
   getConversationsClient: () => ({}),
 }));
-vi.mock('./conversation/d1.js', () => ({
-  createD1MessageRepository: mocks.createD1MessageRepository,
+vi.mock('./conversation/message-sync.js', () => ({
+  createMessageSyncRepository: mocks.createMessageSyncRepository,
 }));
 vi.mock('./contacts-store.js', () => ({
   getContactById: mocks.getContactById,
@@ -104,7 +104,7 @@ describe('conversation-store', () => {
       markConversationRead: vi.fn(),
       setMyReaction: vi.fn(),
     };
-    mocks.createD1MessageRepository.mockReturnValue(repo);
+    mocks.createMessageSyncRepository.mockReturnValue(repo);
 
     mocks.getLoggedInUserId.mockReturnValue('me');
     mocks.getLoggedInUserProfile.mockReturnValue({ displayName: 'Me' });

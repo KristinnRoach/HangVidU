@@ -1,38 +1,37 @@
-// D1-backed MessageRepository with Durable Object live push.
+// Message sync composes storage history with realtime live push.
 //
-// Persistence is the data worker (D1); live cross-client delivery is the
-// per-conversation Durable Object. loadMessages/watchRecentMessages read the
-// recent window over HTTP, then watch* subscribes to the DO channel and folds
-// each broadcast into the window (deduped by the server-honored message id).
-//
-// Boundary note: `feature` may not import `storage`, so this adapter depends on
-// the structural `D1MessageClient` interface below. The `stores` layer (which
-// may import storage, auth, and realtime) injects a concrete implementation
-// that wires the HTTP client + the live channel.
-//
-// Scope: text + file messages and one reaction per user, all with live push.
+// loadMessages/watchRecentMessages read the recent window from the storage
+// repository, then watch* subscribes to the conversation channel and folds each
+// broadcast into the window (deduped by the server-honored message id).
 
-import type { IncomingMessage, MessageRepository } from './interfaces.js';
-import type { ConversationId } from './types.js';
+import type { Reaction } from '@lib/reactions/solid/solid.js';
 import type {
   ConversationServerEvent,
   WireMessage,
 } from '@realtime/conversation-protocol';
-import type { Reaction } from '@lib/reactions/solid/solid.js';
 import {
   toIncomingMessage,
   toSendMessageInput,
-  type D1SendInput,
+  type SendMessageInput,
 } from '@storage/conversations/message-mapper.js';
 
+import type {
+  ConversationId,
+  IncomingMessage,
+  MessageRepository,
+} from './types.js';
+
 /**
- * The slice of the data-worker client + live channel this adapter needs.
- * Declared here (not imported from storage/realtime) to keep the feature
- * boundary intact; `stores` supplies a concrete implementation.
+ * The slice of storage + realtime this sync helper needs. The store supplies a
+ * concrete implementation because it is allowed to compose storage, auth, and
+ * realtime.
  */
-export interface D1MessageClient {
+export type MessageSyncClient = {
   loadMessages(conversationId: string): Promise<WireMessage[]>;
-  sendMessage(conversationId: string, input: D1SendInput): Promise<WireMessage>;
+  sendMessage(
+    conversationId: string,
+    input: SendMessageInput,
+  ): Promise<WireMessage>;
   setMyReaction(
     conversationId: string,
     messageId: string,
@@ -46,13 +45,13 @@ export interface D1MessageClient {
     conversationId: string,
     onEvent: (event: ConversationServerEvent) => void,
   ): () => void;
-}
+};
 
 // Cap the in-memory live window so long-lived sessions don't grow unbounded.
 const RECENT_MESSAGES_WINDOW = 40;
 
-export function createD1MessageRepository(
-  client: D1MessageClient,
+export function createMessageSyncRepository(
+  client: MessageSyncClient,
 ): MessageRepository {
   async function snapshot(
     conversationId: ConversationId,
@@ -65,7 +64,7 @@ export function createD1MessageRepository(
 
   return {
     // Client-reserved id: the worker persists under this same id, so the live
-    // broadcast echo reconciles with the optimistic row (decision #6).
+    // broadcast echo reconciles with the optimistic row.
     createMessageId() {
       return crypto.randomUUID();
     },
@@ -138,9 +137,9 @@ export function createD1MessageRepository(
       return { id: stored.id, sentAt: stored.sentAt };
     },
 
-    // Durable cross-device read marker (#563). The store's local optimistic
-    // clear (conversation-list-state) covers the in-tab badge; this persists it
-    // server-side so other devices clear on their next conversation-list load.
+    // Durable cross-device read marker. The store's local optimistic clear
+    // covers the in-tab badge; this persists it server-side so other devices
+    // clear on their next conversation-list load.
     async markConversationRead(conversationId) {
       await client.markRead(conversationId);
     },

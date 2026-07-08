@@ -55,7 +55,7 @@ import type {
   ChatMessage,
   IncomingMessage,
   MessageRepository,
-} from './conversation/interfaces.js';
+} from './conversation/types.js';
 import type {
   ConversationId,
   FileMessagePayload,
@@ -65,18 +65,17 @@ import type {
 import type { ReactionChange } from '@lib/reactions/solid/solid.js';
 
 import {
-  createD1MessageRepository,
-  type D1MessageClient,
-} from './conversation/d1.js';
+  createMessageSyncRepository,
+  type MessageSyncClient,
+} from './conversation/message-sync.js';
 
-// Assembles the D1 message adapter from the data-worker HTTP
-// client (storage) + the live-push channel (realtime), both authenticated with
-// the logged-in user's token (auth).
-function createD1MessageRepositoryFromEnv(): MessageRepository {
+// Composes storage history + realtime live-push, both authenticated with the
+// logged-in user's token.
+function createMessageRepositoryFromEnv(): MessageRepository {
   const http = getConversationsClient();
   const baseUrl = getHangViduApiBaseUrl();
 
-  const client: D1MessageClient = {
+  const client: MessageSyncClient = {
     loadMessages: (conversationId) => http.loadMessages(conversationId),
     sendMessage: (conversationId, input) =>
       http.sendMessage(conversationId, input),
@@ -100,7 +99,7 @@ function createD1MessageRepositoryFromEnv(): MessageRepository {
     },
   };
 
-  return createD1MessageRepository(client);
+  return createMessageSyncRepository(client);
 }
 
 export type ConversationSelection = {
@@ -156,7 +155,7 @@ const [latestReadCandidate, setLatestReadCandidate] = createSignal<{
 
 let repository: MessageRepository | null = null;
 function getRepo(): MessageRepository {
-  return (repository ??= createD1MessageRepositoryFromEnv());
+  return (repository ??= createMessageRepositoryFromEnv());
 }
 
 // ---------- reads ----------
