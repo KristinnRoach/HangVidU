@@ -13,15 +13,15 @@
 // same connection CallService uses — no second per-user socket.
 
 import { createSignal } from 'solid-js';
-import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '../../auth/index.js';
 import { getConversationsClient } from './conversations-client';
-import { getContactById, getContactLabel } from './contacts-store.js';
+import { getContactById, getContactLabel } from '../contacts-store.js';
 import {
   closeUserMailbox,
   subscribeToUserMailbox,
-} from '../realtime/user-mailbox';
-import { getHangViduApiBaseUrl } from '../infra/hangvidu-api-url';
-import type { ConversationMember } from '../storage/conversations/data-client';
+} from '../../realtime/user-mailbox';
+import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
+import type { ConversationMember } from '../../storage/conversations/data-client';
 
 export type Conversation = {
   conversationId: string;

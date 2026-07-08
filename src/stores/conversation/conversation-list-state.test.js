@@ -6,20 +6,20 @@ const mocks = vi.hoisted(() => ({
   subscribe: vi.fn(),
 }));
 
-vi.mock('../auth/index.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: vi.fn(),
   getLoggedInUserToken: vi.fn(),
 }));
 vi.mock('./conversations-client', () => ({ getConversationsClient: vi.fn() }));
-vi.mock('../realtime/user-mailbox', () => ({
+vi.mock('../../realtime/user-mailbox', () => ({
   closeUserMailbox: mocks.close,
   subscribeToUserMailbox: mocks.subscribe,
 }));
-vi.mock('../infra/hangvidu-api-url', () => ({
+vi.mock('../../infra/hangvidu-api-url', () => ({
   getHangViduApiBaseUrl: vi.fn(),
 }));
 
-import { getLoggedInUserId } from '../auth/index.js';
+import { getLoggedInUserId } from '../../auth/index.js';
 import { getConversationsClient } from './conversations-client';
 import {
   conversationListState,

@@ -25,14 +25,14 @@ const mocks = vi.hoisted(() => {
 vi.mock('../../../shared/events/index.js', () => ({
   subscribe: mocks.subscribe,
 }));
-vi.mock('../../../stores/conversation-list-state', () => ({
+vi.mock('../../../stores/conversation/conversation-list-state', () => ({
   startConversationListSync: mocks.startConversationListSync,
   stopConversationListSync: mocks.stopConversationListSync,
 }));
-vi.mock('../../../stores/conversations-client.js', () => ({
+vi.mock('../../../stores/conversation/conversations-client.js', () => ({
   resetConversationsState: mocks.resetConversationsState,
 }));
-vi.mock('../../../stores/conversation-store', () => ({
+vi.mock('../../../stores/conversation/conversation-store', () => ({
   resetConversationStore: mocks.resetConversationStore,
 }));
 

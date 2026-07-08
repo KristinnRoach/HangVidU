@@ -18,10 +18,10 @@ const mocks = vi.hoisted(() => ({
   compressImage: vi.fn(),
 }));
 
-vi.mock('../auth/index.js', () => ({
+vi.mock('../../auth/index.js', () => ({
   getLoggedInUserId: mocks.getLoggedInUserId,
 }));
-vi.mock('./user-profile-store', () => ({
+vi.mock('../user-profile-store', () => ({
   getLoggedInUserProfile: mocks.getLoggedInUserProfile,
 }));
 vi.mock('./conversation-list-state', () => ({
@@ -39,19 +39,19 @@ vi.mock('./conversations-client', () => ({
   resolveDirectConversationId: mocks.resolveDirectConversationId,
   getConversationsClient: () => ({}),
 }));
-vi.mock('./conversation/message-sync.js', () => ({
+vi.mock('./message-sync.js', () => ({
   createMessageSyncRepository: mocks.createMessageSyncRepository,
 }));
-vi.mock('./contacts-store.js', () => ({
+vi.mock('../contacts-store.js', () => ({
   getContactById: mocks.getContactById,
   getContactLabel: (contact) => contact?.nickname ?? null,
   cacheContactConversationId: mocks.cacheContactConversationId,
 }));
-vi.mock('./files-store.js', () => ({
+vi.mock('../files-store.js', () => ({
   uploadConversationFile: mocks.uploadConversationFile,
   deleteConversationFile: mocks.deleteConversationFile,
 }));
-vi.mock('../features/push-notifications/index.js', () => ({
+vi.mock('../../features/push-notifications/index.js', () => ({
   getPushNotifications: () => ({
     sendMessageNotification: mocks.sendMessageNotification,
   }),

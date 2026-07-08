@@ -20,7 +20,7 @@ import type {
   PendingOutgoingCall,
   StartCallDetails,
 } from './call-types.js';
-import { resolveDirectConversationId } from '../../stores/conversations-client.js';
+import { resolveDirectConversationId } from '../../stores/conversation/conversations-client.js';
 import {
   cacheContactConversationId,
   getContactById,

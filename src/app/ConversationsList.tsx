@@ -9,8 +9,8 @@ import {
   conversationPeers,
   getLastReadAt,
   shortName,
-} from '../stores/conversation-list-state';
-import { openConversation } from '../stores/conversation-store';
+} from '../stores/conversation/conversation-list-state';
+import { openConversation } from '../stores/conversation/conversation-store';
 import PresenceIndicator from '../features/presence/components/PresenceIndicator';
 import { StartCallButton } from '../features/call/components/CallControls';
 

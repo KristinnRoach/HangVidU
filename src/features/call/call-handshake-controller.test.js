@@ -42,7 +42,7 @@ vi.mock('./call-notifications.js', () => ({
   sendMissedCallPushNotification: mocks.sendMissedCallPushNotification,
 }));
 
-vi.mock('../../stores/conversations-client.js', () => ({
+vi.mock('../../stores/conversation/conversations-client.js', () => ({
   resolveDirectConversationId: mocks.resolveDirectConversationId,
 }));
 

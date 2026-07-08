@@ -23,19 +23,22 @@ vi.mock('../stores/contacts-store.js', () => ({
 }));
 
 // Partial mock: keep the real conversationLabel/conversationPeers derivations.
-vi.mock('../stores/conversation-list-state', async (importOriginal) => ({
-  ...(await importOriginal()),
-  conversationListState: () => mocks.activity,
-  conversationListSeeded: () => mocks.seeded,
-  getLastReadAt: () => 0,
-}));
+vi.mock(
+  '../stores/conversation/conversation-list-state',
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    conversationListState: () => mocks.activity,
+    conversationListSeeded: () => mocks.seeded,
+    getLastReadAt: () => 0,
+  }),
+);
 
 vi.mock('../auth/index.js', () => ({
   getLoggedInUserId: () => 'me',
   getLoggedInUserToken: () => null,
 }));
 
-vi.mock('../stores/conversation-store', () => ({
+vi.mock('../stores/conversation/conversation-store', () => ({
   openConversation: mocks.openConversation,
   selection: () => null,
 }));

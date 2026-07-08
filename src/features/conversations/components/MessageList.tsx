@@ -16,7 +16,7 @@ import {
 import {
   getConversationState,
   persistMyReaction,
-} from '@stores/conversation-store';
+} from '@stores/conversation/conversation-store';
 import type {
   ChatMessage,
   MessageAttachment,

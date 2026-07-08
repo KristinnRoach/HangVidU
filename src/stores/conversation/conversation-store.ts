@@ -9,10 +9,10 @@ import { createStore, reconcile } from 'solid-js/store';
 import { compressImage } from '@lib/media/image-compress.js';
 import { getHangViduApiBaseUrl } from '@infra/hangvidu-api-url';
 
-import { getLoggedInUserId, getLoggedInUserToken } from '../auth/index.js';
-import { createConversationChannel } from '../realtime/conversation-channel.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '../../auth/index.js';
+import { createConversationChannel } from '../../realtime/conversation-channel.js';
 
-import { getLoggedInUserProfile } from './user-profile-store.js';
+import { getLoggedInUserProfile } from '../user-profile-store.js';
 import {
   conversationListState,
   conversationPeers,
@@ -30,44 +30,44 @@ import {
   cacheContactConversationId,
   getContactById,
   getContactLabel,
-} from './contacts-store.js';
+} from '../contacts-store.js';
 import {
   deleteConversationFile,
   uploadConversationFile,
-} from './files-store.js';
+} from '../files-store.js';
 
 import { getPushNotifications } from '@features/push-notifications/index.js';
 
-import { sortMessagesBySentAt } from './conversation/message-ordering.js';
+import { sortMessagesBySentAt } from './message-ordering.js';
 import {
   clearLocalDraft,
   loadLocalDraft,
   saveLocalDraft,
-} from './conversation/draft-persistence.js';
+} from './draft-persistence.js';
 import {
   IMAGE_COMPRESSION_THRESHOLD_BYTES,
   MAX_R2_FILE_UPLOAD_BYTES,
   attachmentFileName,
   isImageFile,
   readImageDimensions,
-} from './conversation/attachments.js';
+} from './attachments.js';
 import type {
   ChatMessage,
   IncomingMessage,
   MessageRepository,
-} from './conversation/types.js';
+} from './types.js';
 import type {
   ConversationId,
   FileMessagePayload,
   TextMessagePayload,
   UserId,
-} from './conversation/types.js';
+} from './types.js';
 import type { ReactionChange } from '@lib/reactions/solid/solid.js';
 
 import {
   createMessageSyncRepository,
   type MessageSyncClient,
-} from './conversation/message-sync.js';
+} from './message-sync.js';
 
 // Composes storage history + realtime live-push, both authenticated with the
 // logged-in user's token.
