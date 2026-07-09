@@ -4,10 +4,7 @@ import { render } from 'solid-js/web';
 
 import App from './App';
 import { initializeAppCheckDeferred } from './infra/firebase.js';
-import {
-  setup as setupPushNotifications,
-  initPushNotifications,
-} from '@push/index.js';
+import { setup as setupPushNotifications } from '@push/index.js';
 import { setup as setupAuth } from './auth/setup.js';
 import { setup as setupContacts } from './features/contacts';
 import { setup as setupConversations } from './features/conversations';
@@ -43,9 +40,6 @@ function AppSideEffects(props: { children: JSX.Element }) {
       // lifecycle events only once every subscriber above is registered.
       cleanups.push(await setupAuth());
       cleanups.push(await setupPWA());
-      initPushNotifications().catch((error) => {
-        console.error('[main] Push notifications init:', error);
-      });
     } catch (error) {
       console.error('[main] Side-effect setup failed:', error);
       runCleanups(cleanups);
