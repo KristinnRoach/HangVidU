@@ -137,15 +137,9 @@ overrides.push(
       {
         from: { type: 'components' },
         allow: {
-          to: [
-            { type: 'components' },
-            { type: 'auth' },
-            { type: 'shared' },
-            { type: 'lib' },
-          ],
+          to: [{ type: 'components' }, { type: 'shared' }, { type: 'lib' }],
         },
-        message:
-          'Components may only import from components, auth, shared and lib',
+        message: 'Components may only import from components, shared and lib',
       },
     ],
   ),
