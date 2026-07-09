@@ -28,7 +28,7 @@ import {
   uploadConversationFile,
 } from '../files-store.js';
 
-import { getPushNotifications } from '@push/index.js';
+import { publish } from '@shared/events/index.js';
 
 import { sortMessagesBySentAt } from './message-ordering.js';
 import {
@@ -572,7 +572,7 @@ export async function sendMessage(
     const messageText =
       payload.type === 'text' ? payload.text : payload.text || 'Sent a file';
     try {
-      void getPushNotifications()?.sendMessageNotification({
+      publish('evt:conversation:message:sent', {
         recipientIds,
         conversationId,
         conversationKind,

@@ -32,6 +32,19 @@ Use this `src/shared/events/` layer to define app semantics (`command` vs `event
   - returns the single handler result
 - If async bus behavior is needed, add it to `src/shared/events/index.js` instead of importing `appBus` directly.
 
+## When to use the bus
+
+| Shape                                                    | Primitive                                                            | Use when                                                                    |
+| -------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Fact** — "X happened", emitter doesn't care who reacts | `publish` / `subscribe`                                              | Cross-layer side effects that are reactions: push, analytics, sound, badges |
+| **Action** — one owner must do X, caller needs it done   | `dispatchCommand[AndAwait]`                                          | Single-owner imperative with completion/back-pressure                       |
+| **Query** — need a value back from a capability          | direct import (or `dispatchCommandAndAwait` only if decoupling pays) | 1:1 calls where nobody else would ever listen                               |
+
+Reference: push sends are facts. The call feature `publish`es `evt:call:invite:sent`;
+`src/push` subscribes and delivers. The feature never imports push. A request/response
+capability like `requestPermission()` stays a direct call (row 3) — routing it through
+the bus is indirection with no second listener to decouple from.
+
 ## Naming Guidance
 
 - Canonical format (4-part): `<kind>:<domain>:<entity>:<action>`

@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   cacheContactConversationId: vi.fn(),
   uploadConversationFile: vi.fn(),
   deleteConversationFile: vi.fn(),
-  sendMessageNotification: vi.fn(),
+  publish: vi.fn(),
   compressImage: vi.fn(),
 }));
 
@@ -55,10 +55,9 @@ vi.mock('../files-store.js', () => ({
   uploadConversationFile: mocks.uploadConversationFile,
   deleteConversationFile: mocks.deleteConversationFile,
 }));
-vi.mock('../../push/index.js', () => ({
-  getPushNotifications: () => ({
-    sendMessageNotification: mocks.sendMessageNotification,
-  }),
+vi.mock('@shared/events/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  publish: mocks.publish,
 }));
 vi.mock('@lib/media/image-compress.js', () => ({
   compressImage: mocks.compressImage,
@@ -236,7 +235,8 @@ describe('conversation-store', () => {
     expect(state.draft).toBe('');
     expect(state.messages.map((msg) => msg.id)).toEqual(['reserved-1']);
     expect(state.messages[0].status).toBe('sent');
-    expect(mocks.sendMessageNotification).toHaveBeenCalledWith(
+    expect(mocks.publish).toHaveBeenCalledWith(
+      'evt:conversation:message:sent',
       expect.objectContaining({
         recipientIds: ['contact-1'],
         conversationId: 'conversation-1',
@@ -282,14 +282,17 @@ describe('conversation-store', () => {
     expect(result).toBe(false);
     const state = store.getConversationState();
     expect(state.messages[0].status).toBe('failed');
-    expect(mocks.sendMessageNotification).not.toHaveBeenCalled();
+    expect(mocks.publish).not.toHaveBeenCalledWith(
+      'evt:conversation:message:sent',
+      expect.anything(),
+    );
   });
 
   it('isolates push notification failures from the send result', async () => {
     const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');
     store.setConversationDraft('hello');
-    mocks.sendMessageNotification.mockImplementationOnce(() => {
+    mocks.publish.mockImplementationOnce(() => {
       throw new Error('push unavailable');
     });
 

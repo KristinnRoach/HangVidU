@@ -26,3 +26,4 @@ Do not use `push` for in-app notification commands, and do not use
 
 - `auth`
 - `call`
+- `conversation`

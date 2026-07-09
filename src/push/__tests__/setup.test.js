@@ -8,6 +8,10 @@ const mocks = vi.hoisted(() => {
       handlers.set(eventName, handler);
       return () => handlers.delete(eventName);
     }),
+    subscribe: vi.fn((eventName, handler) => {
+      handlers.set(eventName, handler);
+      return () => handlers.delete(eventName);
+    }),
     disable: vi.fn(() => Promise.resolve()),
     getPushNotifications: vi.fn(),
   };
@@ -15,6 +19,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('../../shared/events/index.js', () => ({
   handleCommand: mocks.handleCommand,
+  subscribe: mocks.subscribe,
 }));
 
 vi.mock('../push-notifications.js', () => ({

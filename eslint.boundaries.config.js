@@ -80,14 +80,21 @@ overrides.push(
             { type: 'lib' },
             { type: 'feature' },
             { type: 'components' },
-            { type: 'infra' },
             { type: 'stores' },
-            { type: 'realtime' },
-            { type: 'push' },
+            { type: 'infra' }, // Todo: remove?
+            { type: 'realtime' }, // Todo: remove?
           ],
         },
         message:
-          'Features may import from auth, shared, lib, components, infra, stores, realtime, push, or other features.',
+          'Features may import from auth, shared, lib, components, infra, stores, realtime, or other features. Push is event-driven: publish a fact and let src/push subscribe.',
+      },
+      {
+        // Exception: the notifications feature owns the browser permission UI,
+        // which is a request/response call (requestPermission) that returns a
+        // rich result the UI branches on — not event-shaped. Push sends are
+        // event-driven (publish a fact); only this permission path may import push.
+        from: { type: 'feature', captured: { featureName: 'notifications' } },
+        allow: { to: [{ type: 'push' }] },
       },
     ],
   ),
@@ -232,12 +239,11 @@ overrides.push(
             { type: 'lib' },
             { type: 'storage' },
             { type: 'realtime' },
-            { type: 'push' },
             { type: 'infra' },
           ],
         },
         message:
-          'Stores may only import from stores, auth, shared, lib, storage, realtime, push, and infra.',
+          'Stores may only import from stores, auth, shared, lib, storage, realtime, and infra. Push is event-driven: publish a fact and let src/push subscribe.',
       },
     ],
   ),
