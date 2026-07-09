@@ -20,8 +20,7 @@ const mocks = vi.hoisted(() => ({
   ackCallResponse: vi.fn(),
   getLoggedInUserId: vi.fn(() => 'callee-id'),
   getLoggedInUserToken: vi.fn(async () => 'token'),
-  sendIncomingCallPushNotification: vi.fn(),
-  sendMissedCallPushNotification: vi.fn(),
+  publish: vi.fn(),
   resolveDirectConversationId: vi.fn(),
   getUserMedia: vi.fn(),
 }));
@@ -37,9 +36,9 @@ vi.mock('../../auth/index.js', () => ({
   getLoggedInUserToken: mocks.getLoggedInUserToken,
 }));
 
-vi.mock('./call-notifications.js', () => ({
-  sendIncomingCallPushNotification: mocks.sendIncomingCallPushNotification,
-  sendMissedCallPushNotification: mocks.sendMissedCallPushNotification,
+vi.mock('@shared/events/index.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  publish: mocks.publish,
 }));
 
 vi.mock('../../stores/conversation/dm-ids.js', () => ({
@@ -256,7 +255,10 @@ describe('CallHandshakeController', () => {
 
     send.resolve();
     await start;
-    expect(mocks.sendIncomingCallPushNotification).not.toHaveBeenCalled();
+    expect(mocks.publish).not.toHaveBeenCalledWith(
+      'evt:call:invite:sent',
+      expect.anything(),
+    );
 
     join.resolve({ roomId: 'room-1', members: ['caller-id'] });
     await response;

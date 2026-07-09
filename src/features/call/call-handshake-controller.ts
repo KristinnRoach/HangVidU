@@ -7,10 +7,7 @@ import { getLoggedInUserId, getLoggedInUserToken } from '../../auth/index.js';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import type { CreateRoomSignalingOptions, P2PRoomSignaling } from '@kidlib/p2p';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
-import {
-  sendIncomingCallPushNotification,
-  sendMissedCallPushNotification,
-} from './call-notifications.js';
+import { publish } from '@shared/events/index.js';
 import {
   getAudioConstraints,
   getVideoConstraints,
@@ -286,7 +283,7 @@ export class CallHandshakeController {
       state.direction === 'outgoing' &&
       state.call.roomId === roomId
     ) {
-      sendIncomingCallPushNotification(nextOutgoingCall);
+      publish('evt:call:invite:sent', nextOutgoingCall);
     }
     if (import.meta.env.DEV) {
       console.debug('Initiated outgoing call invite, command details:', {
@@ -389,7 +386,7 @@ export class CallHandshakeController {
             err,
           ),
         );
-      sendMissedCallPushNotification(call);
+      publish('evt:call:invite:unanswered', call);
     }, CALLING_TTL_MS);
   }
 
