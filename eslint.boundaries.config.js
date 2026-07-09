@@ -152,15 +152,10 @@ overrides.push(
       {
         from: { type: 'storage' },
         allow: {
-          to: [
-            { type: 'storage' },
-            { type: 'shared' },
-            { type: 'lib' },
-            { type: 'infra' },
-          ],
+          to: [{ type: 'storage' }, { type: 'lib' }, { type: 'infra' }],
         },
         message:
-          'Storage is the persistence layer — may only import from storage, shared, lib, and infra.',
+          'Storage is the persistence layer — may only import from storage, lib, and infra.',
       },
     ],
   ),
@@ -175,14 +170,13 @@ overrides.push(
         allow: {
           to: [
             { type: 'realtime' },
-            { type: 'shared' },
             { type: 'lib' },
             { type: 'infra' },
             { type: 'auth' },
           ],
         },
         message:
-          'Realtime is the ephemeral-coordination layer (sibling of storage) — may only import from realtime, shared, lib, infra, and auth.',
+          'Realtime is the ephemeral-coordination layer (sibling of storage) — may only import from realtime, lib, infra, and auth.',
       },
     ],
   ),
@@ -199,12 +193,11 @@ overrides.push(
             { type: 'push' },
             { type: 'shared' },
             { type: 'lib' },
-            { type: 'infra' },
             { type: 'auth' },
           ],
         },
         message:
-          'Push is the notification-delivery layer (sibling of realtime/storage) — may only import from push, shared, lib, infra, and auth.',
+          'Push is the notification-delivery layer (sibling of realtime/storage) — may only import from push, shared, lib, and auth.',
       },
     ],
   ),
