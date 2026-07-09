@@ -223,16 +223,9 @@ overrides.push(
       {
         from: { type: 'pwa' },
         allow: {
-          to: [
-            { type: 'pwa' },
-            { type: 'shared' },
-            { type: 'lib' },
-            { type: 'infra' },
-            { type: 'auth' },
-          ],
+          to: [{ type: 'pwa' }, { type: 'shared' }, { type: 'lib' }],
         },
-        message:
-          'PWA is the service-worker/install delivery layer (sibling of push) — may only import from pwa, shared, lib, infra, and auth.',
+        message: 'PWA may only import from pwa, shared and lib.',
       },
     ],
   ),
