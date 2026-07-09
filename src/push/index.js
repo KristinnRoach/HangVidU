@@ -23,7 +23,7 @@ export const setup = createSingleFlightSetup({
         try {
           await getPushNotifications()?.disable?.();
         } catch (e) {
-          console.warn('[push] Failed to disable notifications:', e);
+          console.warn('[PUSH] Failed to disable notifications:', e);
         }
       },
       { signal },
@@ -65,7 +65,11 @@ export const setup = createSingleFlightSetup({
     subscribe(
       'evt:conversation:message:sent',
       (message) => {
-        void getPushNotifications()?.sendMessageNotification(message);
+        getPushNotifications()
+          ?.sendMessageNotification(message)
+          ?.catch((err) =>
+            console.error('Error sending message notification:', err),
+          );
       },
       { signal },
     );
