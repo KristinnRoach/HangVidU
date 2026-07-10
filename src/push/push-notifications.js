@@ -1,6 +1,5 @@
 // Public app-facing push notifications facade.
 
-import { dispatchCommand, subscribe } from '@shared/events/index.js';
 import { callCloudFunction } from './cloud-functions.js';
 
 const PERMISSION_REQUEST_TIMEOUT_MS = 8000;
@@ -732,27 +731,6 @@ export const initPushNotifications = async (options = {}) => {
       // }
     } catch (error) {
       console.error('[Push Notifications] init failed:', error);
-    }
-    subscribe('evt:auth:session:logged-in', async () => {
-      const result = await instance.ensureEnabledIfGranted().catch((e) => {
-        console.warn('[Push Notifications] setup failed:', e);
-        return { state: 'error' };
-      });
-      if (result.state === 'prompt-needed') {
-        dispatchCommand('cmd:app-notifications:show:enable-push');
-      }
-    });
-
-    // The SW re-subscribes on pushsubscriptionchange but can't authenticate to the
-    // backend itself; it pings us to re-register the new endpoint via enable().
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data?.type === 'PUSH_SUBSCRIPTION_CHANGED') {
-          instance.enable().catch((e) => {
-            console.warn('[Push Notifications] re-register failed:', e);
-          });
-        }
-      });
     }
   }
 

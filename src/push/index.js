@@ -1,6 +1,13 @@
-import { handleCommand, subscribe } from '@shared/events/index.js';
+import {
+  dispatchCommand,
+  handleCommand,
+  subscribe,
+} from '@shared/events/index.js';
 import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setup.js';
-import { getPushNotifications } from './push-notifications.js';
+import {
+  getPushNotifications,
+  initPushNotifications,
+} from './push-notifications.js';
 
 export {
   PushNotifications,
@@ -28,6 +35,47 @@ export const setup = createSingleFlightSetup({
       },
       { signal },
     );
+
+    subscribe(
+      'evt:auth:session:logged-in',
+      async () => {
+        const result = await getPushNotifications()
+          ?.ensureEnabledIfGranted()
+          ?.catch((e) => {
+            console.warn('[Push Notifications] setup failed:', e);
+            return { state: 'error' };
+          });
+        if (result?.state === 'prompt-needed') {
+          try {
+            dispatchCommand('cmd:app-notifications:show:enable-push');
+          } catch (e) {
+            console.warn(
+              '[Push Notifications] enable-push prompt dispatch failed:',
+              e,
+            );
+          }
+        }
+      },
+      { signal },
+    );
+
+    // The SW re-subscribes on pushsubscriptionchange but can't authenticate to the
+    // backend itself; it pings us to re-register the new endpoint via enable().
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener(
+        'message',
+        (event) => {
+          if (event.data?.type === 'PUSH_SUBSCRIPTION_CHANGED') {
+            getPushNotifications()
+              ?.enable()
+              ?.catch((e) => {
+                console.warn('[Push Notifications] re-register failed:', e);
+              });
+          }
+        },
+        { signal },
+      );
+    }
 
     // Push reacts to call facts — the call feature doesn't know push exists.
     // Payload is the call's { calleeId, roomId, callerId, callerName }.
@@ -74,4 +122,5 @@ export const setup = createSingleFlightSetup({
       { signal },
     );
   },
+  start: () => initPushNotifications(),
 });
