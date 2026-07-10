@@ -46,7 +46,14 @@ export const setup = createSingleFlightSetup({
             return { state: 'error' };
           });
         if (result?.state === 'prompt-needed') {
-          dispatchCommand('cmd:app-notifications:show:enable-push');
+          try {
+            dispatchCommand('cmd:app-notifications:show:enable-push');
+          } catch (e) {
+            console.warn(
+              '[Push Notifications] enable-push prompt dispatch failed:',
+              e,
+            );
+          }
         }
       },
       { signal },

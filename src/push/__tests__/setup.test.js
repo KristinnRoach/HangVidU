@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => {
   const handlers = new Map();
   return {
     handlers,
+    serviceWorkerMessageHandler: undefined,
     handleCommand: vi.fn((eventName, handler) => {
       handlers.set(eventName, handler);
       return () => handlers.delete(eventName);
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => {
       return () => handlers.delete(eventName);
     }),
     disable: vi.fn(() => Promise.resolve()),
+    enable: vi.fn(() => Promise.resolve()),
     ensureEnabledIfGranted: vi.fn(),
     getPushNotifications: vi.fn(),
     initPushNotifications: vi.fn(),
@@ -37,8 +39,22 @@ describe('push-notifications setup', () => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.handlers.clear();
+    mocks.serviceWorkerMessageHandler = undefined;
+    Object.defineProperty(globalThis, 'navigator', {
+      value: {
+        serviceWorker: {
+          addEventListener: vi.fn((eventName, handler) => {
+            if (eventName === 'message') {
+              mocks.serviceWorkerMessageHandler = handler;
+            }
+          }),
+        },
+      },
+      configurable: true,
+    });
     mocks.getPushNotifications.mockReturnValue({
       disable: mocks.disable,
+      enable: mocks.enable,
       ensureEnabledIfGranted: mocks.ensureEnabledIfGranted,
     });
     mocks.initPushNotifications.mockResolvedValue(mocks.getPushNotifications());
@@ -99,5 +115,16 @@ describe('push-notifications setup', () => {
       callerName: 'Caller',
       roomId: 'room-1',
     });
+  });
+
+  it('re-enables push when the service worker reports subscription changes', async () => {
+    const push = await import('../index.js');
+
+    await push.setup();
+    mocks.serviceWorkerMessageHandler?.({
+      data: { type: 'PUSH_SUBSCRIPTION_CHANGED' },
+    });
+
+    expect(mocks.enable).toHaveBeenCalledOnce();
   });
 });
