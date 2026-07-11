@@ -7,6 +7,8 @@ import {
 import { setupInviteListener } from './invites/invite-listener.js';
 import { hydrateContacts, resetContacts } from '../../stores/contacts-store.js';
 
+export { AddContactButton } from './components/AddContactButton.js';
+
 let inviteCleanup: () => void = () => {};
 let authSessionVersion = 0;
 

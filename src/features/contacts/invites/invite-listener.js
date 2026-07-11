@@ -1,13 +1,10 @@
-import {
-  getLoggedInUserId,
-  getLoggedInUserToken,
-} from '../../../auth/index.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../components/base-legacy/toast.js';
 import { getHangViduApiBaseUrl } from '../../../infra/hangvidu-api-url.js';
-import { subscribeToUserMailbox } from '../../../realtime/user-mailbox';
+import { subscribeToUserMailbox } from '@realtime';
 import { dispatchCommand } from '@shared/events/index.js';
 import { reloadContacts } from '../../../stores/contacts-store.js';
 import {

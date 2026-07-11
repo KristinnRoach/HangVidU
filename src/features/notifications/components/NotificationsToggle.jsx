@@ -1,5 +1,5 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
-import { inAppNotificationManager } from '../index.js';
+import { inAppNotificationManager } from '../in-app-notification-manager.js';
 import { useI18n } from '@shared/i18n/index.js';
 import { Bell } from 'lucide-solid';
 

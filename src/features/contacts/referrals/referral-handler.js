@@ -1,9 +1,6 @@
 // referral-handler.js - Handle referral links and auto-add contacts
 
-import {
-  signInWithAccountSelection,
-  getLoggedInUserId,
-} from '../../../auth/index.js';
+import { signInWithAccountSelection, getLoggedInUserId } from '@auth';
 import { reloadContacts } from '../../../stores/contacts-store.js';
 import {
   showInfoToast,

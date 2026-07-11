@@ -29,7 +29,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('../../shared/events/index.js', () => ({
   subscribe: mocks.subscribe,
 }));
-vi.mock('../index.js', () => ({
+vi.mock('../auth-setup.js', () => ({
   initAuth: mocks.initAuth,
 }));
 

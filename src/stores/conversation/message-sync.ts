@@ -5,10 +5,7 @@
 // broadcast into the window (deduped by the server-honored message id).
 
 import type { Reaction } from '@lib/reactions/solid/solid.js';
-import type {
-  ConversationServerEvent,
-  WireMessage,
-} from '@realtime/conversation-protocol';
+import type { ConversationServerEvent, WireMessage } from '@realtime';
 import {
   toIncomingMessage,
   toSendMessageInput,

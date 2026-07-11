@@ -6,7 +6,7 @@
 // surface (that's `src/auth/index.js`).
 
 import { subscribe } from '@shared/events/index.js';
-import { initAuth } from './index.js';
+import { initAuth } from './auth-setup.js';
 
 let isReady = false;
 let initPromise = null;

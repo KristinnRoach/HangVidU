@@ -42,9 +42,12 @@ There is **no `setup/` layer**. App startup lives in:
 
 ## Module layout
 
-- Every module has one barrel: `src/<module>/index.{js,ts}`.
-- **Cross-feature** imports go through the barrel. Same-feature subpath imports
-  (helpers/components reaching into siblings inside `src/features/<x>/`) are allowed.
+- Every module has one public index: `src/<module>/index.{js,ts}`.
+- Imports from outside a module go through that index. Internal files use
+  relative imports and do not import their own index.
+- This is initially enforced for `features/<name>`, `auth`, `push`, `pwa`,
+  `realtime`, and the `storage/contacts`, `storage/files`, and `storage/user`
+  modules. `push/sw` remains a separate runtime entry pending its own interface.
 - Tests live next to the file under test, or in `src/<module>/tests/` for
   module-root domain tests.
 

@@ -2,7 +2,7 @@
 // to import both storage (the client) and auth (the token provider), so the
 // concrete wiring lives here and is shared by every consumer.
 
-import { getLoggedInUserId, getLoggedInUserToken } from '@auth/index.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
 import {
   createConversationsClient,
   type ConversationsClient,

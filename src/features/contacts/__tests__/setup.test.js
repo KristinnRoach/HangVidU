@@ -37,6 +37,9 @@ vi.mock('../../../stores/contacts-store.js', () => ({
   hydrateContacts: mocks.hydrateContacts,
   resetContacts: mocks.resetContacts,
 }));
+vi.mock('../components/AddContactButton.js', () => ({
+  AddContactButton: () => null,
+}));
 
 describe('contacts setup', () => {
   beforeEach(() => {

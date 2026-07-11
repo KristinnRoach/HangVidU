@@ -8,12 +8,17 @@
 
     "paths": {
       "@app/*": ["./src/app/*"],
+      "@auth": ["./src/auth/index.js"],
       "@auth/*": ["./src/auth/*"],
       "@components/*": ["./src/components/*"],
       "@features/*": ["./src/features/*"],
       "@infra/*": ["./src/infra/*"],
       "@lib/*": ["./src/lib/*"],
+      "@push": ["./src/push/index.js"],
       "@push/*": ["./src/push/*"],
+      "@pwa": ["./src/pwa/index.ts"],
+      "@pwa/*": ["./src/pwa/*"],
+      "@realtime": ["./src/realtime/index.ts"],
       "@realtime/*": ["./src/realtime/*"],
       "@shared/*": ["./src/shared/*"],
       "@storage/*": ["./src/storage/*"],

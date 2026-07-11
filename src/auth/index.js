@@ -23,6 +23,11 @@
 // App-level auth wiring (logout housekeeping + calling `initAuth()` last) lives
 // in `src/auth/setup.js`, which main.tsx invokes after feature setups.
 
+export { AuthProvider, useAuth } from './solid-auth.js';
+export { default as AuthControls } from './components/AuthControls.jsx';
+export { default as LoginButton } from './components/LoginButton.js';
+export { setup } from './setup.js';
+
 export {
   initAuth,
   getAuthProviderProfileSeed,

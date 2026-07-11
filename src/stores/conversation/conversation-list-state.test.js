@@ -19,7 +19,7 @@ vi.mock('../../infra/hangvidu-api-url', () => ({
   getHangViduApiBaseUrl: vi.fn(),
 }));
 
-import { getLoggedInUserId } from '../../auth/index.js';
+import { getLoggedInUserId } from '@auth';
 import { getConversationsClient } from './conversations-client';
 import {
   conversationListState,

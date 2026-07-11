@@ -1,4 +1,4 @@
-import { getAuthState, getLoggedInUserId } from '../../../auth/index.js';
+import { getAuthState, getLoggedInUserId } from '@auth';
 import { requestContactsAccess } from '@shared/utils/google/gis-tokens.js';
 import {
   getAllContacts,

@@ -6,7 +6,7 @@ import type {
   P2PRoomSignaling,
   RtcSignalingSource,
 } from '@kidlib/p2p';
-import { getLoggedInUserToken } from '../../auth/index.js';
+import { getLoggedInUserToken } from '@auth';
 import {
   createSignalingSocket,
   type SignalingSocket,

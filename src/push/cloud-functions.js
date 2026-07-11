@@ -1,6 +1,6 @@
 // Helper for calling Firebase Cloud Functions (onRequest endpoints).
 
-import { getLoggedInUserToken } from '../auth/index.js';
+import { getLoggedInUserToken } from '@auth';
 import { callFirebaseCloudFunction } from './firebase-functions-adapter.js';
 
 /**

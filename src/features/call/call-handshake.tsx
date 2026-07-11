@@ -8,10 +8,9 @@ import {
   type ParentProps,
 } from 'solid-js';
 
-import { useAuth } from '../../auth/solid-auth.js';
-import { getAuthProviderProfileSeed } from '../../auth/index.js';
+import { getAuthProviderProfileSeed, useAuth } from '@auth';
 import { useP2PContext } from '@shared/p2p-context.js';
-import { createRoomSignaling } from '../../realtime/index.js';
+import { createRoomSignaling } from '@realtime';
 import { subscribe } from '@shared/events/index.js';
 import { getLoggedInUserProfile } from '../../stores/user-profile-store.js';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';

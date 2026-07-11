@@ -26,8 +26,11 @@ vi.mock('./call-handshake-controller.js', () => ({
   }),
 }));
 vi.mock('../../shared/p2p-context.js', () => ({ useP2PContext: () => ({}) }));
-vi.mock('../../realtime/index.js', () => ({ createRoomSignaling: vi.fn() }));
-vi.mock('../../auth/solid-auth.js', () => ({
+vi.mock('@realtime', () => ({ createRoomSignaling: vi.fn() }));
+vi.mock('@auth', () => ({
+  getAuthProviderProfileSeed: vi.fn(() => null),
+  getAuthState: vi.fn(() => ({ isLoggedIn: false })),
+  getLoggedInUserToken: vi.fn(() => null),
   useAuth: () => ({ user: (...args) => mocks.user(...args) }),
 }));
 vi.mock('@shared/events/index.js', () => ({

@@ -1,18 +1,11 @@
 import { createStore } from 'solid-js/store';
-import {
-  getIsLoggedIn,
-  getLoggedInUserId,
-  getLoggedInUserToken,
-} from '@auth/index.js';
+import { getIsLoggedIn, getLoggedInUserId, getLoggedInUserToken } from '@auth';
 import { getHangViduApiBaseUrl } from '@infra/hangvidu-api-url.js';
 import {
   createContactsLocalStorageRepository,
   createContactsD1Repository,
-} from '@storage/contacts/index.js';
-import type {
-  ContactPatch,
-  ContactRecord,
-} from '@storage/contacts/contact-schema.js';
+} from '@storage/contacts';
+import type { ContactPatch, ContactRecord } from '@storage/contacts';
 
 export type Contact = ContactRecord;
 
