@@ -21,7 +21,7 @@ export interface CallDialogProps {
   actions?: any;
 }
 
-export default function CallDialog(props: ParentProps<CallDialogProps>) {
+export function CallDialog(props: ParentProps<CallDialogProps>) {
   const { t } = useI18n();
   const idPrefix = () => props.idPrefix || 'call-dialog';
 

@@ -1,5 +1,5 @@
 import { useI18n } from '@shared/i18n';
-import CallDialog from './CallDialog';
+import { CallDialog } from './CallDialog';
 import type { CallDialogProps } from './CallDialog';
 
 interface OutgoingCallDialogProps extends CallDialogProps {
@@ -9,7 +9,7 @@ interface OutgoingCallDialogProps extends CallDialogProps {
   onCancel?: () => void;
 }
 
-export default function OutgoingCallDialog(props: OutgoingCallDialogProps) {
+export function OutgoingCallDialog(props: OutgoingCallDialogProps) {
   const { t } = useI18n();
   const cancelLabel = () => props.cancelLabel || t('shared.cancel');
 

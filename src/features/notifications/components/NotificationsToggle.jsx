@@ -3,7 +3,7 @@ import { inAppNotificationManager } from '../index.js';
 import { useI18n } from '@shared/i18n/index.js';
 import { Bell } from 'lucide-solid';
 
-export default function NotificationsToggle() {
+export function NotificationsToggle() {
   const { t } = useI18n();
   const [count, setCount] = createSignal(0);
 

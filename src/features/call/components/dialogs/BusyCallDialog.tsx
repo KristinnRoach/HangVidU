@@ -1,8 +1,8 @@
 import { useI18n } from '@shared/i18n';
-import CallDialog from './CallDialog';
+import { CallDialog } from './CallDialog';
 import type { CallDialogProps } from './CallDialog';
 
-export default function BusyCallDialog(props: CallDialogProps) {
+export function BusyCallDialog(props: CallDialogProps) {
   const { t } = useI18n();
   const idPrefix = () => props.idPrefix || 'busy-call';
 

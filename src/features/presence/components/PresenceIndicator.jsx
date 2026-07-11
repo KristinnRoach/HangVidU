@@ -9,7 +9,7 @@ import { watchUserPresence } from '../index.js';
  *   userId: string (required)
  *   class?: string    additional classes merged with the base .presence-indicator
  */
-export default function PresenceIndicator(props) {
+export function PresenceIndicator(props) {
   const [isOnline, setIsOnline] = createSignal(false);
   let unsubscribe = null;
 

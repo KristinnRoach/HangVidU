@@ -1,5 +1,5 @@
 import { useI18n } from '@shared/i18n';
-import CallDialog from './CallDialog';
+import { CallDialog } from './CallDialog';
 import type { CallDialogProps } from './CallDialog';
 
 interface IncomingCallDialogProps extends CallDialogProps {
@@ -13,7 +13,7 @@ interface IncomingCallDialogProps extends CallDialogProps {
   onDecline?: () => void;
 }
 
-export default function IncomingCallDialog(props: IncomingCallDialogProps) {
+export function IncomingCallDialog(props: IncomingCallDialogProps) {
   const { t } = useI18n();
   const idPrefix = () => props.idPrefix || 'incoming-call';
   const acceptLabel = () =>

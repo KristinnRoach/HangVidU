@@ -20,7 +20,7 @@ function storageKey(uid: string) {
   return `handle-claim-dismissed:${uid}`;
 }
 
-export default function HandleClaimPrompt(props: { user: UserLike | null }) {
+export function HandleClaimPrompt(props: { user: UserLike | null }) {
   const { t } = useI18n();
   const [open, setOpen] = createSignal(false);
   const [handle, setHandle] = createSignal('');

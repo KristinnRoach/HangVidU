@@ -9,8 +9,8 @@ import { useI18n } from '@shared/i18n';
 import AppLogo from '../components/AppLogo';
 import AuthControls from '../auth/components/AuthControls';
 import { getLoggedInUserProfile } from '../stores/user-profile-store.js';
-import AddContactButton from '../features/contacts/components/AddContactButton';
-import NotificationsToggle from '../features/notifications/components/NotificationsToggle';
+import { AddContactButton } from '../features/contacts/components/AddContactButton';
+import { NotificationsToggle } from '../features/notifications/components/NotificationsToggle';
 import InstallButton from '../components/InstallButton';
 import LegalFooter from '../components/LegalFooter';
 import LocaleToggle from '../components/LocaleToggle';
@@ -25,7 +25,7 @@ import {
   StartCallButton,
 } from '../features/call/index.js';
 import ConversationsList from './ConversationsList';
-import ConversationPanel from '../features/conversations/components/ConversationPanel';
+import { ConversationPanel } from '../features/conversations/components/ConversationPanel';
 
 import { LoadBoundary } from '../components/LoadBoundary';
 import { Spinner } from '../components/Spinner';

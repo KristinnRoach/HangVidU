@@ -88,7 +88,7 @@ function openEmailComposeFallback(
   }
 }
 
-export default function AddContactModal(props: Props) {
+export function AddContactModal(props: Props) {
   const { t } = useI18n();
   const shareProviders = getInviteShareProviders();
   const senderName = () =>

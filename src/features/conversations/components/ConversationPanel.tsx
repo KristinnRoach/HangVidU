@@ -42,7 +42,7 @@ type ConversationPanelProps = {
  * stores/conversation/conversation-store; this composes MessageList + Composer and owns the
  * cross-cutting view concerns (file-drop target, alerts, read-marking).
  */
-export default function ConversationPanel(props: ConversationPanelProps) {
+export function ConversationPanel(props: ConversationPanelProps) {
   const state = getConversationState();
   const { t } = useI18n();
 

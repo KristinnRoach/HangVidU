@@ -1,9 +1,9 @@
 import { createSignal } from 'solid-js';
 import { useI18n } from '@shared/i18n/index.js';
 import { UserPlus } from 'lucide-solid';
-import AddContactModal from './AddContactModal';
+import { AddContactModal } from './AddContactModal';
 
-export default function AddContactButton() {
+export function AddContactButton() {
   const { t } = useI18n();
   const [open, setOpen] = createSignal(false);
 

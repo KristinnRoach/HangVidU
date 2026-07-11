@@ -1,6 +1,6 @@
 import { Show, createSignal } from 'solid-js';
 
-import MemberStreams from './MemberStreams';
+import { MemberStreams } from './MemberStreams';
 import { ActiveCallControls } from './CallControls';
 import { useP2PContext } from '@shared/p2p-context.js';
 

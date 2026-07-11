@@ -3,7 +3,7 @@ import VideoStream from '../../../components/media/VideoStream';
 import { useP2PContext } from '@shared/p2p-context.js';
 import styles from './MemberStreams.module.css';
 
-export default function MemberStreams() {
+export function MemberStreams() {
   const p2p = useP2PContext();
 
   return (

@@ -1,9 +1,9 @@
 import { Match, Switch } from 'solid-js';
 
 import { useCallHandshake } from '../call-handshake.js';
-import BusyCallDialog from './dialogs/BusyCallDialog';
-import IncomingCallDialog from './dialogs/IncomingCallDialog';
-import OutgoingCallDialog from './dialogs/OutgoingCallDialog';
+import { BusyCallDialog } from './dialogs/BusyCallDialog';
+import { IncomingCallDialog } from './dialogs/IncomingCallDialog';
+import { OutgoingCallDialog } from './dialogs/OutgoingCallDialog';
 
 export function CallDialogs() {
   const handshake = useCallHandshake();
