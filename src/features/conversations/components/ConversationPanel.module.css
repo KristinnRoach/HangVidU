@@ -90,22 +90,37 @@
 }
 
 .systemMessage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   align-self: center;
   max-width: 80%;
-  padding: 1rem;
+  padding: 0.5rem 1rem 0.5rem 1rem;
+  margin: 0.25rem;
 
   background: #303438ad;
   border-radius: 0.5rem;
-}
 
-.systemMessageText {
   font-family: monospace;
   font-size: 1rem;
   font-weight: 100;
   letter-spacing: 0.05em;
   text-align: center;
 
-  color: rgb(120, 218, 254);
+  & .systemMessageText {
+    color: rgb(120, 218, 254);
+  }
+}
+
+.callBackAction {
+  display: flex;
+  place-items: center;
+  place-content: center;
+  gap: 0.5rem;
+
+  /* & .systemMessageText {
+    color: rgb(62, 189, 62);
+  } */
 }
 
 .msg {

@@ -34,7 +34,7 @@ export function StartCallButton(props: StartCallButtonProps) {
 
   return (
     <button
-      class='contact-call-btn'
+      class={'contact-call-btn'}
       type='button'
       onClick={onCall}
       title={title()}

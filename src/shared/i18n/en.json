@@ -138,7 +138,7 @@
   "notification.enable.timeout": "Notification permission did not complete. Check the browser prompt or try again.",
   "notification.missed.title": "Missed Call",
   "notification.missed.suffix": "tried to call you",
-  "notification.missed.call_back": "Call Back",
+  "notification.missed.call_back": "Call Back?",
   "notification.missed.calling": "Calling...",
   "notification.invite.title": "Contact Invitation",
   "notification.invite.suffix": "wants to connect",

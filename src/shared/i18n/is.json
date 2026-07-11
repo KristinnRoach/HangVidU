@@ -138,7 +138,7 @@
   "notification.enable.timeout": "Beiðni um tilkynningaheimild kláraðist ekki. Athugaðu vafragluggann eða reyndu aftur.",
   "notification.missed.title": "Missað símtal",
   "notification.missed.suffix": "reyndi að hringja í þig",
-  "notification.missed.call_back": "Hringja til baka",
+  "notification.missed.call_back": "Hringja til baka?",
   "notification.missed.calling": "Hringi...",
   "notification.invite.title": "Boð um tengingu",
   "notification.invite.suffix": "vill tengjast",

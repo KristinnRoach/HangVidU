@@ -282,7 +282,9 @@ function SystemMessageRow(props: { message: SystemChatMessage }) {
   const text = () =>
     props.message.callerUId === state.myUserId
       ? t('conversation.call_unanswered_outgoing')
-      : t('conversation.call_unanswered_incoming', { name: callerName() });
+      : t('conversation.call_unanswered_incoming', {
+          name: callerName().split(' ')[0],
+        });
 
   return (
     <div class={styles.systemMessage} data-timestamp={props.message.sentAt}>
@@ -293,11 +295,21 @@ function SystemMessageRow(props: { message: SystemChatMessage }) {
           props.message.callerUId !== state.myUserId
         }
       >
-        <StartCallButton
-          calleeId={props.message.callerUId}
-          calleeName={callerName()}
-          audioOnly={false}
-        />
+        <div class={styles.callBackAction}>
+          <span class={styles.systemMessageText}>
+            {t('notification.missed.call_back')}
+          </span>
+          <StartCallButton
+            calleeId={props.message.callerUId}
+            calleeName={callerName()}
+            audioOnly={true}
+          />
+          <StartCallButton
+            calleeId={props.message.callerUId}
+            calleeName={callerName()}
+            audioOnly={false}
+          />
+        </div>
       </Show>
     </div>
   );
