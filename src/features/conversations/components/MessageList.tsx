@@ -286,8 +286,19 @@ function SystemMessageRow(props: { message: SystemChatMessage }) {
 
   return (
     <div class={styles.systemMessage} data-timestamp={props.message.sentAt}>
-      <StartCallButton calleeId='gjh8e932' />
       <span class={styles.systemMessageText}>{text()}</span>
+      <Show
+        when={
+          props.message.systemType === 'call.unanswered' &&
+          props.message.callerUId !== state.myUserId
+        }
+      >
+        <StartCallButton
+          calleeId={props.message.callerUId}
+          calleeName={callerName()}
+          audioOnly={false}
+        />
+      </Show>
     </div>
   );
 }
