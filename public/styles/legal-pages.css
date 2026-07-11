@@ -31,8 +31,10 @@ a {
   color: #4c81af;
 }
 
-a:hover {
-  color: #739cc0d8;
+@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    color: #739cc0d8;
+  }
 }
 
 .back-btn {

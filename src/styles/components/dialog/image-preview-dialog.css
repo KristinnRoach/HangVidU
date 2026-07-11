@@ -39,10 +39,12 @@
   transition: color 0.2s ease;
 }
 
-.image-preview-close:hover,
-.image-preview-download:hover {
-  background: rgb(0 0 0 / 0.8);
-  color: var(--text-primary);
+@media (hover: hover) and (pointer: fine) {
+  .image-preview-close:hover,
+  .image-preview-download:hover {
+    background: rgb(0 0 0 / 0.8);
+    color: var(--text-primary);
+  }
 }
 
 .image-preview-download {

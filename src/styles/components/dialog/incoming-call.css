@@ -62,8 +62,10 @@ dialog.incoming-call-dialog {
   background: var(--color-success);
 }
 
-.incoming-call-dialog button:first-of-type:hover:not(:disabled) {
-  background: var(--color-success-hover);
+@media (hover: hover) and (pointer: fine) {
+  .incoming-call-dialog button:first-of-type:hover:not(:disabled) {
+    background: var(--color-success-hover);
+  }
 }
 
 .incoming-call-dialog button:first-of-type:disabled {
@@ -75,8 +77,10 @@ dialog.incoming-call-dialog {
   background: var(--color-danger);
 }
 
-.incoming-call-dialog button:last-of-type:hover {
-  background: var(--color-danger-hover);
+@media (hover: hover) and (pointer: fine) {
+  .incoming-call-dialog button:last-of-type:hover {
+    background: var(--color-danger-hover);
+  }
 }
 
 /* Dialog backdrop */

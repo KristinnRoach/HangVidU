@@ -56,9 +56,11 @@ button.public-homepage__login {
   border: rgb(151, 200, 238) 2px solid;
   background-color: rgba(124, 190, 208, 0.234);
 
-  &:hover {
-    text-decoration: underline;
-    background-color: transparent;
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      text-decoration: underline;
+      background-color: transparent;
+    }
   }
 }
 
@@ -74,10 +76,12 @@ button.public-homepage__login {
   font-weight: 700;
 }
 
-.public-homepage__links a:hover {
-  text-decoration: underline var(--color-primary-hover);
-  text-shadow: none;
-  cursor: pointer;
+@media (hover: hover) and (pointer: fine) {
+  .public-homepage__links a:hover {
+    text-decoration: underline var(--color-primary-hover);
+    text-shadow: none;
+    cursor: pointer;
+  }
 }
 
 @media (max-width: 720px) {

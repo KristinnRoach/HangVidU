@@ -53,11 +53,13 @@
         }
       }
 
-      & .contact-call-btn:hover {
-        & .lucide-icon {
-          opacity: 1;
-          rotate: 15deg;
-          color: rgb(70, 200, 70);
+      @media (hover: hover) and (pointer: fine) {
+        & .contact-call-btn:hover {
+          & .lucide-icon {
+            opacity: 1;
+            rotate: 15deg;
+            color: rgb(70, 200, 70);
+          }
         }
       }
 
@@ -89,8 +91,10 @@
         transition: background-color 0.2s ease;
       }
 
-      & .contact-name:hover {
-        background-color: rgba(91, 168, 95, 0.2);
+      @media (hover: hover) and (pointer: fine) {
+        & .contact-name:hover {
+          background-color: rgba(91, 168, 95, 0.2);
+        }
       }
 
       & .contact-name:active {

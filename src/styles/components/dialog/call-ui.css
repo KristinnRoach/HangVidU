@@ -130,8 +130,10 @@
     background var(--transition-base);
 }
 
-.dialog-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .dialog-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
 }
 
 .dialog-btn:disabled {
@@ -143,16 +145,20 @@
   background: var(--color-success);
 }
 
-.dialog-btn--success:hover:not(:disabled) {
-  background: var(--color-success-hover);
+@media (hover: hover) and (pointer: fine) {
+  .dialog-btn--success:hover:not(:disabled) {
+    background: var(--color-success-hover);
+  }
 }
 
 .dialog-btn--danger {
   background: var(--color-danger);
 }
 
-.dialog-btn--danger:hover:not(:disabled) {
-  background: var(--color-danger-hover);
+@media (hover: hover) and (pointer: fine) {
+  .dialog-btn--danger:hover:not(:disabled) {
+    background: var(--color-danger-hover);
+  }
 }
 
 @media (max-width: 520px) {

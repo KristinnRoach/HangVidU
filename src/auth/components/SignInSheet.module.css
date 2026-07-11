@@ -105,9 +105,11 @@
     color: var(--text-secondary, #888);
     cursor: pointer;
   }
-  .passwordToggle:hover {
-    background: none;
-    text-decoration: underline;
-    color: var(--text-primary, #eee);
+  @media (hover: hover) and (pointer: fine) {
+    .passwordToggle:hover {
+      background: none;
+      text-decoration: underline;
+      color: var(--text-primary, #eee);
+    }
   }
 }

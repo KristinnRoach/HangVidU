@@ -17,9 +17,11 @@ a {
   text-decoration: none;
 }
 
-a:hover {
-  text-decoration: underline;
-  text-shadow: 0 0 5px var(--color-primary-subtle);
+@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    text-decoration: underline;
+    text-shadow: 0 0 5px var(--color-primary-subtle);
+  }
 }
 
 a span {
