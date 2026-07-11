@@ -41,12 +41,7 @@ const CallHandshakeContext = createContext<CallHandshakeContextValue>();
 const INCOMING_CALL_NOTIFICATION_EVENT = 'hangvidu:incoming-call-notification';
 
 function incomingCallRoomParam(params: URLSearchParams): string | null {
-  return (
-    params.get('conversationRoom') ||
-    // Legacy names used before conversation/public room URLs were explicit.
-    params.get('callRoom') ||
-    (params.get('callerId') ? params.get('room') : null)
-  );
+  return params.get('conversationRoom');
 }
 
 function incomingCallNotificationDetailsFromParams(

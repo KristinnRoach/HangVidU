@@ -20,11 +20,7 @@ function trimmedParam(
 }
 
 function conversationRoomParam(searchParams: URLSearchParams): string | null {
-  return (
-    trimmedParam(searchParams, 'conversationRoom') ??
-    // Legacy name used by earlier incoming-call push notifications.
-    trimmedParam(searchParams, 'callRoom')
-  );
+  return trimmedParam(searchParams, 'conversationRoom');
 }
 
 function isCallNavigationPath(path: string): boolean {
