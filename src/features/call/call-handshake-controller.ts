@@ -213,6 +213,17 @@ export class CallHandshakeController {
 
     const { calleeId, calleeName, audioOnly } = details;
     const callerName = this.getCallerName();
+
+    // iOS requires getUserMedia to start within the tap's transient user
+    // activation — kick it off before any network awaits or it throws
+    // NotAllowedError whenever the roomId resolve is slow.
+    const localStreamPromise = this.getCallLocalStream(audioOnly);
+    const stopStreamWhenReady = () =>
+      localStreamPromise.then(
+        (stream) => this.stopMediaStream(stream),
+        () => {},
+      );
+
     let roomId: string;
     try {
       roomId = await this.resolveCallRoomId(calleeId);
@@ -221,7 +232,12 @@ export class CallHandshakeController {
         '[CallHandshake] Cannot start call: failed to resolve conversationId:',
         err,
       );
+      void stopStreamWhenReady();
       this.alertCallStartFailed();
+      return;
+    }
+    if (mediaAttempt !== this.outgoingMediaAttempt) {
+      void stopStreamWhenReady();
       return;
     }
 
@@ -236,8 +252,7 @@ export class CallHandshakeController {
 
     let localStream: MediaStream;
     try {
-      if (mediaAttempt !== this.outgoingMediaAttempt) return;
-      localStream = await this.getCallLocalStream(audioOnly);
+      localStream = await localStreamPromise;
       if (mediaAttempt !== this.outgoingMediaAttempt) {
         this.stopMediaStream(localStream);
         return;
