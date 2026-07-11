@@ -49,6 +49,8 @@ export default defineConfig(({ mode }) => {
           // override resets this inside src/auth/** and src/features/contacts/**.
           files: ['src/**/*.js', 'src/**/*.jsx', 'src/**/*.ts', 'src/**/*.tsx'],
           rules: {
+            'import/no-cycle': 'error', // Use ['error', { ignoreTypes: false }] if want to include type imports in cyclical check
+
             'no-restricted-imports': [
               'error',
               {
@@ -85,8 +87,6 @@ export default defineConfig(({ mode }) => {
           // only the firebase/auth restriction still applies here.
           files: ['src/auth/**', 'src/features/contacts/**'],
           rules: {
-            'import/no-cycle': 'error', // Use ['error', { ignoreTypes: false }] if want to include type imports in cyclical check
-
             'no-restricted-imports': [
               'error',
               {
