@@ -14,7 +14,10 @@ import { useP2PContext } from '@shared/p2p-context.js';
 import { createRoomSignaling } from '../../realtime/index.js';
 import { getLoggedInUserProfile } from '../../stores/user-profile-store.js';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
-import { CallHandshakeController } from './call-handshake-controller.js';
+import {
+  CallHandshakeController,
+  type IncomingCallNotificationDetails,
+} from './call-handshake-controller.js';
 import type {
   CallHandshakeState,
   PendingOutgoingCall,
@@ -35,6 +38,45 @@ type CallHandshakeContextValue = {
 };
 
 const CallHandshakeContext = createContext<CallHandshakeContextValue>();
+const INCOMING_CALL_NOTIFICATION_EVENT = 'hangvidu:incoming-call-notification';
+
+function incomingCallRoomParam(params: URLSearchParams): string | null {
+  return params.get('callRoom') || params.get('room');
+}
+
+function incomingCallNotificationDetailsFromParams(
+  params: URLSearchParams,
+): IncomingCallNotificationDetails | null {
+  const roomId = incomingCallRoomParam(params);
+  const callerId = params.get('callerId');
+  if (!roomId || !callerId) return null;
+
+  const timestamp = Number(params.get('timestamp'));
+  return {
+    roomId,
+    callerId,
+    callerName: params.get('callerName') || undefined,
+    audioOnly: params.get('audioOnly') === '1',
+    startedAt: Number.isFinite(timestamp) ? timestamp : undefined,
+  };
+}
+
+function incomingCallNotificationDetailsFromEvent(
+  event: Event,
+): IncomingCallNotificationDetails | null {
+  const detail = (event as CustomEvent).detail || {};
+  if (typeof detail.roomId !== 'string' || typeof detail.callerId !== 'string')
+    return null;
+  return {
+    roomId: detail.roomId,
+    callerId: detail.callerId,
+    callerName:
+      typeof detail.callerName === 'string' ? detail.callerName : undefined,
+    audioOnly: detail.audioOnly === true,
+    startedAt:
+      typeof detail.timestamp === 'number' ? detail.timestamp : undefined,
+  };
+}
 
 export function CallHandshakeProvider(props: ParentProps) {
   const p2p = useP2PContext();
@@ -95,7 +137,13 @@ export function CallHandshakeProvider(props: ParentProps) {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     const hasAcceptMarker = params.get('accept') === '1';
-    let wantAcceptRoomId = hasAcceptMarker ? params.get('room') : null;
+    const [queuedNotificationDetails, setQueuedNotificationDetails] =
+      createSignal<IncomingCallNotificationDetails | null>(
+        incomingCallNotificationDetailsFromParams(params),
+      );
+    const [wantAcceptRoomId, setWantAcceptRoomId] = createSignal<string | null>(
+      hasAcceptMarker ? incomingCallRoomParam(params) : null,
+    );
     if (hasAcceptMarker) {
       // Strip the marker so a reload/back doesn't re-trigger the accept.
       params.delete('accept');
@@ -108,10 +156,42 @@ export function CallHandshakeProvider(props: ParentProps) {
           : window.location.pathname,
       );
     }
+
+    const handleIncomingCallNotification = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
+      const notificationDetails =
+        incomingCallNotificationDetailsFromEvent(event);
+      if (notificationDetails) {
+        setQueuedNotificationDetails(notificationDetails);
+      }
+      if (detail.accept && typeof detail.roomId === 'string') {
+        setWantAcceptRoomId(detail.roomId);
+      }
+    };
+    window.addEventListener(
+      INCOMING_CALL_NOTIFICATION_EVENT,
+      handleIncomingCallNotification,
+    );
+    onCleanup(() => {
+      window.removeEventListener(
+        INCOMING_CALL_NOTIFICATION_EVENT,
+        handleIncomingCallNotification,
+      );
+    });
+
+    createEffect(() => {
+      if (!auth.user()?.uid) return;
+      const notificationDetails = queuedNotificationDetails();
+      if (!notificationDetails) return;
+      setQueuedNotificationDetails(null);
+      controller.showIncomingCallFromNotification(notificationDetails);
+    });
+
     createEffect(() => {
       const call = incomingCall();
-      if (wantAcceptRoomId && call?.roomId === wantAcceptRoomId) {
-        wantAcceptRoomId = null;
+      const roomId = wantAcceptRoomId();
+      if (roomId && call?.roomId === roomId) {
+        setWantAcceptRoomId(null);
         controller.acceptIncoming();
       }
     });

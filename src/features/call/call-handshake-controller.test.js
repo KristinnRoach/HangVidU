@@ -181,6 +181,47 @@ describe('CallHandshakeController', () => {
     });
   });
 
+  it('does not close an accepted incoming room while waiting for the caller to join', async () => {
+    const p2p = {
+      join: vi.fn(async (options) => {
+        options.onAlone?.({ roomId: 'room-1', members: ['callee-id'] });
+        return { roomId: 'room-1', members: ['callee-id'] };
+      }),
+      close: vi.fn(),
+      state: vi.fn(() => 'idle'),
+      room: vi.fn(),
+    };
+    const controller = new CallHandshakeController({
+      p2p,
+      createSignaling: vi.fn(),
+      getCallerName: () => 'Callee',
+      onStateChange: vi.fn(),
+      onCalleeBusy: vi.fn(),
+    });
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        audioOnly: false,
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+
+    controller.acceptIncoming();
+    await flushPromises();
+
+    expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      callerId: 'caller-id',
+      responseType: 'accepted',
+    });
+    expect(p2p.close).not.toHaveBeenCalled();
+  });
+
   it('does not notify accepted when joining the room fails', async () => {
     const joinError = new Error('camera blocked');
     const p2p = {

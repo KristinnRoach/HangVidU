@@ -19,8 +19,35 @@ function trimmedParam(
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function callRoomParam(searchParams: URLSearchParams): string | null {
+  return trimmedParam(searchParams, 'callRoom');
+}
+
+function isCallNavigationPath(path: string): boolean {
+  const url = new URL(path, window.location.origin);
+  return Boolean(callRoomParam(url.searchParams));
+}
+
 function dispatchPath(path: string) {
   const url = new URL(path, window.location.origin);
+  const callRoomId = callRoomParam(url.searchParams);
+  if (callRoomId) {
+    const timestamp = Number(url.searchParams.get('timestamp'));
+    window.dispatchEvent(
+      new CustomEvent('hangvidu:incoming-call-notification', {
+        detail: {
+          roomId: callRoomId,
+          callerId: trimmedParam(url.searchParams, 'callerId') ?? undefined,
+          callerName: trimmedParam(url.searchParams, 'callerName') ?? undefined,
+          audioOnly: url.searchParams.get('audioOnly') === '1',
+          timestamp: Number.isFinite(timestamp) ? timestamp : undefined,
+          accept: url.searchParams.get('accept') === '1',
+        },
+      }),
+    );
+    return;
+  }
+
   const conversationId = trimmedParam(url.searchParams, 'conversationId');
   const contactId = trimmedParam(url.searchParams, 'contact');
 
@@ -68,6 +95,11 @@ export default function SWNavigation(props: Props = {}) {
     const handler = (event: MessageEvent) => {
       const data = event.data || {};
       if (data.type !== 'NAVIGATE' || !data.path) return;
+
+      if (isCallNavigationPath(data.path)) {
+        dispatchPath(data.path);
+        return;
+      }
 
       if (!getContactsIsHydrated()) {
         pending.push(data.path);

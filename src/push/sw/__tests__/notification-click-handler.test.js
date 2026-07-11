@@ -7,7 +7,7 @@ import {
 } from '../notification-click-handler.js';
 
 describe('notification click routing', () => {
-  it('routes incoming call notifications to the room path', () => {
+  it('routes incoming call notifications to a call-specific path', () => {
     expect(
       getNotificationNavigationPath(
         {
@@ -16,7 +16,7 @@ describe('notification click routing', () => {
         },
         undefined,
       ),
-    ).toBe('/?room=room-123');
+    ).toBe('/?callRoom=room-123');
   });
 
   it('marks the incoming-call path for auto-accept on the explicit accept action', () => {
@@ -25,7 +25,24 @@ describe('notification click routing', () => {
         { type: 'incoming_call', roomId: 'room-123' },
         'accept',
       ),
-    ).toBe('/?room=room-123&accept=1');
+    ).toBe('/?callRoom=room-123&accept=1');
+  });
+
+  it('carries caller metadata for incoming call notification clicks', () => {
+    expect(
+      getNotificationNavigationPath(
+        {
+          type: 'incoming_call',
+          roomId: 'room-123',
+          callerId: 'caller-1',
+          callerName: 'Caller Name',
+          timestamp: '1774025000000',
+        },
+        undefined,
+      ),
+    ).toBe(
+      '/?callRoom=room-123&callerId=caller-1&callerName=Caller+Name&timestamp=1774025000000',
+    );
   });
 
   it('routes missed calls explicitly to caller contact first, then room fallback', () => {

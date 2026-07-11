@@ -4,15 +4,30 @@ import { isIncomingCallType } from './notification-presentation.js';
  * Maps normalized notification payload data to the app navigation path.
  */
 export function getNotificationNavigationPath(data, action) {
-  const { type, roomId, senderId, callerId, conversationId, conversationKind } =
-    data || {};
+  const {
+    type,
+    roomId,
+    senderId,
+    callerId,
+    callerName,
+    audioOnly,
+    timestamp,
+    conversationId,
+    conversationKind,
+  } = data || {};
 
   if (isIncomingCallType(type)) {
     if (!roomId) return '/';
-    const path = `/?room=${encodeURIComponent(roomId)}`;
+    const params = new URLSearchParams({ callRoom: roomId });
+    if (callerId) params.set('callerId', callerId);
+    if (callerName) params.set('callerName', callerName);
+    if (audioOnly === true || audioOnly === 'true')
+      params.set('audioOnly', '1');
+    if (timestamp) params.set('timestamp', String(timestamp));
     // The explicit "Accept" notification action (where supported) auto-answers;
     // a plain body click just opens the in-app incoming-call dialog.
-    return action === 'accept' ? `${path}&accept=1` : path;
+    if (action === 'accept') params.set('accept', '1');
+    return `/?${params.toString()}`;
   }
 
   if (type === 'missed_call') {

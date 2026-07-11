@@ -132,4 +132,40 @@ describe('SWNavigation', () => {
 
     unmount();
   });
+
+  it('dispatches incoming-call notification navigation immediately', async () => {
+    const onIncomingCallNotification = vi.fn();
+    window.addEventListener(
+      'hangvidu:incoming-call-notification',
+      onIncomingCallNotification,
+    );
+
+    const { unmount } = render(() => <SWNavigation />);
+
+    messageListener?.({
+      data: {
+        type: 'NAVIGATE',
+        path: '/?callRoom=room-1&callerId=caller-1&callerName=Caller&accept=1',
+      },
+    });
+
+    expect(onIncomingCallNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          roomId: 'room-1',
+          callerId: 'caller-1',
+          callerName: 'Caller',
+          accept: true,
+        }),
+      }),
+    );
+    expect(mocks.openDirectConversation).not.toHaveBeenCalled();
+    expect(mocks.openSelectedConversation).not.toHaveBeenCalled();
+
+    window.removeEventListener(
+      'hangvidu:incoming-call-notification',
+      onIncomingCallNotification,
+    );
+    unmount();
+  });
 });
