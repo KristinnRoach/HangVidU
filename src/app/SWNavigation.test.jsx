@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   getContactsIsHydrated: vi.fn(),
   openSelectedConversation: vi.fn(),
   openDirectConversation: vi.fn(),
+  publish: vi.fn(),
 }));
 
 vi.mock('../stores/contacts-store', () => ({
@@ -27,6 +28,10 @@ vi.mock('../stores/conversation/conversation-store', () => ({
   openConversation: mocks.openSelectedConversation,
   openDirectConversation: mocks.openDirectConversation,
   selection: () => null,
+}));
+
+vi.mock('@shared/events/index.js', () => ({
+  publish: mocks.publish,
 }));
 
 describe('SWNavigation', () => {
@@ -129,6 +134,32 @@ describe('SWNavigation', () => {
         displayUI: true,
       });
     });
+
+    unmount();
+  });
+
+  it('publishes incoming-call notification navigation immediately', async () => {
+    const { unmount } = render(() => <SWNavigation />);
+
+    messageListener?.({
+      data: {
+        type: 'NAVIGATE',
+        path: '/?conversationRoom=room-1&callerId=caller-1&callerName=Caller&accept=1',
+      },
+    });
+
+    expect(mocks.publish).toHaveBeenCalledWith(
+      'evt:call:notification:opened',
+      expect.objectContaining({
+        roomId: 'room-1',
+        callerId: 'caller-1',
+        callerName: 'Caller',
+        accept: true,
+        startedAt: undefined,
+      }),
+    );
+    expect(mocks.openDirectConversation).not.toHaveBeenCalled();
+    expect(mocks.openSelectedConversation).not.toHaveBeenCalled();
 
     unmount();
   });

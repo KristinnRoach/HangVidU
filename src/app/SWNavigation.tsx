@@ -4,6 +4,7 @@ import {
   openConversation as openSelectedConversation,
   openDirectConversation,
 } from '../stores/conversation/conversation-store';
+import { publish } from '@shared/events/index.js';
 
 type Props = {
   queueLimit?: number;
@@ -19,8 +20,27 @@ function trimmedParam(
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function dispatchPath(path: string) {
-  const url = new URL(path, window.location.origin);
+function optionalTimestamp(searchParams: URLSearchParams): number | undefined {
+  const rawTimestamp = searchParams.get('timestamp');
+  if (rawTimestamp == null) return undefined;
+  const timestamp = Number(rawTimestamp);
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
+function dispatchUrl(url: URL): void {
+  const conversationRoomId = trimmedParam(url.searchParams, 'conversationRoom');
+  if (conversationRoomId) {
+    publish('evt:call:notification:opened', {
+      roomId: conversationRoomId,
+      callerId: trimmedParam(url.searchParams, 'callerId') ?? undefined,
+      callerName: trimmedParam(url.searchParams, 'callerName') ?? undefined,
+      audioOnly: url.searchParams.get('audioOnly') === '1',
+      startedAt: optionalTimestamp(url.searchParams),
+      accept: url.searchParams.get('accept') === '1',
+    });
+    return;
+  }
+
   const conversationId = trimmedParam(url.searchParams, 'conversationId');
   const contactId = trimmedParam(url.searchParams, 'contact');
 
@@ -35,6 +55,10 @@ function dispatchPath(path: string) {
   // Contact-only links resolve-or-create the opaque id through the registry,
   // the same path the in-app open flow uses.
   void openDirectConversation(contactId, { displayUI: true });
+}
+
+function dispatchPath(path: string): void {
+  dispatchUrl(new URL(path, window.location.origin));
 }
 
 /**
@@ -68,6 +92,12 @@ export default function SWNavigation(props: Props = {}) {
     const handler = (event: MessageEvent) => {
       const data = event.data || {};
       if (data.type !== 'NAVIGATE' || !data.path) return;
+      const url = new URL(data.path, window.location.origin);
+
+      if (trimmedParam(url.searchParams, 'conversationRoom')) {
+        dispatchUrl(url);
+        return;
+      }
 
       if (!getContactsIsHydrated()) {
         pending.push(data.path);
@@ -75,7 +105,7 @@ export default function SWNavigation(props: Props = {}) {
         return;
       }
 
-      dispatchPath(data.path);
+      dispatchUrl(url);
     };
 
     navigator.serviceWorker.addEventListener('message', handler);

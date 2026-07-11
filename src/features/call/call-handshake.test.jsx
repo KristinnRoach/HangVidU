@@ -5,6 +5,10 @@ import { render, cleanup } from '@solidjs/testing-library';
 const mocks = vi.hoisted(() => ({
   init: vi.fn(),
   cleanup: vi.fn(),
+  showIncomingCallFromNotification: vi.fn(),
+  acceptIncoming: vi.fn(),
+  subscribe: vi.fn(),
+  subscriptions: new Map(),
   user: () => null,
 }));
 
@@ -13,9 +17,10 @@ vi.mock('./call-handshake-controller.js', () => ({
     return {
       init: mocks.init,
       cleanup: mocks.cleanup,
+      showIncomingCallFromNotification: mocks.showIncomingCallFromNotification,
       exitActiveRoom: vi.fn(),
       cancelOutgoing: vi.fn(),
-      acceptIncoming: vi.fn(),
+      acceptIncoming: mocks.acceptIncoming,
       declineIncoming: vi.fn(),
     };
   }),
@@ -25,12 +30,21 @@ vi.mock('../../realtime/index.js', () => ({ createRoomSignaling: vi.fn() }));
 vi.mock('../../auth/solid-auth.js', () => ({
   useAuth: () => ({ user: (...args) => mocks.user(...args) }),
 }));
+vi.mock('@shared/events/index.js', () => ({
+  subscribe: mocks.subscribe,
+}));
 
 describe('CallHandshakeProvider', () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
+    mocks.subscriptions.clear();
+    mocks.subscribe.mockImplementation((name, handler) => {
+      mocks.subscriptions.set(name, handler);
+      return vi.fn();
+    });
     mocks.user = () => null;
+    window.history.replaceState(null, '', '/');
   });
 
   it('attaches the incoming-call listener when auth becomes authenticated after mount', async () => {
@@ -69,5 +83,50 @@ describe('CallHandshakeProvider', () => {
     setP2pState('connected');
     expect(mocks.init).toHaveBeenCalledTimes(1);
     expect(mocks.cleanup).not.toHaveBeenCalled();
+  });
+
+  it('uses the app bus incoming-call notification event after auth is ready', async () => {
+    const { CallHandshakeProvider } = await import('./call-handshake');
+    const [user] = createSignal({ uid: 'u1' });
+    mocks.user = user;
+
+    render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
+
+    const handler = mocks.subscriptions.get('evt:call:notification:opened');
+    handler?.({
+      roomId: 'room-1',
+      callerId: 'caller-1',
+      callerName: 'Caller',
+      accept: true,
+    });
+
+    expect(mocks.showIncomingCallFromNotification).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      callerId: 'caller-1',
+      callerName: 'Caller',
+      audioOnly: false,
+      startedAt: undefined,
+    });
+  });
+
+  it('keeps a missing notification URL timestamp undefined', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?conversationRoom=room-1&callerId=caller-1',
+    );
+    const { CallHandshakeProvider } = await import('./call-handshake');
+    const [user] = createSignal({ uid: 'u1' });
+    mocks.user = user;
+
+    render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
+
+    expect(mocks.showIncomingCallFromNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roomId: 'room-1',
+        callerId: 'caller-1',
+        startedAt: undefined,
+      }),
+    );
   });
 });

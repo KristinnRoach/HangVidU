@@ -9,10 +9,10 @@ import styles from './ActiveCallRoom.module.css';
 export default function ActiveCallRoom() {
   const p2p = useP2PContext();
 
-  // Room-link (guest) calls carry ?room= in the URL; contact calls don't.
+  // Room-link (guest) calls carry ?publicRoom= in the URL; contact calls don't.
   // Only those can re-share the page URL as an invite.
   const isRoomLinkCall = new URLSearchParams(window.location.search).has(
-    'room',
+    'publicRoom',
   );
   const [copied, setCopied] = createSignal(false);
 

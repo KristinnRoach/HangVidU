@@ -40,6 +40,20 @@ type CallHandshakeControllerOptions = {
   onCalleeBusy: (busy: boolean) => void;
 };
 
+export type IncomingCallNotificationDetails = {
+  roomId: string;
+  callerId: string;
+  callerName?: string;
+  audioOnly?: boolean;
+  startedAt?: number;
+};
+
+type EnterRoomOptions = {
+  memberCapacity?: number;
+  autoExitOnEmpty?: boolean;
+  ignoreInitialAlone?: boolean;
+};
+
 export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
   private readonly createSignaling: CreateRoomSignaling;
@@ -125,24 +139,54 @@ export class CallHandshakeController {
         }
         return;
       }
-      const { invite: call } = event;
-      if (this.isBusyForIncomingCall(call)) {
-        callService
-          .respondToIncomingCallInvite({
-            roomId: call.roomId,
-            callerId: call.callerId,
-            responseType: 'busy',
-          })
-          .catch((err) =>
-            console.error('Error responding busy to incoming call:', err),
-          );
-        return;
-      }
-      this.setHandshakeState({ direction: 'incoming', call });
-      if (import.meta.env.DEV) {
-        console.debug('Received incoming call invite:', { call });
-      }
+      this.handleIncomingCallInvite(event.invite, callService);
     });
+  }
+
+  showIncomingCallFromNotification(
+    details: IncomingCallNotificationDetails,
+  ): void {
+    const localUID = getLoggedInUserId();
+    if (!localUID || !details.roomId || !details.callerId) return;
+    const startedAt = details.startedAt ?? Date.now();
+    const call: MailboxInvite = {
+      roomId: details.roomId,
+      callerId: details.callerId,
+      calleeId: localUID,
+      callerName: details.callerName,
+      audioOnly: details.audioOnly,
+      startedAt,
+      expiresAt: startedAt + CALLING_TTL_MS,
+    };
+    if (call.expiresAt != null && call.expiresAt <= Date.now()) return;
+    const callService = initCallService({
+      localUID,
+      baseUrl: DATA_URL,
+      getToken: getLoggedInUserToken,
+    });
+    this.handleIncomingCallInvite(call, callService);
+  }
+
+  private handleIncomingCallInvite(
+    call: MailboxInvite,
+    callService: NonNullable<ReturnType<typeof getCallService>>,
+  ): void {
+    if (this.isBusyForIncomingCall(call)) {
+      callService
+        .respondToIncomingCallInvite({
+          roomId: call.roomId,
+          callerId: call.callerId,
+          responseType: 'busy',
+        })
+        .catch((err) =>
+          console.error('Error responding busy to incoming call:', err),
+        );
+      return;
+    }
+    this.setHandshakeState({ direction: 'incoming', call });
+    if (import.meta.env.DEV) {
+      console.debug('Received incoming call invite:', { call });
+    }
   }
 
   private isBusyForIncomingCall(call: MailboxInvite): boolean {
@@ -315,9 +359,13 @@ export class CallHandshakeController {
     localUserId: string,
     audioOnly = false,
     getLocalStream?: () => Promise<MediaStream>,
-    memberCapacity = 2,
-    autoExitOnEmpty = true,
+    {
+      memberCapacity = 2,
+      autoExitOnEmpty = true,
+      ignoreInitialAlone = false,
+    }: EnterRoomOptions = {},
   ) {
+    let ignoredInitialAlone = false;
     const room = await this.p2p.join({
       roomId,
       peerId: localUserId,
@@ -328,6 +376,10 @@ export class CallHandshakeController {
       dataChannel: true,
       onAlone: (detail) => {
         if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
+        if (ignoreInitialAlone && !ignoredInitialAlone) {
+          ignoredInitialAlone = true;
+          return;
+        }
         if (autoExitOnEmpty) this.exitActiveRoom();
       },
     });
@@ -419,7 +471,13 @@ export class CallHandshakeController {
     if (!svc || !localUID) return;
     this.clearOutgoingCallTracking();
     this.setHandshakeState(null);
-    this.enterRoom(state.call.roomId, localUID, state.call.audioOnly ?? false)
+    this.enterRoom(
+      state.call.roomId,
+      localUID,
+      state.call.audioOnly ?? false,
+      undefined,
+      { ignoreInitialAlone: true },
+    )
       .then(() =>
         svc.respondToIncomingCallInvite({
           roomId: state.call.roomId,

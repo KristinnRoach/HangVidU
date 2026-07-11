@@ -94,7 +94,7 @@ describe('shared push notification contracts', () => {
   it('parses service worker NAVIGATE messages', () => {
     const message = parseServiceWorkerNavigateMessage({
       type: 'NAVIGATE',
-      path: '/?room=room-123',
+      path: '/?conversationRoom=room-123',
     });
 
     expect(message.type).toBe('NAVIGATE');
