@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   activity: new Map(),
   watchUserPresence: vi.fn(() => () => {}),
   dispatchCommand: vi.fn(),
-  startCall: vi.fn(),
   openConversation: vi.fn(),
 }));
 
@@ -43,8 +42,14 @@ vi.mock('../stores/conversation/conversation-store', () => ({
   selection: () => null,
 }));
 
-vi.mock('../features/call/call-handshake', () => ({
-  useCallHandshake: () => ({ startCall: mocks.startCall }),
+// Stub the call feature's public surface (the barrel), not its internals.
+// StartCallButton needs CallHandshakeProvider context we don't render here.
+vi.mock('../features/call/index.js', () => ({
+  StartCallButton: () => {
+    const el = document.createElement('button');
+    el.className = 'contact-call-btn';
+    return el;
+  },
 }));
 
 vi.mock('../features/presence/index.js', () => ({
