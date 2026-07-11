@@ -219,6 +219,15 @@ interface TopBarProps {
 function TopBar(props: TopBarProps) {
   const { user } = useAuth();
   const { t } = useI18n();
+  const p2p = useP2PContext();
+
+  // The call room handle IS the conversationId (see resolveCallRoomId), so
+  // the active call's conversation is a lookup, not extra state. Null for
+  // guest room-link calls whose room isn't in the user's conversation list.
+  const callConversation = createMemo(() => {
+    const roomId = p2p.room()?.roomId;
+    return roomId ? (conversationListState().get(roomId) ?? null) : null;
+  });
 
   const calleeId = createMemo(() => {
     const conversation = props.selectedConversation;
@@ -231,12 +240,18 @@ function TopBar(props: TopBarProps) {
       ? conversationLabel(props.selectedConversation)
       : null;
 
-  // Whose identity the top bar shows: the selected conversation's contact
-  // while in the conversations view, the local user otherwise.
+  // Whose identity the top bar shows: the active call's conversation in the
+  // call view, the selected conversation's in the conversations view, the
+  // local user otherwise.
   const identity = createMemo(() => {
-    if (props.activeView === 'conversations' || props.activeView === 'call') {
-      const name = selectedLabel();
-      if (name) return { name, photoUrl: null };
+    const conversation =
+      props.activeView === 'call'
+        ? callConversation()
+        : props.activeView === 'conversations'
+          ? (props.selectedConversation ?? null)
+          : null;
+    if (conversation) {
+      return { name: conversationLabel(conversation), photoUrl: null };
     }
     const profile = getLoggedInUserProfile();
     return {
