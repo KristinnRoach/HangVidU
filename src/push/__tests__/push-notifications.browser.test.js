@@ -426,6 +426,17 @@ describe('PushNotifications', () => {
     expect(close).toHaveBeenCalled();
   });
 
+  it('dismisses every delivered notification', async () => {
+    const notifications = [{ close: vi.fn() }, { close: vi.fn() }];
+    registration.getNotifications.mockResolvedValue(notifications);
+
+    await controller.dismissAllNotifications();
+
+    expect(registration.getNotifications).toHaveBeenCalledWith();
+    expect(notifications[0].close).toHaveBeenCalledOnce();
+    expect(notifications[1].close).toHaveBeenCalledOnce();
+  });
+
   it('fails fast when no active service worker registration exists', async () => {
     navigator.serviceWorker.getRegistration.mockResolvedValue(null);
 
