@@ -143,8 +143,10 @@
     vertical-align: -0.15em;
   }
 
-  &:hover {
-    opacity: 1;
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      opacity: 1;
+    }
   }
 }
 
@@ -216,9 +218,11 @@
   transition: transform 0.1s ease-out;
 }
 
-.attach:hover:not(:disabled) {
-  background: transparent;
-  transform: translateY(-6px);
+@media (hover: hover) and (pointer: fine) {
+  .attach:hover:not(:disabled) {
+    background: transparent;
+    transform: translateY(-6px);
+  }
 }
 
 .attach:disabled {

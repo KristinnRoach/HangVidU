@@ -13,8 +13,10 @@
   color: #ccc;
 }
 
-.notifications-toggle-btn:hover:not(:disabled) {
-  color: #fff;
+@media (hover: hover) and (pointer: fine) {
+  .notifications-toggle-btn:hover:not(:disabled) {
+    color: #fff;
+  }
 }
 
 .notifications-toggle-btn:disabled {

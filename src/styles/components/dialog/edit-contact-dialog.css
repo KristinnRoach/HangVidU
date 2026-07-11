@@ -54,6 +54,8 @@
   background: transparent;
 }
 
-.edit-contact-actions button.danger:hover {
-  background: rgba(255 68 68 / 0.1);
+@media (hover: hover) and (pointer: fine) {
+  .edit-contact-actions button.danger:hover {
+    background: rgba(255 68 68 / 0.1);
+  }
 }

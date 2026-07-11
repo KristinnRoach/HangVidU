@@ -40,11 +40,13 @@
   /* border-radius: 50%; */
 }
 
-.platform-btn:hover:not(:disabled) {
-  background-color: #555;
-  border-color: rgb(74, 172, 74, 0.6);
-  color: white;
-  transform: scale(1.025);
+@media (hover: hover) and (pointer: fine) {
+  .platform-btn:hover:not(:disabled) {
+    background-color: #555;
+    border-color: rgb(74, 172, 74, 0.6);
+    color: white;
+    transform: scale(1.025);
+  }
 }
 
 .platform-btn.active {
@@ -153,8 +155,10 @@
   border-bottom: none;
 }
 
-.contact-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+@media (hover: hover) and (pointer: fine) {
+  .contact-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
 }
 
 .contact-checkbox {
@@ -234,9 +238,11 @@
     transform 0.2s ease;
 }
 
-.invite-btn:hover:not(:disabled) {
-  background-color: rgb(70, 200, 70);
-  transform: scale(1.025);
+@media (hover: hover) and (pointer: fine) {
+  .invite-btn:hover:not(:disabled) {
+    background-color: rgb(70, 200, 70);
+    transform: scale(1.025);
+  }
 }
 
 .invite-btn.sent {
@@ -244,8 +250,10 @@
   cursor: default;
 }
 
-.invite-btn.sent:hover {
-  background-color: #555;
+@media (hover: hover) and (pointer: fine) {
+  .invite-btn.sent:hover {
+    background-color: #555;
+  }
 }
 
 .bulk-actions-container {

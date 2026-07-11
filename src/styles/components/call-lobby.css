@@ -31,9 +31,11 @@
   letter-spacing: 0.05em;
 }
 
-.call-lobby__cta:hover {
-  background-color: transparent;
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  .call-lobby__cta:hover {
+    background-color: transparent;
+    text-decoration: underline;
+  }
 }
 
 .call-lobby__cta:disabled {
