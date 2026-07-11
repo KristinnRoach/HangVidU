@@ -6,7 +6,7 @@ import { useP2PContext } from '@shared/p2p-context.js';
 
 import styles from './ActiveCallRoom.module.css';
 
-export default function ActiveCallRoom() {
+export function ActiveCallRoom() {
   const p2p = useP2PContext();
 
   // Room-link (guest) calls carry ?publicRoom= in the URL; contact calls don't.

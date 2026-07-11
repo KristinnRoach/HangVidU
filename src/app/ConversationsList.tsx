@@ -12,7 +12,7 @@ import {
 } from '../stores/conversation/conversation-list-state';
 import { openConversation } from '../stores/conversation/conversation-store';
 import PresenceIndicator from '../features/presence/components/PresenceIndicator';
-import { StartCallButton } from '../features/call/components/CallControls';
+import { StartCallButton } from '../features/call/index.js';
 
 type ConversationRow = {
   conversationId: string;

@@ -18,12 +18,14 @@ import LocaleToggle from '../components/LocaleToggle';
 import PublicHomepage from './PublicHomepage';
 // Injected as a child: PublicHomepage (components layer) can't import
 // features/realtime, which the lobby needs.
-import CallLobby from '../features/call/components/CallLobby';
+import {
+  CallLobby,
+  ActiveCallRoom,
+  CallDialogs,
+  StartCallButton,
+} from '../features/call/index.js';
 import ConversationsList from './ConversationsList';
-import ActiveCallRoom from '../features/call/components/ActiveCallRoom';
 import ConversationPanel from '../features/conversations/components/ConversationPanel';
-import CallDialogs from '../features/call/components/CallDialogs';
-import { StartCallButton } from '../features/call/components/CallControls';
 
 import { LoadBoundary } from '../components/LoadBoundary';
 import { Spinner } from '../components/Spinner';

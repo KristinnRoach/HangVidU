@@ -33,7 +33,7 @@ function publicRoomIdFromUrl(): string | null {
   return raw && UUID_RE.test(raw) ? raw : null;
 }
 
-export default function CallLobby() {
+export function CallLobby() {
   const p2p = useP2PContext();
 
   // Set when the visitor arrived via an invite link; cleared once that

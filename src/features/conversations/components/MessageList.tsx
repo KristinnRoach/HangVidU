@@ -32,7 +32,7 @@ import {
   TIMESTAMP_THRESHOLD_MS,
 } from '../utils/format-timestamp.js';
 
-import { StartCallButton } from '@features/call/components/CallControls';
+import { StartCallButton } from '@features/call/index.js';
 
 import styles from './ConversationPanel.module.css';
 
