@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => {
   return {
     handlers,
     serviceWorkerMessageHandler: undefined,
+    visibilityChangeHandler: undefined,
     handleCommand: vi.fn((eventName, handler) => {
       handlers.set(eventName, handler);
       return () => handlers.delete(eventName);
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => {
     disable: vi.fn(() => Promise.resolve()),
     enable: vi.fn(() => Promise.resolve()),
     ensureEnabledIfGranted: vi.fn(),
+    dismissAllNotifications: vi.fn(() => Promise.resolve()),
     getPushNotifications: vi.fn(),
     initPushNotifications: vi.fn(),
   };
@@ -40,6 +42,18 @@ describe('push-notifications setup', () => {
     vi.clearAllMocks();
     mocks.handlers.clear();
     mocks.serviceWorkerMessageHandler = undefined;
+    mocks.visibilityChangeHandler = undefined;
+    Object.defineProperty(globalThis, 'document', {
+      value: {
+        visibilityState: 'visible',
+        addEventListener: vi.fn((eventName, handler) => {
+          if (eventName === 'visibilitychange') {
+            mocks.visibilityChangeHandler = handler;
+          }
+        }),
+      },
+      configurable: true,
+    });
     Object.defineProperty(globalThis, 'navigator', {
       value: {
         serviceWorker: {
@@ -56,6 +70,7 @@ describe('push-notifications setup', () => {
       disable: mocks.disable,
       enable: mocks.enable,
       ensureEnabledIfGranted: mocks.ensureEnabledIfGranted,
+      dismissAllNotifications: mocks.dismissAllNotifications,
     });
     mocks.initPushNotifications.mockResolvedValue(mocks.getPushNotifications());
     mocks.ensureEnabledIfGranted.mockResolvedValue({ state: 'enabled' });
@@ -78,6 +93,21 @@ describe('push-notifications setup', () => {
     await push.setup();
 
     expect(mocks.initPushNotifications).toHaveBeenCalledOnce();
+  });
+
+  it('dismisses notifications on startup and when returning to the foreground', async () => {
+    const push = await import('../index.js');
+
+    await push.setup();
+    expect(mocks.dismissAllNotifications).toHaveBeenCalledOnce();
+
+    document.visibilityState = 'hidden';
+    mocks.visibilityChangeHandler?.();
+    expect(mocks.dismissAllNotifications).toHaveBeenCalledOnce();
+
+    document.visibilityState = 'visible';
+    mocks.visibilityChangeHandler?.();
+    expect(mocks.dismissAllNotifications).toHaveBeenCalledTimes(2);
   });
 
   it('prompts for push when login finds permission is not decided', async () => {

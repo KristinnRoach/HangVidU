@@ -15,6 +15,17 @@ export {
   initPushNotifications,
 } from './push-notifications.js';
 
+async function dismissAllNotifications() {
+  try {
+    await getPushNotifications()?.dismissAllNotifications?.();
+  } catch (error) {
+    console.warn(
+      '[Push Notifications] Failed to dismiss notifications:',
+      error,
+    );
+  }
+}
+
 /**
  * Registers app-level command handlers for push notifications.
  * See the setup contract in `createSingleFlightSetup`.
@@ -24,6 +35,18 @@ export {
 export const setup = createSingleFlightSetup({
   label: '[push-notifications]',
   register: (signal) => {
+    if (typeof document !== 'undefined') {
+      document.addEventListener(
+        'visibilitychange',
+        () => {
+          if (document.visibilityState === 'visible') {
+            void dismissAllNotifications();
+          }
+        },
+        { signal },
+      );
+    }
+
     handleCommand(
       'cmd:push:subscription:disable',
       async () => {
@@ -122,5 +145,13 @@ export const setup = createSingleFlightSetup({
       { signal },
     );
   },
-  start: () => initPushNotifications(),
+  start: async () => {
+    await initPushNotifications();
+    if (
+      typeof document !== 'undefined' &&
+      document.visibilityState === 'visible'
+    ) {
+      await dismissAllNotifications();
+    }
+  },
 });

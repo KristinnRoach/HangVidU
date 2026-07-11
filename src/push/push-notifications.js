@@ -478,6 +478,16 @@ export class PushNotifications {
   }
 
   /**
+   * Closes every notification delivered by the current service worker.
+   */
+  async dismissAllNotifications() {
+    const registration = await this.getServiceWorkerRegistration();
+    const notifications = await registration.getNotifications();
+    notifications.forEach((notification) => notification.close());
+    this.activeNotifications.clear();
+  }
+
+  /**
    * Closes visible message notifications associated with one sender.
    */
   async dismissMessageNotifications(senderId) {
