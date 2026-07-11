@@ -51,7 +51,6 @@ export type IncomingCallNotificationDetails = {
 type EnterRoomOptions = {
   memberCapacity?: number;
   autoExitOnEmpty?: boolean;
-  ignoreInitialAlone?: boolean;
 };
 
 export class CallHandshakeController {
@@ -374,13 +373,8 @@ export class CallHandshakeController {
     localUserId: string,
     audioOnly = false,
     getLocalStream?: () => Promise<MediaStream>,
-    {
-      memberCapacity = 2,
-      autoExitOnEmpty = true,
-      ignoreInitialAlone = false,
-    }: EnterRoomOptions = {},
+    { memberCapacity = 2, autoExitOnEmpty = true }: EnterRoomOptions = {},
   ) {
-    let ignoredInitialAlone = false;
     const room = await this.p2p.join({
       roomId,
       peerId: localUserId,
@@ -391,10 +385,6 @@ export class CallHandshakeController {
       dataChannel: true,
       onAlone: (detail) => {
         if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
-        if (ignoreInitialAlone && !ignoredInitialAlone) {
-          ignoredInitialAlone = true;
-          return;
-        }
         if (autoExitOnEmpty) this.exitActiveRoom();
       },
     });
@@ -486,13 +476,7 @@ export class CallHandshakeController {
     if (!svc || !localUID) return;
     this.clearOutgoingCallTracking();
     this.setHandshakeState(null);
-    this.enterRoom(
-      state.call.roomId,
-      localUID,
-      state.call.audioOnly ?? false,
-      undefined,
-      { ignoreInitialAlone: true },
-    )
+    this.enterRoom(state.call.roomId, localUID, state.call.audioOnly ?? false)
       .then(() =>
         svc.respondToIncomingCallInvite({
           roomId: state.call.roomId,
