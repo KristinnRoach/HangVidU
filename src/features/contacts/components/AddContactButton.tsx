@@ -10,10 +10,10 @@ export default function AddContactButton() {
   return (
     <>
       <button
-        type="button"
+        type='button'
         title={t('a11y.add_contact')}
         aria-label={t('a11y.add_contact')}
-        id="add-contact-btn"
+        id='add-contact-btn'
         onClick={() => setOpen(true)}
       >
         <UserPlus />

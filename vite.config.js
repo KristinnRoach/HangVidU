@@ -30,10 +30,12 @@ export default defineConfig(({ mode }) => {
     },
     fmt: {
       singleQuote: true,
+      jsxSingleQuote: true,
       printWidth: 80,
     },
     lint: {
-      plugins: ['oxc', 'typescript', 'unicorn', 'react'],
+      plugins: ['oxc', 'typescript', 'unicorn', 'react', 'import'],
+
       categories: {
         correctness: 'error',
       },
@@ -83,6 +85,8 @@ export default defineConfig(({ mode }) => {
           // only the firebase/auth restriction still applies here.
           files: ['src/auth/**', 'src/features/contacts/**'],
           rules: {
+            'import/no-cycle': 'error', // Use ['error', { ignoreTypes: false }] if want to include type imports in cyclical check
+
             'no-restricted-imports': [
               'error',
               {

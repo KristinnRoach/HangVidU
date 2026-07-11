@@ -39,9 +39,9 @@ export default function NotificationsToggle() {
   });
 
   return (
-    <div ref={rootEl} class="notifications-toggle-container">
+    <div ref={rootEl} class='notifications-toggle-container'>
       <button
-        class="notifications-toggle-btn"
+        class='notifications-toggle-btn'
         title={t('notification.toggle')}
         aria-label={t('notification.toggle')}
         data-count={count()}
@@ -50,7 +50,7 @@ export default function NotificationsToggle() {
       >
         <Bell />
         <span
-          class="notification-badge"
+          class='notification-badge'
           style={{ display: count() > 0 ? 'flex' : 'none' }}
         >
           {count()}

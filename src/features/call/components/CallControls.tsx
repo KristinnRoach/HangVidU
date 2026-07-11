@@ -34,8 +34,8 @@ export function StartCallButton(props: StartCallButtonProps) {
 
   return (
     <button
-      class="contact-call-btn"
-      type="button"
+      class='contact-call-btn'
+      type='button'
       onClick={onCall}
       title={title()}
       aria-label={title()}
@@ -87,7 +87,7 @@ export function ActiveCallControls() {
       classList={{ [styles.hidden]: !visible() }}
     >
       <button
-        type="button"
+        type='button'
         onClick={toggleMic}
         classList={{ [styles.off]: !micOn() }}
         title={micOn() ? 'Mute mic' : 'Unmute mic'}
@@ -96,7 +96,7 @@ export function ActiveCallControls() {
         {micOn() ? <Mic /> : <MicOff />}
       </button>
       <button
-        type="button"
+        type='button'
         onClick={toggleCam}
         classList={{ [styles.off]: !camOn() }}
         title={camOn() ? 'Turn camera off' : 'Turn camera on'}
@@ -114,7 +114,7 @@ function EndCallButton() {
 
   return (
     <button
-      type="button"
+      type='button'
       class={styles.hangup}
       onClick={hangUp}
       title={'End Call'}

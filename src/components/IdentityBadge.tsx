@@ -35,11 +35,11 @@ export default function IdentityBadge(props: IdentityBadgeProps) {
   });
 
   return (
-    <div class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-neutral-300 transition duration-300 starting:translate-x-2.5 starting:opacity-0">
+    <div class='flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-neutral-300 transition duration-300 starting:translate-x-2.5 starting:opacity-0'>
       <Show
         when={props.photoUrl && !avatarFailed()}
         fallback={
-          <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-xl">
+          <span class='flex size-9 shrink-0 items-center justify-center rounded-full bg-white/5 text-xl'>
             {avatarInitial()}
           </span>
         }
@@ -47,13 +47,13 @@ export default function IdentityBadge(props: IdentityBadgeProps) {
         <img
           src={props.photoUrl!}
           alt={displayName()}
-          class="size-9 rounded-full object-cover"
-          referrerpolicy="no-referrer"
+          class='size-9 rounded-full object-cover'
+          referrerpolicy='no-referrer'
           onError={() => setAvatarFailed(true)}
         />
       </Show>
 
-      <span class="overflow-hidden text-ellipsis whitespace-nowrap">
+      <span class='overflow-hidden text-ellipsis whitespace-nowrap'>
         {displayName()}
       </span>
     </div>

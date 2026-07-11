@@ -78,18 +78,18 @@ export function Composer(props: ComposerProps) {
         title={t('conversation.attach_file')}
         ref={fileInputEl}
         class={styles.fileInput}
-        type="file"
+        type='file'
         onChange={onFileInput}
       />
       <button
         class={styles.attach}
-        type="button"
+        type='button'
         aria-label={t('conversation.attach_file')}
         title={t('conversation.attach_file')}
         disabled={busy()}
         onClick={() => fileInputEl?.click()}
       >
-        <Paperclip size={20} aria-hidden="true" />
+        <Paperclip size={20} aria-hidden='true' />
       </button>
       <textarea
         autofocus
@@ -107,7 +107,7 @@ export function Composer(props: ComposerProps) {
       <button
         ref={attachSendButton}
         class={styles.send}
-        type="submit"
+        type='submit'
         disabled={!state.draft.trim() || busy()}
       >
         {t('conversation.send')}

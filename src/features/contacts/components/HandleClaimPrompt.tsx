@@ -99,19 +99,19 @@ export default function HandleClaimPrompt(props: { user: UserLike | null }) {
           <input
             value={handle()}
             onInput={(event) => setHandle(event.currentTarget.value)}
-            autocomplete="username"
-            autocapitalize="none"
+            autocomplete='username'
+            autocapitalize='none'
             aria-label={t('handle.claim.input')}
           />
-          <button type="submit" disabled={saving()}>
+          <button type='submit' disabled={saving()}>
             {saving() ? t('shared.saving') : t('shared.save')}
           </button>
         </div>
-        <p class={styles.message} role="status">
+        <p class={styles.message} role='status'>
           {message()}
         </p>
         <div class={styles.actions}>
-          <button type="button" onClick={dismiss} disabled={saving()}>
+          <button type='button' onClick={dismiss} disabled={saving()}>
             {t('shared.dismiss')}
           </button>
         </div>

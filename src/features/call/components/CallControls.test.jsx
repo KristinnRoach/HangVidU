@@ -36,7 +36,7 @@ describe('StartCallButton', () => {
       return (
         <>
           <button
-            type="button"
+            type='button'
             onClick={() => {
               setCalleeId('contact-2');
               setCalleeName('Bob');

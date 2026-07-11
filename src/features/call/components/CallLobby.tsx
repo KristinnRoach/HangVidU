@@ -135,16 +135,16 @@ export default function CallLobby() {
   }
 
   return (
-    <div class="call-lobby">
-      <div class="call-lobby__actions">
+    <div class='call-lobby'>
+      <div class='call-lobby__actions'>
         <Show
           when={roomId()}
           fallback={
-            <div class="call-lobby__start">
+            <div class='call-lobby__start'>
               <p>{t('call.lobby.ephemeral_prompt')}</p>
               <button
-                type="button"
-                class="call-lobby__cta"
+                type='button'
+                class='call-lobby__cta'
                 onClick={createRoom}
               >
                 {t('call.lobby.start')}
@@ -153,16 +153,16 @@ export default function CallLobby() {
           }
         >
           <button
-            type="button"
-            class="call-lobby__cta"
+            type='button'
+            class='call-lobby__cta'
             onClick={joinRoom}
             disabled={joining()}
           >
             {joining() ? t('call.lobby.joining') : t('call.lobby.join')}
           </button>
           <button
-            type="button"
-            class="call-lobby__secondary"
+            type='button'
+            class='call-lobby__secondary'
             onClick={shareLink}
           >
             {copied()
@@ -175,26 +175,26 @@ export default function CallLobby() {
       <Show when={roomId() && !invitedRoomId()}>
         {/* Clipboard write can fail silently — always show the link itself. */}
         <input
-          class="call-lobby__link"
-          type="text"
+          class='call-lobby__link'
+          type='text'
           readonly
           value={window.location.href}
           aria-label={t('call.lobby.invite_label')}
           onFocus={(e) => e.currentTarget.select()}
         />
-        <p class="call-lobby__hint">{t('call.lobby.send_link_hint')}</p>
+        <p class='call-lobby__hint'>{t('call.lobby.send_link_hint')}</p>
       </Show>
       <Show when={invitedRoomId() && !joining()}>
-        <p class="call-lobby__hint">{t('call.lobby.invited')}</p>
+        <p class='call-lobby__hint'>{t('call.lobby.invited')}</p>
       </Show>
       <Show when={joining()}>
-        <p class="call-lobby__hint">{t('call.lobby.permission_hint')}</p>
+        <p class='call-lobby__hint'>{t('call.lobby.permission_hint')}</p>
       </Show>
       <Show when={callEnded() && !roomId()}>
-        <p class="call-lobby__hint">{t('call.lobby.ended')}</p>
+        <p class='call-lobby__hint'>{t('call.lobby.ended')}</p>
       </Show>
       <Show when={error()}>
-        <p class="call-lobby__error" role="alert">
+        <p class='call-lobby__error' role='alert'>
           {error()}
         </p>
       </Show>

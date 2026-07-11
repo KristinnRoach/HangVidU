@@ -552,7 +552,7 @@ export default function AddContactModal(props: Props) {
       <div class={styles.directActions}>
         <div class={styles.manualEmailRow}>
           <input
-            type="text"
+            type='text'
             value={handleInput()}
             onInput={(e) => setHandleInput(e.currentTarget.value)}
             onKeyDown={(e) => {
@@ -561,11 +561,11 @@ export default function AddContactModal(props: Props) {
             }}
             placeholder={t('contact.add.enter_handle')}
             aria-label={t('contact.add.enter_handle')}
-            autocomplete="off"
-            autocapitalize="none"
+            autocomplete='off'
+            autocapitalize='none'
           />
           <button
-            type="button"
+            type='button'
             class={styles.sharePresetBtn}
             disabled={handleSearching()}
             onClick={handleSearchByHandle}
@@ -601,7 +601,7 @@ export default function AddContactModal(props: Props) {
                       </Show>
                     </span>
                     <button
-                      type="button"
+                      type='button'
                       class={styles.sharePresetBtn}
                       disabled={
                         requestingUserId() === user.uid ||
@@ -621,7 +621,7 @@ export default function AddContactModal(props: Props) {
         <div class={styles.manualEmailRow}>
           <input
             ref={emailInputRef}
-            type="email"
+            type='email'
             value={emailInput()}
             onInput={(e) => setEmailInput(e.currentTarget.value)}
             onKeyDown={(e) => {
@@ -630,10 +630,10 @@ export default function AddContactModal(props: Props) {
             }}
             placeholder={t('contact.add.enter_email')}
             aria-label={t('contact.add.enter_email')}
-            autocomplete="email"
+            autocomplete='email'
           />
           <button
-            type="button"
+            type='button'
             class={styles.sharePresetBtn}
             disabled={emailSending()}
             onClick={handleManualEmailInvite}
@@ -644,13 +644,13 @@ export default function AddContactModal(props: Props) {
 
         <div
           class={styles.sharePresetsRow}
-          role="group"
+          role='group'
           aria-label={t('contact.invite.share.presets_label')}
         >
           <For each={shareProviders}>
             {(provider) => (
               <button
-                type="button"
+                type='button'
                 class={styles.sharePresetBtn}
                 disabled={sharePending()}
                 aria-label={t(provider.labelKey)}
@@ -658,14 +658,14 @@ export default function AddContactModal(props: Props) {
                 onClick={() => handleShareAction('provider', provider.id)}
               >
                 {/* Provider icons are custom SVGs from share-invite-presets.js */}
-                <span innerHTML={provider.iconSvg} aria-hidden="true" />
+                <span innerHTML={provider.iconSvg} aria-hidden='true' />
                 <span>{t(provider.labelKey)}</span>
               </button>
             )}
           </For>
 
           <button
-            type="button"
+            type='button'
             class={styles.sharePresetBtn}
             disabled={sharePending()}
             aria-label={t('contact.invite.share.label')}
@@ -675,7 +675,7 @@ export default function AddContactModal(props: Props) {
           </button>
 
           <button
-            type="button"
+            type='button'
             class={styles.sharePresetBtn}
             disabled={sharePending()}
             aria-label={t('contact.invite.copy.label')}
@@ -693,8 +693,8 @@ export default function AddContactModal(props: Props) {
 
       <div
         class={`${styles.importStatus}${status().type ? ` ${status().type}` : ''}`}
-        role="status"
-        aria-live="polite"
+        role='status'
+        aria-live='polite'
       >
         {status().text}
       </div>

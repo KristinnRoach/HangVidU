@@ -124,7 +124,7 @@ export default function VideoStream(props: Props) {
         />
         <Show when={showPlaybackPrompt() && playbackPromptOwner === video}>
           <button
-            type="button"
+            type='button'
             class={styles.playbackPrompt}
             onClick={retryCallPlayback}
           >

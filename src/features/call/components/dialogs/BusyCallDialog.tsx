@@ -9,12 +9,12 @@ export default function BusyCallDialog(props: CallDialogProps) {
   return (
     <CallDialog
       {...props}
-      cardClass="outgoing-call-card"
-      tone="outgoing"
-      ringtone="busy"
+      cardClass='outgoing-call-card'
+      tone='outgoing'
+      ringtone='busy'
       idPrefix={idPrefix()}
       defaultName={t('shared.contact')}
-      titleKey="call.busy"
+      titleKey='call.busy'
       showPersona={false}
     />
   );

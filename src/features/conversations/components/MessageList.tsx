@@ -32,6 +32,8 @@ import {
   TIMESTAMP_THRESHOLD_MS,
 } from '../utils/format-timestamp.js';
 
+import { StartCallButton } from '@features/call/components/CallControls';
+
 import styles from './ConversationPanel.module.css';
 
 /**
@@ -284,6 +286,7 @@ function SystemMessageRow(props: { message: SystemChatMessage }) {
 
   return (
     <div class={styles.systemMessage} data-timestamp={props.message.sentAt}>
+      <StartCallButton calleeId='gjh8e932' />
       <span class={styles.systemMessageText}>{text()}</span>
     </div>
   );
@@ -336,7 +339,7 @@ function FileAttachment(props: {
           height={props.file.height}
           alt={props.file.fileName}
           onLoad={() => props.onImageLoad()}
-          role="button"
+          role='button'
           tabIndex={0}
           aria-label={t('conversation.open_preview', {
             name: props.file.fileName,
@@ -379,7 +382,7 @@ function FileAttachment(props: {
           {displayAttachmentFileName(props.file.fileName)}
           <Download
             size={14}
-            aria-hidden="true"
+            aria-hidden='true'
             class={styles.fileMessageDownloadIcon}
           />
         </a>

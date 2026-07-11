@@ -70,17 +70,17 @@ export default function ConversationsList() {
   const isLoading = () => !conversationListSeeded();
 
   return (
-    <div class="conversations-container">
+    <div class='conversations-container'>
       <Show when={!isLoading()} fallback={<Spinner size={32} />}>
         <Show
           when={rows().length > 0}
           fallback={
-            <div class="conversations-list empty">
+            <div class='conversations-list empty'>
               <p>{t('contact.none')}</p>
             </div>
           }
         >
-          <div class="conversations-list">
+          <div class='conversations-list'>
             <For each={rows()}>{(row) => <ConversationRow row={row} />}</For>
           </div>
         </Show>
@@ -99,7 +99,7 @@ function ConversationRow(props: { row: ConversationRow }) {
   };
 
   return (
-    <div class="conversation-entry">
+    <div class='conversation-entry'>
       <Show when={props.row.peerUserId}>
         {(peerUserId) => (
           <StartCallButton
@@ -110,8 +110,8 @@ function ConversationRow(props: { row: ConversationRow }) {
         )}
       </Show>
       <button
-        type="button"
-        class="contact-name"
+        type='button'
+        class='contact-name'
         data-conversation-id={props.row.conversationId}
         onClick={onOpenConversation}
         aria-label={label()}
@@ -120,13 +120,13 @@ function ConversationRow(props: { row: ConversationRow }) {
       </button>
       <Show when={props.row.hasUnread}>
         <span
-          class="unread-badge"
-          aria-live="polite"
-          aria-atomic="true"
-          role="status"
+          class='unread-badge'
+          aria-live='polite'
+          aria-atomic='true'
+          role='status'
           aria-label={t('contact.unread')}
         >
-          <span aria-hidden="true">•</span>
+          <span aria-hidden='true'>•</span>
         </span>
       </Show>
       <Show when={props.row.peerUserId}>

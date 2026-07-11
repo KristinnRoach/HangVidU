@@ -38,7 +38,7 @@ export default function ActiveCallRoom() {
       >
         <div class={styles.waiting}>
           <p>Room is empty...</p>
-          <button type="button" onClick={copyLink}>
+          <button type='button' onClick={copyLink}>
             {copied() ? 'Link copied' : 'Copy invite link'}
           </button>
         </div>

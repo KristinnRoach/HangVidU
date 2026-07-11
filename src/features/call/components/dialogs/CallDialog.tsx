@@ -62,14 +62,14 @@ export default function CallDialog(props: ParentProps<CallDialogProps>) {
       actions={props.actions}
     >
       {(props.showPersona ?? true) ? (
-        <div class="dialog-persona">
-          <div class="dialog-avatar" aria-hidden="true">
+        <div class='dialog-persona'>
+          <div class='dialog-avatar' aria-hidden='true'>
             {name().slice(0, 1).toUpperCase()}
           </div>
-          <div class="dialog-persona-text">
+          <div class='dialog-persona-text'>
             <strong>{name()}</strong>
             {props.details ? (
-              <span class="dialog-meta">{props.details}</span>
+              <span class='dialog-meta'>{props.details}</span>
             ) : null}
           </div>
         </div>

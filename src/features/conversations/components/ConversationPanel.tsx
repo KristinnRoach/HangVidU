@@ -16,8 +16,8 @@ function MessageHistorySkeleton() {
   return (
     <div
       class={`${styles.messages} ${styles.messageSkeleton}`}
-      aria-busy="true"
-      aria-label="Loading message history"
+      aria-busy='true'
+      aria-label='Loading message history'
     >
       <div class={`${styles.skeletonBubble} ${styles.skeletonIncoming}`} />
       <div class={`${styles.skeletonBubble} ${styles.skeletonOwn}`} />

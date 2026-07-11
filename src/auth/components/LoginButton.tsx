@@ -10,7 +10,7 @@ export default function LoginButton(props: {
 }) {
   return (
     <button
-      type="button"
+      type='button'
       popovertarget={props.popoverTarget}
       class={props.class ? props.class : styles.openButton}
       aria-label={t('auth.sign_in')}
