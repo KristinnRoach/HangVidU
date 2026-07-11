@@ -42,7 +42,9 @@ CREATE TABLE message_attachments (
   height     INTEGER CHECK (height IS NULL OR height > 0)
 );
 CREATE INDEX idx_attachments_message ON message_attachments(message_id);
-INSERT INTO message_attachments SELECT * FROM message_attachments_backup;
+INSERT INTO message_attachments (id, message_id, r2_key, bucket, file_name, mime_type, file_size, width, height)
+SELECT id, message_id, r2_key, bucket, file_name, mime_type, file_size, width, height
+FROM message_attachments_backup;
 DROP TABLE message_attachments_backup;
 
 CREATE TABLE message_reactions (
@@ -52,5 +54,7 @@ CREATE TABLE message_reactions (
   PRIMARY KEY (message_id, user_id)
 );
 CREATE INDEX idx_message_reactions_user ON message_reactions(user_id);
-INSERT INTO message_reactions SELECT * FROM message_reactions_backup;
+INSERT INTO message_reactions (message_id, user_id, reaction_key)
+SELECT message_id, user_id, reaction_key
+FROM message_reactions_backup;
 DROP TABLE message_reactions_backup;
