@@ -181,10 +181,13 @@ describe('CallHandshakeController', () => {
     });
   });
 
-  it('does not close an accepted incoming room while waiting for the caller to join', async () => {
+  it('closes a notification-opened call when the remote caller leaves while the accept response is pending', async () => {
+    let onAlone;
+    const acceptResponse = deferred();
+    mocks.respondToIncomingCallInvite.mockReturnValue(acceptResponse.promise);
     const p2p = {
       join: vi.fn(async (options) => {
-        options.onAlone?.({ roomId: 'room-1', members: ['callee-id'] });
+        onAlone = options.onAlone;
         return { roomId: 'room-1', members: ['callee-id'] };
       }),
       close: vi.fn(),
@@ -199,16 +202,12 @@ describe('CallHandshakeController', () => {
       onCalleeBusy: vi.fn(),
     });
 
-    controller.init();
-    mocks.incomingCallback?.({
-      type: 'invite',
-      invite: {
-        roomId: 'room-1',
-        callerId: 'caller-id',
-        callerName: 'Caller',
-        audioOnly: false,
-        expiresAt: Date.now() + 60_000,
-      },
+    controller.showIncomingCallFromNotification({
+      roomId: 'room-1',
+      callerId: 'caller-id',
+      callerName: 'Caller',
+      audioOnly: false,
+      startedAt: Date.now(),
     });
 
     controller.acceptIncoming();
@@ -219,7 +218,10 @@ describe('CallHandshakeController', () => {
       callerId: 'caller-id',
       responseType: 'accepted',
     });
-    expect(p2p.close).not.toHaveBeenCalled();
+
+    onAlone?.({ members: ['callee-id'], memberCount: 1 });
+
+    expect(p2p.close).toHaveBeenCalledTimes(1);
   });
 
   it('does not notify accepted when joining the room fails', async () => {
