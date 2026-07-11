@@ -12,7 +12,7 @@ import {
   formatFileSize,
   isImageAttachment,
   isR2FileAttachment,
-} from '@stores/conversation/attachments.js';
+} from '@stores/conversation/attachments';
 import {
   getConversationState,
   persistMyReaction,
@@ -23,16 +23,16 @@ import type {
   MessageAttachment,
   SystemChatMessage,
 } from '@stores/conversation/types.js';
-import type { ConversationId } from '@stores/conversation/types.js';
+import type { ConversationId } from '@stores/conversation/types';
 import { createConversationFileObjectUrl } from '@stores/files-store';
 
-import { linkifyText } from '../utils/linkifyText.jsx';
+import { linkifyText } from '../utils/linkifyText';
 import {
   formatTimestamp,
   TIMESTAMP_THRESHOLD_MS,
 } from '../utils/format-timestamp.js';
 
-import { StartCallButton } from '@features/call/index.js';
+import { StartCallButton } from '@features/call/';
 
 import styles from './ConversationPanel.module.css';
 
