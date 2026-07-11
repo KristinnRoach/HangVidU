@@ -59,7 +59,7 @@ describe('notification click routing', () => {
         type: 'missed_call',
         roomId: 'room-fallback',
       }),
-    ).toBe('/?conversationRoom=room-fallback');
+    ).toBe('/?conversationId=room-fallback');
 
     expect(
       getNotificationNavigationPath({

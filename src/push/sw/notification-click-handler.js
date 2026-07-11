@@ -36,7 +36,7 @@ export function getNotificationNavigationPath(data, action) {
     }
 
     if (roomId) {
-      return `/?conversationRoom=${encodeURIComponent(roomId)}`;
+      return `/?conversationId=${encodeURIComponent(roomId)}`;
     }
 
     return '/';
