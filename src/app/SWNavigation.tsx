@@ -19,18 +19,8 @@ function trimmedParam(
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function conversationRoomParam(searchParams: URLSearchParams): string | null {
-  return trimmedParam(searchParams, 'conversationRoom');
-}
-
-function isCallNavigationPath(path: string): boolean {
-  const url = new URL(path, window.location.origin);
-  return Boolean(conversationRoomParam(url.searchParams));
-}
-
-function dispatchPath(path: string) {
-  const url = new URL(path, window.location.origin);
-  const conversationRoomId = conversationRoomParam(url.searchParams);
+function dispatchUrl(url: URL): void {
+  const conversationRoomId = trimmedParam(url.searchParams, 'conversationRoom');
   if (conversationRoomId) {
     const timestamp = Number(url.searchParams.get('timestamp'));
     window.dispatchEvent(
@@ -64,6 +54,10 @@ function dispatchPath(path: string) {
   void openDirectConversation(contactId, { displayUI: true });
 }
 
+function dispatchPath(path: string): void {
+  dispatchUrl(new URL(path, window.location.origin));
+}
+
 /**
  * Listens for SW NAVIGATE messages (posted by the SW notification-click
  * handler when the user taps a push notification) and opens the resolved
@@ -95,9 +89,10 @@ export default function SWNavigation(props: Props = {}) {
     const handler = (event: MessageEvent) => {
       const data = event.data || {};
       if (data.type !== 'NAVIGATE' || !data.path) return;
+      const url = new URL(data.path, window.location.origin);
 
-      if (isCallNavigationPath(data.path)) {
-        dispatchPath(data.path);
+      if (trimmedParam(url.searchParams, 'conversationRoom')) {
+        dispatchUrl(url);
         return;
       }
 
@@ -107,7 +102,7 @@ export default function SWNavigation(props: Props = {}) {
         return;
       }
 
-      dispatchPath(data.path);
+      dispatchUrl(url);
     };
 
     navigator.serviceWorker.addEventListener('message', handler);

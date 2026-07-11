@@ -11,11 +11,9 @@ export default function ActiveCallRoom() {
 
   // Room-link (guest) calls carry ?publicRoom= in the URL; contact calls don't.
   // Only those can re-share the page URL as an invite.
-  const params = new URLSearchParams(window.location.search);
-  const isRoomLinkCall =
-    params.has('publicRoom') ||
-    // Back-compat for existing guest links generated before publicRoom.
-    params.has('room');
+  const isRoomLinkCall = new URLSearchParams(window.location.search).has(
+    'publicRoom',
+  );
   const [copied, setCopied] = createSignal(false);
 
   async function copyLink() {

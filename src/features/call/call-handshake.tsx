@@ -40,14 +40,10 @@ type CallHandshakeContextValue = {
 const CallHandshakeContext = createContext<CallHandshakeContextValue>();
 const INCOMING_CALL_NOTIFICATION_EVENT = 'hangvidu:incoming-call-notification';
 
-function incomingCallRoomParam(params: URLSearchParams): string | null {
-  return params.get('conversationRoom');
-}
-
 function incomingCallNotificationDetailsFromParams(
   params: URLSearchParams,
 ): IncomingCallNotificationDetails | null {
-  const roomId = incomingCallRoomParam(params);
+  const roomId = params.get('conversationRoom');
   const callerId = params.get('callerId');
   if (!roomId || !callerId) return null;
 
@@ -142,7 +138,7 @@ export function CallHandshakeProvider(props: ParentProps) {
         incomingCallNotificationDetailsFromParams(params),
       );
     const [wantAcceptRoomId, setWantAcceptRoomId] = createSignal<string | null>(
-      hasAcceptMarker ? incomingCallRoomParam(params) : null,
+      hasAcceptMarker ? params.get('conversationRoom') : null,
     );
     if (hasAcceptMarker) {
       // Strip the marker so a reload/back doesn't re-trigger the accept.
