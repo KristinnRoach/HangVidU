@@ -48,6 +48,7 @@ import type {
   IncomingMessage,
   MessageRepository,
 } from './types.js';
+import type { SystemMessageType } from '../../../shared/conversation-channel/protocol';
 import type {
   ConversationId,
   FileMessagePayload,
@@ -255,8 +256,18 @@ function fileAttachment(payload: FileMessagePayload) {
 }
 
 function envelopeToChatMessage(message: IncomingMessage): ChatMessage | null {
-  if (message.payload.type === 'system' || message.payload.type === 'event') {
-    return null;
+  if (message.payload.type === 'system') {
+    return {
+      type: 'system',
+      id: message.messageId,
+      conversationId: message.conversationId,
+      senderId: message.senderId,
+      callerUId: message.payload.callerUId,
+      systemType: message.payload.systemType,
+      sentAt: message.sentAt,
+      status: 'sent',
+      reactions: [],
+    };
   }
 
   const text =
@@ -269,6 +280,7 @@ function envelopeToChatMessage(message: IncomingMessage): ChatMessage | null {
       : undefined;
 
   return {
+    type: 'user',
     id: message.messageId,
     conversationId: message.conversationId,
     senderId: message.senderId,
@@ -296,6 +308,25 @@ function mergeLoadedMessages(messages: ChatMessage[]) {
 
 function addOptimisticMessage(msg: ChatMessage) {
   setState('messages', (msgs) => sortMessagesBySentAt([...msgs, msg]));
+}
+
+export async function recordSystemMessage(
+  conversationId: ConversationId,
+  systemType: SystemMessageType,
+  messageId: string = crypto.randomUUID(),
+): Promise<void> {
+  const message = await getConversationsClient().recordCallSystemMessage(
+    conversationId,
+    {
+      messageId,
+      systemType,
+    },
+  );
+  recordConversationListMessage(
+    conversationId,
+    message.sentAt,
+    message.senderId,
+  );
 }
 
 function markSent(tempId: string, realId: string) {
@@ -531,6 +562,7 @@ export async function sendMessage(
     payload.type === 'file' ? fileAttachment(payload) : undefined;
 
   addOptimisticMessage({
+    type: 'user',
     id: tempId,
     conversationId,
     text: optimisticText,

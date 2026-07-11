@@ -247,6 +247,7 @@ export class CallHandshakeController {
       callerName,
       roomId,
       audioOnly,
+      startedAt: Date.now(),
     };
 
     let localStream: MediaStream;
@@ -296,6 +297,7 @@ export class CallHandshakeController {
             this.setCalleeBusy(false);
           }, 2_500);
         } else {
+          publish('evt:call:invite:declined', nextOutgoingCall);
           this.stopMediaStream(localStream);
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
@@ -455,6 +457,7 @@ export class CallHandshakeController {
     this.stopPendingOutgoingLocalStream();
     this.setHandshakeState(null);
     this.setCalleeBusy(false);
+    publish('evt:call:invite:unanswered', state.call);
     svc
       .cancelOutgoingCall({
         recipientUID: state.call.calleeId,

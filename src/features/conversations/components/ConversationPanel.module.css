@@ -53,6 +53,15 @@
   text-align: center;
 }
 
+.systemMessage {
+  align-self: center;
+  max-width: 80%;
+  color: #c0c0c0;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  text-align: center;
+}
+
 .skeletonBubble {
   width: min(68%, 18rem);
   height: 2.25rem;

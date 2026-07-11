@@ -7,6 +7,7 @@ export type PendingOutgoingCall = {
   callerName: string;
   audioOnly: boolean;
   roomId: string;
+  startedAt: number;
 };
 
 export type StartCallDetails = {

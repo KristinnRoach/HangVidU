@@ -5,7 +5,9 @@ import {
 } from '../../stores/conversation/conversation-list-state';
 import { resetConversationsState } from '../../stores/conversation/conversations-client.js';
 import { resetConversationStore } from '../../stores/conversation/conversation-store.js';
+import { recordSystemMessage } from '../../stores/conversation/conversation-store.js';
 import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setup.js';
+import type { SystemMessageType } from '../../../shared/conversation-channel/protocol';
 
 /**
  * Setup contract:
@@ -19,6 +21,39 @@ import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setu
 export const setup = createSingleFlightSetup({
   label: '[conversations]',
   register: (signal) => {
+    const recordCallSystemMessage = (
+      systemType: SystemMessageType,
+      {
+        roomId: conversationId,
+        startedAt,
+      }: { roomId: string; startedAt: number },
+    ) => {
+      const messageId = `${systemType}:${conversationId}:${startedAt}`;
+      void recordSystemMessage(conversationId, systemType, messageId).catch(
+        (error) => {
+          console.warn('[conversations] system message write failed:', {
+            systemType,
+            conversationId,
+            error,
+          });
+        },
+      );
+    };
+
+    subscribe(
+      'evt:call:invite:unanswered',
+      (call: { roomId: string; startedAt: number }) =>
+        recordCallSystemMessage('call.unanswered', call),
+      { signal },
+    );
+
+    subscribe(
+      'evt:call:invite:declined',
+      (call: { roomId: string; startedAt: number }) =>
+        recordCallSystemMessage('call.declined', call),
+      { signal },
+    );
+
     subscribe(
       'evt:auth:session:logged-in',
       () => {

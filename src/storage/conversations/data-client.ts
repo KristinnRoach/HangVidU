@@ -5,6 +5,7 @@
 // /conversations/:id, and the message endpoints (/conversations/:id/messages).
 
 import type {
+  SystemMessageType,
   WireMessage,
   WireReactionSummary,
 } from '../../../shared/conversation-channel/protocol';
@@ -13,8 +14,9 @@ import { reportApiAuthFailure } from '../../infra/api-auth-failure.js';
 /** Input for sending a message. `messageId` is client-reserved (optimistic id). */
 export interface SendMessageInput {
   messageId: string;
-  kind: 'text' | 'file';
+  kind: 'text' | 'file' | 'system';
   body?: string | null;
+  systemType?: SystemMessageType;
   attachment?: {
     r2Key: string;
     bucket: string;
@@ -62,6 +64,10 @@ export interface ConversationsClient {
   sendMessage(
     conversationId: string,
     input: SendMessageInput,
+  ): Promise<WireMessage>;
+  recordCallSystemMessage(
+    conversationId: string,
+    input: { messageId: string; systemType: SystemMessageType },
   ): Promise<WireMessage>;
   setMyReaction(
     conversationId: string,
@@ -152,6 +158,13 @@ export function createConversationsClient(
       return request<{ message: WireMessage }>(
         'POST',
         `/conversations/${encodeURIComponent(conversationId)}/messages`,
+        input,
+      ).then((r) => r.message);
+    },
+    recordCallSystemMessage(conversationId, input) {
+      return request<{ message: WireMessage }>(
+        'POST',
+        `/conversations/${encodeURIComponent(conversationId)}/call-events`,
         input,
       ).then((r) => r.message);
     },

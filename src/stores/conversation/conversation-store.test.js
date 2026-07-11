@@ -182,7 +182,11 @@ describe('conversation-store', () => {
       envelope({
         messageId: 'sys-1',
         sentAt: 4,
-        payload: { type: 'system', systemType: 'noop' },
+        payload: {
+          type: 'system',
+          systemType: 'call.unanswered',
+          callerUId: 'user-a',
+        },
       }),
     ]);
 
@@ -192,11 +196,17 @@ describe('conversation-store', () => {
       'msg-1',
       'msg-2',
       'msg-3',
+      'sys-1',
     ]);
     expect(state.messages[1].attachment).toMatchObject({
       type: 'file',
       fileName: 'demo.png',
       storage: { provider: 'r2', bucket: 'hangvidu-files' },
+    });
+    expect(state.messages[3]).toMatchObject({
+      type: 'system',
+      systemType: 'call.unanswered',
+      callerUId: 'user-a',
     });
   });
 

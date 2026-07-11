@@ -2,6 +2,7 @@
 // functions; the worker router (index.ts) is the only caller.
 
 import { convertToEnglishLetters } from '../../../../shared/utils/transliteration';
+import type { SystemMessageType } from '../../../../shared/conversation-channel/protocol';
 
 export interface ConversationRow {
   id: string;
@@ -632,8 +633,9 @@ export interface MessageRow {
   conversation_id: string;
   sender_id: string;
   sender_name: string | null;
-  kind: 'text' | 'file';
+  kind: 'text' | 'file' | 'system';
   body: string | null;
+  system_type: SystemMessageType | null;
   created_at: number;
 }
 
@@ -687,7 +689,7 @@ export async function loadMessages(
   const { results } = await db
     .prepare(
       `SELECT m.id, m.conversation_id, m.sender_id, u.display_name AS sender_name,
-              m.kind, m.body, m.created_at
+              m.kind, m.body, m.system_type, m.created_at
        FROM messages m
        JOIN users u ON u.id = m.sender_id
        WHERE m.conversation_id = ?
@@ -738,10 +740,11 @@ export async function insertMessage(
   const statements: D1PreparedStatement[] = [
     db
       .prepare(
-        `INSERT INTO messages (id, conversation_id, sender_id, kind, body, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO messages
+           (id, conversation_id, sender_id, kind, body, system_type, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
-      .bind(id, conversationId, senderId, kind, body, now),
+      .bind(id, conversationId, senderId, kind, body, null, now),
     db
       .prepare(`UPDATE conversations SET updated_at = ? WHERE id = ?`)
       .bind(now, conversationId),
@@ -771,6 +774,46 @@ export async function insertMessage(
   return getMessage(db, id);
 }
 
+export async function insertCallSystemMessage(
+  db: D1Database,
+  conversationId: string,
+  messageId: string,
+  callerUId: string,
+  systemType: SystemMessageType,
+  now: number,
+): Promise<{ message: MessageWithAttachments; created: boolean } | null> {
+  const inserted = await db
+    .prepare(
+      `INSERT INTO messages
+         (id, conversation_id, sender_id, kind, body, system_type, created_at)
+       VALUES (?, ?, ?, 'system', NULL, ?, ?)
+       ON CONFLICT(id) DO NOTHING
+       RETURNING id`,
+    )
+    .bind(messageId, conversationId, callerUId, systemType, now)
+    .first<{ id: string }>();
+
+  const created = inserted !== null;
+  if (created) {
+    await db
+      .prepare(`UPDATE conversations SET updated_at = ? WHERE id = ?`)
+      .bind(now, conversationId)
+      .run();
+  }
+
+  const message = await getMessage(db, messageId);
+  if (
+    !message ||
+    message.conversation_id !== conversationId ||
+    message.sender_id !== callerUId ||
+    message.kind !== 'system' ||
+    message.system_type !== systemType
+  ) {
+    return null;
+  }
+  return { message, created };
+}
+
 /** A single message with sender name + attachments (for post-insert broadcast). */
 async function getMessage(
   db: D1Database,
@@ -779,7 +822,7 @@ async function getMessage(
   const row = await db
     .prepare(
       `SELECT m.id, m.conversation_id, m.sender_id, u.display_name AS sender_name,
-              m.kind, m.body, m.created_at
+              m.kind, m.body, m.system_type, m.created_at
        FROM messages m
        JOIN users u ON u.id = m.sender_id
        WHERE m.id = ?`,
@@ -828,7 +871,10 @@ export async function setMyReaction(
   reactionKey: string | null,
 ): Promise<ReactionSummary[] | null> {
   const message = await db
-    .prepare(`SELECT 1 FROM messages WHERE id = ? AND conversation_id = ?`)
+    .prepare(
+      `SELECT 1 FROM messages
+       WHERE id = ? AND conversation_id = ? AND kind <> 'system'`,
+    )
     .bind(messageId, conversationId)
     .first();
   if (!message) return null;

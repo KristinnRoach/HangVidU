@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => {
     stopConversationListSync: vi.fn(),
     resetConversationsState: vi.fn(),
     resetConversationStore: vi.fn(),
+    recordSystemMessage: vi.fn(() => Promise.resolve()),
   };
 });
 
@@ -34,6 +35,7 @@ vi.mock('../../../stores/conversation/conversations-client.js', () => ({
 }));
 vi.mock('../../../stores/conversation/conversation-store', () => ({
   resetConversationStore: mocks.resetConversationStore,
+  recordSystemMessage: mocks.recordSystemMessage,
 }));
 
 describe('conversations setup', () => {
@@ -52,6 +54,25 @@ describe('conversations setup', () => {
     expect(mocks.stopConversationListSync).toHaveBeenCalledOnce();
     expect(mocks.resetConversationStore).toHaveBeenCalledOnce();
     expect(mocks.resetConversationsState).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ['evt:call:invite:unanswered', 'call.unanswered'],
+    ['evt:call:invite:declined', 'call.declined'],
+  ])('records %s as a persistent system message', async (eventName, type) => {
+    const { setup } = await import('../index');
+    await setup();
+
+    mocks.handlers.get(eventName)({
+      roomId: 'conversation-1',
+      startedAt: 123,
+    });
+
+    expect(mocks.recordSystemMessage).toHaveBeenCalledWith(
+      'conversation-1',
+      type,
+      `${type}:conversation-1:123`,
+    );
   });
 
   it('resets conversation state when activity teardown throws', async () => {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
   ConversationIdSchema,
-  EventMessagePayloadSchema,
   MessageEnvelopeSchema,
+  SystemMessagePayloadSchema,
 } from './schema.js';
 
 describe('conversations schema', () => {
@@ -32,17 +32,18 @@ describe('conversations schema', () => {
     expect(message.delivery).toBe('private');
   });
 
-  it('supports the unanswered call event payload', () => {
-    const payload = EventMessagePayloadSchema.parse({
-      type: 'event',
-      eventType: 'evt:call:session:unanswered',
-      details: {
-        callId: 'room-123',
-      },
-    });
+  it.each(['call.unanswered', 'call.declined'])(
+    'supports the %s system message payload',
+    (systemType) => {
+      const payload = SystemMessagePayloadSchema.parse({
+        type: 'system',
+        systemType,
+        callerUId: 'user-a',
+      });
 
-    expect(payload.details?.callId).toBe('room-123');
-  });
+      expect(payload.callerUId).toBe('user-a');
+    },
+  );
 
   it('accepts R2-backed file payloads', () => {
     const message = MessageEnvelopeSchema.parse({

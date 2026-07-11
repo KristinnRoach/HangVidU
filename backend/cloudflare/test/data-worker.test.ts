@@ -383,6 +383,98 @@ describe('auth + membership guard on GET /conversations/:id/messages', () => {
   });
 });
 
+describe('system messages', () => {
+  it.each(['call.unanswered', 'call.declined'] as const)(
+    'persists and broadcasts %s with server-owned caller identity',
+    async (systemType) => {
+      const conversationId = await resolveOrCreateDirect(
+        env.DB,
+        'user-a',
+        'user-b',
+        1000,
+      );
+      const callerToken = await signToken(validClaims('user-a'));
+      const calleeToken = await signToken(validClaims('user-b'));
+      const calleeChannel = await connectConversation(
+        conversationId,
+        calleeToken,
+      );
+
+      try {
+        const eventPromise = calleeChannel.next();
+        const response = await jsonPost(
+          `/conversations/${conversationId}/call-events`,
+          callerToken,
+          {
+            messageId: `${systemType}-1`,
+            kind: 'system',
+            systemType,
+            senderId: 'user-b',
+          },
+        );
+
+        expect(response.status).toBe(200);
+        const wire = (await response.json()).message;
+        expect(wire).toMatchObject({
+          conversationId,
+          senderId: 'user-a',
+          kind: 'system',
+          body: null,
+          systemType,
+          attachments: [],
+          reactions: [],
+        });
+        expect(await eventPromise).toEqual({ t: 'message', message: wire });
+
+        const history = await messagesRequest(conversationId, calleeToken);
+        expect((await history.json()).messages).toEqual([wire]);
+
+        const retry = await jsonPost(
+          `/conversations/${conversationId}/call-events`,
+          callerToken,
+          {
+            messageId: `${systemType}-1`,
+            systemType,
+          },
+        );
+        expect(retry.status).toBe(200);
+        expect((await retry.json()).message).toEqual(wire);
+
+        const reaction = await jsonPut(
+          `/conversations/${conversationId}/messages/${systemType}-1/reaction`,
+          calleeToken,
+          { reactionKey: 'heart' },
+        );
+        expect(reaction.status).toBe(404);
+      } finally {
+        calleeChannel.close();
+      }
+    },
+  );
+
+  it('rejects unknown system message types', async () => {
+    const conversationId = await resolveOrCreateDirect(
+      env.DB,
+      'user-a',
+      'user-b',
+      1000,
+    );
+    const token = await signToken(validClaims('user-a'));
+
+    const response = await jsonPost(
+      `/conversations/${conversationId}/call-events`,
+      token,
+      {
+        messageId: 'unknown-system-1',
+        kind: 'system',
+        systemType: 'anything.goes',
+      },
+    );
+
+    expect(response.status).toBe(400);
+  });
+});
+
 describe('PUT /conversations/:id/read round-trip', () => {
   it('persists the marker and surfaces it on GET /conversations for the reader only', async () => {
     const convoId = await resolveOrCreateDirect(

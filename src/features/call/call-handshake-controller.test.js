@@ -93,6 +93,7 @@ describe('CallHandshakeController', () => {
     mocks.getCallService.mockReturnValue(service);
     mocks.respondToIncomingCallInvite.mockResolvedValue(undefined);
     mocks.sendOutgoingCallInvite.mockResolvedValue(undefined);
+    mocks.cancelOutgoingCall.mockResolvedValue(undefined);
     mocks.ackCallResponse.mockResolvedValue(undefined);
     mocks.resolveDirectConversationId.mockResolvedValue('room-1');
   });
@@ -306,6 +307,65 @@ describe('CallHandshakeController', () => {
     join.resolve({ roomId: 'room-1', members: ['caller-id'] });
     await response;
     expect(mocks.ackCallResponse).toHaveBeenCalledWith('room-1');
+  });
+
+  it('publishes declined when the callee rejects', async () => {
+    const controller = new CallHandshakeController({
+      p2p: {
+        join: vi.fn(),
+        close: vi.fn(),
+        state: vi.fn(() => 'idle'),
+        room: vi.fn(),
+      },
+      createSignaling: vi.fn(),
+      getCallerName: () => 'Caller',
+      onStateChange: vi.fn(),
+      onCalleeBusy: vi.fn(),
+    });
+
+    await controller.sendOutgoingCallInvite({
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: false,
+    });
+    await mocks.responseCallback?.({
+      roomId: 'room-1',
+      responseType: 'rejected',
+      by: 'callee-id',
+      respondedAt: Date.now(),
+    });
+
+    expect(mocks.publish).toHaveBeenCalledWith(
+      'evt:call:invite:declined',
+      expect.objectContaining({ roomId: 'room-1', callerId: 'callee-id' }),
+    );
+  });
+
+  it('publishes unanswered when the caller cancels while ringing', async () => {
+    const controller = new CallHandshakeController({
+      p2p: {
+        join: vi.fn(),
+        close: vi.fn(),
+        state: vi.fn(() => 'idle'),
+        room: vi.fn(),
+      },
+      createSignaling: vi.fn(),
+      getCallerName: () => 'Caller',
+      onStateChange: vi.fn(),
+      onCalleeBusy: vi.fn(),
+    });
+
+    await controller.sendOutgoingCallInvite({
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: false,
+    });
+    controller.cancelOutgoing();
+
+    expect(mocks.publish).toHaveBeenCalledWith(
+      'evt:call:invite:unanswered',
+      expect.objectContaining({ roomId: 'room-1', callerId: 'callee-id' }),
+    );
   });
 
   it('does not send the invite when caller media permission fails', async () => {
