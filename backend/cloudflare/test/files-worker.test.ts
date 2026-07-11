@@ -6,6 +6,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from 'vite-plus/test';
 
 const PROJECT_ID = env.FIREBASE_PROJECT_ID;
@@ -302,6 +303,8 @@ describe('files worker routing + auth', () => {
 
   it('502s when the membership lookup fails', async () => {
     const token = await signToken(validClaims('user-a'));
+    // Expected error path: silence the handler's console.error for this test.
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     await env.DB.prepare(
       'ALTER TABLE conversation_members RENAME TO unavailable_members',
     ).run();
@@ -319,6 +322,7 @@ describe('files worker routing + auth', () => {
       await env.DB.prepare(
         'ALTER TABLE unavailable_members RENAME TO conversation_members',
       ).run();
+      errorSpy.mockRestore();
     }
   });
 
