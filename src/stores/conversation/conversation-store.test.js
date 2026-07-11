@@ -39,8 +39,6 @@ vi.mock('./conversation-list-state', () => ({
 }));
 vi.mock('./conversations-client', () => ({
   getConversationsClient: () => ({}),
-}));
-vi.mock('./dm-ids.js', () => ({
   resolveDirectConversationId: mocks.resolveDirectConversationId,
 }));
 vi.mock('./message-sync.js', () => ({

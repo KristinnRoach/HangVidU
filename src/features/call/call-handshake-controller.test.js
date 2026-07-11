@@ -41,7 +41,7 @@ vi.mock('@shared/events/index.js', async (importOriginal) => ({
   publish: mocks.publish,
 }));
 
-vi.mock('../../stores/conversation/dm-ids.js', () => ({
+vi.mock('../../stores/conversation/conversations-client.js', () => ({
   resolveDirectConversationId: mocks.resolveDirectConversationId,
 }));
 
