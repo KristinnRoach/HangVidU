@@ -19,24 +19,28 @@ function trimmedParam(
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function callRoomParam(searchParams: URLSearchParams): string | null {
-  return trimmedParam(searchParams, 'callRoom');
+function conversationRoomParam(searchParams: URLSearchParams): string | null {
+  return (
+    trimmedParam(searchParams, 'conversationRoom') ??
+    // Legacy name used by earlier incoming-call push notifications.
+    trimmedParam(searchParams, 'callRoom')
+  );
 }
 
 function isCallNavigationPath(path: string): boolean {
   const url = new URL(path, window.location.origin);
-  return Boolean(callRoomParam(url.searchParams));
+  return Boolean(conversationRoomParam(url.searchParams));
 }
 
 function dispatchPath(path: string) {
   const url = new URL(path, window.location.origin);
-  const callRoomId = callRoomParam(url.searchParams);
-  if (callRoomId) {
+  const conversationRoomId = conversationRoomParam(url.searchParams);
+  if (conversationRoomId) {
     const timestamp = Number(url.searchParams.get('timestamp'));
     window.dispatchEvent(
       new CustomEvent('hangvidu:incoming-call-notification', {
         detail: {
-          roomId: callRoomId,
+          roomId: conversationRoomId,
           callerId: trimmedParam(url.searchParams, 'callerId') ?? undefined,
           callerName: trimmedParam(url.searchParams, 'callerName') ?? undefined,
           audioOnly: url.searchParams.get('audioOnly') === '1',

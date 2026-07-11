@@ -7,7 +7,7 @@ import {
 } from '../notification-click-handler.js';
 
 describe('notification click routing', () => {
-  it('routes incoming call notifications to a call-specific path', () => {
+  it('routes incoming call notifications to a conversation room path', () => {
     expect(
       getNotificationNavigationPath(
         {
@@ -16,7 +16,7 @@ describe('notification click routing', () => {
         },
         undefined,
       ),
-    ).toBe('/?callRoom=room-123');
+    ).toBe('/?conversationRoom=room-123');
   });
 
   it('marks the incoming-call path for auto-accept on the explicit accept action', () => {
@@ -25,7 +25,7 @@ describe('notification click routing', () => {
         { type: 'incoming_call', roomId: 'room-123' },
         'accept',
       ),
-    ).toBe('/?callRoom=room-123&accept=1');
+    ).toBe('/?conversationRoom=room-123&accept=1');
   });
 
   it('carries caller metadata for incoming call notification clicks', () => {
@@ -41,7 +41,7 @@ describe('notification click routing', () => {
         undefined,
       ),
     ).toBe(
-      '/?callRoom=room-123&callerId=caller-1&callerName=Caller+Name&timestamp=1774025000000',
+      '/?conversationRoom=room-123&callerId=caller-1&callerName=Caller+Name&timestamp=1774025000000',
     );
   });
 
@@ -59,7 +59,7 @@ describe('notification click routing', () => {
         type: 'missed_call',
         roomId: 'room-fallback',
       }),
-    ).toBe('/?room=room-fallback');
+    ).toBe('/?conversationRoom=room-fallback');
 
     expect(
       getNotificationNavigationPath({

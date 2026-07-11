@@ -1,4 +1,4 @@
-// Guest call lobby: create a room-link call or join one via ?room=<id>.
+// Guest call lobby: create a room-link call or join one via ?publicRoom=<id>.
 // No account needed — signs in anonymously for the signaling token.
 // TODO: design pass deferred until the Tailwind migration.
 import { createSignal, createEffect, on, Show } from 'solid-js';
@@ -23,13 +23,14 @@ function joinErrorMessage(err: unknown, kind: string | undefined): string {
   return t('call.lobby.error.generic');
 }
 
-// Room ids are crypto.randomUUID(); anything else in ?room= is a mangled
+// Room ids are crypto.randomUUID(); anything else in ?publicRoom= is a mangled
 // or forged link — drop it instead of attempting a join that can't work.
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function roomIdFromUrl(): string | null {
-  const raw = new URLSearchParams(window.location.search).get('room');
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('publicRoom') || params.get('room');
   return raw && UUID_RE.test(raw) ? raw : null;
 }
 
@@ -59,6 +60,7 @@ export default function CallLobby() {
         setJoining(false);
         if (prev === 'joined') {
           const url = new URL(window.location.href);
+          url.searchParams.delete('publicRoom');
           url.searchParams.delete('room');
           window.history.replaceState(null, '', url);
           setRoomId(null);
@@ -72,7 +74,8 @@ export default function CallLobby() {
   function createRoom() {
     const id = crypto.randomUUID();
     const url = new URL(window.location.href);
-    url.searchParams.set('room', id);
+    url.searchParams.set('publicRoom', id);
+    url.searchParams.delete('room');
     window.history.replaceState(null, '', url);
     setRoomId(id);
     setCallEnded(false);

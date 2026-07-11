@@ -145,7 +145,7 @@ describe('SWNavigation', () => {
     messageListener?.({
       data: {
         type: 'NAVIGATE',
-        path: '/?callRoom=room-1&callerId=caller-1&callerName=Caller&accept=1',
+        path: '/?conversationRoom=room-1&callerId=caller-1&callerName=Caller&accept=1',
       },
     });
 

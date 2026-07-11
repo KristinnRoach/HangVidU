@@ -18,7 +18,7 @@ export function getNotificationNavigationPath(data, action) {
 
   if (isIncomingCallType(type)) {
     if (!roomId) return '/';
-    const params = new URLSearchParams({ callRoom: roomId });
+    const params = new URLSearchParams({ conversationRoom: roomId });
     if (callerId) params.set('callerId', callerId);
     if (callerName) params.set('callerName', callerName);
     if (audioOnly === true || audioOnly === 'true')
@@ -36,7 +36,7 @@ export function getNotificationNavigationPath(data, action) {
     }
 
     if (roomId) {
-      return `/?room=${encodeURIComponent(roomId)}`;
+      return `/?conversationRoom=${encodeURIComponent(roomId)}`;
     }
 
     return '/';
