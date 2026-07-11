@@ -44,6 +44,7 @@ describe('CallHandshakeProvider', () => {
       return vi.fn();
     });
     mocks.user = () => null;
+    window.history.replaceState(null, '', '/');
   });
 
   it('attaches the incoming-call listener when auth becomes authenticated after mount', async () => {
@@ -106,5 +107,26 @@ describe('CallHandshakeProvider', () => {
       audioOnly: false,
       startedAt: undefined,
     });
+  });
+
+  it('keeps a missing notification URL timestamp undefined', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?conversationRoom=room-1&callerId=caller-1',
+    );
+    const { CallHandshakeProvider } = await import('./call-handshake');
+    const [user] = createSignal({ uid: 'u1' });
+    mocks.user = user;
+
+    render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
+
+    expect(mocks.showIncomingCallFromNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roomId: 'room-1',
+        callerId: 'caller-1',
+        startedAt: undefined,
+      }),
+    );
   });
 });

@@ -48,6 +48,12 @@ export type IncomingCallNotificationDetails = {
   startedAt?: number;
 };
 
+type EnterRoomOptions = {
+  memberCapacity?: number;
+  autoExitOnEmpty?: boolean;
+  ignoreInitialAlone?: boolean;
+};
+
 export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
   private readonly createSignaling: CreateRoomSignaling;
@@ -353,9 +359,11 @@ export class CallHandshakeController {
     localUserId: string,
     audioOnly = false,
     getLocalStream?: () => Promise<MediaStream>,
-    memberCapacity = 2,
-    autoExitOnEmpty = true,
-    ignoreInitialAlone = false,
+    {
+      memberCapacity = 2,
+      autoExitOnEmpty = true,
+      ignoreInitialAlone = false,
+    }: EnterRoomOptions = {},
   ) {
     let ignoredInitialAlone = false;
     const room = await this.p2p.join({
@@ -468,9 +476,7 @@ export class CallHandshakeController {
       localUID,
       state.call.audioOnly ?? false,
       undefined,
-      2,
-      true,
-      true,
+      { ignoreInitialAlone: true },
     )
       .then(() =>
         svc.respondToIncomingCallInvite({

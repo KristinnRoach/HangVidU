@@ -20,16 +20,22 @@ function trimmedParam(
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function optionalTimestamp(searchParams: URLSearchParams): number | undefined {
+  const rawTimestamp = searchParams.get('timestamp');
+  if (rawTimestamp == null) return undefined;
+  const timestamp = Number(rawTimestamp);
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
 function dispatchUrl(url: URL): void {
   const conversationRoomId = trimmedParam(url.searchParams, 'conversationRoom');
   if (conversationRoomId) {
-    const timestamp = Number(url.searchParams.get('timestamp'));
     publish('evt:call:notification:opened', {
       roomId: conversationRoomId,
       callerId: trimmedParam(url.searchParams, 'callerId') ?? undefined,
       callerName: trimmedParam(url.searchParams, 'callerName') ?? undefined,
       audioOnly: url.searchParams.get('audioOnly') === '1',
-      startedAt: Number.isFinite(timestamp) ? timestamp : undefined,
+      startedAt: optionalTimestamp(url.searchParams),
       accept: url.searchParams.get('accept') === '1',
     });
     return;

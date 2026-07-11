@@ -155,6 +155,7 @@ describe('SWNavigation', () => {
         callerId: 'caller-1',
         callerName: 'Caller',
         accept: true,
+        startedAt: undefined,
       }),
     );
     expect(mocks.openDirectConversation).not.toHaveBeenCalled();

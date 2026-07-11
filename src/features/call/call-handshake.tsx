@@ -43,6 +43,13 @@ type IncomingCallNotificationOpenedPayload = IncomingCallNotificationDetails & {
   accept?: boolean;
 };
 
+function optionalTimestamp(params: URLSearchParams): number | undefined {
+  const rawTimestamp = params.get('timestamp');
+  if (rawTimestamp == null) return undefined;
+  const timestamp = Number(rawTimestamp);
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
 function incomingCallNotificationDetailsFromParams(
   params: URLSearchParams,
 ): IncomingCallNotificationDetails | null {
@@ -50,13 +57,12 @@ function incomingCallNotificationDetailsFromParams(
   const callerId = params.get('callerId');
   if (!roomId || !callerId) return null;
 
-  const timestamp = Number(params.get('timestamp'));
   return {
     roomId,
     callerId,
     callerName: params.get('callerName') || undefined,
     audioOnly: params.get('audioOnly') === '1',
-    startedAt: Number.isFinite(timestamp) ? timestamp : undefined,
+    startedAt: optionalTimestamp(params),
   };
 }
 
