@@ -12,6 +12,7 @@ import { useAuth } from '../../auth/solid-auth.js';
 import { getAuthProviderProfileSeed } from '../../auth/index.js';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { createRoomSignaling } from '../../realtime/index.js';
+import { subscribe } from '@shared/events/index.js';
 import { getLoggedInUserProfile } from '../../stores/user-profile-store.js';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 import {
@@ -38,7 +39,9 @@ type CallHandshakeContextValue = {
 };
 
 const CallHandshakeContext = createContext<CallHandshakeContextValue>();
-const INCOMING_CALL_NOTIFICATION_EVENT = 'hangvidu:incoming-call-notification';
+type IncomingCallNotificationOpenedPayload = IncomingCallNotificationDetails & {
+  accept?: boolean;
+};
 
 function incomingCallNotificationDetailsFromParams(
   params: URLSearchParams,
@@ -57,20 +60,22 @@ function incomingCallNotificationDetailsFromParams(
   };
 }
 
-function incomingCallNotificationDetailsFromEvent(
-  event: Event,
+function incomingCallNotificationDetailsFromPayload(
+  payload: IncomingCallNotificationOpenedPayload,
 ): IncomingCallNotificationDetails | null {
-  const detail = (event as CustomEvent).detail || {};
-  if (typeof detail.roomId !== 'string' || typeof detail.callerId !== 'string')
+  if (
+    typeof payload.roomId !== 'string' ||
+    typeof payload.callerId !== 'string'
+  )
     return null;
   return {
-    roomId: detail.roomId,
-    callerId: detail.callerId,
+    roomId: payload.roomId,
+    callerId: payload.callerId,
     callerName:
-      typeof detail.callerName === 'string' ? detail.callerName : undefined,
-    audioOnly: detail.audioOnly === true,
+      typeof payload.callerName === 'string' ? payload.callerName : undefined,
+    audioOnly: payload.audioOnly === true,
     startedAt:
-      typeof detail.timestamp === 'number' ? detail.timestamp : undefined,
+      typeof payload.startedAt === 'number' ? payload.startedAt : undefined,
   };
 }
 
@@ -153,27 +158,20 @@ export function CallHandshakeProvider(props: ParentProps) {
       );
     }
 
-    const handleIncomingCallNotification = (event: Event) => {
-      const detail = (event as CustomEvent).detail || {};
-      const notificationDetails =
-        incomingCallNotificationDetailsFromEvent(event);
-      if (notificationDetails) {
-        setQueuedNotificationDetails(notificationDetails);
-      }
-      if (detail.accept && typeof detail.roomId === 'string') {
-        setWantAcceptRoomId(detail.roomId);
-      }
-    };
-    window.addEventListener(
-      INCOMING_CALL_NOTIFICATION_EVENT,
-      handleIncomingCallNotification,
+    const unsubscribeIncomingCallNotification = subscribe(
+      'evt:call:notification:opened',
+      (payload: IncomingCallNotificationOpenedPayload) => {
+        const notificationDetails =
+          incomingCallNotificationDetailsFromPayload(payload);
+        if (notificationDetails) {
+          setQueuedNotificationDetails(notificationDetails);
+        }
+        if (payload.accept && typeof payload.roomId === 'string') {
+          setWantAcceptRoomId(payload.roomId);
+        }
+      },
     );
-    onCleanup(() => {
-      window.removeEventListener(
-        INCOMING_CALL_NOTIFICATION_EVENT,
-        handleIncomingCallNotification,
-      );
-    });
+    onCleanup(() => unsubscribeIncomingCallNotification());
 
     createEffect(() => {
       if (!auth.user()?.uid) return;

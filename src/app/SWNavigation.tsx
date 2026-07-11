@@ -4,6 +4,7 @@ import {
   openConversation as openSelectedConversation,
   openDirectConversation,
 } from '../stores/conversation/conversation-store';
+import { publish } from '@shared/events/index.js';
 
 type Props = {
   queueLimit?: number;
@@ -23,18 +24,14 @@ function dispatchUrl(url: URL): void {
   const conversationRoomId = trimmedParam(url.searchParams, 'conversationRoom');
   if (conversationRoomId) {
     const timestamp = Number(url.searchParams.get('timestamp'));
-    window.dispatchEvent(
-      new CustomEvent('hangvidu:incoming-call-notification', {
-        detail: {
-          roomId: conversationRoomId,
-          callerId: trimmedParam(url.searchParams, 'callerId') ?? undefined,
-          callerName: trimmedParam(url.searchParams, 'callerName') ?? undefined,
-          audioOnly: url.searchParams.get('audioOnly') === '1',
-          timestamp: Number.isFinite(timestamp) ? timestamp : undefined,
-          accept: url.searchParams.get('accept') === '1',
-        },
-      }),
-    );
+    publish('evt:call:notification:opened', {
+      roomId: conversationRoomId,
+      callerId: trimmedParam(url.searchParams, 'callerId') ?? undefined,
+      callerName: trimmedParam(url.searchParams, 'callerName') ?? undefined,
+      audioOnly: url.searchParams.get('audioOnly') === '1',
+      startedAt: Number.isFinite(timestamp) ? timestamp : undefined,
+      accept: url.searchParams.get('accept') === '1',
+    });
     return;
   }
 

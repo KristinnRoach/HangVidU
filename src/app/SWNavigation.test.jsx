@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   getContactsIsHydrated: vi.fn(),
   openSelectedConversation: vi.fn(),
   openDirectConversation: vi.fn(),
+  publish: vi.fn(),
 }));
 
 vi.mock('../stores/contacts-store', () => ({
@@ -27,6 +28,10 @@ vi.mock('../stores/conversation/conversation-store', () => ({
   openConversation: mocks.openSelectedConversation,
   openDirectConversation: mocks.openDirectConversation,
   selection: () => null,
+}));
+
+vi.mock('@shared/events/index.js', () => ({
+  publish: mocks.publish,
 }));
 
 describe('SWNavigation', () => {
@@ -133,13 +138,7 @@ describe('SWNavigation', () => {
     unmount();
   });
 
-  it('dispatches incoming-call notification navigation immediately', async () => {
-    const onIncomingCallNotification = vi.fn();
-    window.addEventListener(
-      'hangvidu:incoming-call-notification',
-      onIncomingCallNotification,
-    );
-
+  it('publishes incoming-call notification navigation immediately', async () => {
     const { unmount } = render(() => <SWNavigation />);
 
     messageListener?.({
@@ -149,23 +148,18 @@ describe('SWNavigation', () => {
       },
     });
 
-    expect(onIncomingCallNotification).toHaveBeenCalledWith(
+    expect(mocks.publish).toHaveBeenCalledWith(
+      'evt:call:notification:opened',
       expect.objectContaining({
-        detail: expect.objectContaining({
-          roomId: 'room-1',
-          callerId: 'caller-1',
-          callerName: 'Caller',
-          accept: true,
-        }),
+        roomId: 'room-1',
+        callerId: 'caller-1',
+        callerName: 'Caller',
+        accept: true,
       }),
     );
     expect(mocks.openDirectConversation).not.toHaveBeenCalled();
     expect(mocks.openSelectedConversation).not.toHaveBeenCalled();
 
-    window.removeEventListener(
-      'hangvidu:incoming-call-notification',
-      onIncomingCallNotification,
-    );
     unmount();
   });
 });
