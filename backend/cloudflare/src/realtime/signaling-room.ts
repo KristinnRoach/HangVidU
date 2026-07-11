@@ -105,13 +105,11 @@ export class SignalingRoom extends DurableObject<Env> {
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
-    this.clearPeerPresence(this.getSocketState(ws).peerId);
-    this.broadcastPeers();
+    if (this.clearSocketPresence(ws)) this.broadcastPeers();
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
-    this.clearPeerPresence(this.getSocketState(ws).peerId);
-    this.broadcastPeers();
+    if (this.clearSocketPresence(ws)) this.broadcastPeers();
   }
 
   // --- internals ---
@@ -202,6 +200,15 @@ export class SignalingRoom extends DurableObject<Env> {
         this.setSocketState(ws, { peerId: null });
       }
     }
+  }
+
+  /** Clear only this socket's ownership. A replaced socket has already been
+   * detached and must not emit a stale presence snapshot when its delayed
+   * close/error callback arrives. */
+  private clearSocketPresence(ws: WebSocket): boolean {
+    if (!this.getSocketState(ws).peerId) return false;
+    this.setSocketState(ws, { peerId: null });
+    return true;
   }
 
   private send(ws: WebSocket, message: ServerMessage): void {

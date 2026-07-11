@@ -310,6 +310,7 @@ describe('CallHandshakeController', () => {
   });
 
   it('publishes declined when the callee rejects', async () => {
+    mocks.getLoggedInUserId.mockReturnValue('caller-id');
     const controller = new CallHandshakeController({
       p2p: {
         join: vi.fn(),
@@ -337,11 +338,12 @@ describe('CallHandshakeController', () => {
 
     expect(mocks.publish).toHaveBeenCalledWith(
       'evt:call:invite:declined',
-      expect.objectContaining({ roomId: 'room-1', callerId: 'callee-id' }),
+      expect.objectContaining({ roomId: 'room-1', callerId: 'caller-id' }),
     );
   });
 
   it('publishes unanswered when the caller cancels while ringing', async () => {
+    mocks.getLoggedInUserId.mockReturnValue('caller-id');
     const controller = new CallHandshakeController({
       p2p: {
         join: vi.fn(),
@@ -364,7 +366,7 @@ describe('CallHandshakeController', () => {
 
     expect(mocks.publish).toHaveBeenCalledWith(
       'evt:call:invite:unanswered',
-      expect.objectContaining({ roomId: 'room-1', callerId: 'callee-id' }),
+      expect.objectContaining({ roomId: 'room-1', callerId: 'caller-id' }),
     );
   });
 
