@@ -44,8 +44,9 @@ Membership join table.
 - `id` TEXT, N — PK.
 - `conversation_id` TEXT, N — FK → conversations(id), CASCADE.
 - `sender_id` TEXT, N — FK → users(id) (no cascade).
-- `kind` TEXT, N — `'text'` or `'file'` (CHECK).
+- `kind` TEXT, N — `'text'`, `'file'`, or `'system'` (CHECK).
 - `body` TEXT, Y — message text. CHECK requires NOT NULL when kind='text'.
+- `system_type` TEXT, Y — non-empty system-message discriminator; required exactly when kind='system'. Supported values are validated by the worker.
 - `created_at` INT, N.
 
 ## message_attachments

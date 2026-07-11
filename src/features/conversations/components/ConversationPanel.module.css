@@ -8,6 +8,8 @@
   letter-spacing: 0.02em;
   font-weight: 350;
   font-size: 1em;
+
+  text-shadow: var(--text-shadow-subtle);
 }
 
 .panel[dragover] {
@@ -85,6 +87,25 @@
   .skeletonBubble {
     animation: none;
   }
+}
+
+.systemMessage {
+  align-self: center;
+  max-width: 80%;
+  padding: 1rem;
+
+  background: #303438ad;
+  border-radius: 0.5rem;
+}
+
+.systemMessageText {
+  font-family: monospace;
+  font-size: 1rem;
+  font-weight: 100;
+  letter-spacing: 0.05em;
+  text-align: center;
+
+  color: rgb(120, 218, 254);
 }
 
 .msg {

@@ -1,5 +1,8 @@
 import type { Reaction } from '@lib/reactions/solid/solid.js';
-import type { WireMessage } from '../../../shared/conversation-channel/protocol';
+import type {
+  SystemMessageType,
+  WireMessage,
+} from '../../../shared/conversation-channel/protocol';
 import type { ConversationId, MessageEnvelope, UserId } from './types.js';
 
 export type IncomingMessage = MessageEnvelope & {
@@ -8,8 +11,9 @@ export type IncomingMessage = MessageEnvelope & {
 
 export type SendMessageInput = {
   messageId: string;
-  kind: 'text' | 'file';
+  kind: 'text' | 'file' | 'system';
   body?: string | null;
+  systemType?: SystemMessageType;
   attachment?: {
     r2Key: string;
     bucket: string;
@@ -50,6 +54,18 @@ export function toIncomingMessage(m: WireMessage): IncomingMessage | null {
     };
   }
 
+  if (m.kind === 'system') {
+    if (!m.systemType) return null;
+    return {
+      ...base,
+      payload: {
+        type: 'system',
+        systemType: m.systemType,
+        callerUId: m.senderId as UserId,
+      },
+    };
+  }
+
   if (typeof m.body !== 'string') return null;
   return { ...base, payload: { type: 'text', text: m.body } };
 }
@@ -75,5 +91,9 @@ export function toSendMessageInput(message: MessageEnvelope): SendMessageInput {
       },
     };
   }
-  throw new Error(`message mapper cannot send payload type: ${payload.type}`);
+  return {
+    messageId: message.messageId,
+    kind: 'system',
+    systemType: payload.systemType,
+  };
 }

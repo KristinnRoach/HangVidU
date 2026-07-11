@@ -10,6 +10,7 @@ import {
   getConversation,
   getMembers,
   getProfile,
+  insertCallSystemMessage,
   insertMessage,
   isHandleTaken,
   isMember,
@@ -40,6 +41,7 @@ import type {
   ConversationServerEvent,
   WireMessage,
 } from '../../../../shared/conversation-channel/protocol';
+import { isSystemMessageType } from '../../../../shared/conversation-channel/protocol';
 import { CALLING_TTL_MS } from '../../../../shared/constants';
 
 const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
@@ -565,6 +567,42 @@ export async function handleDataRequest(
     return json({ messageId, reactions }, 200, cors);
   }
 
+  const callEventsMatch = url.pathname.match(
+    /^\/conversations\/([^/]+)\/call-events$/,
+  );
+  if (request.method === 'POST' && callEventsMatch) {
+    const conversationId = decodeURIComponent(callEventsMatch[1]);
+    if (!(await isMember(env.DB, conversationId, callerId))) {
+      return json({ error: 'not_found' }, 404, cors);
+    }
+    const payload = await readJson(request);
+    const messageId = str(payload?.messageId);
+    const systemType = payload?.systemType;
+    if (!messageId || !isSystemMessageType(systemType)) {
+      return json(
+        { error: 'messageId and supported systemType required' },
+        400,
+        cors,
+      );
+    }
+
+    const result = await insertCallSystemMessage(
+      env.DB,
+      conversationId,
+      messageId,
+      callerId,
+      systemType,
+      now,
+    );
+    if (!result) return json({ error: 'message_id_conflict' }, 409, cors);
+
+    const wire = toWireMessage(result.message);
+    if (result.created) {
+      await publishMessageActivity(env, conversationId, callerId, wire);
+    }
+    return json({ message: wire }, 200, cors);
+  }
+
   // GET /conversations/:id/messages -> recent messages (membership-guarded)
   const messagesMatch = url.pathname.match(
     /^\/conversations\/([^/]+)\/messages$/,
@@ -611,37 +649,7 @@ export async function handleDataRequest(
       // the DO trusts the worker since they share the same process and the worker
       // already authenticated + validated the write. The DO broadcasts to all
       // connected members, including the sender (client deduplicates by message id).
-      const event: ConversationServerEvent = { t: 'message', message: wire };
-      // Best-effort live push: the message is already committed, so a transient
-      // DO failure must not fail the send (would cause client retry / dup). The
-      // sender renders optimistically; peers reconcile on next load if missed.
-      try {
-        await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(
-          event,
-        );
-      } catch (err) {
-        console.warn('[data] live broadcast failed', { conversationId, err });
-      }
-      // Per-user activity push: ping every other member's mailbox so their
-      // conversation list reorders + badges without the conversation open.
-      // Best-effort, fire-and-forget (not persisted in the mailbox).
-      try {
-        const members = await getMembers(env.DB, conversationId);
-        await Promise.all(
-          members
-            .filter((m) => m.user_id !== callerId)
-            .map((m) =>
-              env.USER_MAILBOX.getByName(m.user_id).deliver({
-                t: 'activity',
-                conversationId,
-                senderId: callerId,
-                sentAt: now,
-              }),
-            ),
-        );
-      } catch (err) {
-        console.warn('[data] activity fan-out failed', { conversationId, err });
-      }
+      await publishMessageActivity(env, conversationId, callerId, wire);
       return json({ message: wire }, 200, cors);
     }
   }
@@ -658,6 +666,7 @@ function toWireMessage(row: MessageWithAttachments): WireMessage {
     senderName: row.sender_name,
     kind: row.kind,
     body: row.body,
+    systemType: row.system_type,
     sentAt: row.created_at,
     attachments: row.attachments.map((a) => ({
       id: a.id,
@@ -671,6 +680,38 @@ function toWireMessage(row: MessageWithAttachments): WireMessage {
     })),
     reactions: row.reactions,
   };
+}
+
+async function publishMessageActivity(
+  env: WorkerEnv,
+  conversationId: string,
+  senderId: string,
+  message: WireMessage,
+): Promise<void> {
+  const event: ConversationServerEvent = { t: 'message', message };
+  try {
+    await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(event);
+  } catch (err) {
+    console.warn('[data] live broadcast failed', { conversationId, err });
+  }
+
+  try {
+    const members = await getMembers(env.DB, conversationId);
+    await Promise.all(
+      members
+        .filter((member) => member.user_id !== senderId)
+        .map((member) =>
+          env.USER_MAILBOX.getByName(member.user_id).deliver({
+            t: 'activity',
+            conversationId,
+            senderId,
+            sentAt: message.sentAt,
+          }),
+        ),
+    );
+  } catch (err) {
+    console.warn('[data] activity fan-out failed', { conversationId, err });
+  }
 }
 
 /**

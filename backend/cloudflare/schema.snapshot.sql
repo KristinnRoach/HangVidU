@@ -74,11 +74,13 @@ CREATE TABLE messages (
   id              TEXT PRIMARY KEY,
   conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   sender_id       TEXT NOT NULL REFERENCES users(id),
-  kind            TEXT NOT NULL CHECK (kind IN ('text', 'file')),
+  kind            TEXT NOT NULL CHECK (kind IN ('text', 'file', 'system')),
   body            TEXT,
+  system_type     TEXT CHECK (system_type IS NULL OR length(system_type) > 0),
   created_at      INTEGER NOT NULL,
   
-  CHECK (kind <> 'text' OR body IS NOT NULL)
+  CHECK (kind <> 'text' OR body IS NOT NULL),
+  CHECK ((kind = 'system') = (system_type IS NOT NULL))
 );
 CREATE INDEX idx_messages_convo_time ON messages(conversation_id, created_at);
 

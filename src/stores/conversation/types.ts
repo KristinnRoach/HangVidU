@@ -1,4 +1,5 @@
 import type { Reaction } from '@lib/reactions/solid/solid.js';
+import type { SystemMessageType } from '../../../shared/conversation-channel/protocol';
 import type { IncomingMessage } from '@storage/conversations/message-mapper.js';
 import type {
   ConversationId,
@@ -9,7 +10,6 @@ import type {
 export type {
   ConversationId,
   DeliveryPolicy,
-  EventMessagePayload,
   FileMessagePayload,
   MessageEnvelope,
   MessagePayload,
@@ -66,13 +66,25 @@ export type MessageAttachment = {
   };
 };
 
-export type ChatMessage = {
+type ChatMessageBase = {
   id: string;
   conversationId: ConversationId;
-  text: string;
-  attachment?: MessageAttachment;
   senderId: UserId;
   sentAt: number;
   status: MessageStatus;
   reactions: Reaction[];
 };
+
+export type UserChatMessage = ChatMessageBase & {
+  type: 'user';
+  text: string;
+  attachment?: MessageAttachment;
+};
+
+export type SystemChatMessage = ChatMessageBase & {
+  type: 'system';
+  systemType: SystemMessageType;
+  callerUId: UserId;
+};
+
+export type ChatMessage = UserChatMessage | SystemChatMessage;

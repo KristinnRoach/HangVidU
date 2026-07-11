@@ -16,10 +16,12 @@ import {
 import {
   getConversationState,
   persistMyReaction,
+  selectedConversation,
 } from '@stores/conversation/conversation-store';
 import type {
   ChatMessage,
   MessageAttachment,
+  SystemChatMessage,
 } from '@stores/conversation/types.js';
 import type { ConversationId } from '@stores/conversation/types.js';
 import { createConversationFileObjectUrl } from '@stores/files-store';
@@ -117,6 +119,7 @@ export function MessageList() {
     const neededKeys = new Set<string>();
 
     for (const msg of state.messages) {
+      if (msg.type === 'system') continue;
       const attachment = msg.attachment;
       if (
         !conversationId ||
@@ -145,6 +148,7 @@ export function MessageList() {
             state.messages.some(
               (message) =>
                 message.id === msg.id &&
+                message.type === 'user' &&
                 message.attachment &&
                 isR2FileAttachment(message.attachment) &&
                 isImageAttachment(message.attachment),
@@ -219,40 +223,68 @@ export function MessageList() {
                 {formatTimestamp(msg.sentAt, locale())}
               </time>
             </Show>
-            <div
-              use:reactions={{
-                messageId: msg.id,
-                userId: state.myUserId,
-                reactions: msg.reactions,
-                onChange: persistMyReaction,
-              }}
-              class={styles.msg}
-              data-timestamp={msg.sentAt}
-              classList={{
-                [styles.msgOwn]: msg.senderId === state.myUserId,
-                [styles.msgFailed]: msg.status === 'failed',
-              }}
+            <Show
+              when={msg.type === 'user' ? msg : undefined}
+              fallback={<SystemMessageRow message={msg as SystemChatMessage} />}
             >
-              <span class={styles.msgText}>{linkifyText(msg.text)}</span>
-              <Show when={msg.attachment}>
-                {(attachment) => (
-                  <FileAttachment
-                    file={attachment()}
-                    url={attachmentUrl(msg)}
-                    onImageLoad={followIfPinned}
-                  />
-                )}
-              </Show>
-              <Show when={msg.status === 'sending'}>
-                <span class={styles.msgStatus}>…</span>
-              </Show>
-              <Show when={msg.status === 'failed'}>
-                <span class={styles.msgStatus}>!</span>
-              </Show>
-            </div>
+              {(userMessage) => (
+                <div
+                  use:reactions={{
+                    messageId: userMessage().id,
+                    userId: state.myUserId,
+                    reactions: userMessage().reactions,
+                    onChange: persistMyReaction,
+                  }}
+                  class={styles.msg}
+                  data-timestamp={userMessage().sentAt}
+                  classList={{
+                    [styles.msgOwn]: userMessage().senderId === state.myUserId,
+                    [styles.msgFailed]: userMessage().status === 'failed',
+                  }}
+                >
+                  <span class={styles.msgText}>
+                    {linkifyText(userMessage().text)}
+                  </span>
+                  <Show when={userMessage().attachment}>
+                    {(attachment) => (
+                      <FileAttachment
+                        file={attachment()}
+                        url={attachmentUrl(userMessage())}
+                        onImageLoad={followIfPinned}
+                      />
+                    )}
+                  </Show>
+                  <Show when={userMessage().status === 'sending'}>
+                    <span class={styles.msgStatus}>…</span>
+                  </Show>
+                  <Show when={userMessage().status === 'failed'}>
+                    <span class={styles.msgStatus}>!</span>
+                  </Show>
+                </div>
+              )}
+            </Show>
           </>
         )}
       </For>
+    </div>
+  );
+}
+
+function SystemMessageRow(props: { message: SystemChatMessage }) {
+  const state = getConversationState();
+  const { t } = useI18n();
+  const callerName = () =>
+    selectedConversation()?.members.find(
+      (member) => member.user_id === props.message.senderId,
+    )?.display_name ?? t('conversation.unknown_caller');
+  const text = () =>
+    props.message.callerUId === state.myUserId
+      ? t('conversation.call_unanswered_outgoing')
+      : t('conversation.call_unanswered_incoming', { name: callerName() });
+
+  return (
+    <div class={styles.systemMessage} data-timestamp={props.message.sentAt}>
+      <span class={styles.systemMessageText}>{text()}</span>
     </div>
   );
 }

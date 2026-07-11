@@ -40,13 +40,26 @@ export interface WireReactionSummary extends WireReactionCount {
   reactedByMe: boolean;
 }
 
+export const SYSTEM_MESSAGE_TYPES = [
+  'call.unanswered',
+  'call.declined',
+] as const;
+export type SystemMessageType = (typeof SYSTEM_MESSAGE_TYPES)[number];
+
+export function isSystemMessageType(
+  value: unknown,
+): value is SystemMessageType {
+  return SYSTEM_MESSAGE_TYPES.includes(value as SystemMessageType);
+}
+
 export interface WireMessage {
   id: string;
   conversationId: string;
   senderId: string;
   senderName: string | null;
-  kind: 'text' | 'file';
+  kind: 'text' | 'file' | 'system';
   body: string | null;
+  systemType?: SystemMessageType | null;
   sentAt: number;
   attachments: WireAttachment[];
   reactions: WireReactionSummary[];
@@ -83,7 +96,10 @@ export function isConversationServerEvent(
     typeof m.id === 'string' &&
     typeof m.conversationId === 'string' &&
     typeof m.senderId === 'string' &&
-    (m.kind === 'text' || m.kind === 'file') &&
+    (m.kind === 'text' || m.kind === 'file' || m.kind === 'system') &&
+    (m.kind === 'system'
+      ? isSystemMessageType(m.systemType)
+      : m.systemType === null || m.systemType === undefined) &&
     typeof m.sentAt === 'number' &&
     Array.isArray(m.attachments) &&
     isReactionList(m.reactions, true)

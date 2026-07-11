@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SYSTEM_MESSAGE_TYPES } from '../../../shared/conversation-channel/protocol';
 
 export const UserIdSchema = z.string().trim().min(1);
 
@@ -39,26 +40,15 @@ export const FileMessagePayloadSchema = z.object({
   text: z.string().optional(),
 });
 
-export const EventMessagePayloadSchema = z.object({
-  type: z.literal('event'),
-  eventType: z.literal('evt:call:session:unanswered'),
-  details: z
-    .object({
-      callId: z.string().nullable().optional(),
-    })
-    .optional(),
-});
-
 export const SystemMessagePayloadSchema = z.object({
   type: z.literal('system'),
-  systemType: z.string().trim().min(1),
-  details: z.record(z.string(), z.unknown()).optional(),
+  systemType: z.enum(SYSTEM_MESSAGE_TYPES),
+  callerUId: UserIdSchema,
 });
 
 export const MessagePayloadSchema = z.discriminatedUnion('type', [
   TextMessagePayloadSchema,
   FileMessagePayloadSchema,
-  EventMessagePayloadSchema,
   SystemMessagePayloadSchema,
 ]);
 
