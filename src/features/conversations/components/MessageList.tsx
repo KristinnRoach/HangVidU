@@ -284,7 +284,7 @@ function SystemMessageRow(props: { message: SystemChatMessage }) {
 
   return (
     <div class={styles.systemMessage} data-timestamp={props.message.sentAt}>
-      {text()}
+      <span class={styles.systemMessageText}>{text()}</span>
     </div>
   );
 }
