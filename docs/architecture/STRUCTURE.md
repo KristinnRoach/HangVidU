@@ -47,7 +47,7 @@ There is **no `setup/` layer**. App startup lives in:
   relative imports and do not import their own index.
 - This is initially enforced for `features/<name>`, `auth`, `push`, `pwa`,
   `realtime`, and the `storage/contacts`, `storage/files`, and `storage/user`
-  modules. `push/sw` remains a separate runtime entry pending its own interface.
+  modules. `push/sw` remains a separate runtime entry.
 - Tests live next to the file under test, or in `src/<module>/tests/` for
   module-root domain tests.
 

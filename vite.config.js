@@ -34,7 +34,7 @@ const publicModuleImportPatterns = [
       '**/features/*/**',
       '**/auth/**',
       '**/push/**',
-      '!./push/sw/**',
+      '!./push/sw/index.js',
       '**/pwa/**',
       '**/realtime/**',
       '**/storage/contacts/**',
