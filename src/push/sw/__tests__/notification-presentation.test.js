@@ -5,7 +5,7 @@ import {
   getNotificationActions,
   getNotificationTag,
   isIncomingCallType,
-} from '../notification-presentation.js';
+} from '../index.js';
 
 describe('notification presentation', () => {
   it('treats only canonical incoming_call payloads as active call notifications', () => {

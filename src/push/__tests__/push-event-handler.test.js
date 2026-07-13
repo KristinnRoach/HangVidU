@@ -1,25 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
-vi.mock('../sw/notification-presentation.js', () => ({
-  buildNotificationPresentation: vi.fn(() => ({
-    title: 'Incoming call',
-    tag: 'call_room-1',
-    actions: [],
-    options: {
-      body: 'Tap to open HangVidU',
-      data: {
-        type: 'incoming_call',
-        roomId: 'room-1',
-      },
-      tag: 'call_room-1',
-      requireInteraction: true,
-      actions: [],
-      vibrate: [200, 100, 200],
-    },
-  })),
-}));
-
-import { handlePushEvent } from '../sw/push-event-handler.js';
+import { handlePushEvent } from '../sw/index.js';
 
 describe('handlePushEvent', () => {
   let showNotification;
@@ -56,7 +37,12 @@ describe('handlePushEvent', () => {
     expect(showNotification).toHaveBeenCalledWith(
       'Incoming call',
       expect.objectContaining({
-        tag: 'call_room-1',
+        body: 'Caller is ringing',
+        data: expect.objectContaining({
+          type: 'incoming_call',
+          roomId: 'room-1',
+        }),
+        requireInteraction: true,
       }),
     );
   });
