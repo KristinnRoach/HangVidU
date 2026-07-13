@@ -108,30 +108,29 @@ export default function VideoStream(props: Props) {
   });
 
   return (
-    <Show when={props.stream && props.stream.getVideoTracks().length > 0}>
-      <>
-        <video
-          id={props.id}
-          class={props.baseClass ?? styles.videoStream}
-          classList={{
-            [styles.local]: props.local,
-            [styles.preview]: props.preview,
-            ...props.classList,
-          }}
-          ref={video}
-          autoplay
-          muted={shouldMute()}
-        />
-        <Show when={showPlaybackPrompt() && playbackPromptOwner === video}>
-          <button
-            type='button'
-            class={styles.playbackPrompt}
-            onClick={retryCallPlayback}
-          >
-            Continue call
-          </button>
-        </Show>
-      </>
+    <Show when={props.stream && props.stream.getTracks().length > 0}>
+      <video
+        id={props.id}
+        ref={video}
+        class={props.baseClass ?? styles.videoStream}
+        classList={{
+          [styles.local]: props.local,
+          [styles.preview]: props.preview,
+          ...props.classList,
+        }}
+        hidden={props.stream?.getVideoTracks().length === 0}
+        autoplay
+        muted={shouldMute()}
+      />
+      <Show when={showPlaybackPrompt() && playbackPromptOwner === video}>
+        <button
+          type='button'
+          class={styles.playbackPrompt}
+          onClick={retryCallPlayback}
+        >
+          Continue call
+        </button>
+      </Show>
     </Show>
   );
 }

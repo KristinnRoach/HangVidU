@@ -11,9 +11,12 @@ import {
 import VideoStream from './VideoStream';
 
 function createStreamWithVideo({ audio = true } = {}) {
+  const video = [{ kind: 'video' }];
+  const audioTracks = audio ? [{ kind: 'audio' }] : [];
   return {
-    getVideoTracks: () => [{ kind: 'video' }],
-    getAudioTracks: () => (audio ? [{ kind: 'audio' }] : []),
+    getVideoTracks: () => video,
+    getAudioTracks: () => audioTracks,
+    getTracks: () => [...video, ...audioTracks],
   };
 }
 
