@@ -53,6 +53,7 @@ vi.mock('../features/call/index.js', () => ({
 }));
 
 vi.mock('../features/presence/index.js', () => ({
+  PresenceIndicator: () => document.createElement('span'),
   watchUserPresence: mocks.watchUserPresence,
 }));
 

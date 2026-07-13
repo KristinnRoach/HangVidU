@@ -3,8 +3,8 @@ import { createStore, reconcile } from 'solid-js/store';
 import { compressImage } from '@lib/media/image-compress.js';
 import { getHangViduApiBaseUrl } from '@infra/hangvidu-api-url';
 
-import { getLoggedInUserId, getLoggedInUserToken } from '../../auth/index.js';
-import { createConversationChannel } from '../../realtime/conversation-channel.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
+import { createConversationChannel } from '@realtime';
 
 import { getLoggedInUserProfile } from '../user-profile-store.js';
 import {

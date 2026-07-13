@@ -1,6 +1,6 @@
 import { Show } from 'solid-js';
 import { useAuth } from '../solid-auth';
-import { signOutUser } from '../index.js';
+import { signOutUser } from '../auth-commands.js';
 import { useI18n } from '@shared/i18n/index.js';
 import LoginButton from './LoginButton';
 import SignInSheet from './SignInSheet';

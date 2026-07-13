@@ -1,4 +1,4 @@
-import { subscribeToUserMailbox } from '../../realtime/user-mailbox';
+import { subscribeToUserMailbox } from '@realtime';
 import type {
   MailboxEnvelope,
   MailboxInvite,

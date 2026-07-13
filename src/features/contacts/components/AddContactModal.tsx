@@ -24,7 +24,7 @@ import {
   copyInviteLink,
   shareInvite,
 } from '@shared/utils/share-invite.js';
-import { getAuthState, getLoggedInUserId } from '../../../auth/index.js';
+import { getAuthState, getLoggedInUserId } from '@auth';
 import { requestGmailSendAccess } from '@shared/utils/google/gis-tokens.js';
 import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
 import { sendContactInvite } from '../invites/send-contact-invite.js';

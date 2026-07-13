@@ -4,7 +4,7 @@ import {
   getNotificationNavigationPath,
   openApp,
   selectWindowClient,
-} from '../notification-click-handler.js';
+} from '../index.js';
 
 describe('notification click routing', () => {
   it('routes incoming call notifications to a conversation room path', () => {

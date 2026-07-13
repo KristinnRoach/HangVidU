@@ -20,6 +20,31 @@ const boundariesOverrides = boundariesConfig
     jsPlugins: ['eslint-plugin-boundaries'],
   }));
 
+const publicModuleImportPatterns = [
+  {
+    group: [
+      '@features/*/**',
+      '@auth/**',
+      '@push/**',
+      '@pwa/**',
+      '@realtime/**',
+      '@storage/contacts/**',
+      '@storage/files/**',
+      '@storage/user/**',
+      '**/features/*/**',
+      '**/auth/**',
+      '**/push/**',
+      '!./push/sw/index.js',
+      '**/pwa/**',
+      '**/realtime/**',
+      '**/storage/contacts/**',
+      '**/storage/files/**',
+      '**/storage/user/**',
+    ],
+    message: 'Import from the module index instead of an internal file.',
+  },
+];
+
 export default defineConfig(({ mode }) => {
   // Firebase Hosting is the only production target.
   const basePath = '/';
@@ -62,6 +87,7 @@ export default defineConfig(({ mode }) => {
                   },
                 ],
                 patterns: [
+                  ...publicModuleImportPatterns,
                   {
                     group: ['firebase/auth/*'],
                     message:
@@ -83,8 +109,8 @@ export default defineConfig(({ mode }) => {
           },
         },
         {
-          // Inside their own module the *-state.js files are fair game;
-          // only the firebase/auth restriction still applies here.
+          // Inside their own module the *-state.js files are fair game. Keep
+          // the public-module and Firebase restrictions from the base rule.
           files: ['src/auth/**', 'src/features/contacts/**'],
           rules: {
             'no-restricted-imports': [
@@ -98,6 +124,7 @@ export default defineConfig(({ mode }) => {
                   },
                 ],
                 patterns: [
+                  ...publicModuleImportPatterns,
                   {
                     group: ['firebase/auth/*'],
                     message:
@@ -121,6 +148,7 @@ export default defineConfig(({ mode }) => {
               'error',
               {
                 patterns: [
+                  ...publicModuleImportPatterns,
                   {
                     group: ['**/shared/i18n', '**/shared/i18n/index.js'],
                     importNames: [

@@ -1,11 +1,8 @@
 import { createSignal } from 'solid-js';
-import { getLoggedInUserId, getLoggedInUserToken } from '../../auth/index.js';
+import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
 import { getConversationsClient } from './conversations-client';
 import { getContactById, getContactLabel } from '../contacts-store.js';
-import {
-  closeUserMailbox,
-  subscribeToUserMailbox,
-} from '../../realtime/user-mailbox';
+import { closeUserMailbox, subscribeToUserMailbox } from '@realtime';
 import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
 import {
   conversationLastReadAt,

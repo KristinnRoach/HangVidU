@@ -1,7 +1,7 @@
 import { For, Show, createMemo } from 'solid-js';
 import { Spinner } from '../components/Spinner';
 import { useI18n } from '@shared/i18n';
-import { getLoggedInUserId } from '../auth/index.js';
+import { getLoggedInUserId } from '@auth';
 import {
   conversationLabel,
   conversationListSeeded,
@@ -11,7 +11,7 @@ import {
   shortName,
 } from '../stores/conversation/conversation-list-state';
 import { openConversation } from '../stores/conversation/conversation-store';
-import { PresenceIndicator } from '../features/presence/components/PresenceIndicator';
+import { PresenceIndicator } from '@features/presence';
 import { StartCallButton } from '@features/call';
 
 type ConversationRow = {

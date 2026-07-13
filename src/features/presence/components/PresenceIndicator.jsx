@@ -1,5 +1,5 @@
 import { createEffect, createSignal, onCleanup } from 'solid-js';
-import { watchUserPresence } from '../index.js';
+import { observePresence as watchUserPresence } from '../presence-rtdb.js';
 
 /**
  * Standalone presence dot. Given a userId, it watches that user's presence and

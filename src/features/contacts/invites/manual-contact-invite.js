@@ -3,7 +3,7 @@ import {
   hydrateContacts,
 } from '../../../stores/contacts-store.js';
 import { lookupRegisteredUserByEmail } from '../../../stores/user-profile-store.js';
-import { getLoggedInUserId } from '../../../auth/index.js';
+import { getLoggedInUserId } from '@auth';
 import { sendContactInvite } from './send-contact-invite.js';
 
 /**

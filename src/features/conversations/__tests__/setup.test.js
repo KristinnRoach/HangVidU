@@ -37,6 +37,9 @@ vi.mock('../../../stores/conversation/conversation-store', () => ({
   resetConversationStore: mocks.resetConversationStore,
   recordSystemMessage: mocks.recordSystemMessage,
 }));
+vi.mock('../components/ConversationPanel.js', () => ({
+  ConversationPanel: () => null,
+}));
 
 describe('conversations setup', () => {
   beforeEach(() => {

@@ -1,7 +1,9 @@
-import { getLoggedInUserId } from '../../auth/index.js';
+import { getLoggedInUserId } from '@auth';
 import { handleCommand, subscribe } from '@shared/events/index.js';
 import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setup.js';
 import { writeOnline, writeOffline, observePresence } from './presence-rtdb.js';
+
+export { PresenceIndicator } from './components/PresenceIndicator.jsx';
 
 let initializedForUserId = null;
 let lastSeenUserId = null;

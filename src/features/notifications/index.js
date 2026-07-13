@@ -19,6 +19,7 @@ export { showUpdateNotification } from './components/update-notification.js';
 export { createInviteNotification } from './components/invite-notification.js';
 export { createMissedCallNotification } from './components/missed-call-notification.js';
 export { createReferralNotification } from './components/referral-notification.js';
+export { NotificationsToggle } from './components/NotificationsToggle.jsx';
 
 /**
  * Registers app-level command handlers that project notifications into UI.

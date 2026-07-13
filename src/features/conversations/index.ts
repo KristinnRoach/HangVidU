@@ -9,6 +9,8 @@ import { recordSystemMessage } from '../../stores/conversation/conversation-stor
 import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setup.js';
 import type { SystemMessageType } from '../../../shared/conversation-channel/protocol';
 
+export { ConversationPanel } from './components/ConversationPanel.js';
+
 /**
  * Setup contract:
  * - idempotent: returns existing cleanup when already ready

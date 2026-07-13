@@ -10,7 +10,7 @@ import {
   getAuthProviderProfileSeed,
   getAuthState,
   getLoggedInUserToken,
-} from '@auth/index.js';
+} from '@auth';
 import { rtdb } from '@infra/firebase-rtdb.js';
 import { getHangViduApiBaseUrl } from '@infra/hangvidu-api-url.js';
 import { hashEmail } from '@lib/utils/email-hash.js';
@@ -19,7 +19,7 @@ import {
   createUserProfileRepository,
   createUserProfileD1Adapter,
   createUserDiscovery,
-} from '@storage/user/index.js';
+} from '@storage/user';
 import { createWorkerRequest } from '@storage/worker-request.js';
 
 type AuthUser = {

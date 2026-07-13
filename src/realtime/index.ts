@@ -5,6 +5,13 @@
 // module consumers import from here, not from subpaths.
 
 export { createRoomSignaling } from './signaling/index.js';
+export { createConversationChannel } from './conversation-channel.js';
+export { closeUserMailbox, subscribeToUserMailbox } from './user-mailbox.js';
+export {
+  isConversationServerEvent,
+  type ConversationServerEvent,
+  type WireMessage,
+} from './conversation-protocol.js';
 
 export type {
   PeerId,

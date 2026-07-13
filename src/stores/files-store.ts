@@ -1,9 +1,6 @@
-import { getLoggedInUserToken } from '@auth/index.js';
+import { getLoggedInUserToken } from '@auth';
 import { getFirebaseAppCheckToken } from '@infra/firebase.js';
-import {
-  createFilesClient,
-  type R2StorageDescriptor,
-} from '@storage/files/index.js';
+import { createFilesClient, type R2StorageDescriptor } from '@storage/files';
 import type { ConversationId } from './conversation/types.js';
 import { getHangViduApiBaseUrl } from '@infra/hangvidu-api-url.js';
 

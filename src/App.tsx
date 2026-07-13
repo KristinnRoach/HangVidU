@@ -1,6 +1,6 @@
-import { AuthProvider } from './auth/solid-auth';
+import { AuthProvider } from '@auth';
 import MainContent from './app/MainContent';
-import { CallHandshakeProvider } from './features/call/index.js';
+import { CallHandshakeProvider } from '@features/call';
 import { P2PProvider } from '@shared/p2p-context.js';
 import { setDevDebugEnabled } from '@shared/utils/dev/dev-utils.js';
 import { setLogger } from '@kidlib/p2p';

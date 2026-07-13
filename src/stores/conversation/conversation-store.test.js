@@ -19,9 +19,12 @@ const mocks = vi.hoisted(() => ({
   compressImage: vi.fn(),
 }));
 
-vi.mock('../../auth/index.js', () => ({
+vi.mock('@auth', () => ({
   getLoggedInUserId: mocks.getLoggedInUserId,
   getLoggedInUserToken: mocks.getLoggedInUserToken,
+}));
+vi.mock('@realtime', () => ({
+  createConversationChannel: vi.fn(),
 }));
 vi.mock('../user-profile-store', () => ({
   getLoggedInUserProfile: mocks.getLoggedInUserProfile,
