@@ -43,8 +43,7 @@ There is **no `setup/` layer**. App startup lives in:
 ## Module layout
 
 - Every module has one public index: `src/<module>/index.{js,ts}`.
-- Imports from outside a module go through that index. Internal files use
-  relative imports and do not import their own index.
+- Imports from outside a module go through that index.
 - This is initially enforced for `features/<name>`, `auth`, `push`, `pwa`,
   `realtime`, and the `storage/contacts`, `storage/files`, and `storage/user`
   modules. `push/sw` remains a separate runtime entry.
