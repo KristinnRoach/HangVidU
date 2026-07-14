@@ -1,10 +1,13 @@
 import { For, Show } from 'solid-js';
-import VideoStream from '../../../components/media/VideoStream';
 import { useP2PContext } from '@shared/p2p-context.js';
+import { ParticipantMedia } from './ParticipantMedia';
 import styles from './MemberStreams.module.css';
 
 export function MemberStreams() {
   const p2p = useP2PContext();
+  const remoteCameraEnabled = (memberId: string) =>
+    p2p.memberPresence().find((member) => member.memberId === memberId)?.data
+      ?.cameraOn !== false;
 
   return (
     <div
@@ -15,15 +18,18 @@ export function MemberStreams() {
       }}
     >
       <Show when={p2p.localStream()}>
-        {(stream) => (
-          <VideoStream stream={stream()} local={true} preview={true} />
+        {(_) => (
+          <ParticipantMedia
+            stream={p2p.localStream()!}
+            variant='self-preview'
+          />
         )}
       </Show>
       <For each={p2p.remoteMemberStreams()}>
         {(remote) => (
-          <VideoStream
+          <ParticipantMedia
             stream={remote.stream}
-            classList={{ [styles.remote]: true }}
+            videoEnabled={remoteCameraEnabled(remote.memberId)}
           />
         )}
       </For>

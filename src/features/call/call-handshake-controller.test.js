@@ -55,6 +55,22 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
+function createMediaTrack(kind) {
+  return { kind, stop: vi.fn() };
+}
+
+function createMediaStream({ audio = true, video = false } = {}) {
+  const tracks = [
+    ...(audio ? [createMediaTrack('audio')] : []),
+    ...(video ? [createMediaTrack('video')] : []),
+  ];
+  return {
+    getTracks: () => tracks,
+    getAudioTracks: () => tracks.filter((track) => track.kind === 'audio'),
+    getVideoTracks: () => tracks.filter((track) => track.kind === 'video'),
+  };
+}
+
 async function flushPromises() {
   await Promise.resolve();
   await Promise.resolve();
@@ -78,9 +94,7 @@ describe('CallHandshakeController', () => {
       },
       configurable: true,
     });
-    mocks.getUserMedia.mockResolvedValue({
-      getTracks: () => [{ stop: vi.fn() }],
-    });
+    mocks.getUserMedia.mockResolvedValue(createMediaStream());
     const service = {
       onIncomingCall: mocks.onIncomingCall,
       respondToIncomingCallInvite: mocks.respondToIncomingCallInvite,
@@ -162,6 +176,8 @@ describe('CallHandshakeController', () => {
 
     controller.acceptIncoming();
 
+    await flushPromises();
+
     expect(p2p.join).toHaveBeenCalledWith(
       expect.objectContaining({
         roomId: 'room-1',
@@ -180,6 +196,61 @@ describe('CallHandshakeController', () => {
       callerId: 'caller-id',
       responseType: 'accepted',
     });
+  });
+
+  it('reserves a video slot when joining an audio-only call', async () => {
+    const stream = createMediaStream({ audio: true, video: false });
+    mocks.getUserMedia.mockResolvedValue(stream);
+    const p2p = {
+      join: vi.fn(async () => ({
+        roomId: 'room-1',
+        members: ['callee-id'],
+      })),
+      close: vi.fn(),
+      state: vi.fn(() => 'idle'),
+      room: vi.fn(),
+    };
+    const controller = new CallHandshakeController({
+      p2p,
+      createSignaling: vi.fn(),
+      getCallerName: () => 'Callee',
+      onStateChange: vi.fn(),
+      onCalleeBusy: vi.fn(),
+    });
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        audioOnly: true,
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+
+    controller.acceptIncoming();
+    await flushPromises();
+
+    expect(mocks.getUserMedia).toHaveBeenCalledWith(
+      expect.objectContaining({ video: false }),
+    );
+    expect(p2p.join).toHaveBeenCalledWith(
+      expect.objectContaining({
+        localTrackSlots: [
+          {
+            id: 'microphone',
+            kind: 'audio',
+            track: stream.getAudioTracks()[0],
+          },
+          { id: 'primary-video', kind: 'video', track: null },
+        ],
+        presenceData: { cameraOn: false },
+      }),
+    );
+    const joinOptions = p2p.join.mock.calls[0][0];
+    await expect(joinOptions.getLocalStream()).resolves.toBe(stream);
   });
 
   it('closes a notification-opened call when the remote caller leaves while the accept response is pending', async () => {
@@ -227,6 +298,8 @@ describe('CallHandshakeController', () => {
 
   it('does not notify accepted when joining the room fails', async () => {
     const joinError = new Error('camera blocked');
+    const stream = createMediaStream({ audio: true, video: true });
+    mocks.getUserMedia.mockResolvedValue(stream);
     const p2p = {
       join: vi.fn(() => Promise.resolve(undefined)),
       close: vi.fn(),
@@ -258,8 +331,11 @@ describe('CallHandshakeController', () => {
     await flushPromises();
 
     expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
-    expect(p2p.close).toHaveBeenCalled();
+    await vi.waitFor(() => expect(p2p.close).toHaveBeenCalled());
     expect(p2p.error).toHaveBeenCalledTimes(1);
+    stream
+      .getTracks()
+      .forEach((track) => expect(track.stop).toHaveBeenCalled());
   });
 
   it('listens for a response before sending the invite', async () => {

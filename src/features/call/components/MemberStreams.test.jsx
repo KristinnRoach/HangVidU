@@ -1,0 +1,73 @@
+import { cleanup, render, waitFor } from '@solidjs/testing-library';
+import { createSignal } from 'solid-js';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+
+const mocks = vi.hoisted(() => ({ p2p: undefined }));
+
+vi.mock('@shared/p2p-context.js', () => ({
+  useP2PContext: () => mocks.p2p,
+}));
+
+const { MemberStreams } = await import('./MemberStreams');
+
+class FakeTrack extends EventTarget {
+  constructor(kind) {
+    super();
+    this.kind = kind;
+    this.enabled = true;
+    this.muted = false;
+    this.readyState = 'live';
+  }
+}
+
+class FakeStream extends EventTarget {
+  constructor(tracks) {
+    super();
+    this.tracks = tracks;
+  }
+
+  getTracks() {
+    return this.tracks;
+  }
+
+  getAudioTracks() {
+    return this.tracks.filter((track) => track.kind === 'audio');
+  }
+
+  getVideoTracks() {
+    return this.tracks.filter((track) => track.kind === 'video');
+  }
+}
+
+describe('MemberStreams', () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('reveals the self preview when the same local stream gains video', async () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    const stream = new FakeStream([new FakeTrack('audio')]);
+    const [localStream, setLocalStream] = createSignal(stream, {
+      equals: false,
+    });
+    mocks.p2p = {
+      localStream,
+      memberCount: () => 2,
+      memberPresence: () => [],
+      remoteMemberStreams: () => [],
+    };
+    const { container } = render(() => <MemberStreams />);
+
+    stream.tracks.push(new FakeTrack('video'));
+    setLocalStream(stream);
+
+    await waitFor(() => {
+      expect(
+        container
+          .querySelector('[data-variant="self-preview"]')
+          ?.getAttribute('data-media-state'),
+      ).toBe('video');
+    });
+  });
+});
