@@ -122,8 +122,7 @@ export function CallLobby() {
         getLocalStream: () =>
           navigator.mediaDevices.getUserMedia({
             video: getVideoConstraints(),
-            // Mirrors call-handshake-controller: no mic in dev to avoid echo.
-            audio: import.meta.env.DEV ? false : getAudioConstraints(),
+            audio: getAudioConstraints(),
           }),
       });
       if (!room) throw p2p.error() ?? new Error('Room join returned no room');
