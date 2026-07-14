@@ -7,12 +7,29 @@ import { getVideoConstraints } from './media-constraints.js';
 export const MICROPHONE_SLOT_ID = 'microphone';
 export const PRIMARY_VIDEO_SLOT_ID = 'primary-video';
 
+const cameraKey = (device: MediaDeviceInfo) =>
+  device.groupId || device.deviceId;
+
+function uniqueCameras(devices: MediaDeviceInfo[]) {
+  const cameras = devices.filter((device) => device.kind === 'videoinput');
+  return cameras.filter(
+    (camera, index) =>
+      cameras.findIndex((other) => cameraKey(other) === cameraKey(camera)) ===
+      index,
+  );
+}
+
 export type CallMedia = {
   micOn: Accessor<boolean>;
   cameraOn: Accessor<boolean>;
   cameraPending: Accessor<boolean>;
+  cameraSwitchAvailable: Accessor<boolean>;
+  screenShareAvailable: Accessor<boolean>;
+  screenSharing: Accessor<boolean>;
   setMicEnabled: (enabled: boolean) => void;
   setCameraEnabled: (enabled: boolean) => Promise<void>;
+  switchCamera: () => Promise<void>;
+  toggleScreenShare: () => Promise<void>;
 };
 
 export function createCallLocalTrackSlots(
@@ -38,6 +55,35 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const [micOn, setMicOn] = createSignal(false);
   const [cameraOn, setCameraOn] = createSignal(false);
   const [cameraPending, setCameraPending] = createSignal(false);
+  const [cameraSwitchAvailable, setCameraSwitchAvailable] = createSignal(false);
+  const [screenSharing, setScreenSharing] = createSignal(false);
+  const screenShareAvailable = () =>
+    typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+  let screenTrack: MediaStreamTrack | undefined;
+  let cameraBeforeScreenShare: MediaStreamTrack | null = null;
+  let screenStopRequested = false;
+
+  async function refreshCameraSwitchAvailability(log = false) {
+    const devices = await navigator.mediaDevices
+      ?.enumerateDevices?.()
+      .catch(() => []);
+    const videoDevices =
+      devices?.filter((device) => device.kind === 'videoinput') ?? [];
+    const distinctCameras = uniqueCameras(videoDevices).length;
+    const available = distinctCameras > 1;
+    setCameraSwitchAvailable(available);
+    if (log) {
+      console.info('[CallMedia] Media devices changed', {
+        videoInputs: videoDevices.length,
+        distinctCameras,
+        cameraSwitchAvailable: available,
+      });
+    }
+  }
+
+  const onDeviceChange = () => void refreshCameraSwitchAvailability(true);
+  void refreshCameraSwitchAvailability();
+  navigator.mediaDevices?.addEventListener?.('devicechange', onDeviceChange);
 
   const syncTrackState = () => {
     const stream = localStream();
@@ -80,6 +126,11 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   });
 
   onCleanup(() => {
+    navigator.mediaDevices?.removeEventListener?.(
+      'devicechange',
+      onDeviceChange,
+    );
+    screenTrack?.stop();
     ownedCameraTracks.forEach((track) => track.stop());
     ownedCameraTracks.clear();
   });
@@ -123,7 +174,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   }
 
   async function setCameraEnabled(enabled: boolean) {
-    if (cameraPending()) return;
+    if (cameraPending() || screenSharing()) return;
     const room = p2p.room();
     if (!room) throw new Error('Cannot change camera without an active room');
 
@@ -178,6 +229,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
         .filter((track) => track !== cameraTrack)
         .forEach((track) => track.stop());
 
+      void refreshCameraSwitchAvailability();
+
       let replacementError: unknown;
       try {
         await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, cameraTrack);
@@ -205,11 +258,199 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     }
   }
 
+  async function switchCamera() {
+    if (cameraPending() || screenSharing()) return;
+    const room = p2p.room();
+    if (!room) throw new Error('Cannot switch camera without an active room');
+
+    const currentTrack = localStream()
+      ?.getVideoTracks()
+      .find((track) => track.readyState === 'live');
+    if (!currentTrack) throw new Error('Cannot switch an inactive camera');
+
+    setCameraPending(true);
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = uniqueCameras(devices);
+      const currentDeviceId = currentTrack.getSettings?.().deviceId;
+      const currentDevice = devices.find(
+        (device) => device.deviceId === currentDeviceId,
+      );
+      const currentCameraKey = currentDevice && cameraKey(currentDevice);
+      const currentIndex = cameras.findIndex(
+        (camera) => cameraKey(camera) === currentCameraKey,
+      );
+      const nextCamera = cameras[(currentIndex + 1) % cameras.length];
+      if (
+        !nextCamera ||
+        (currentCameraKey && cameraKey(nextCamera) === currentCameraKey)
+      ) {
+        throw new Error('No alternate camera is available');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          ...getVideoConstraints(),
+          deviceId: { exact: nextCamera.deviceId },
+        },
+      });
+      const nextTrack = stream.getVideoTracks()[0];
+      if (!nextTrack) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new Error('Camera switch returned no video track');
+      }
+      stream
+        .getTracks()
+        .filter((track) => track !== nextTrack)
+        .forEach((track) => track.stop());
+      nextTrack.enabled = currentTrack.enabled;
+
+      try {
+        await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, nextTrack);
+      } catch (error) {
+        nextTrack.stop();
+        throw error;
+      }
+      ownedCameraTracks.add(nextTrack);
+      currentTrack.stop();
+      ownedCameraTracks.delete(currentTrack);
+      syncTrackState();
+    } finally {
+      setCameraPending(false);
+    }
+  }
+
+  async function stopScreenShare() {
+    if (!screenSharing()) return;
+    if (cameraPending()) {
+      screenStopRequested = true;
+      return;
+    }
+    const room = p2p.room();
+    if (!room) {
+      screenTrack?.stop();
+      screenTrack = undefined;
+      cameraBeforeScreenShare = null;
+      setScreenSharing(false);
+      syncTrackState();
+      return;
+    }
+
+    setCameraPending(true);
+    const displayTrack = screenTrack;
+    const restoreTrack =
+      cameraBeforeScreenShare?.readyState === 'live'
+        ? cameraBeforeScreenShare
+        : null;
+    try {
+      let replacementError: unknown;
+      try {
+        await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, restoreTrack);
+      } catch (error) {
+        replacementError = error;
+      }
+      await finishCommittedCameraChange(
+        room,
+        restoreTrack !== null,
+        replacementError,
+      );
+
+      screenTrack = undefined;
+      cameraBeforeScreenShare = null;
+      setScreenSharing(false);
+      displayTrack?.stop();
+    } finally {
+      syncTrackState();
+      setCameraPending(false);
+      if (screenStopRequested) {
+        screenStopRequested = false;
+        void stopScreenShare().catch((error) => {
+          console.error('[CallMedia] Failed to stop screen sharing', error);
+        });
+      }
+    }
+  }
+
+  async function toggleScreenShare() {
+    if (screenSharing()) {
+      await stopScreenShare();
+      return;
+    }
+    if (cameraPending()) return;
+    const room = p2p.room();
+    if (!room) throw new Error('Cannot share screen without an active room');
+
+    setCameraPending(true);
+    cameraBeforeScreenShare =
+      localStream()
+        ?.getVideoTracks()
+        .find((track) => track.readyState === 'live') ?? null;
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+      });
+      const displayTrack = stream.getVideoTracks()[0];
+      if (!displayTrack) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw new Error('Screen capture returned no video track');
+      }
+      stream
+        .getTracks()
+        .filter((track) => track !== displayTrack)
+        .forEach((track) => track.stop());
+
+      let replacementError: unknown;
+      try {
+        await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, displayTrack);
+      } catch (error) {
+        replacementError = error;
+      }
+      if (!room.localStream?.getTracks().includes(displayTrack)) {
+        displayTrack.stop();
+        if (replacementError) throw replacementError;
+        throw new Error('Screen-share track was not published');
+      }
+
+      screenTrack = displayTrack;
+      setScreenSharing(true);
+      displayTrack.addEventListener(
+        'ended',
+        () =>
+          void stopScreenShare().catch((error) => {
+            console.error('[CallMedia] Failed to stop screen sharing', error);
+          }),
+        { once: true },
+      );
+      await finishCommittedCameraChange(room, true, replacementError);
+      syncTrackState();
+    } catch (error) {
+      if (!room.localStream?.getTracks().includes(screenTrack!)) {
+        screenTrack?.stop();
+        screenTrack = undefined;
+        cameraBeforeScreenShare = null;
+      }
+      throw error;
+    } finally {
+      setCameraPending(false);
+      if (screenStopRequested) {
+        screenStopRequested = false;
+        void stopScreenShare().catch((error) => {
+          console.error('[CallMedia] Failed to stop screen sharing', error);
+        });
+      }
+    }
+  }
+
   return {
     micOn,
     cameraOn,
     cameraPending,
+    cameraSwitchAvailable,
+    screenShareAvailable,
+    screenSharing,
     setMicEnabled,
     setCameraEnabled,
+    switchCamera,
+    toggleScreenShare,
   };
 }

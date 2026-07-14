@@ -3,6 +3,9 @@ import {
   MicOff,
   Phone,
   PhoneOff,
+  ScreenShare,
+  ScreenShareOff,
+  SwitchCamera,
   Video,
   VideoOff,
   Volume2,
@@ -16,7 +19,7 @@ import { createCallMedia } from '../call-media';
 
 import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
-import { onMount } from 'solid-js';
+import { onMount, Show } from 'solid-js';
 
 type StartCallButtonProps = {
   calleeId: string;
@@ -75,6 +78,18 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
     });
   }
 
+  function switchCamera() {
+    void media.switchCamera().catch((error) => {
+      console.error('[CallMedia] Failed to switch camera', error);
+    });
+  }
+
+  function toggleScreenShare() {
+    void media.toggleScreenShare().catch((error) => {
+      console.error('[CallMedia] Failed to change screen-share state', error);
+    });
+  }
+
   onMount(() => {
     if (import.meta.env.DEV) toggleMic(); // Mute mic by default in dev to avoid feedback
   });
@@ -96,13 +111,40 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
       <button
         type='button'
         onClick={toggleCam}
-        disabled={media.cameraPending()}
+        disabled={media.cameraPending() || media.screenSharing()}
         classList={{ [styles.off]: !media.cameraOn() }}
         title={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
         aria-label={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
       >
         {media.cameraOn() ? <Video /> : <VideoOff />}
       </button>
+      <Show when={media.cameraSwitchAvailable()}>
+        <button
+          type='button'
+          onClick={switchCamera}
+          disabled={
+            media.cameraPending() || media.screenSharing() || !media.cameraOn()
+          }
+          title='Switch camera'
+          aria-label='Switch camera'
+        >
+          <SwitchCamera />
+        </button>
+      </Show>
+      <Show when={media.screenShareAvailable()}>
+        <button
+          type='button'
+          onClick={toggleScreenShare}
+          disabled={media.cameraPending()}
+          classList={{ [styles.off]: !media.screenSharing() }}
+          title={media.screenSharing() ? 'Stop sharing screen' : 'Share screen'}
+          aria-label={
+            media.screenSharing() ? 'Stop sharing screen' : 'Share screen'
+          }
+        >
+          {media.screenSharing() ? <ScreenShareOff /> : <ScreenShare />}
+        </button>
+      </Show>
       <button
         type='button'
         onClick={() => props.onRemoteAudioMutedChange(!props.remoteAudioMuted)}

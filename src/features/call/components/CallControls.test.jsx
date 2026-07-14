@@ -9,8 +9,13 @@ const mocks = vi.hoisted(() => ({
     micOn: () => true,
     cameraOn: () => true,
     cameraPending: () => false,
+    cameraSwitchAvailable: () => false,
+    screenShareAvailable: () => false,
+    screenSharing: () => false,
     setMicEnabled: vi.fn(),
     setCameraEnabled: vi.fn(async () => {}),
+    switchCamera: vi.fn(async () => {}),
+    toggleScreenShare: vi.fn(async () => {}),
   },
 }));
 
