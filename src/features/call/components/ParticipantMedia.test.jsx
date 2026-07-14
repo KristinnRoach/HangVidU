@@ -113,4 +113,33 @@ describe('ParticipantMedia', () => {
     expect(surface?.getAttribute('data-media-state')).toBe('audio');
     expect(video.hidden).toBe(true);
   });
+
+  it('shows the continue-call prompt only for autoplay-gesture rejections', async () => {
+    HTMLMediaElement.prototype.play.mockRejectedValue(
+      Object.assign(new Error('gesture required'), {
+        name: 'NotAllowedError',
+      }),
+    );
+    const stream = new FakeStream([new FakeTrack('video')]);
+    const { container } = render(() => <ParticipantMedia stream={stream} />);
+
+    await waitFor(() => {
+      expect(container.querySelector('button')?.textContent).toBe(
+        'Continue call',
+      );
+    });
+  });
+
+  it('ignores transient play() rejections like AbortError', async () => {
+    HTMLMediaElement.prototype.play.mockRejectedValue(
+      Object.assign(new Error('interrupted by a new load request'), {
+        name: 'AbortError',
+      }),
+    );
+    const stream = new FakeStream([new FakeTrack('video')]);
+    const { container } = render(() => <ParticipantMedia stream={stream} />);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(container.querySelector('button')).toBeNull();
+  });
 });

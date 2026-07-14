@@ -12,20 +12,11 @@ type ParticipantMediaProps = {
 
 type MediaState = 'audio' | 'video' | 'empty';
 
-const [showPlaybackPrompt, setShowPlaybackPrompt] = createSignal(false);
-let playbackPromptOwner: HTMLVideoElement | null = null;
-
-function requestPlaybackPrompt(video: HTMLVideoElement) {
-  if (!playbackPromptOwner) playbackPromptOwner = video;
-  setShowPlaybackPrompt(true);
-}
-
-function retryCallPlayback() {
-  setShowPlaybackPrompt(false);
-  playbackPromptOwner = null;
-  document
-    .querySelectorAll<HTMLVideoElement>('video')
-    .forEach((video) => video.play().catch(() => {}));
+// Only NotAllowedError means playback needs a user gesture; other
+// rejections (e.g. AbortError from re-attach/pause races) are transient
+// and must not surface the prompt.
+function isAutoplayBlockedError(error: unknown): boolean {
+  return (error as { name?: string } | undefined)?.name === 'NotAllowedError';
 }
 
 function getMediaState(stream: MediaStream, videoEnabled = true): MediaState {
@@ -61,7 +52,6 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
           message: error?.message,
         });
       }
-      requestPlaybackPrompt(video);
     },
   });
 
@@ -123,10 +113,6 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     video.addEventListener('pause', replay);
 
     onCleanup(() => {
-      if (playbackPromptOwner === video) {
-        playbackPromptOwner = null;
-        setShowPlaybackPrompt(false);
-      }
       playback.detach();
       video.removeEventListener('loadedmetadata', replay);
       video.removeEventListener('canplay', replay);
@@ -154,11 +140,16 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
         autoplay
         muted={muted()}
       />
-      <Show when={showPlaybackPrompt() && playbackPromptOwner === video}>
+      <Show
+        when={
+          playback.playbackBlocked() &&
+          isAutoplayBlockedError(playback.playbackError())
+        }
+      >
         <button
           type='button'
           class={styles.playbackPrompt}
-          onClick={retryCallPlayback}
+          onClick={() => void playback.resumePlayback()}
         >
           Continue call
         </button>
