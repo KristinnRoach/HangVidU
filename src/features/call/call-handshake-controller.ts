@@ -423,7 +423,7 @@ export class CallHandshakeController {
   private getCallLocalStream(audioOnly: boolean): Promise<MediaStream> {
     return navigator.mediaDevices.getUserMedia({
       video: audioOnly ? false : getVideoConstraints(),
-      audio: import.meta.env.DEV && !audioOnly ? false : getAudioConstraints(),
+      audio: getAudioConstraints(),
     });
   }
 

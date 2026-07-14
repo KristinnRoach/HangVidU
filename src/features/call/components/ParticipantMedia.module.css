@@ -8,7 +8,8 @@
 }
 
 .media,
-.placeholder {
+.placeholder,
+.audioOnly {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -20,7 +21,18 @@
   object-position: center center;
 }
 
+.audioOnly {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: lime;
+}
+
 .surface[data-media-state='video'] .placeholder {
+  display: none;
+}
+
+.surface:not([data-media-state='audio']) .audioOnly {
   display: none;
 }
 

@@ -2,6 +2,7 @@ import { createEffect, createSignal, onCleanup, Show } from 'solid-js';
 import { createMediaPlayback } from '@kidlib/p2p/solid';
 
 import styles from './ParticipantMedia.module.css';
+import { Phone } from 'lucide-solid';
 
 type ParticipantMediaProps = {
   stream: MediaStream;
@@ -141,6 +142,11 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       data-variant={variant()}
     >
       <div class={styles.placeholder} aria-hidden='true' />
+
+      <div class={styles.audioOnly} aria-hidden='true'>
+        <Phone size={variant() === 'self-preview' ? 32 : 64} />
+      </div>
+
       <video
         ref={video}
         class={styles.media}

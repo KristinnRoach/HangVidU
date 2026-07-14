@@ -7,6 +7,7 @@ import { createCallMedia } from '../call-media';
 
 import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
+import { onMount } from 'solid-js';
 
 type StartCallButtonProps = {
   calleeId: string;
@@ -59,6 +60,10 @@ export function ActiveCallControls() {
       console.error('[CallMedia] Failed to change camera state', error);
     });
   }
+
+  onMount(() => {
+    if (import.meta.env.DEV) toggleMic(); // Mute mic by default in dev to avoid feedback
+  });
 
   return (
     <div
