@@ -61,6 +61,7 @@ describe('call media', () => {
       configurable: true,
       value: {
         mediaDevices: {
+          enumerateDevices: vi.fn(async () => []),
           getSupportedConstraints: () => ({}),
           getUserMedia,
         },
@@ -88,7 +89,27 @@ describe('call media', () => {
     ]);
   });
 
-  it('acquires and publishes video for an audio-only call', async () => {
+  it('does not offer camera switching for duplicate entries from one camera', async () => {
+    navigator.mediaDevices.enumerateDevices = vi.fn(async () => [
+      { kind: 'videoinput', deviceId: 'default', groupId: 'camera-1' },
+      { kind: 'videoinput', deviceId: 'camera-1', groupId: 'camera-1' },
+    ]);
+    const p2p = { localStream: () => undefined, room: () => undefined };
+    let media;
+    let dispose;
+    createRoot((rootDispose) => {
+      dispose = rootDispose;
+      media = createCallMedia(p2p);
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(media.cameraSwitchAvailable()).toBe(false);
+    dispose();
+  });
+
+  it('acquires, publishes, and switches video for an audio-only call', async () => {
     const microphone = createTrack('audio');
     const camera = createTrack('video');
     const localTracks = [microphone];
@@ -128,6 +149,52 @@ describe('call media', () => {
       );
       expect(media.cameraOn()).toBe(true);
       expect(room.setPresenceData).toHaveBeenCalledWith({ cameraOn: true });
+
+      const backCamera = createTrack('video');
+      camera.getSettings = () => ({ deviceId: 'facetime-camera' });
+      navigator.mediaDevices.enumerateDevices = vi.fn(async () => [
+        {
+          kind: 'videoinput',
+          deviceId: 'facetime-camera',
+          groupId: 'facetime-group',
+        },
+        {
+          kind: 'videoinput',
+          deviceId: 'iphone-camera',
+          groupId: 'iphone-group',
+        },
+      ]);
+      getUserMedia.mockResolvedValue(createStream([backCamera]));
+
+      await media.switchCamera();
+
+      expect(getUserMedia).toHaveBeenLastCalledWith({
+        video: expect.objectContaining({
+          deviceId: { exact: 'iphone-camera' },
+        }),
+      });
+      expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+        PRIMARY_VIDEO_SLOT_ID,
+        backCamera,
+      );
+      expect(camera.stop).toHaveBeenCalledOnce();
+
+      const frontCamera = createTrack('video');
+      backCamera.getSettings = () => ({ deviceId: 'iphone-camera' });
+      getUserMedia.mockResolvedValue(createStream([frontCamera]));
+
+      await media.switchCamera();
+
+      expect(getUserMedia).toHaveBeenLastCalledWith({
+        video: expect.objectContaining({
+          deviceId: { exact: 'facetime-camera' },
+        }),
+      });
+      expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+        PRIMARY_VIDEO_SLOT_ID,
+        frontCamera,
+      );
+      expect(backCamera.stop).toHaveBeenCalledOnce();
       dispose();
     });
   });

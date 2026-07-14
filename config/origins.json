@@ -3,11 +3,8 @@
     "https://hangvidu.com",
     "https://www.hangvidu.com",
     "https://vidu-aae11.web.app",
-    "https://vidu-aae11.firebaseapp.com"
-  ],
-  "development": [
-    "https://localhost:5173",
-    "http://localhost:5173",
+    "https://vidu-aae11.firebaseapp.com",
     "https://dev.hangvidu.com"
-  ]
+  ],
+  "development": ["https://localhost:5173", "http://localhost:5173"]
 }
