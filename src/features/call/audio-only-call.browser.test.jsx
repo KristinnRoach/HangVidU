@@ -195,11 +195,21 @@ describe('audio-only call over reserved slots', () => {
       `remote audio receiving RTP (unmuted) on both sides; log:\n${log.join('\n')}`,
     ).toBe(true);
 
+    // The regression condition needs the reserved camera slot's muted video
+    // track alongside the audio track — require it, don't pass on audio alone.
+    const isRegressionStream = (stream) =>
+      stream.getAudioTracks().length > 0 &&
+      stream
+        .getVideoTracks()
+        .some((track) => track.readyState !== 'ended' && track.muted);
+    expect(
+      await waitFor(() => b.remoteStreams.some(isRegressionStream), 5000),
+      `reserved muted video slot surfaced; log:\n${log.join('\n')}`,
+    ).toBe(true);
+
     // Full UI path: remote audio-only stream rendered through ParticipantMedia
     // (camera-off presence → videoEnabled false) must still audibly play.
-    const remoteStream = b.remoteStreams.find(
-      (s) => s.getAudioTracks().length > 0,
-    );
+    const remoteStream = b.remoteStreams.find(isRegressionStream);
     const { container, unmount } = render(() => (
       <ParticipantMedia stream={remoteStream} videoEnabled={false} />
     ));

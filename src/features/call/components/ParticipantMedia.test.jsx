@@ -145,7 +145,12 @@ describe('ParticipantMedia', () => {
     const stream = new FakeStream([new FakeTrack('video')]);
     const { container } = render(() => <ParticipantMedia stream={stream} />);
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await waitFor(() =>
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalled(),
+    );
+    // Flush the rejection handling chain before the negative assertion.
+    await Promise.resolve();
+    await Promise.resolve();
     expect(container.querySelector('button')).toBeNull();
   });
 });
