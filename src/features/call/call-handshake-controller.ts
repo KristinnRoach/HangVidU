@@ -12,6 +12,7 @@ import {
   getAudioConstraints,
   getVideoConstraints,
 } from './media-constraints.js';
+import { createCallLocalTrackSlots } from './call-media.js';
 import type {
   CallHandshakeState,
   PendingOutgoingCall,
@@ -377,21 +378,39 @@ export class CallHandshakeController {
     getLocalStream?: () => Promise<MediaStream>,
     { memberCapacity = 2, autoExitOnEmpty = true }: EnterRoomOptions = {},
   ) {
-    const room = await this.p2p.join({
-      roomId,
-      peerId: localUserId,
-      createSignaling: this.createSignaling,
-      getLocalStream:
-        getLocalStream ?? (() => this.getCallLocalStream(audioOnly)),
-      memberCapacity,
-      dataChannel: true,
-      onAlone: (detail) => {
-        if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
-        if (autoExitOnEmpty) this.exitActiveRoom();
-      },
-    });
-    if (!room)
-      throw this.p2p.error() ?? new Error('Room join returned no room');
+    const localStream = await (
+      getLocalStream ?? (() => this.getCallLocalStream(audioOnly))
+    )();
+    let room;
+    try {
+      room = await this.p2p.join({
+        roomId,
+        peerId: localUserId,
+        createSignaling: this.createSignaling,
+        // Keep room ownership/cleanup while making the acquired tracks available
+        // when the reserved publication slots are declared before negotiation.
+        getLocalStream: () => Promise.resolve(localStream),
+        localTrackSlots: createCallLocalTrackSlots(localStream),
+        presenceData: {
+          cameraOn: localStream
+            .getVideoTracks()
+            .some((track) => track.readyState === 'live' && track.enabled),
+        },
+        memberCapacity,
+        dataChannel: true,
+        onAlone: (detail) => {
+          if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
+          if (autoExitOnEmpty) this.exitActiveRoom();
+        },
+      });
+      if (!room)
+        throw this.p2p.error() ?? new Error('Room join returned no room');
+    } catch (error) {
+      // Early join failures can happen before p2p invokes getLocalStream and
+      // assumes ownership, so eagerly acquired media is still ours to release.
+      this.stopMediaStream(localStream);
+      throw error;
+    }
 
     if (import.meta.env.DEV)
       console.debug(
@@ -404,7 +423,7 @@ export class CallHandshakeController {
   private getCallLocalStream(audioOnly: boolean): Promise<MediaStream> {
     return navigator.mediaDevices.getUserMedia({
       video: audioOnly ? false : getVideoConstraints(),
-      audio: import.meta.env.DEV && !audioOnly ? false : getAudioConstraints(),
+      audio: getAudioConstraints(),
     });
   }
 

@@ -1,12 +1,22 @@
-import { createEffect, createSignal } from 'solid-js';
-import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff } from 'lucide-solid';
+import {
+  Mic,
+  MicOff,
+  Phone,
+  PhoneOff,
+  Video,
+  VideoOff,
+  Volume2,
+  VolumeX,
+} from 'lucide-solid';
 
 import { useCallHandshake } from '../call-handshake';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { createAutoHide } from '@shared/createAutoHide';
+import { createCallMedia } from '../call-media';
 
 import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
+import { onMount } from 'solid-js';
 
 type StartCallButtonProps = {
   calleeId: string;
@@ -45,41 +55,29 @@ export function StartCallButton(props: StartCallButtonProps) {
   );
 }
 
-export function ActiveCallControls() {
+type ActiveCallControlsProps = {
+  remoteAudioMuted: boolean;
+  onRemoteAudioMutedChange: (muted: boolean) => void;
+};
+
+export function ActiveCallControls(props: ActiveCallControlsProps) {
   const p2p = useP2PContext();
-  const [micOn, setMicOn] = createSignal(true);
-  const [camOn, setCamOn] = createSignal(true);
+  const media = createCallMedia(p2p);
   const visible = createAutoHide(3000);
 
-  // Re-sync UI state from track state whenever the local stream changes.
-  createEffect(() => {
-    const stream = p2p.localStream();
-    if (!stream) return;
-    const audio = stream.getAudioTracks();
-    const video = stream.getVideoTracks();
-    if (audio.length) setMicOn(audio.every((t) => t.enabled));
-    if (video.length) setCamOn(video.every((t) => t.enabled));
-  });
-
   function toggleMic() {
-    const stream = p2p.localStream();
-    if (!stream) return;
-    const tracks = stream.getAudioTracks();
-    if (!tracks.length) return;
-    const next = !micOn();
-    tracks.forEach((t) => (t.enabled = next));
-    setMicOn(next);
+    media.setMicEnabled(!media.micOn());
   }
 
   function toggleCam() {
-    const stream = p2p.localStream();
-    if (!stream) return;
-    const tracks = stream.getVideoTracks();
-    if (!tracks.length) return;
-    const next = !camOn();
-    tracks.forEach((t) => (t.enabled = next));
-    setCamOn(next);
+    void media.setCameraEnabled(!media.cameraOn()).catch((error) => {
+      console.error('[CallMedia] Failed to change camera state', error);
+    });
   }
+
+  onMount(() => {
+    if (import.meta.env.DEV) toggleMic(); // Mute mic by default in dev to avoid feedback
+  });
 
   return (
     <div
@@ -89,20 +87,34 @@ export function ActiveCallControls() {
       <button
         type='button'
         onClick={toggleMic}
-        classList={{ [styles.off]: !micOn() }}
-        title={micOn() ? 'Mute mic' : 'Unmute mic'}
-        aria-label={micOn() ? 'Mute mic' : 'Unmute mic'}
+        classList={{ [styles.off]: !media.micOn() }}
+        title={media.micOn() ? 'Mute mic' : 'Unmute mic'}
+        aria-label={media.micOn() ? 'Mute mic' : 'Unmute mic'}
       >
-        {micOn() ? <Mic /> : <MicOff />}
+        {media.micOn() ? <Mic /> : <MicOff />}
       </button>
       <button
         type='button'
         onClick={toggleCam}
-        classList={{ [styles.off]: !camOn() }}
-        title={camOn() ? 'Turn camera off' : 'Turn camera on'}
-        aria-label={camOn() ? 'Turn camera off' : 'Turn camera on'}
+        disabled={media.cameraPending()}
+        classList={{ [styles.off]: !media.cameraOn() }}
+        title={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
+        aria-label={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
       >
-        {camOn() ? <Video /> : <VideoOff />}
+        {media.cameraOn() ? <Video /> : <VideoOff />}
+      </button>
+      <button
+        type='button'
+        onClick={() => props.onRemoteAudioMutedChange(!props.remoteAudioMuted)}
+        classList={{ [styles.off]: props.remoteAudioMuted }}
+        title={
+          props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
+        }
+        aria-label={
+          props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
+        }
+      >
+        {props.remoteAudioMuted ? <VolumeX /> : <Volume2 />}
       </button>
       <EndCallButton />
     </div>

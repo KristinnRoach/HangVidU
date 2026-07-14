@@ -1,17 +1,34 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { cleanup, fireEvent, render } from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
-import { render, cleanup } from '@solidjs/testing-library';
-
-import { StartCallButton } from './CallControls';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
+  hangUp: vi.fn(),
   startCall: vi.fn(),
+  media: {
+    micOn: () => true,
+    cameraOn: () => true,
+    cameraPending: () => false,
+    setMicEnabled: vi.fn(),
+    setCameraEnabled: vi.fn(async () => {}),
+  },
 }));
 
 vi.mock('../call-handshake', () => ({
-  useCallHandshake: () => ({ startCall: mocks.startCall }),
+  useCallHandshake: () => ({
+    hangUp: mocks.hangUp,
+    startCall: mocks.startCall,
+  }),
 }));
-
+vi.mock('../call-media', () => ({
+  createCallMedia: () => mocks.media,
+}));
+vi.mock('@shared/p2p-context.js', () => ({
+  useP2PContext: () => ({}),
+}));
+vi.mock('@shared/createAutoHide', () => ({
+  createAutoHide: () => () => true,
+}));
 vi.mock('../../../shared/i18n', () => ({
   useI18n: () => ({
     t: (key, params) => {
@@ -22,14 +39,16 @@ vi.mock('../../../shared/i18n', () => ({
   }),
 }));
 
-describe('StartCallButton', () => {
-  beforeEach(() => {
-    cleanup();
-    vi.clearAllMocks();
-  });
+const { ActiveCallControls, StartCallButton } = await import('./CallControls');
 
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
+describe('StartCallButton', () => {
   it('uses the latest reactive call target when clicked', () => {
-    const { container, getByText, unmount } = render(() => {
+    const { container, getByText } = render(() => {
       const [calleeId, setCalleeId] = createSignal('contact-1');
       const [calleeName, setCalleeName] = createSignal('Alice');
 
@@ -53,19 +72,29 @@ describe('StartCallButton', () => {
       );
     });
 
-    getByText('update target').dispatchEvent(
-      new MouseEvent('click', { bubbles: true }),
-    );
-    container
-      .querySelector('.contact-call-btn')
-      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fireEvent.click(getByText('update target'));
+    fireEvent.click(container.querySelector('.contact-call-btn'));
 
     expect(mocks.startCall).toHaveBeenCalledWith({
       calleeId: 'contact-2',
       calleeName: 'Bob',
       audioOnly: false,
     });
+  });
+});
 
-    unmount();
+describe('ActiveCallControls', () => {
+  it('lets the user mute remote audio locally', () => {
+    const onRemoteAudioMutedChange = vi.fn();
+    const { getByRole } = render(() => (
+      <ActiveCallControls
+        remoteAudioMuted={false}
+        onRemoteAudioMutedChange={onRemoteAudioMutedChange}
+      />
+    ));
+
+    fireEvent.click(getByRole('button', { name: 'Mute remote audio' }));
+
+    expect(onRemoteAudioMutedChange).toHaveBeenCalledWith(true);
   });
 });

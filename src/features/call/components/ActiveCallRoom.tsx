@@ -15,6 +15,7 @@ export function ActiveCallRoom() {
     'publicRoom',
   );
   const [copied, setCopied] = createSignal(false);
+  const [remoteAudioMuted, setRemoteAudioMuted] = createSignal(false);
 
   async function copyLink() {
     try {
@@ -27,7 +28,7 @@ export function ActiveCallRoom() {
 
   return (
     <div class={styles.room}>
-      <MemberStreams />
+      <MemberStreams remoteAudioMuted={remoteAudioMuted()} />
 
       <Show
         when={
@@ -45,7 +46,10 @@ export function ActiveCallRoom() {
       </Show>
 
       <Show when={p2p.state() === 'joined'}>
-        <ActiveCallControls />
+        <ActiveCallControls
+          remoteAudioMuted={remoteAudioMuted()}
+          onRemoteAudioMutedChange={setRemoteAudioMuted}
+        />
       </Show>
     </div>
   );
