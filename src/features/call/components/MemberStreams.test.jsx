@@ -61,7 +61,9 @@ describe('MemberStreams', () => {
       memberPresence: () => [],
       remoteMemberStreams: () => [],
     };
-    const { container } = render(() => <MemberStreams />);
+    const { container } = render(() => (
+      <MemberStreams remoteAudioMuted={false} />
+    ));
 
     stream.tracks.push(new FakeTrack('video'));
     setLocalStream(stream);
@@ -73,5 +75,24 @@ describe('MemberStreams', () => {
           ?.getAttribute('data-media-state'),
       ).toBe('video');
     });
+  });
+
+  it('mutes remote participant playback when room audio is muted', () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    const remoteStream = new FakeStream([new FakeTrack('audio')]);
+    mocks.p2p = {
+      localStream: () => undefined,
+      memberCount: () => 2,
+      memberPresence: () => [],
+      remoteMemberStreams: () => [
+        { memberId: 'remote-member', stream: remoteStream },
+      ],
+    };
+
+    const { container } = render(() => (
+      <MemberStreams remoteAudioMuted={true} />
+    ));
+
+    expect(container.querySelector('video').muted).toBe(true);
   });
 });

@@ -1,4 +1,13 @@
-import { Mic, MicOff, Phone, PhoneOff, Video, VideoOff } from 'lucide-solid';
+import {
+  Mic,
+  MicOff,
+  Phone,
+  PhoneOff,
+  Video,
+  VideoOff,
+  Volume2,
+  VolumeX,
+} from 'lucide-solid';
 
 import { useCallHandshake } from '../call-handshake';
 import { useP2PContext } from '@shared/p2p-context.js';
@@ -46,7 +55,12 @@ export function StartCallButton(props: StartCallButtonProps) {
   );
 }
 
-export function ActiveCallControls() {
+type ActiveCallControlsProps = {
+  remoteAudioMuted: boolean;
+  onRemoteAudioMutedChange: (muted: boolean) => void;
+};
+
+export function ActiveCallControls(props: ActiveCallControlsProps) {
   const p2p = useP2PContext();
   const media = createCallMedia(p2p);
   const visible = createAutoHide(3000);
@@ -88,6 +102,19 @@ export function ActiveCallControls() {
         aria-label={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
       >
         {media.cameraOn() ? <Video /> : <VideoOff />}
+      </button>
+      <button
+        type='button'
+        onClick={() => props.onRemoteAudioMutedChange(!props.remoteAudioMuted)}
+        classList={{ [styles.off]: props.remoteAudioMuted }}
+        title={
+          props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
+        }
+        aria-label={
+          props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
+        }
+      >
+        {props.remoteAudioMuted ? <VolumeX /> : <Volume2 />}
       </button>
       <EndCallButton />
     </div>

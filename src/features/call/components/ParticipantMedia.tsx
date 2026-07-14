@@ -8,6 +8,7 @@ type ParticipantMediaProps = {
   stream: MediaStream;
   variant?: 'remote' | 'self-preview';
   videoEnabled?: boolean;
+  remoteAudioMuted?: boolean;
 };
 
 type MediaState = 'audio' | 'video' | 'empty';
@@ -36,7 +37,8 @@ function getMediaState(stream: MediaStream, videoEnabled = true): MediaState {
 export function ParticipantMedia(props: ParticipantMediaProps) {
   let video!: HTMLVideoElement;
   const variant = () => props.variant ?? 'remote';
-  const muted = () => variant() === 'self-preview';
+  const muted = () =>
+    variant() === 'self-preview' || props.remoteAudioMuted === true;
   const [mediaState, setMediaState] = createSignal<MediaState>(
     getMediaState(props.stream, props.videoEnabled),
   );

@@ -3,7 +3,11 @@ import { useP2PContext } from '@shared/p2p-context.js';
 import { ParticipantMedia } from './ParticipantMedia';
 import styles from './MemberStreams.module.css';
 
-export function MemberStreams() {
+type MemberStreamsProps = {
+  remoteAudioMuted: boolean;
+};
+
+export function MemberStreams(props: MemberStreamsProps) {
   const p2p = useP2PContext();
   const remoteCameraEnabled = (memberId: string) =>
     p2p.memberPresence().find((member) => member.memberId === memberId)?.data
@@ -30,6 +34,7 @@ export function MemberStreams() {
           <ParticipantMedia
             stream={remote.stream}
             videoEnabled={remoteCameraEnabled(remote.memberId)}
+            remoteAudioMuted={props.remoteAudioMuted}
           />
         )}
       </For>

@@ -1,4 +1,5 @@
 import { cleanup, render, waitFor } from '@solidjs/testing-library';
+import { createSignal } from 'solid-js';
 import {
   afterEach,
   beforeEach,
@@ -86,6 +87,22 @@ describe('ParticipantMedia', () => {
     expect(surface?.getAttribute('data-media-state')).toBe('video');
     expect(video.hidden).toBe(false);
     expect(video.muted).toBe(true);
+  });
+
+  it('reactively mutes remote playback without changing the remote stream', async () => {
+    const stream = new FakeStream([new FakeTrack('audio')]);
+    const [remoteAudioMuted, setRemoteAudioMuted] = createSignal(false);
+    const { container } = render(() => (
+      <ParticipantMedia stream={stream} remoteAudioMuted={remoteAudioMuted()} />
+    ));
+    const video = container.querySelector('video');
+
+    expect(video.muted).toBe(false);
+
+    setRemoteAudioMuted(true);
+
+    await waitFor(() => expect(video.muted).toBe(true));
+    expect(stream.getAudioTracks()[0].enabled).not.toBe(false);
   });
 
   it('reveals video when an audio-first stream gains a video track', async () => {
