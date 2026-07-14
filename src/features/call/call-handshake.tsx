@@ -42,6 +42,10 @@ type IncomingCallNotificationOpenedPayload = IncomingCallNotificationDetails & {
   accept?: boolean;
 };
 
+// TEMPORARY: require an explicit in-app Accept tap while iOS call acceptance
+// is being diagnosed. Set to true to restore notification-action auto-accept.
+const ENABLE_NOTIFICATION_AUTO_ACCEPT = false;
+
 function optionalTimestamp(params: URLSearchParams): number | undefined {
   const rawTimestamp = params.get('timestamp');
   if (rawTimestamp == null) return undefined;
@@ -148,7 +152,9 @@ export function CallHandshakeProvider(props: ParentProps) {
         incomingCallNotificationDetailsFromParams(params),
       );
     const [wantAcceptRoomId, setWantAcceptRoomId] = createSignal<string | null>(
-      hasAcceptMarker ? params.get('conversationRoom') : null,
+      ENABLE_NOTIFICATION_AUTO_ACCEPT && hasAcceptMarker
+        ? params.get('conversationRoom')
+        : null,
     );
     if (hasAcceptMarker) {
       // Strip the marker so a reload/back doesn't re-trigger the accept.
@@ -171,7 +177,11 @@ export function CallHandshakeProvider(props: ParentProps) {
         if (notificationDetails) {
           setQueuedNotificationDetails(notificationDetails);
         }
-        if (payload.accept && typeof payload.roomId === 'string') {
+        if (
+          ENABLE_NOTIFICATION_AUTO_ACCEPT &&
+          payload.accept &&
+          typeof payload.roomId === 'string'
+        ) {
           setWantAcceptRoomId(payload.roomId);
         }
       },
