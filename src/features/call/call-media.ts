@@ -139,14 +139,10 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
           } catch (error) {
             replacementError = error;
           }
-          const cameraWasRemoved = currentTracks.every(
-            (track) => !room.localStream?.getTracks().includes(track),
-          );
-          if (cameraWasRemoved) {
-            await finishCommittedCameraChange(room, false, replacementError);
-          } else if (replacementError) {
-            throw replacementError;
-          }
+          // currentTracks are stopped unconditionally in finally, so the
+          // camera is off locally regardless of replacement outcome —
+          // presence must always reflect that.
+          await finishCommittedCameraChange(room, false, replacementError);
         } finally {
           // Null is the room's desired state even after a partial pair failure.
           currentTracks.forEach((track) => {
