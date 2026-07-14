@@ -8,7 +8,32 @@
  * This test is intentionally minimal and isolated from DOM dependencies.
  */
 
-import { describe, it, expect, beforeAll } from 'vite-plus/test';
+import { describe, it, expect, beforeAll, vi } from 'vite-plus/test';
+
+vi.mock('@auth', () => ({
+  getAuthProviderProfileSeed: vi.fn(() => null),
+  getLoggedInUserId: vi.fn(() => null),
+  getLoggedInUserToken: vi.fn(() => Promise.resolve(null)),
+  useAuth: () => ({ user: () => null }),
+}));
+
+vi.mock('@realtime', () => ({
+  createRoomSignaling: vi.fn(),
+  subscribeToUserMailbox: vi.fn(() => vi.fn()),
+}));
+
+vi.mock('../../src/stores/user-profile-store.js', () => ({
+  getLoggedInUserProfile: vi.fn(() => null),
+}));
+
+vi.mock('../../src/stores/contacts-store.js', () => ({
+  cacheContactConversationId: vi.fn(),
+  getContactById: vi.fn(() => null),
+}));
+
+vi.mock('../../src/stores/conversation/conversations-client.js', () => ({
+  resolveDirectConversationId: vi.fn(() => Promise.resolve('conversation-1')),
+}));
 
 describe('Call Import Integration', () => {
   beforeAll(() => {

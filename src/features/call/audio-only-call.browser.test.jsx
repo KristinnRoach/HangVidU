@@ -3,7 +3,7 @@
 // filled, video slot null. Guards against the muted camera-slot video track
 // blocking Chromium audio output (no audio until camera toggled).
 import { afterEach, describe, expect, it } from 'vite-plus/test';
-import { userEvent } from 'vite-plus/test/browser/context';
+import { server, userEvent } from 'vite-plus/test/browser/context';
 import { render } from '@solidjs/testing-library';
 import { P2PRoom } from '@kidlib/p2p';
 
@@ -195,21 +195,28 @@ describe('audio-only call over reserved slots', () => {
       `remote audio receiving RTP (unmuted) on both sides; log:\n${log.join('\n')}`,
     ).toBe(true);
 
-    // The regression condition needs the reserved camera slot's muted video
-    // track alongside the audio track — require it, don't pass on audio alone.
+    // Chromium surfaces the reserved camera slot as a muted video track, which
+    // was the original regression condition. Firefox can deliver the same
+    // audio-only call without surfacing that placeholder track, so keep the
+    // browser-specific precondition strict only where it exists.
     const isRegressionStream = (stream) =>
       stream.getAudioTracks().length > 0 &&
       stream
         .getVideoTracks()
         .some((track) => track.readyState !== 'ended' && track.muted);
-    expect(
-      await waitFor(() => b.remoteStreams.some(isRegressionStream), 5000),
-      `reserved muted video slot surfaced; log:\n${log.join('\n')}`,
-    ).toBe(true);
+    const requiresMutedReservedVideoSlot = server.browser === 'chromium';
+    if (requiresMutedReservedVideoSlot) {
+      expect(
+        await waitFor(() => b.remoteStreams.some(isRegressionStream), 5000),
+        `reserved muted video slot surfaced; log:\n${log.join('\n')}`,
+      ).toBe(true);
+    }
 
     // Full UI path: remote audio-only stream rendered through ParticipantMedia
     // (camera-off presence → videoEnabled false) must still audibly play.
-    const remoteStream = b.remoteStreams.find(isRegressionStream);
+    const remoteStream = requiresMutedReservedVideoSlot
+      ? b.remoteStreams.find(isRegressionStream)
+      : b.remoteStreams.find((stream) => stream.getAudioTracks().length > 0);
     const { container, unmount } = render(() => (
       <ParticipantMedia stream={remoteStream} videoEnabled={false} />
     ));
