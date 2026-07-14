@@ -39,6 +39,10 @@ class FakeStream extends EventTarget {
   }
 }
 
+// ParticipantMedia constructs an audio-only MediaStream in the audio state;
+// node env has no MediaStream, FakeStream shares the constructor shape.
+globalThis.MediaStream ??= FakeStream;
+
 describe('MemberStreams', () => {
   afterEach(() => {
     cleanup();

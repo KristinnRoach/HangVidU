@@ -43,6 +43,10 @@ class FakeStream extends EventTarget {
   }
 }
 
+// ParticipantMedia constructs an audio-only MediaStream in the audio state;
+// node env has no MediaStream, FakeStream shares the constructor shape.
+globalThis.MediaStream ??= FakeStream;
+
 describe('ParticipantMedia', () => {
   beforeEach(() => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
@@ -64,7 +68,9 @@ describe('ParticipantMedia', () => {
     expect(video).not.toBeNull();
     expect(video.hidden).toBe(true);
     expect(video.muted).toBe(false);
-    expect(video.srcObject).toBe(stream);
+    // Audio state attaches an audio-only stream (a muted camera-slot video
+    // track in srcObject blocks Chromium audio output).
+    expect(video.srcObject.getTracks()).toEqual(stream.getAudioTracks());
   });
 
   it('mutes and identifies the local self preview', () => {

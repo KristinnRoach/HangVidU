@@ -92,7 +92,16 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   });
 
   createEffect(() => {
-    const stream = props.stream;
+    // Chromium won't fire loadedmetadata (and outputs no audio) while a
+    // muted video track — the reserved camera slot of an audio-only call —
+    // is in srcObject and produces no frames. Attach only the audio tracks
+    // until usable video exists.
+    // ponytail: audio tracks snapshotted per attach; fine while the mic slot
+    // is fixed at join — revisit if audio tracks can be added mid-call.
+    const stream =
+      mediaState() === 'video'
+        ? props.stream
+        : new MediaStream(props.stream.getAudioTracks());
     if (!video) return;
 
     const shouldMute = muted();
