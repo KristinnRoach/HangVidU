@@ -28,6 +28,7 @@ export default defineConfig({
   // without it `solid-js/web`'s hot-reload shim throws.
   resolve: {
     tsconfigPaths: true,
+    dedupe: ['solid-js'],
     conditions: ['development', 'browser'],
   },
   plugins: [
@@ -60,12 +61,17 @@ export default defineConfig({
         plugins: [solid()],
         resolve: {
           tsconfigPaths: true,
+          dedupe: ['solid-js'],
           conditions: ['solid', 'development', 'browser'],
         },
         test: {
           ...sharedTestConfig,
           name: 'node',
           environment: 'jsdom',
+          // Several jsdom specs stub shared browser globals and hoisted module
+          // mocks. Keep these files sequential so the node suite remains
+          // deterministic under the main multi-project test command.
+          fileParallelism: false,
           environmentOptions: {
             jsdom: {
               url: 'http://localhost/',
@@ -94,6 +100,7 @@ export default defineConfig({
         plugins: [solid()],
         resolve: {
           tsconfigPaths: true,
+          dedupe: ['solid-js'],
         },
         test: {
           ...sharedTestConfig,
