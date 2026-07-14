@@ -190,6 +190,10 @@ describe('call media', () => {
           deviceId: { exact: 'facetime-camera' },
         }),
       });
+      expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+        PRIMARY_VIDEO_SLOT_ID,
+        frontCamera,
+      );
       expect(backCamera.stop).toHaveBeenCalledOnce();
       dispose();
     });

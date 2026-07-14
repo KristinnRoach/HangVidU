@@ -308,7 +308,14 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       try {
         await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, nextTrack);
       } catch (error) {
-        nextTrack.stop();
+        if (room.localStream?.getTracks().includes(nextTrack)) {
+          ownedCameraTracks.add(nextTrack);
+          currentTrack.stop();
+          ownedCameraTracks.delete(currentTrack);
+          syncTrackState();
+        } else {
+          nextTrack.stop();
+        }
         throw error;
       }
       ownedCameraTracks.add(nextTrack);
@@ -394,6 +401,19 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
         stream.getTracks().forEach((track) => track.stop());
         throw new Error('Screen capture returned no video track');
       }
+      displayTrack.addEventListener(
+        'ended',
+        () => {
+          if (cameraPending()) {
+            screenStopRequested = true;
+            return;
+          }
+          void stopScreenShare().catch((error) => {
+            console.error('[CallMedia] Failed to stop screen sharing', error);
+          });
+        },
+        { once: true },
+      );
       stream
         .getTracks()
         .filter((track) => track !== displayTrack)
@@ -413,14 +433,6 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
       screenTrack = displayTrack;
       setScreenSharing(true);
-      displayTrack.addEventListener(
-        'ended',
-        () =>
-          void stopScreenShare().catch((error) => {
-            console.error('[CallMedia] Failed to stop screen sharing', error);
-          }),
-        { once: true },
-      );
       await finishCommittedCameraChange(room, true, replacementError);
       syncTrackState();
     } catch (error) {
