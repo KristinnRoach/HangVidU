@@ -62,10 +62,8 @@ describe('ParticipantMedia', () => {
     const stream = new FakeStream([new FakeTrack('audio')]);
     const { container } = render(() => <ParticipantMedia stream={stream} />);
 
-    const surface = container.querySelector('[data-media-state]');
     const video = container.querySelector('video');
 
-    expect(surface?.getAttribute('data-media-state')).toBe('audio');
     expect(video).not.toBeNull();
     expect(video.hidden).toBe(true);
     expect(video.muted).toBe(false);
@@ -74,17 +72,14 @@ describe('ParticipantMedia', () => {
     expect(video.srcObject.getTracks()).toEqual(stream.getAudioTracks());
   });
 
-  it('mutes and identifies the local self preview', () => {
+  it('shows the local self preview muted', () => {
     const stream = new FakeStream([new FakeTrack('video')]);
     const { container } = render(() => (
       <ParticipantMedia stream={stream} variant='self-preview' />
     ));
 
-    const surface = container.querySelector('[data-variant]');
     const video = container.querySelector('video');
 
-    expect(surface?.getAttribute('data-variant')).toBe('self-preview');
-    expect(surface?.getAttribute('data-media-state')).toBe('video');
     expect(video.hidden).toBe(false);
     expect(video.muted).toBe(true);
   });
@@ -112,11 +107,6 @@ describe('ParticipantMedia', () => {
     stream.addTrack(new FakeTrack('video'));
 
     await waitFor(() => {
-      expect(
-        container
-          .querySelector('[data-media-state]')
-          ?.getAttribute('data-media-state'),
-      ).toBe('video');
       expect(container.querySelector('video').hidden).toBe(false);
     });
   });
@@ -130,11 +120,55 @@ describe('ParticipantMedia', () => {
       <ParticipantMedia stream={stream} videoEnabled={false} />
     ));
 
-    const surface = container.querySelector('[data-media-state]');
     const video = container.querySelector('video');
 
-    expect(surface?.getAttribute('data-media-state')).toBe('audio');
     expect(video.hidden).toBe(true);
+    expect(container.textContent).not.toContain('Connecting video');
+  });
+
+  it('explains when an expected remote video track is still connecting', () => {
+    const stream = new FakeStream([
+      new FakeTrack('audio'),
+      new FakeTrack('video', { muted: true }),
+    ]);
+    const { container } = render(() => (
+      <ParticipantMedia stream={stream} videoEnabled={true} />
+    ));
+
+    expect(container.textContent).toContain('Connecting video');
+  });
+
+  it('explains when a previously visible remote video is interrupted', async () => {
+    const track = new FakeTrack('video');
+    const stream = new FakeStream([track]);
+    const { container } = render(() => (
+      <ParticipantMedia stream={stream} videoEnabled={true} />
+    ));
+
+    track.muted = true;
+    track.dispatchEvent(new Event('mute'));
+
+    await waitFor(() =>
+      expect(container.textContent).toContain('Video connection interrupted'),
+    );
+  });
+
+  it('keeps an interrupted video sticky across camera presence toggles', async () => {
+    const track = new FakeTrack('video');
+    const stream = new FakeStream([track]);
+    const [videoEnabled, setVideoEnabled] = createSignal(true);
+    const { container } = render(() => (
+      <ParticipantMedia stream={stream} videoEnabled={videoEnabled()} />
+    ));
+
+    track.muted = true;
+    track.dispatchEvent(new Event('mute'));
+    setVideoEnabled(false);
+    setVideoEnabled(true);
+
+    await waitFor(() =>
+      expect(container.textContent).toContain('Video connection interrupted'),
+    );
   });
 
   it('shows the continue-call prompt only for autoplay-gesture rejections', async () => {

@@ -20,7 +20,7 @@ import {
 } from './call-handshake-controller.js';
 import type {
   CallHandshakeState,
-  PendingOutgoingCall,
+  OutgoingCall,
   StartCallDetails,
 } from './call-types.js';
 
@@ -29,9 +29,8 @@ type CallHandshakeContextValue = {
   hangUp: () => void;
 
   isCalleeBusy: Accessor<boolean>;
-  pendingIncomingCall: Accessor<MailboxInvite | null>;
-  pendingOutgoingCall: Accessor<PendingOutgoingCall | null>;
-  exitActiveRoom: () => void;
+  incomingCall: Accessor<MailboxInvite | null>;
+  outgoingCall: Accessor<OutgoingCall | null>;
   cancelOutgoing: () => void;
   acceptIncoming: () => void;
   declineIncoming: () => void;
@@ -56,7 +55,10 @@ function optionalTimestamp(params: URLSearchParams): number | undefined {
 function incomingCallNotificationDetailsFromParams(
   params: URLSearchParams,
 ): IncomingCallNotificationDetails | null {
-  const roomId = params.get('conversationRoom');
+  // call=1 marks an incoming-call link; without it, conversationId is a
+  // plain open-conversation link handled by SWNavigation.
+  if (params.get('call') !== '1') return null;
+  const roomId = params.get('conversationId');
   const callerId = params.get('callerId');
   if (!roomId || !callerId) return null;
 
@@ -118,24 +120,17 @@ export function CallHandshakeProvider(props: ParentProps) {
     return state && state.direction === 'incoming' ? state.call : null;
   };
 
-  const outgoingCall = (): PendingOutgoingCall | null => {
+  const outgoingCall = (): OutgoingCall | null => {
     const state = handshakeState();
     return state && state.direction === 'outgoing' ? state.call : null;
   };
 
-  const startCall = async (details: StartCallDetails) => {
-    await controller.sendOutgoingCallInvite(details);
-  };
-
-  const hangUp = () => controller.exitActiveRoom();
-
   const value: CallHandshakeContextValue = {
-    startCall,
-    hangUp,
+    startCall: controller.startCall,
+    hangUp: controller.hangUp,
     isCalleeBusy,
-    pendingIncomingCall: incomingCall,
-    pendingOutgoingCall: outgoingCall,
-    exitActiveRoom: controller.exitActiveRoom,
+    incomingCall,
+    outgoingCall,
     cancelOutgoing: controller.cancelOutgoing,
     acceptIncoming: controller.acceptIncoming,
     declineIncoming: controller.declineIncoming,
@@ -153,7 +148,7 @@ export function CallHandshakeProvider(props: ParentProps) {
       );
     const [wantAcceptRoomId, setWantAcceptRoomId] = createSignal<string | null>(
       ENABLE_NOTIFICATION_AUTO_ACCEPT && hasAcceptMarker
-        ? params.get('conversationRoom')
+        ? params.get('conversationId')
         : null,
     );
     if (hasAcceptMarker) {

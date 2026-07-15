@@ -18,7 +18,9 @@ export function getNotificationNavigationPath(data, action) {
 
   if (isIncomingCallType(type)) {
     if (!roomId) return '/';
-    const params = new URLSearchParams({ conversationRoom: roomId });
+    // call=1 routes the client to the incoming-call flow; a bare
+    // conversationId just opens the conversation UI.
+    const params = new URLSearchParams({ call: '1', conversationId: roomId });
     if (callerId) params.set('callerId', callerId);
     if (callerName) params.set('callerName', callerName);
     if (audioOnly === true || audioOnly === 'true')

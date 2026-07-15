@@ -26,7 +26,7 @@ export type CallMedia = {
   cameraSwitchAvailable: Accessor<boolean>;
   screenShareAvailable: Accessor<boolean>;
   screenSharing: Accessor<boolean>;
-  setMicEnabled: (enabled: boolean) => void;
+  setMicEnabled: (enabled: boolean) => Promise<void>;
   setCameraEnabled: (enabled: boolean) => Promise<void>;
   switchCamera: () => Promise<void>;
   toggleScreenShare: () => Promise<void>;
@@ -62,6 +62,21 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   let screenTrack: MediaStreamTrack | undefined;
   let cameraBeforeScreenShare: MediaStreamTrack | null = null;
   let screenStopRequested = false;
+  let presenceWriteChain = Promise.resolve();
+
+  function enqueuePresenceUpdate(
+    room: NonNullable<ReturnType<SolidP2PRoom['room']>>,
+    data: { micOn?: boolean; cameraOn?: boolean },
+  ) {
+    const update = presenceWriteChain.then(async () => {
+      const currentData =
+        room.memberPresence.find((member) => member.memberId === room.peerId)
+          ?.data ?? {};
+      await room.setPresenceData({ ...currentData, ...data });
+    });
+    presenceWriteChain = update.catch(() => {});
+    return update;
+  }
 
   async function refreshCameraSwitchAvailability(log = false) {
     const devices = await navigator.mediaDevices
@@ -135,22 +150,27 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     ownedCameraTracks.clear();
   });
 
-  function setMicEnabled(enabled: boolean) {
+  async function setMicEnabled(enabled: boolean) {
     const tracks = localStream()?.getAudioTracks() ?? [];
     tracks.forEach((track) => {
       track.enabled = enabled;
     });
     syncTrackState();
+
+    const room = p2p.room();
+    if (!room)
+      throw new Error('Cannot change microphone without an active room');
+
+    await enqueuePresenceUpdate(room, { micOn: micOn() });
   }
 
-  async function publishCameraPresence(
+  // Broadcasts our cameraOn flag to other members via the room's member data
+  // (@kidlib/p2p "presence" — unrelated to the online/offline presence feature).
+  async function publishCameraOn(
     room: NonNullable<ReturnType<SolidP2PRoom['room']>>,
     cameraOn: boolean,
   ) {
-    const currentData =
-      room.memberPresence.find((member) => member.memberId === room.peerId)
-        ?.data ?? {};
-    await room.setPresenceData({ ...currentData, cameraOn });
+    await enqueuePresenceUpdate(room, { cameraOn });
   }
 
   async function finishCommittedCameraChange(
@@ -159,15 +179,15 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     replacementError?: unknown,
   ) {
     try {
-      await publishCameraPresence(room, cameraOn);
-    } catch (presenceError) {
+      await publishCameraOn(room, cameraOn);
+    } catch (publishError) {
       if (replacementError) {
         console.error(
-          '[CallMedia] Failed to publish camera presence after a partial track replacement',
-          presenceError,
+          '[CallMedia] Failed to publish cameraOn after a partial track replacement',
+          publishError,
         );
       } else {
-        throw presenceError;
+        throw publishError;
       }
     }
     if (replacementError) throw replacementError;
@@ -192,7 +212,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
           }
           // currentTracks are stopped unconditionally in finally, so the
           // camera is off locally regardless of replacement outcome —
-          // presence must always reflect that.
+          // the published cameraOn flag must always reflect that.
           await finishCommittedCameraChange(room, false, replacementError);
         } finally {
           // Null is the room's desired state even after a partial pair failure.
@@ -210,8 +230,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       );
       if (liveTrack) {
         liveTrack.enabled = true;
-        await publishCameraPresence(room, true);
         syncTrackState();
+        await publishCameraOn(room, true);
         return;
       }
 

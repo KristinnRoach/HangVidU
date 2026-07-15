@@ -16,7 +16,7 @@ describe('notification click routing', () => {
         },
         undefined,
       ),
-    ).toBe('/?conversationRoom=room-123');
+    ).toBe('/?call=1&conversationId=room-123');
   });
 
   it('marks the incoming-call path for auto-accept on the explicit accept action', () => {
@@ -25,7 +25,7 @@ describe('notification click routing', () => {
         { type: 'incoming_call', roomId: 'room-123' },
         'accept',
       ),
-    ).toBe('/?conversationRoom=room-123&accept=1');
+    ).toBe('/?call=1&conversationId=room-123&accept=1');
   });
 
   it('carries caller metadata for incoming call notification clicks', () => {
@@ -41,7 +41,7 @@ describe('notification click routing', () => {
         undefined,
       ),
     ).toBe(
-      '/?conversationRoom=room-123&callerId=caller-1&callerName=Caller+Name&timestamp=1774025000000',
+      '/?call=1&conversationId=room-123&callerId=caller-1&callerName=Caller+Name&timestamp=1774025000000',
     );
   });
 

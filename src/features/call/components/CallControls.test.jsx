@@ -25,12 +25,6 @@ vi.mock('../call-handshake', () => ({
     startCall: mocks.startCall,
   }),
 }));
-vi.mock('../call-media', () => ({
-  createCallMedia: () => mocks.media,
-}));
-vi.mock('@shared/p2p-context.js', () => ({
-  useP2PContext: () => ({}),
-}));
 vi.mock('@shared/createAutoHide', () => ({
   createAutoHide: () => () => true,
 }));
@@ -93,6 +87,7 @@ describe('ActiveCallControls', () => {
     const onRemoteAudioMutedChange = vi.fn();
     const { getByRole } = render(() => (
       <ActiveCallControls
+        media={mocks.media}
         remoteAudioMuted={false}
         onRemoteAudioMutedChange={onRemoteAudioMutedChange}
       />

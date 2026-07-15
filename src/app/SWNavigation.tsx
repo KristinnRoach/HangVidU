@@ -27,11 +27,19 @@ function optionalTimestamp(searchParams: URLSearchParams): number | undefined {
   return Number.isFinite(timestamp) ? timestamp : undefined;
 }
 
+// call=1 marks an incoming-call link (from the SW call notification);
+// its conversationId is the call room, not a conversation to open.
+function isCallUrl(url: URL): boolean {
+  return url.searchParams.get('call') === '1';
+}
+
 function dispatchUrl(url: URL): void {
-  const conversationRoomId = trimmedParam(url.searchParams, 'conversationRoom');
-  if (conversationRoomId) {
+  const callConversationId = isCallUrl(url)
+    ? trimmedParam(url.searchParams, 'conversationId')
+    : null;
+  if (callConversationId) {
     publish('evt:call:notification:opened', {
-      roomId: conversationRoomId,
+      roomId: callConversationId,
       callerId: trimmedParam(url.searchParams, 'callerId') ?? undefined,
       callerName: trimmedParam(url.searchParams, 'callerName') ?? undefined,
       audioOnly: url.searchParams.get('audioOnly') === '1',
@@ -94,7 +102,7 @@ export default function SWNavigation(props: Props = {}) {
       if (data.type !== 'NAVIGATE' || !data.path) return;
       const url = new URL(data.path, window.location.origin);
 
-      if (trimmedParam(url.searchParams, 'conversationRoom')) {
+      if (isCallUrl(url)) {
         dispatchUrl(url);
         return;
       }

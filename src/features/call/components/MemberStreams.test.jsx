@@ -10,6 +10,12 @@ vi.mock('@shared/p2p-context.js', () => ({
 
 const { MemberStreams } = await import('./MemberStreams');
 
+// Minimal CallMedia stand-in: only the accessors MemberStreams reads.
+const fakeMedia = {
+  cameraOn: () => true,
+  screenSharing: () => false,
+};
+
 class FakeTrack extends EventTarget {
   constructor(kind) {
     super();
@@ -62,18 +68,15 @@ describe('MemberStreams', () => {
       remoteMemberStreams: () => [],
     };
     const { container } = render(() => (
-      <MemberStreams remoteAudioMuted={false} />
+      <MemberStreams media={fakeMedia} remoteAudioMuted={false} />
     ));
 
     stream.tracks.push(new FakeTrack('video'));
     setLocalStream(stream);
 
+    // No remote streams in this room, so the only video is the self preview.
     await waitFor(() => {
-      expect(
-        container
-          .querySelector('[data-variant="self-preview"]')
-          ?.getAttribute('data-media-state'),
-      ).toBe('video');
+      expect(container.querySelector('video').hidden).toBe(false);
     });
   });
 
@@ -90,7 +93,7 @@ describe('MemberStreams', () => {
     };
 
     const { container } = render(() => (
-      <MemberStreams remoteAudioMuted={true} />
+      <MemberStreams media={fakeMedia} remoteAudioMuted={true} />
     ));
 
     expect(container.querySelector('video').muted).toBe(true);

@@ -164,15 +164,15 @@ export class CallService {
   }
 
   cancelOutgoingCall({
-    recipientUID,
+    calleeId,
     roomId,
   }: {
-    recipientUID: string;
+    calleeId: string;
     roomId: string;
   }): Promise<void> {
     return this.post('/calls/cancel', {
       conversationId: roomId,
-      calleeId: recipientUID,
+      calleeId,
     });
   }
 
