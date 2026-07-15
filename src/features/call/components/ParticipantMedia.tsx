@@ -148,6 +148,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       : props.stream;
 
     const syncAudioTracks = (event: MediaStreamTrackEvent) => {
+      if (event.track.kind !== 'audio') return;
       if (event.type === 'addtrack') stream.addTrack(event.track);
       else stream.removeTrack(event.track);
     };

@@ -35,16 +35,20 @@ export function ActiveCallRoom() {
 
       <Show
         when={
-          isRoomLinkCall &&
-          p2p.state() === 'joined' &&
-          p2p.remoteMemberStreams().length === 0
+          p2p.state() === 'joined' && p2p.remoteMemberStreams().length === 0
         }
       >
         <div class={styles.waiting}>
-          <p>Room is empty...</p>
-          <button type='button' onClick={copyLink}>
-            {copied() ? 'Link copied' : 'Copy invite link'}
-          </button>
+          <p>
+            {isRoomLinkCall
+              ? 'Room is empty...'
+              : 'Waiting for the other person to connect...'}
+          </p>
+          <Show when={isRoomLinkCall}>
+            <button type='button' onClick={copyLink}>
+              {copied() ? 'Link copied' : 'Copy invite link'}
+            </button>
+          </Show>
         </div>
       </Show>
 
