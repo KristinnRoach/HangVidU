@@ -21,6 +21,16 @@ interface CallServiceOptions {
 }
 
 let callServiceInstance: CallService | null = null;
+const REQUEST_TIMEOUT_MS = 8_000;
+
+function isTimeoutError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'TimeoutError'
+  );
+}
 
 export function initCallService(options: CallServiceOptions): CallService {
   if (
@@ -88,25 +98,60 @@ export class CallService {
     };
   }
 
-  private async post(path: string, body: unknown): Promise<void> {
-    const token = await this.getToken();
-    if (!token) throw new Error('[CallService] not authenticated');
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
+  private async post(
+    path: string,
+    body: unknown,
+    { retryOnTimeout = false }: { retryOnTimeout?: boolean } = {},
+  ): Promise<void> {
+    try {
+      await this.postOnce(path, body);
+    } catch (error) {
+      if (!retryOnTimeout || !isTimeoutError(error)) throw error;
+      await this.postOnce(path, body);
+    }
+  }
+
+  private async postOnce(path: string, body: unknown): Promise<void> {
+    const controller = new AbortController();
+    const timeoutError = new DOMException(
+      `[CallService] ${path} timed out`,
+      'TimeoutError',
+    );
+    const timeoutId = setTimeout(
+      () => controller.abort(timeoutError),
+      REQUEST_TIMEOUT_MS,
+    );
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      controller.signal.addEventListener(
+        'abort',
+        () => reject(controller.signal.reason ?? timeoutError),
+        { once: true },
+      );
     });
-    if (!res.ok) {
-      if (res.status === 401) {
-        // Body goes to reportApiAuthFailure only — backend-controlled text
-        // must not leak into thrown errors (logged/telemetered downstream).
-        const detail = await res.text().catch(() => '');
-        reportApiAuthFailure(`call ${path}`, res.status, detail);
+
+    try {
+      const token = await Promise.race([this.getToken(), timeoutPromise]);
+      if (!token) throw new Error('[CallService] not authenticated');
+      const res = await fetch(`${this.baseUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          // Body goes to reportApiAuthFailure only — backend-controlled text
+          // must not leak into thrown errors (logged/telemetered downstream).
+          const detail = await res.text().catch(() => '');
+          reportApiAuthFailure(`call ${path}`, res.status, detail);
+        }
+        throw new Error(`[CallService] ${path} failed: ${res.status}`);
       }
-      throw new Error(`[CallService] ${path} failed: ${res.status}`);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -155,12 +200,16 @@ export class CallService {
     callerId: string;
     responseType: MailboxResponse['responseType'];
   }): Promise<void> {
-    await this.post('/calls/response', {
-      conversationId: roomId,
-      callerId,
-      responseType,
-      expiresAt: Date.now() + CALLING_TTL_MS,
-    });
+    await this.post(
+      '/calls/response',
+      {
+        conversationId: roomId,
+        callerId,
+        responseType,
+        expiresAt: Date.now() + CALLING_TTL_MS,
+      },
+      { retryOnTimeout: responseType === 'accepted' },
+    );
   }
 
   cancelOutgoingCall({
