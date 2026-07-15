@@ -246,7 +246,7 @@ describe('CallHandshakeController', () => {
           },
           { id: 'primary-video', kind: 'video', track: null },
         ],
-        presenceData: { cameraOn: false },
+        presenceData: { cameraOn: false, micOn: false },
       }),
     );
     const joinOptions = p2p.join.mock.calls[0][0];

@@ -17,6 +17,10 @@ export function MemberStreams(props: MemberStreamsProps) {
     p2p.memberPresence().find((member) => member.memberId === memberId)?.data
       ?.cameraOn === true;
 
+  const memberMicOn = (memberId: string) =>
+    p2p.memberPresence().find((member) => member.memberId === memberId)?.data
+      ?.micOn === true;
+
   return (
     <div
       classList={{
@@ -36,10 +40,11 @@ export function MemberStreams(props: MemberStreamsProps) {
         )}
       </Show>
       <For each={p2p.remoteMemberStreams()}>
-        {(remote) => (
+        {(stream) => (
           <ParticipantMedia
-            stream={remote.stream}
-            videoEnabled={memberCameraOn(remote.memberId)}
+            stream={stream.stream}
+            videoEnabled={memberCameraOn(stream.memberId)}
+            audioEnabled={memberMicOn(stream.memberId)}
             remoteAudioMuted={props.remoteAudioMuted}
           />
         )}

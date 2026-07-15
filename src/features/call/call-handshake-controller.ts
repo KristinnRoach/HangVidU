@@ -383,6 +383,9 @@ export class CallHandshakeController {
         getLocalStream: () => Promise.resolve(localStream),
         localTrackSlots: createCallLocalTrackSlots(localStream),
         presenceData: {
+          micOn: localStream
+            .getAudioTracks()
+            .some((track) => track.readyState === 'live' && track.enabled),
           cameraOn: localStream
             .getVideoTracks()
             .some((track) => track.readyState === 'live' && track.enabled),

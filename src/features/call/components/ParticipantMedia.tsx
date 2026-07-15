@@ -10,7 +10,7 @@ import { createMediaPlayback } from '@kidlib/p2p/solid';
 import { t } from '@shared/i18n';
 
 import styles from './ParticipantMedia.module.css';
-import { PhoneCall, Mic, MicOff } from 'lucide-solid'; // PhoneOff,
+import { PhoneCall, PhoneOff, Mic, MicOff } from 'lucide-solid';
 import { Spinner } from '@components/Spinner';
 
 type ParticipantMediaProps = {
@@ -21,8 +21,8 @@ type ParticipantMediaProps = {
   remoteAudioMuted?: boolean;
 };
 
-type TrackStatus = 'off' | 'connecting' | 'interrupted' | 'connected';
-type MediaStatus = { audio: TrackStatus; video: TrackStatus };
+type MediaTrackStatus = 'off' | 'connecting' | 'interrupted' | 'connected';
+type MediaStatus = { audio: MediaTrackStatus; video: MediaTrackStatus };
 
 // Only NotAllowedError means playback needs a user gesture; other
 // rejections (e.g. AbortError from re-attach/pause races) are transient
@@ -35,32 +35,33 @@ function trackStatus(
   expected: boolean,
   connected: boolean,
   wasConnected: boolean,
-): TrackStatus {
+): MediaTrackStatus {
   if (!expected) return 'off';
   if (connected) return 'connected';
   return wasConnected ? 'interrupted' : 'connecting';
 }
 
-function isVideoConnected(stream: MediaStream): boolean {
-  return stream
-    .getVideoTracks()
-    .some((track) => track.readyState !== 'ended' && !track.muted);
-}
+function isReceivingStreamData(
+  stream: MediaStream,
+  mediaType: 'audio' | 'video',
+): boolean {
+  const tracks =
+    mediaType === 'video' ? stream.getVideoTracks() : stream.getAudioTracks();
 
-function isAudioConnected(stream: MediaStream): boolean {
-  return stream.getAudioTracks().some((track) => track.readyState !== 'ended');
+  // NOTE: track.muted does NOT mean intentionally muted, that is done via track.enabled == false
+  return tracks.some((track) => track.readyState !== 'ended' && !track.muted);
 }
 
 export function ParticipantMedia(props: ParticipantMediaProps) {
   let video!: HTMLVideoElement;
   const variant = () => props.variant ?? 'remote';
-  const muted = () =>
+  const shouldMutePlayback = () =>
     variant() === 'self-preview' || props.remoteAudioMuted === true;
 
   // Sticky per-stream: once a track has been live, a later drop reads as
   // 'interrupted' rather than 'connecting'. Reset when props.stream changes.
-  let videoWasConnected = isVideoConnected(props.stream);
-  let audioWasConnected = isAudioConnected(props.stream);
+  let videoWasConnected = isReceivingStreamData(props.stream, 'video');
+  let audioWasConnected = isReceivingStreamData(props.stream, 'audio');
   const [status, setStatus] = createSignal<MediaStatus>({
     video: trackStatus(
       props.videoEnabled ?? true,
@@ -97,8 +98,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
 
       const tracks = stream.getTracks();
       const update = () => {
-        const videoConnected = isVideoConnected(stream);
-        const audioConnected = isAudioConnected(stream);
+        const videoConnected = isReceivingStreamData(stream, 'video');
+        const audioConnected = isReceivingStreamData(stream, 'audio');
         if (videoConnected) videoWasConnected = true;
         if (audioConnected) audioWasConnected = true;
         setStatus({
@@ -133,19 +134,27 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   });
 
   createEffect(() => {
+    if (!video) return;
+
     // Chromium won't fire loadedmetadata (and outputs no audio) while a
     // muted video track — the reserved camera slot of an audio-only call —
     // is in srcObject and produces no frames. Attach only the audio tracks
     // until usable video exists.
-    // ponytail: audio tracks snapshotted per attach; fine while the mic slot
-    // is fixed at join — revisit if audio tracks can be added mid-call.
-    const stream =
-      status().video === 'connected'
-        ? props.stream
-        : new MediaStream(props.stream.getAudioTracks());
-    if (!video) return;
+    const audioOnly = status().video !== 'connected'; //  && status().audio === 'connected';
+    const stream = audioOnly
+      ? new MediaStream(props.stream.getAudioTracks())
+      : props.stream;
 
-    const shouldMute = muted();
+    const syncAudioTracks = (event: MediaStreamTrackEvent) => {
+      if (event.type === 'addtrack') stream.addTrack(event.track);
+      else stream.removeTrack(event.track);
+    };
+    if (audioOnly) {
+      props.stream.addEventListener('addtrack', syncAudioTracks);
+      props.stream.addEventListener('removetrack', syncAudioTracks);
+    }
+
+    const shouldMute = shouldMutePlayback();
     video.defaultMuted = shouldMute;
     if (shouldMute) video.setAttribute('muted', '');
     else video.removeAttribute('muted');
@@ -164,6 +173,10 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
 
     onCleanup(() => {
       playback.detach();
+      if (audioOnly) {
+        props.stream.removeEventListener('addtrack', syncAudioTracks);
+        props.stream.removeEventListener('removetrack', syncAudioTracks);
+      }
       video.removeEventListener('loadedmetadata', replay);
       video.removeEventListener('canplay', replay);
       video.removeEventListener('pause', replay);
@@ -180,7 +193,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
         class={styles.media}
         hidden={status().video !== 'connected'}
         autoplay
-        muted={muted()}
+        muted={shouldMutePlayback()}
       />
 
       <Show when={status().video !== 'connected'}>
@@ -199,7 +212,11 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
             }
           >
             <div class={styles.audioOnly}>
-              <PhoneCall size={64} />
+              {props.audioEnabled ? (
+                <PhoneCall size={64} />
+              ) : (
+                <PhoneOff size={64} />
+              )}
             </div>
           </Match>
 

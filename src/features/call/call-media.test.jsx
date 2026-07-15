@@ -138,6 +138,9 @@ describe('call media', () => {
       const media = createCallMedia(p2p);
 
       expect(media.cameraOn()).toBe(false);
+      await media.setMicEnabled(false);
+      expect(media.micOn()).toBe(false);
+      expect(room.setPresenceData).toHaveBeenCalledWith({ micOn: false });
       await media.setCameraEnabled(true);
 
       expect(getUserMedia).toHaveBeenCalledWith({

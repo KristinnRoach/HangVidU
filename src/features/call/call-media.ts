@@ -26,7 +26,7 @@ export type CallMedia = {
   cameraSwitchAvailable: Accessor<boolean>;
   screenShareAvailable: Accessor<boolean>;
   screenSharing: Accessor<boolean>;
-  setMicEnabled: (enabled: boolean) => void;
+  setMicEnabled: (enabled: boolean) => Promise<void>;
   setCameraEnabled: (enabled: boolean) => Promise<void>;
   switchCamera: () => Promise<void>;
   toggleScreenShare: () => Promise<void>;
@@ -135,12 +135,21 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     ownedCameraTracks.clear();
   });
 
-  function setMicEnabled(enabled: boolean) {
+  async function setMicEnabled(enabled: boolean) {
     const tracks = localStream()?.getAudioTracks() ?? [];
     tracks.forEach((track) => {
       track.enabled = enabled;
     });
     syncTrackState();
+
+    const room = p2p.room();
+    if (!room)
+      throw new Error('Cannot change microphone without an active room');
+
+    const currentData =
+      room.memberPresence.find((member) => member.memberId === room.peerId)
+        ?.data ?? {};
+    await room.setPresenceData({ ...currentData, micOn: enabled });
   }
 
   // Broadcasts our cameraOn flag to other members via the room's member data

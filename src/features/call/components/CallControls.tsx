@@ -68,7 +68,9 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
   const visible = createAutoHide(3000);
 
   function toggleMic() {
-    media.setMicEnabled(!media.micOn());
+    void Promise.resolve(media.setMicEnabled(!media.micOn())).catch((error) => {
+      console.error('[CallMedia] Failed to change microphone state', error);
+    });
   }
 
   function toggleCam() {
