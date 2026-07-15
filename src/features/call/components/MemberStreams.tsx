@@ -34,6 +34,12 @@ export function MemberStreams(props: MemberStreamsProps) {
           <ParticipantMedia
             stream={remote.stream}
             videoEnabled={remoteCameraEnabled(remote.memberId)}
+            videoExpected={
+              p2p
+                .memberPresence()
+                .find((member) => member.memberId === remote.memberId)?.data
+                ?.cameraOn === true
+            }
             remoteAudioMuted={props.remoteAudioMuted}
           />
         )}

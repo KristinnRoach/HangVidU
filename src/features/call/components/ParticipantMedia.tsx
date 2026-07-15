@@ -1,5 +1,6 @@
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js';
 import { createMediaPlayback } from '@kidlib/p2p/solid';
+import { t } from '@shared/i18n';
 
 import styles from './ParticipantMedia.module.css';
 import { Phone } from 'lucide-solid';
@@ -8,10 +9,12 @@ type ParticipantMediaProps = {
   stream: MediaStream;
   variant?: 'remote' | 'self-preview';
   videoEnabled?: boolean;
+  videoExpected?: boolean;
   remoteAudioMuted?: boolean;
 };
 
 type MediaState = 'audio' | 'video' | 'empty';
+type VideoStatus = 'connecting' | 'interrupted' | null;
 
 // Only NotAllowedError means playback needs a user gesture; other
 // rejections (e.g. AbortError from re-attach/pause races) are transient
@@ -42,6 +45,10 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   const [mediaState, setMediaState] = createSignal<MediaState>(
     getMediaState(props.stream, props.videoEnabled),
   );
+  const [videoStatus, setVideoStatus] = createSignal<VideoStatus>(null);
+  const [hasShownVideo, setHasShownVideo] = createSignal(
+    mediaState() === 'video',
+  );
 
   const playback = createMediaPlayback({
     playsInline: true,
@@ -66,7 +73,11 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       removeTrackListeners();
 
       const tracks = stream.getTracks();
-      const update = () => setMediaState(getMediaState(stream, videoEnabled));
+      const update = () => {
+        const nextMediaState = getMediaState(stream, videoEnabled);
+        setMediaState(nextMediaState);
+        if (nextMediaState === 'video') setHasShownVideo(true);
+      };
       tracks.forEach((track) => {
         track.addEventListener('mute', update);
         track.addEventListener('unmute', update);
@@ -91,6 +102,14 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       stream.removeEventListener('removetrack', observeTracks);
       removeTrackListeners();
     });
+  });
+
+  createEffect(() => {
+    if (mediaState() === 'video' || !props.videoExpected) {
+      setVideoStatus(null);
+      return;
+    }
+    setVideoStatus(hasShownVideo() ? 'interrupted' : 'connecting');
   });
 
   createEffect(() => {
@@ -143,6 +162,16 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       <div class={styles.audioOnly} aria-hidden='true'>
         <Phone size={variant() === 'self-preview' ? 32 : 64} />
       </div>
+
+      <Show when={videoStatus()}>
+        {(status) => (
+          <p class={styles.videoStatus} role='status'>
+            {status() === 'connecting'
+              ? t('call.video.connecting')
+              : t('call.video.interrupted')}
+          </p>
+        )}
+      </Show>
 
       <video
         ref={video}

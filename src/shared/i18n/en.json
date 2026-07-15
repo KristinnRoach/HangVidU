@@ -21,6 +21,8 @@
   "call.busy": "Contact is busy",
   "call.calling": "Calling {name}...",
   "call.waiting": "Waiting for answer...",
+  "call.video.connecting": "Connecting video…",
+  "call.video.interrupted": "Video connection interrupted. Reconnecting…",
   "call.unknown_caller": "Unknown Caller",
   "call.lobby.ephemeral_prompt": "Or make an ephemeral call:",
   "call.lobby.start": "Start a call",

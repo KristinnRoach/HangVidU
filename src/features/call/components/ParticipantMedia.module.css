@@ -28,6 +28,16 @@
   color: lime;
 }
 
+.videoStatus {
+  position: absolute;
+  inset: auto var(--gap) var(--gap);
+  z-index: 1;
+  margin: 0;
+  color: white;
+  text-align: center;
+  text-shadow: var(--text-shadow-medium);
+}
+
 .surface[data-media-state='video'] .placeholder {
   display: none;
 }

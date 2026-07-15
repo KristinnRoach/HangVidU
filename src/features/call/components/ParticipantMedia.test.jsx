@@ -135,6 +135,34 @@ describe('ParticipantMedia', () => {
 
     expect(surface?.getAttribute('data-media-state')).toBe('audio');
     expect(video.hidden).toBe(true);
+    expect(container.textContent).not.toContain('Connecting video');
+  });
+
+  it('explains when an expected remote video track is still connecting', () => {
+    const stream = new FakeStream([
+      new FakeTrack('audio'),
+      new FakeTrack('video', { muted: true }),
+    ]);
+    const { container } = render(() => (
+      <ParticipantMedia stream={stream} videoExpected={true} />
+    ));
+
+    expect(container.textContent).toContain('Connecting video');
+  });
+
+  it('explains when a previously visible remote video is interrupted', async () => {
+    const track = new FakeTrack('video');
+    const stream = new FakeStream([track]);
+    const { container } = render(() => (
+      <ParticipantMedia stream={stream} videoExpected={true} />
+    ));
+
+    track.muted = true;
+    track.dispatchEvent(new Event('mute'));
+
+    await waitFor(() =>
+      expect(container.textContent).toContain('Video connection interrupted'),
+    );
   });
 
   it('shows the continue-call prompt only for autoplay-gesture rejections', async () => {
