@@ -55,6 +55,7 @@ function isReceivingStreamData(
 }
 
 export function ParticipantMedia(props: ParticipantMediaProps) {
+  // oxlint-disable-next-line no-unassigned-vars
   let video!: HTMLVideoElement;
   const variant = () => props.variant ?? 'remote';
   const shouldMutePlayback = () =>
