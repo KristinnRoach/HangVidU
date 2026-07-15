@@ -33,14 +33,13 @@
   display: flex;
   justify-content: center;
   align-items: center;
-
-  z-index: 9;
   color: white;
   font-size: 20px;
   text-align: center;
   text-shadow: var(--text-shadow-medium);
   -webkit-user-select: none;
   user-select: none;
+  z-index: 9;
 }
 
 .selfPreview {
@@ -49,9 +48,8 @@
   left: var(--gap);
   max-width: 150px;
   max-height: 150px;
-  z-index: 1;
-
   font-size: 12px;
+  z-index: 1;
 }
 
 .selfPreview .media {

@@ -31,6 +31,7 @@ export function MemberStreams(props: MemberStreamsProps) {
             stream={p2p.localStream()!}
             variant='self-preview'
             videoEnabled={props.media.cameraOn() || props.media.screenSharing()}
+            audioEnabled={props.media.micOn()}
           />
         )}
       </Show>

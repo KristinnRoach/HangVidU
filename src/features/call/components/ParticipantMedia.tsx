@@ -10,19 +10,17 @@ import { createMediaPlayback } from '@kidlib/p2p/solid';
 import { t } from '@shared/i18n';
 
 import styles from './ParticipantMedia.module.css';
-import { PhoneCall } from 'lucide-solid';
+import { PhoneCall, Mic, MicOff } from 'lucide-solid'; // PhoneOff,
 import { Spinner } from '@components/Spinner';
 
 type ParticipantMediaProps = {
   stream: MediaStream;
   variant?: 'remote' | 'self-preview';
   videoEnabled?: boolean;
+  audioEnabled?: boolean;
   remoteAudioMuted?: boolean;
 };
 
-// Unambiguous status shared by both tracks: 'off' = not expected on this
-// call at all, 'connecting' = expected but never connected yet,
-// 'interrupted' = was connected, now isn't, 'connected' = connected right now.
 type TrackStatus = 'off' | 'connecting' | 'interrupted' | 'connected';
 type MediaStatus = { audio: TrackStatus; video: TrackStatus };
 
@@ -194,10 +192,26 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
           }
         >
           <Match
-            when={status().audio === 'connected' && status().video === 'off'}
+            when={
+              status().audio === 'connected' &&
+              status().video === 'off' &&
+              variant() === 'remote'
+            }
           >
             <div class={styles.audioOnly}>
-              <PhoneCall size={variant() === 'self-preview' ? 32 : 64} />
+              <PhoneCall size={64} />
+            </div>
+          </Match>
+
+          <Match
+            when={
+              status().audio === 'connected' &&
+              status().video === 'off' &&
+              variant() === 'self-preview'
+            }
+          >
+            <div class={styles.audioOnly}>
+              {props.audioEnabled ? <Mic size={32} /> : <MicOff size={32} />}
             </div>
           </Match>
 
