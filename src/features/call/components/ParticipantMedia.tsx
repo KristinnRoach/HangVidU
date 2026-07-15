@@ -1,4 +1,5 @@
 import {
+  createMemo,
   createEffect,
   createSignal,
   onCleanup,
@@ -70,6 +71,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     ),
     audio: trackStatus(true, audioWasConnected, audioWasConnected),
   });
+  const videoConnected = createMemo(() => status().video === 'connected');
 
   const playback = createMediaPlayback({
     playsInline: true,
@@ -140,7 +142,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     // muted video track — the reserved camera slot of an audio-only call —
     // is in srcObject and produces no frames. Attach only the audio tracks
     // until usable video exists.
-    const audioOnly = status().video !== 'connected'; //  && status().audio === 'connected';
+    const audioOnly = !videoConnected();
     const stream = audioOnly
       ? new MediaStream(props.stream.getAudioTracks())
       : props.stream;
