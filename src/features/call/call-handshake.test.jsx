@@ -116,7 +116,7 @@ describe('CallHandshakeProvider', () => {
     window.history.replaceState(
       null,
       '',
-      '/?conversationRoom=room-1&callerId=caller-1',
+      '/?call=1&conversationId=room-1&callerId=caller-1',
     );
     const { CallHandshakeProvider } = await import('./call-handshake');
     const [user] = createSignal({ uid: 'u1' });

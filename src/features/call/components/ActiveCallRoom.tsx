@@ -2,12 +2,15 @@ import { Show, createSignal } from 'solid-js';
 
 import { MemberStreams } from './MemberStreams';
 import { ActiveCallControls } from './CallControls';
+import { createCallMedia } from '../call-media';
 import { useP2PContext } from '@shared/p2p-context.js';
 
 import styles from './ActiveCallRoom.module.css';
 
 export function ActiveCallRoom() {
   const p2p = useP2PContext();
+  // createCallMedia owns local imperative track state (camera tracks, screen-share track)
+  const media = createCallMedia(p2p);
 
   // Room-link (guest) calls carry ?publicRoom= in the URL; contact calls don't.
   // Only those can re-share the page URL as an invite.
@@ -28,7 +31,7 @@ export function ActiveCallRoom() {
 
   return (
     <div class={styles.room}>
-      <MemberStreams remoteAudioMuted={remoteAudioMuted()} />
+      <MemberStreams remoteAudioMuted={remoteAudioMuted()} media={media} />
 
       <Show
         when={
@@ -47,6 +50,7 @@ export function ActiveCallRoom() {
 
       <Show when={p2p.state() === 'joined'}>
         <ActiveCallControls
+          media={media}
           remoteAudioMuted={remoteAudioMuted()}
           onRemoteAudioMutedChange={setRemoteAudioMuted}
         />

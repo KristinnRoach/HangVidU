@@ -1,20 +1,30 @@
-import { createEffect, createSignal, onCleanup, Show } from 'solid-js';
+import {
+  createEffect,
+  createSignal,
+  onCleanup,
+  Switch,
+  Match,
+  Show,
+} from 'solid-js';
 import { createMediaPlayback } from '@kidlib/p2p/solid';
 import { t } from '@shared/i18n';
 
 import styles from './ParticipantMedia.module.css';
-import { Phone } from 'lucide-solid';
+import { PhoneCall } from 'lucide-solid';
+import { Spinner } from '@components/Spinner';
 
 type ParticipantMediaProps = {
   stream: MediaStream;
   variant?: 'remote' | 'self-preview';
   videoEnabled?: boolean;
-  videoExpected?: boolean;
   remoteAudioMuted?: boolean;
 };
 
-type MediaState = 'audio' | 'video' | 'empty';
-type VideoStatus = 'connecting' | 'interrupted' | null;
+// Unambiguous status shared by both tracks: 'off' = not expected on this
+// call at all, 'connecting' = expected but never connected yet,
+// 'interrupted' = was connected, now isn't, 'connected' = connected right now.
+type TrackStatus = 'off' | 'connecting' | 'interrupted' | 'connected';
+type MediaStatus = { audio: TrackStatus; video: TrackStatus };
 
 // Only NotAllowedError means playback needs a user gesture; other
 // rejections (e.g. AbortError from re-attach/pause races) are transient
@@ -23,18 +33,24 @@ function isAutoplayBlockedError(error: unknown): boolean {
   return (error as { name?: string } | undefined)?.name === 'NotAllowedError';
 }
 
-function getMediaState(stream: MediaStream, videoEnabled = true): MediaState {
-  const hasUsableVideo = stream
-    .getVideoTracks()
-    .some(
-      (track) => videoEnabled && track.readyState !== 'ended' && !track.muted,
-    );
-  if (hasUsableVideo) return 'video';
+function trackStatus(
+  expected: boolean,
+  connected: boolean,
+  wasConnected: boolean,
+): TrackStatus {
+  if (!expected) return 'off';
+  if (connected) return 'connected';
+  return wasConnected ? 'interrupted' : 'connecting';
+}
 
-  const hasLiveAudio = stream
-    .getAudioTracks()
-    .some((track) => track.readyState !== 'ended');
-  return hasLiveAudio ? 'audio' : 'empty';
+function isVideoConnected(stream: MediaStream): boolean {
+  return stream
+    .getVideoTracks()
+    .some((track) => track.readyState !== 'ended' && !track.muted);
+}
+
+function isAudioConnected(stream: MediaStream): boolean {
+  return stream.getAudioTracks().some((track) => track.readyState !== 'ended');
 }
 
 export function ParticipantMedia(props: ParticipantMediaProps) {
@@ -42,13 +58,19 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   const variant = () => props.variant ?? 'remote';
   const muted = () =>
     variant() === 'self-preview' || props.remoteAudioMuted === true;
-  const [mediaState, setMediaState] = createSignal<MediaState>(
-    getMediaState(props.stream, props.videoEnabled),
-  );
-  const [videoStatus, setVideoStatus] = createSignal<VideoStatus>(null);
-  const [hasShownVideo, setHasShownVideo] = createSignal(
-    mediaState() === 'video',
-  );
+
+  // Sticky per-stream: once a track has been live, a later drop reads as
+  // 'interrupted' rather than 'connecting'. Reset when props.stream changes.
+  let videoWasConnected = isVideoConnected(props.stream);
+  let audioWasConnected = isAudioConnected(props.stream);
+  const [status, setStatus] = createSignal<MediaStatus>({
+    video: trackStatus(
+      props.videoEnabled ?? true,
+      videoWasConnected,
+      videoWasConnected,
+    ),
+    audio: trackStatus(true, audioWasConnected, audioWasConnected),
+  });
 
   const playback = createMediaPlayback({
     playsInline: true,
@@ -67,6 +89,9 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   createEffect(() => {
     const stream = props.stream;
     const videoEnabled = props.videoEnabled ?? true;
+    // New stream instance: sticky "was connected" flags reset with it.
+    videoWasConnected = false;
+    audioWasConnected = false;
     let removeTrackListeners = () => {};
 
     const observeTracks = () => {
@@ -74,9 +99,14 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
 
       const tracks = stream.getTracks();
       const update = () => {
-        const nextMediaState = getMediaState(stream, videoEnabled);
-        setMediaState(nextMediaState);
-        if (nextMediaState === 'video') setHasShownVideo(true);
+        const videoConnected = isVideoConnected(stream);
+        const audioConnected = isAudioConnected(stream);
+        if (videoConnected) videoWasConnected = true;
+        if (audioConnected) audioWasConnected = true;
+        setStatus({
+          video: trackStatus(videoEnabled, videoConnected, videoWasConnected),
+          audio: trackStatus(true, audioConnected, audioWasConnected),
+        });
       };
       tracks.forEach((track) => {
         track.addEventListener('mute', update);
@@ -105,14 +135,6 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   });
 
   createEffect(() => {
-    if (mediaState() === 'video' || !props.videoExpected) {
-      setVideoStatus(null);
-      return;
-    }
-    setVideoStatus(hasShownVideo() ? 'interrupted' : 'connecting');
-  });
-
-  createEffect(() => {
     // Chromium won't fire loadedmetadata (and outputs no audio) while a
     // muted video track — the reserved camera slot of an audio-only call —
     // is in srcObject and produces no frames. Attach only the audio tracks
@@ -120,7 +142,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     // ponytail: audio tracks snapshotted per attach; fine while the mic slot
     // is fixed at join — revisit if audio tracks can be added mid-call.
     const stream =
-      mediaState() === 'video'
+      status().video === 'connected'
         ? props.stream
         : new MediaStream(props.stream.getAudioTracks());
     if (!video) return;
@@ -154,32 +176,46 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     <div
       class={styles.surface}
       classList={{ [styles.selfPreview]: variant() === 'self-preview' }}
-      data-media-state={mediaState()}
-      data-variant={variant()}
     >
-      <div class={styles.placeholder} aria-hidden='true' />
-
-      <div class={styles.audioOnly} aria-hidden='true'>
-        <Phone size={variant() === 'self-preview' ? 32 : 64} />
-      </div>
-
-      <Show when={videoStatus()}>
-        {(status) => (
-          <p class={styles.videoStatus} role='status'>
-            {status() === 'connecting'
-              ? t('call.video.connecting')
-              : t('call.video.interrupted')}
-          </p>
-        )}
-      </Show>
-
       <video
         ref={video}
         class={styles.media}
-        hidden={mediaState() !== 'video'}
+        hidden={status().video !== 'connected'}
         autoplay
         muted={muted()}
       />
+
+      <Show when={status().video !== 'connected'}>
+        <Switch
+          fallback={
+            <div class={styles.spinner}>
+              <Spinner />
+            </div>
+          }
+        >
+          <Match
+            when={status().audio === 'connected' && status().video === 'off'}
+          >
+            <div class={styles.audioOnly}>
+              <PhoneCall size={variant() === 'self-preview' ? 32 : 64} />
+            </div>
+          </Match>
+
+          <Match
+            when={
+              status().video === 'connecting' ||
+              status().video === 'interrupted'
+            }
+          >
+            <p class={styles.videoStatus} role='status'>
+              {status().video === 'connecting'
+                ? t('call.video.connecting')
+                : t('call.video.interrupted')}
+            </p>
+          </Match>
+        </Switch>
+      </Show>
+
       <Show
         when={
           playback.playbackBlocked() &&
@@ -191,7 +227,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
           class={styles.playbackPrompt}
           onClick={() => void playback.resumePlayback()}
         >
-          Continue call
+          {t('call.continue_prompt')}
         </button>
       </Show>
     </div>

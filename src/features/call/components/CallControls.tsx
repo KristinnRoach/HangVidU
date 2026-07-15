@@ -13,9 +13,8 @@ import {
 } from 'lucide-solid';
 
 import { useCallHandshake } from '../call-handshake';
-import { useP2PContext } from '@shared/p2p-context.js';
 import { createAutoHide } from '@shared/createAutoHide';
-import { createCallMedia } from '../call-media';
+import type { CallMedia } from '../call-media';
 
 import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
@@ -59,13 +58,13 @@ export function StartCallButton(props: StartCallButtonProps) {
 }
 
 type ActiveCallControlsProps = {
+  media: CallMedia;
   remoteAudioMuted: boolean;
   onRemoteAudioMutedChange: (muted: boolean) => void;
 };
 
 export function ActiveCallControls(props: ActiveCallControlsProps) {
-  const p2p = useP2PContext();
-  const media = createCallMedia(p2p);
+  const media = props.media;
   const visible = createAutoHide(3000);
 
   function toggleMic() {

@@ -8,8 +8,9 @@
 }
 
 .media,
-.placeholder,
-.audioOnly {
+.audioOnly,
+.videoStatus,
+.spinner {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -29,30 +30,28 @@
 }
 
 .videoStatus {
-  position: absolute;
-  inset: auto var(--gap) var(--gap);
-  z-index: 1;
-  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 9;
   color: white;
+  font-size: 20px;
   text-align: center;
   text-shadow: var(--text-shadow-medium);
-}
-
-.surface[data-media-state='video'] .placeholder {
-  display: none;
-}
-
-.surface:not([data-media-state='audio']) .audioOnly {
-  display: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .selfPreview {
   position: absolute;
   top: var(--gap);
   left: var(--gap);
-  width: 150px;
-  height: 100px;
+  max-width: 150px;
+  max-height: 150px;
   z-index: 1;
+
+  font-size: 12px;
 }
 
 .selfPreview .media {

@@ -1,6 +1,6 @@
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 
-export type PendingOutgoingCall = {
+export type OutgoingCall = {
   calleeId: string;
   calleeName: string;
   callerId: string;
@@ -24,5 +24,5 @@ export type CallHandshakeState =
     }
   | {
       direction: 'outgoing';
-      call: PendingOutgoingCall;
+      call: OutgoingCall;
     };

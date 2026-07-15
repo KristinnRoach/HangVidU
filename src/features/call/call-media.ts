@@ -143,7 +143,9 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     syncTrackState();
   }
 
-  async function publishCameraPresence(
+  // Broadcasts our cameraOn flag to other members via the room's member data
+  // (@kidlib/p2p "presence" — unrelated to the online/offline presence feature).
+  async function publishCameraOn(
     room: NonNullable<ReturnType<SolidP2PRoom['room']>>,
     cameraOn: boolean,
   ) {
@@ -159,15 +161,15 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     replacementError?: unknown,
   ) {
     try {
-      await publishCameraPresence(room, cameraOn);
-    } catch (presenceError) {
+      await publishCameraOn(room, cameraOn);
+    } catch (publishError) {
       if (replacementError) {
         console.error(
-          '[CallMedia] Failed to publish camera presence after a partial track replacement',
-          presenceError,
+          '[CallMedia] Failed to publish cameraOn after a partial track replacement',
+          publishError,
         );
       } else {
-        throw presenceError;
+        throw publishError;
       }
     }
     if (replacementError) throw replacementError;
@@ -192,7 +194,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
           }
           // currentTracks are stopped unconditionally in finally, so the
           // camera is off locally regardless of replacement outcome —
-          // presence must always reflect that.
+          // the published cameraOn flag must always reflect that.
           await finishCommittedCameraChange(room, false, replacementError);
         } finally {
           // Null is the room's desired state even after a partial pair failure.
@@ -210,7 +212,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       );
       if (liveTrack) {
         liveTrack.enabled = true;
-        await publishCameraPresence(room, true);
+        await publishCameraOn(room, true);
         syncTrackState();
         return;
       }

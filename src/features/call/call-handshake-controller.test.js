@@ -356,7 +356,7 @@ describe('CallHandshakeController', () => {
       onCalleeBusy: vi.fn(),
     });
 
-    const start = controller.sendOutgoingCallInvite({
+    const start = controller.startCall({
       calleeId: 'callee-id',
       calleeName: 'Callee',
       audioOnly: false,
@@ -400,7 +400,7 @@ describe('CallHandshakeController', () => {
       onCalleeBusy: vi.fn(),
     });
 
-    await controller.sendOutgoingCallInvite({
+    await controller.startCall({
       calleeId: 'callee-id',
       calleeName: 'Callee',
       audioOnly: false,
@@ -433,7 +433,7 @@ describe('CallHandshakeController', () => {
       onCalleeBusy: vi.fn(),
     });
 
-    await controller.sendOutgoingCallInvite({
+    await controller.startCall({
       calleeId: 'callee-id',
       calleeName: 'Callee',
       audioOnly: false,
@@ -462,7 +462,7 @@ describe('CallHandshakeController', () => {
       onCalleeBusy: vi.fn(),
     });
 
-    await controller.sendOutgoingCallInvite({
+    await controller.startCall({
       calleeId: 'callee-id',
       calleeName: 'Callee',
       audioOnly: false,
@@ -491,7 +491,7 @@ describe('CallHandshakeController', () => {
       onCalleeBusy: vi.fn(),
     });
 
-    const start = controller.sendOutgoingCallInvite({
+    const start = controller.startCall({
       calleeId: 'callee-id',
       calleeName: 'Callee',
       audioOnly: false,
