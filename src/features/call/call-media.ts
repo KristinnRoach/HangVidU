@@ -62,6 +62,21 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   let screenTrack: MediaStreamTrack | undefined;
   let cameraBeforeScreenShare: MediaStreamTrack | null = null;
   let screenStopRequested = false;
+  let presenceWriteChain = Promise.resolve();
+
+  function enqueuePresenceUpdate(
+    room: NonNullable<ReturnType<SolidP2PRoom['room']>>,
+    data: { micOn?: boolean; cameraOn?: boolean },
+  ) {
+    const update = presenceWriteChain.then(async () => {
+      const currentData =
+        room.memberPresence.find((member) => member.memberId === room.peerId)
+          ?.data ?? {};
+      await room.setPresenceData({ ...currentData, ...data });
+    });
+    presenceWriteChain = update.catch(() => {});
+    return update;
+  }
 
   async function refreshCameraSwitchAvailability(log = false) {
     const devices = await navigator.mediaDevices
@@ -146,10 +161,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     if (!room)
       throw new Error('Cannot change microphone without an active room');
 
-    const currentData =
-      room.memberPresence.find((member) => member.memberId === room.peerId)
-        ?.data ?? {};
-    await room.setPresenceData({ ...currentData, micOn: enabled });
+    await enqueuePresenceUpdate(room, { micOn: micOn() });
   }
 
   // Broadcasts our cameraOn flag to other members via the room's member data
@@ -158,10 +170,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     room: NonNullable<ReturnType<SolidP2PRoom['room']>>,
     cameraOn: boolean,
   ) {
-    const currentData =
-      room.memberPresence.find((member) => member.memberId === room.peerId)
-        ?.data ?? {};
-    await room.setPresenceData({ ...currentData, cameraOn });
+    await enqueuePresenceUpdate(room, { cameraOn });
   }
 
   async function finishCommittedCameraChange(
@@ -221,8 +230,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       );
       if (liveTrack) {
         liveTrack.enabled = true;
-        await publishCameraOn(room, true);
         syncTrackState();
+        await publishCameraOn(room, true);
         return;
       }
 

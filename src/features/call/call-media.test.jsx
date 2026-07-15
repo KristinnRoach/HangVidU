@@ -119,7 +119,7 @@ describe('call media', () => {
 
     const room = {
       localStream,
-      memberPresence: [],
+      memberPresence: [{ memberId: 'local', data: { cameraOn: true } }],
       peerId: 'local',
       setPresenceData: vi.fn(async () => {}),
       setLocalTrack: vi.fn(async (_slotId, track) => {
@@ -140,7 +140,10 @@ describe('call media', () => {
       expect(media.cameraOn()).toBe(false);
       await media.setMicEnabled(false);
       expect(media.micOn()).toBe(false);
-      expect(room.setPresenceData).toHaveBeenCalledWith({ micOn: false });
+      expect(room.setPresenceData).toHaveBeenCalledWith({
+        cameraOn: true,
+        micOn: false,
+      });
       await media.setCameraEnabled(true);
 
       expect(getUserMedia).toHaveBeenCalledWith({
@@ -198,6 +201,87 @@ describe('call media', () => {
         frontCamera,
       );
       expect(backCamera.stop).toHaveBeenCalledOnce();
+      dispose();
+    });
+  });
+
+  it('serializes microphone and camera presence updates', async () => {
+    const microphone = createTrack('audio');
+    const camera = createTrack('video');
+    camera.enabled = false;
+    const localStream = createStream([microphone, camera]);
+    let releaseFirstUpdate;
+    const firstUpdate = new Promise((resolve) => {
+      releaseFirstUpdate = resolve;
+    });
+    const room = {
+      localStream,
+      memberPresence: [
+        {
+          memberId: 'local',
+          data: { cameraOn: false, micOn: true },
+        },
+      ],
+      peerId: 'local',
+      setPresenceData: vi.fn(async (data) => {
+        if (room.setPresenceData.mock.calls.length === 1) {
+          await firstUpdate;
+        }
+        room.memberPresence[0].data = data;
+      }),
+      setLocalTrack: vi.fn(async () => {}),
+    };
+    const p2p = {
+      localStream: () => localStream,
+      room: () => room,
+    };
+
+    await createRoot(async (dispose) => {
+      const media = createCallMedia(p2p);
+      const microphoneUpdate = media.setMicEnabled(false);
+      const cameraUpdate = media.setCameraEnabled(true);
+
+      await Promise.resolve();
+      expect(room.setPresenceData).toHaveBeenCalledOnce();
+
+      releaseFirstUpdate();
+      await Promise.all([microphoneUpdate, cameraUpdate]);
+
+      expect(room.setPresenceData).toHaveBeenLastCalledWith({
+        cameraOn: true,
+        micOn: false,
+      });
+      dispose();
+    });
+  });
+
+  it('shows an enabled live camera even when presence publishing fails', async () => {
+    const microphone = createTrack('audio');
+    const camera = createTrack('video');
+    camera.enabled = false;
+    const localStream = createStream([microphone, camera]);
+    const publishError = new Error('presence unavailable');
+    const room = {
+      localStream,
+      memberPresence: [],
+      peerId: 'local',
+      setPresenceData: vi.fn(async () => {
+        throw publishError;
+      }),
+      setLocalTrack: vi.fn(async () => {}),
+    };
+    const p2p = {
+      localStream: () => localStream,
+      room: () => room,
+    };
+
+    await createRoot(async (dispose) => {
+      const media = createCallMedia(p2p);
+
+      await expect(media.setCameraEnabled(true)).rejects.toBe(publishError);
+
+      expect(camera.enabled).toBe(true);
+      expect(media.cameraOn()).toBe(true);
       dispose();
     });
   });

@@ -2,6 +2,7 @@ import {
   createMemo,
   createEffect,
   createSignal,
+  on,
   onCleanup,
   Switch,
   Match,
@@ -73,6 +74,21 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   });
   const videoConnected = createMemo(() => status().video === 'connected');
 
+  const updateStatus = (stream: MediaStream) => {
+    const videoConnected = isReceivingStreamData(stream, 'video');
+    const audioConnected = isReceivingStreamData(stream, 'audio');
+    if (videoConnected) videoWasConnected = true;
+    if (audioConnected) audioWasConnected = true;
+    setStatus({
+      video: trackStatus(
+        props.videoEnabled ?? true,
+        videoConnected,
+        videoWasConnected,
+      ),
+      audio: trackStatus(true, audioConnected, audioWasConnected),
+    });
+  };
+
   const playback = createMediaPlayback({
     playsInline: true,
     onPlaybackBlocked: (err) => {
@@ -87,53 +103,55 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     },
   });
 
-  createEffect(() => {
-    const stream = props.stream;
-    const videoEnabled = props.videoEnabled ?? true;
-    // New stream instance: sticky "was connected" flags reset with it.
-    videoWasConnected = false;
-    audioWasConnected = false;
-    let removeTrackListeners = () => {};
+  createEffect(
+    on(
+      () => props.stream,
+      (stream) => {
+        // New stream instance: sticky "was connected" flags reset with it.
+        videoWasConnected = false;
+        audioWasConnected = false;
+        let removeTrackListeners = () => {};
 
-    const observeTracks = () => {
-      removeTrackListeners();
+        const observeTracks = () => {
+          removeTrackListeners();
 
-      const tracks = stream.getTracks();
-      const update = () => {
-        const videoConnected = isReceivingStreamData(stream, 'video');
-        const audioConnected = isReceivingStreamData(stream, 'audio');
-        if (videoConnected) videoWasConnected = true;
-        if (audioConnected) audioWasConnected = true;
-        setStatus({
-          video: trackStatus(videoEnabled, videoConnected, videoWasConnected),
-          audio: trackStatus(true, audioConnected, audioWasConnected),
+          const tracks = stream.getTracks();
+          const update = () => updateStatus(stream);
+          tracks.forEach((track) => {
+            track.addEventListener('mute', update);
+            track.addEventListener('unmute', update);
+            track.addEventListener('ended', update);
+          });
+          removeTrackListeners = () => {
+            tracks.forEach((track) => {
+              track.removeEventListener('mute', update);
+              track.removeEventListener('unmute', update);
+              track.removeEventListener('ended', update);
+            });
+          };
+          update();
+        };
+
+        stream.addEventListener('addtrack', observeTracks);
+        stream.addEventListener('removetrack', observeTracks);
+        observeTracks();
+
+        onCleanup(() => {
+          stream.removeEventListener('addtrack', observeTracks);
+          stream.removeEventListener('removetrack', observeTracks);
+          removeTrackListeners();
         });
-      };
-      tracks.forEach((track) => {
-        track.addEventListener('mute', update);
-        track.addEventListener('unmute', update);
-        track.addEventListener('ended', update);
-      });
-      removeTrackListeners = () => {
-        tracks.forEach((track) => {
-          track.removeEventListener('mute', update);
-          track.removeEventListener('unmute', update);
-          track.removeEventListener('ended', update);
-        });
-      };
-      update();
-    };
+      },
+    ),
+  );
 
-    stream.addEventListener('addtrack', observeTracks);
-    stream.addEventListener('removetrack', observeTracks);
-    observeTracks();
-
-    onCleanup(() => {
-      stream.removeEventListener('addtrack', observeTracks);
-      stream.removeEventListener('removetrack', observeTracks);
-      removeTrackListeners();
-    });
-  });
+  createEffect(
+    on(
+      () => props.videoEnabled,
+      () => updateStatus(props.stream),
+      { defer: true },
+    ),
+  );
 
   createEffect(() => {
     if (!video) return;

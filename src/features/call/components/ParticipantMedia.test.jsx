@@ -153,6 +153,24 @@ describe('ParticipantMedia', () => {
     );
   });
 
+  it('keeps an interrupted video sticky across camera presence toggles', async () => {
+    const track = new FakeTrack('video');
+    const stream = new FakeStream([track]);
+    const [videoEnabled, setVideoEnabled] = createSignal(true);
+    const { container } = render(() => (
+      <ParticipantMedia stream={stream} videoEnabled={videoEnabled()} />
+    ));
+
+    track.muted = true;
+    track.dispatchEvent(new Event('mute'));
+    setVideoEnabled(false);
+    setVideoEnabled(true);
+
+    await waitFor(() =>
+      expect(container.textContent).toContain('Video connection interrupted'),
+    );
+  });
+
   it('shows the continue-call prompt only for autoplay-gesture rejections', async () => {
     HTMLMediaElement.prototype.play.mockRejectedValue(
       Object.assign(new Error('gesture required'), {
