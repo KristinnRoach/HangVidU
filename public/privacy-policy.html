@@ -9,7 +9,7 @@
   <body>
     <a href="/" class="back-btn">&larr; Back to HangVidU</a>
     <h1>Privacy Policy for HangVidU</h1>
-    <p>Last updated: July 2, 2026</p>
+    <p>Last updated: July 16, 2026</p>
 
     <h2>Introduction</h2>
     <p>
@@ -25,8 +25,7 @@
       We use Google Sign-In for authentication. When you sign in, we receive
       your email address, name, and profile picture from Google. This
       information is used solely to identify you within the application and
-      allow other users to find you. Google Firebase handles all authentication
-      data securely according to Google's privacy standards.
+      allow other users to find you.
     </p>
 
     <h3>2. Google Contacts Data</h3>
@@ -54,8 +53,7 @@
       not share Google contact or Gmail data with data brokers, advertisers, or
       other third parties. If contact data is matched to an existing HangVidU
       account, that matching is used only to show you which of your contacts are
-      already on HangVidU. Google contact data is not stored on our servers; it
-      is used in memory only for the duration of the import session.
+      already on HangVidU.
     </p>
 
     <h3>5. Peer-to-Peer Communication (WebRTC)</h3>
@@ -80,11 +78,20 @@
       Text messages and files sent via the text messaging interface are stored
       on our servers (Cloudflare D1 database and R2 file storage) for the
       purpose of allowing users to view chat history after a P2P connection is
-      closed. An option to disable chat history is planned, which will allow
-      users to prevent their messages from being stored or to have them stored
-      only locally. Chat messages are not backed up elsewhere or used for
-      advertising or profiling, and are deleted if the underlying conversation
-      data is removed.
+      closed. Chat messages are not backed up elsewhere or used for advertising
+      or profiling, and are deleted if the underlying conversation data is
+      removed.
+    </p>
+
+    <h2>Data Protection</h2>
+    <p>
+      HangVidU protects Google user data in transit with HTTPS/TLS. Google OAuth
+      access tokens are held in browser memory, are not persisted in browser or
+      server storage, and are cleared when the user signs out. Google Contacts
+      data is processed for the import session and is not persisted. Requests to
+      HangVidU services that access account data require Firebase
+      authentication. Google profile data persisted in Cloudflare D1 is
+      encrypted at rest by Cloudflare.
     </p>
 
     <h2>Google API Services User Data Policy</h2>
