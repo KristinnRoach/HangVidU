@@ -1,4 +1,5 @@
 import type { ClientMessage, ServerMessage } from './protocol';
+import { subscribeToWakeSignals } from './wake-signals';
 
 /**
  * Thin reconnecting WebSocket client to the signaling worker. Transport only —
@@ -81,6 +82,17 @@ export function createSignalingSocket(
     backoff = Math.min(backoff * 2, maxBackoff);
   }
 
+  // Foreground/online: if we're sitting out a backoff wait, reconnect now.
+  // Only fires mid-wait — an existing socket (even a dying one) is left alone;
+  // its close event re-enters scheduleReconnect with the reset backoff.
+  const unsubscribeWake = subscribeToWakeSignals(() => {
+    if (closed || !reconnectTimer) return;
+    clearTimeout(reconnectTimer);
+    reconnectTimer = undefined;
+    backoff = 500;
+    void connect();
+  });
+
   void connect();
 
   return {
@@ -99,6 +111,7 @@ export function createSignalingSocket(
     },
     close() {
       closed = true;
+      unsubscribeWake();
       if (reconnectTimer) clearTimeout(reconnectTimer);
       sendQueue.length = 0;
       messageHandlers.clear();
