@@ -60,9 +60,15 @@ export async function handleDataRequest(
 
   const url = new URL(request.url);
 
-  // Health check — no auth, for local-dev / uptime verification.
+  // Health check — no auth, for local-dev / uptime verification. Pings D1 so
+  // a database outage (every authed route depends on it) reads as unhealthy.
   if (request.method === 'GET' && url.pathname === '/health') {
-    return json({ ok: true }, 200, cors);
+    try {
+      await env.DB.prepare('SELECT 1').first();
+      return json({ ok: true }, 200, cors);
+    } catch {
+      return json({ ok: false, error: 'd1 unreachable' }, 503, cors);
+    }
   }
 
   // WebSocket live-push channel. Auth rides in the subprotocol (browsers

@@ -1,7 +1,11 @@
 const AUTH_FAILURE_ALERT =
   'HangVidU could not verify your session. Refresh the page or sign out and back in.';
 
+const OUTAGE_ALERT =
+  "HangVidU's server is temporarily unavailable. Your data is safe — please try again in a few minutes.";
+
 let hasAlerted = false;
+let hasAlertedOutage = false;
 
 export function reportApiAuthFailure(scope, status, detail) {
   const message = `[${scope}] auth request failed with ${status}${detail ? `: ${detail}` : ''}`;
@@ -10,4 +14,15 @@ export function reportApiAuthFailure(scope, status, detail) {
   if (hasAlerted || typeof window === 'undefined') return;
   hasAlerted = true;
   window.alert(AUTH_FAILURE_ALERT);
+}
+
+// Once-per-session native alert for 5xx responses, so a backend outage tells
+// the user what's happening instead of the app just silently breaking.
+export function reportApiOutage(scope, status, detail) {
+  const message = `[${scope}] server error ${status}${detail ? `: ${detail}` : ''}`;
+  console.error(message);
+
+  if (hasAlertedOutage || typeof window === 'undefined') return;
+  hasAlertedOutage = true;
+  window.alert(OUTAGE_ALERT);
 }
