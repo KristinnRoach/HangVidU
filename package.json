@@ -45,7 +45,7 @@
     "check:fb:hosting": "bash scripts/check-production-routing.sh",
     "check:fb:hosting:strict": "STRICT_IPV4=1 bash scripts/check-production-routing.sh",
     "check:fb:rtdb": "if curl -s --max-time 10 'https://vidu-aae11-default-rtdb.europe-west1.firebasedatabase.app/.json?shallow=true' | grep -Eq 'Permission denied|appcheck'; then echo '✅ RTDB reachable (access enforced)'; else echo '❌ RTDB unreachable or access checks misbehaving'; exit 1; fi",
-    "check:prod": "pnpm check:cf:api; pnpm check:fb:hosting; pnpm check:fb:functions; pnpm check:fb:rtdb",
+    "check:prod": "f=0; pnpm check:cf:api || f=1; pnpm check:fb:hosting || f=1; pnpm check:fb:functions || f=1; pnpm check:fb:rtdb || f=1; exit $f",
     "d1:view:local": "pnpm -C backend/cloudflare view:local",
     "d1:view:remote": "pnpm -C backend/cloudflare view:remote",
     "migrate:local": "pnpm -C backend/cloudflare run migrate:local",
