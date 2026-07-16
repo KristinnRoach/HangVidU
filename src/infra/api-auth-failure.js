@@ -1,8 +1,7 @@
+import { t } from '@shared/i18n/index.js';
+
 const AUTH_FAILURE_ALERT =
   'HangVidU could not verify your session. Refresh the page or sign out and back in.';
-
-const OUTAGE_ALERT =
-  "HangVidU's server is temporarily unavailable. Your data is safe — please try again in a few minutes.";
 
 let hasAlerted = false;
 let hasAlertedOutage = false;
@@ -26,5 +25,5 @@ export function reportApiOutage(scope, status, detail) {
 
   if (hasAlertedOutage || typeof window === 'undefined') return;
   hasAlertedOutage = true;
-  window.alert(OUTAGE_ALERT);
+  window.alert(t('auth.error.api_outage'));
 }
