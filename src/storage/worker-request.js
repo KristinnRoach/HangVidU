@@ -3,7 +3,10 @@
 // import `auth`, so the bearer token arrives via a `getToken` provider injected
 // by the wiring layer. Mirrors the request helper in conversations/data-client.ts.
 
-import { reportApiAuthFailure } from '../infra/api-auth-failure.js';
+import {
+  reportApiAuthFailure,
+  reportApiOutage,
+} from '../infra/api-auth-failure.js';
 
 const REQUEST_TIMEOUT_MS = 8_000;
 
@@ -37,6 +40,8 @@ export function createWorkerRequest({ baseUrl, getToken }) {
       const detail = await res.text().catch(() => '');
       if (res.status === 401) {
         reportApiAuthFailure(`data:${method} ${path}`, res.status, detail);
+      } else if (res.status >= 500) {
+        reportApiOutage(`data:${method} ${path}`, res.status, detail);
       }
       const err = new Error(
         `data worker ${method} ${path} -> ${res.status} ${detail}`,

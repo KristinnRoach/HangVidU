@@ -176,6 +176,7 @@
   "auth.signing_out": "Skrái út...",
   "auth.guest_user": "Gestur",
   "auth.error.generic": "Eitthvað fór úrskeiðis. Reyndu aftur.",
+  "auth.error.api_outage": "Netþjónn HangVidU er tímabundið óaðgengilegur. Gögnin þín eru örugg. Reyndu aftur eftir nokkrar mínútur.",
   "auth.error.identifier_required": "Sláðu inn notandanafn eða netfang.",
   "auth.error.invalid_credentials": "Við fundum ekki reikning með þessum innskráningarupplýsingum.",
   "auth.error.password_required": "Sláðu inn lykilorð.",

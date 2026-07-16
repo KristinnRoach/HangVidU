@@ -176,6 +176,7 @@
   "auth.signing_out": "Signing out...",
   "auth.guest_user": "Guest User",
   "auth.error.generic": "Something went wrong. Please try again.",
+  "auth.error.api_outage": "HangVidU's server is temporarily unavailable. Your data is safe — please try again in a few minutes.",
   "auth.error.identifier_required": "Enter your username or email.",
   "auth.error.invalid_credentials": "We couldn't find an account with those credentials.",
   "auth.error.password_required": "Enter your password.",

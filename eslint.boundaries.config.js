@@ -129,7 +129,7 @@ overrides.push(
     [
       {
         from: { type: 'infra' },
-        allow: { to: [{ type: 'infra' }, { type: 'lib' }] },
+        allow: { to: [{ type: 'infra' }, { type: 'lib' }, { type: 'shared' }] },
         message:
           'Infra is the external-system bootstrap layer — may only import from infra and lib (vendor SDKs + env config + primitives).',
       },

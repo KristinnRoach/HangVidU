@@ -9,7 +9,10 @@ import type {
   WireMessage,
   WireReactionSummary,
 } from '../../../shared/conversation-channel/protocol';
-import { reportApiAuthFailure } from '../../infra/api-auth-failure.js';
+import {
+  reportApiAuthFailure,
+  reportApiOutage,
+} from '../../infra/api-auth-failure.js';
 
 /** Input for sending a message. `messageId` is client-reserved (optimistic id). */
 export interface SendMessageInput {
@@ -115,6 +118,8 @@ export function createConversationsClient(
       const detail = await res.text().catch(() => '');
       if (res.status === 401) {
         reportApiAuthFailure(`data:${method} ${path}`, res.status, detail);
+      } else if (res.status >= 500) {
+        reportApiOutage(`data:${method} ${path}`, res.status, detail);
       }
       const err = new Error(
         `data worker ${method} ${path} -> ${res.status} ${detail}`,

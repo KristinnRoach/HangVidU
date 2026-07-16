@@ -1,3 +1,4 @@
+import { corsHeaders } from './cors';
 import { handleDataRequest } from './data/handlers';
 import { handleFilesRequest } from './files/handlers';
 import { handleSignalingRequest } from './realtime/signaling-handler';
@@ -34,16 +35,35 @@ const DATA_PATHS = [
 
 export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
-    const { pathname } = new URL(request.url);
-    if (FILES_PATH.test(pathname) || FILES_SUBRESOURCE_PATH.test(pathname)) {
-      return handleFilesRequest(request, env);
+    try {
+      const { pathname } = new URL(request.url);
+      if (FILES_PATH.test(pathname) || FILES_SUBRESOURCE_PATH.test(pathname)) {
+        return await handleFilesRequest(request, env);
+      }
+      if (SIGNALING_PATH.test(pathname)) {
+        return await handleSignalingRequest(request, env);
+      }
+      if (DATA_PATHS.some((pattern) => pattern.test(pathname))) {
+        return await handleDataRequest(request, env);
+      }
+      return new Response('Not found', { status: 404 });
+    } catch (error) {
+      // Without this, an uncaught throw (e.g. a D1 outage) becomes a bare 500
+      // with no CORS headers, which browsers report as a CORS failure.
+      console.error('[worker] unhandled error', {
+        path: new URL(request.url).pathname,
+        error:
+          error instanceof Error
+            ? { name: error.name, message: error.message }
+            : error,
+      });
+      return new Response(JSON.stringify({ error: 'service unavailable' }), {
+        status: 503,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders(request.headers.get('Origin'), env),
+        },
+      });
     }
-    if (SIGNALING_PATH.test(pathname)) {
-      return handleSignalingRequest(request, env);
-    }
-    if (DATA_PATHS.some((pattern) => pattern.test(pathname))) {
-      return handleDataRequest(request, env);
-    }
-    return new Response('Not found', { status: 404 });
   },
 } satisfies ExportedHandler<WorkerEnv>;
