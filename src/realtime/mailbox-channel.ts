@@ -10,6 +10,7 @@ import {
   type MailboxEnvelope,
 } from '../../shared/user-mailbox/protocol';
 import { buildHangViduWebSocketUrl } from '../infra/hangvidu-api-url';
+import { subscribeToWakeSignals } from './wake-signals';
 
 export interface MailboxChannelOptions {
   /** Data worker base URL, e.g. https://localhost:8788 (http(s) → ws(s)). */
@@ -86,6 +87,17 @@ export function createMailboxChannel(
     backoff = Math.min(backoff * 2, maxBackoff);
   }
 
+  // Foreground/online: if we're sitting out a backoff wait, reconnect now.
+  // Only fires mid-wait — an existing socket (even a dying one) is left alone;
+  // its close event re-enters scheduleReconnect with the reset backoff.
+  const unsubscribeWake = subscribeToWakeSignals(() => {
+    if (closed || !reconnectTimer) return;
+    clearTimeout(reconnectTimer);
+    reconnectTimer = undefined;
+    backoff = 500;
+    void connect();
+  });
+
   void connect();
 
   return {
@@ -95,6 +107,7 @@ export function createMailboxChannel(
     },
     close() {
       closed = true;
+      unsubscribeWake();
       if (reconnectTimer) clearTimeout(reconnectTimer);
       handlers.clear();
       ws?.close();
