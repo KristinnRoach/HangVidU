@@ -10,6 +10,7 @@ import {
 } from 'solid-js';
 import { createMediaPlayback } from '@kidlib/p2p/solid';
 import { t } from '@shared/i18n';
+import { isIOSDevice } from '@lib/utils/detect-device.js';
 
 import styles from './ParticipantMedia.module.css';
 import { PhoneCall, PhoneOff, Mic, MicOff } from 'lucide-solid';
@@ -65,6 +66,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   // 'interrupted' rather than 'connecting'. Reset when props.stream changes.
   let videoWasConnected = isReceivingStreamData(props.stream, 'video');
   let audioWasConnected = isReceivingStreamData(props.stream, 'audio');
+  let rebuiltVideoLayerForStream: MediaStream | undefined;
   const [status, setStatus] = createSignal<MediaStatus>({
     video: trackStatus(
       props.videoEnabled ?? true,
@@ -177,13 +179,38 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     }
 
     const shouldMute = shouldMutePlayback();
-    video.defaultMuted = shouldMute;
-    if (shouldMute) video.setAttribute('muted', '');
-    else video.removeAttribute('muted');
-    video.autoplay = true;
-    video.setAttribute('playsinline', 'true');
+    const configureVideo = (element: HTMLVideoElement) => {
+      element.defaultMuted = shouldMute;
+      if (shouldMute) element.setAttribute('muted', '');
+      else element.removeAttribute('muted');
+      element.autoplay = true;
+      element.setAttribute('playsinline', 'true');
+    };
+    configureVideo(video);
 
-    void playback.attach(video, stream, { muted: shouldMute });
+    const attachedVideo = video;
+    void playback
+      .attach(attachedVideo, stream, { muted: shouldMute })
+      .then((started) => {
+        if (
+          !started ||
+          video !== attachedVideo ||
+          audioOnly ||
+          !isIOSDevice() ||
+          rebuiltVideoLayerForStream === props.stream
+        ) {
+          return;
+        }
+
+        // iOS 27 can decode live frames but paint a black video layer; replacing
+        // the element after playback starts forces WebKit to create a working one.
+        rebuiltVideoLayerForStream = props.stream;
+        const replacement = attachedVideo.cloneNode(false) as HTMLVideoElement;
+        attachedVideo.replaceWith(replacement);
+        video = replacement;
+        configureVideo(replacement);
+        void playback.attach(replacement, stream, { muted: shouldMute });
+      });
 
     const replay = () => {
       if (video.paused) void playback.resumePlayback();
