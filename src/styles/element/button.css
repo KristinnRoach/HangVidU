@@ -4,6 +4,7 @@ button {
   display: inline-block;
   appearance: none;
   border: none;
+  outline-color: transparent;
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-primary);

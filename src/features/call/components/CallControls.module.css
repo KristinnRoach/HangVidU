@@ -22,14 +22,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-
-    font-weight: 600;
     color: var(--color-text);
     background: var(--color-brand);
     border: none;
     border-radius: 50%;
-    width: 3.5em;
-    height: 3.5em;
+    width: clamp(fit-content, 3vw + 0.5rem, 5rem);
+    aspect-ratio: 1/1;
 
     transition: background-color 0.2s ease;
 
@@ -39,6 +37,7 @@
 
     &.off {
       background-color: rgba(0, 0, 0, 0.55);
+      color: oklch(from var(--color-text) 85% c h);
     }
 
     @media (hover: hover) and (pointer: fine) {
