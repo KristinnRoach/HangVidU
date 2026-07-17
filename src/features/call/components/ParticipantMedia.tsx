@@ -163,10 +163,11 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     // muted video track — the reserved camera slot of an audio-only call —
     // is in srcObject and produces no frames. Attach only the audio tracks
     // until usable video exists.
+    const sourceStream = props.stream;
     const audioOnly = !videoConnected();
     const stream = audioOnly
-      ? new MediaStream(props.stream.getAudioTracks())
-      : props.stream;
+      ? new MediaStream(sourceStream.getAudioTracks())
+      : sourceStream;
 
     const syncAudioTracks = (event: MediaStreamTrackEvent) => {
       if (event.track.kind !== 'audio') return;
@@ -174,8 +175,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       else stream.removeTrack(event.track);
     };
     if (audioOnly) {
-      props.stream.addEventListener('addtrack', syncAudioTracks);
-      props.stream.addEventListener('removetrack', syncAudioTracks);
+      sourceStream.addEventListener('addtrack', syncAudioTracks);
+      sourceStream.addEventListener('removetrack', syncAudioTracks);
     }
 
     const shouldMute = shouldMutePlayback();
@@ -189,22 +190,25 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     configureVideo(video);
 
     const attachedVideo = video;
+    let disposed = false;
     void playback
       .attach(attachedVideo, stream, { muted: shouldMute })
       .then((started) => {
         if (
           !started ||
+          disposed ||
+          props.stream !== sourceStream ||
           video !== attachedVideo ||
           audioOnly ||
           !isIOSDevice() ||
-          rebuiltVideoLayerForStream === props.stream
+          rebuiltVideoLayerForStream === sourceStream
         ) {
           return;
         }
 
         // iOS 27 can decode live frames but paint a black video layer; replacing
         // the element after playback starts forces WebKit to create a working one.
-        rebuiltVideoLayerForStream = props.stream;
+        rebuiltVideoLayerForStream = sourceStream;
         const replacement = attachedVideo.cloneNode(false) as HTMLVideoElement;
         attachedVideo.replaceWith(replacement);
         video = replacement;
@@ -221,10 +225,11 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     video.addEventListener('pause', replay);
 
     onCleanup(() => {
+      disposed = true;
       playback.detach();
       if (audioOnly) {
-        props.stream.removeEventListener('addtrack', syncAudioTracks);
-        props.stream.removeEventListener('removetrack', syncAudioTracks);
+        sourceStream.removeEventListener('addtrack', syncAudioTracks);
+        sourceStream.removeEventListener('removetrack', syncAudioTracks);
       }
       video.removeEventListener('loadedmetadata', replay);
       video.removeEventListener('canplay', replay);
