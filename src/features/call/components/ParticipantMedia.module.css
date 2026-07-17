@@ -34,6 +34,12 @@
 
   font-size: 12px;
   z-index: 1;
+  transition: top var(--duration-default) var(--easing-default);
+}
+
+/* The top bar overlays calls. Keep the preview below it while visible. */
+:global(#top-bar[data-visible='true']) ~ :global(#main-content) .selfPreview {
+  top: calc(var(--topbar-height) + var(--gap));
 }
 
 .selfPreview .media {

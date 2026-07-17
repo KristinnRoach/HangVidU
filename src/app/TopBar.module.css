@@ -68,7 +68,6 @@
   justify-content: flex-start;
   gap: 1rem;
   flex: 1;
-  min-width: -webkit-fill-available;
   min-width: 0;
 }
 
@@ -78,8 +77,7 @@
   align-items: center;
   justify-content: center;
   flex: 1;
-  min-width: -webkit-fill-available;
-  min-width: fit-content;
+  min-width: 0;
 
   &.selected {
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.75);
@@ -135,13 +133,6 @@
   }
 }
 
-.authControls {
-  /* Uses auto-animate pattern from animations.css */
-  display: flex;
-  transform: translateX(0);
-  transition: var(--transition-default);
-}
-
 .stickyLeft {
   display: flex;
   align-items: center;
@@ -175,6 +166,20 @@
   color: var(--text-secondary) !important;
 }
 
+@starting-style {
+  .topBar {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+
+  .navItem .toolbar {
+    opacity: 0;
+    max-width: 0;
+    transform: translateX(-50px);
+  }
+}
+
+/* 
 .userInfo {
   display: flex;
   align-items: center;
@@ -211,22 +216,4 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-}
-
-@starting-style {
-  .topBar {
-    opacity: 0;
-    transform: translateY(-50px);
-  }
-
-  .navItem .toolbar {
-    opacity: 0;
-    max-width: 0;
-    transform: translateX(-50px);
-  }
-
-  .authControls .userInfo {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-}
+} */

@@ -274,6 +274,7 @@ function TopBar(props: TopBarProps) {
   return (
     <header
       id='top-bar'
+      data-visible={props.visible}
       class={topbarStyles.topBar}
       classList={{
         [topbarStyles.hidden]: !props.visible,
