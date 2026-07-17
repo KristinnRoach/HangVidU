@@ -1,7 +1,11 @@
 import { getLoggedInUserId } from '@auth';
 import { handleCommand, subscribe } from '@shared/events/index.js';
 import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setup.js';
-import { writeOnline, writeOffline, observePresence } from './presence-rtdb.js';
+import {
+  writeOnline,
+  writeOffline,
+  observePresence,
+} from './presence-rtdb-adapter.js';
 
 export { PresenceIndicator } from './components/PresenceIndicator.jsx';
 

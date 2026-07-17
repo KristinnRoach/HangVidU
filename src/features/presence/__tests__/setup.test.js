@@ -28,7 +28,7 @@ vi.mock('../../../shared/events/index.js', () => ({
   subscribe: mocks.subscribe,
 }));
 
-vi.mock('../presence-rtdb.js', () => ({
+vi.mock('../presence-rtdb-adapter.js', () => ({
   writeOnline: mocks.writeOnline,
   writeOffline: mocks.writeOffline,
   observePresence: mocks.observePresence,

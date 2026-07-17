@@ -6,13 +6,13 @@ import { useP2PContext } from '@shared/p2p-context.js';
 import { AuthControls, useAuth } from '@auth';
 import { useI18n } from '@shared/i18n';
 
-import AppLogo from '../components/AppLogo';
-import { getLoggedInUserProfile } from '../stores/user-profile-store.js';
+import AppLogo from '@components/AppLogo';
+import { getLoggedInUserProfile } from '@stores/user-profile-store.js';
 import { AddContactButton } from '@features/contacts';
 import { NotificationsToggle } from '@features/notifications';
-import InstallButton from '../components/InstallButton';
-import LegalFooter from '../components/LegalFooter';
-import LocaleToggle from '../components/LocaleToggle';
+import InstallButton from '@components/InstallButton';
+import LegalFooter from '@components/LegalFooter';
+import LocaleToggle from '@components/LocaleToggle';
 
 import PublicHomepage from './PublicHomepage';
 // Injected as a child: PublicHomepage (components layer) can't import
@@ -26,16 +26,16 @@ import {
 import ConversationsList from './ConversationsList';
 import { ConversationPanel } from '@features/conversations';
 
-import { LoadBoundary } from '../components/LoadBoundary';
-import { Spinner } from '../components/Spinner';
-import IdentityBadge from '../components/IdentityBadge';
+import { LoadBoundary } from '@components/LoadBoundary';
+import { Spinner } from '@components/Spinner';
+import IdentityBadge from '@components/IdentityBadge';
 import {
   conversationLabel,
   conversationListSeeded,
   conversationListState,
   conversationPeers,
   type Conversation,
-} from '../stores/conversation/conversation-list-state';
+} from '@stores/conversation/conversation-list-state';
 
 import mainStyles from './MainContent.module.css';
 import topbarStyles from './TopBar.module.css';
@@ -45,7 +45,7 @@ import {
   openConversation,
   selectedConversation,
   selection,
-} from '../stores/conversation/conversation-store';
+} from '@stores/conversation/conversation-store';
 
 type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
 
