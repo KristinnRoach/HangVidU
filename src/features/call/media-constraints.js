@@ -80,9 +80,12 @@ function getVideoConstraints(facingMode, orientation = null) {
 
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
   if (isMobile) {
-    devDebug('getVideoConstraints() - mobile minimal: ', {
-      facingMode,
-    });
+    devDebug(
+      'getVideoConstraints() - mobile minimal: ',
+      facingMode && {
+        facingMode,
+      },
+    );
     return { facingMode };
   }
 
