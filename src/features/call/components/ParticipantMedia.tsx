@@ -10,6 +10,7 @@ import {
 } from 'solid-js';
 import { createMediaPlayback } from '@kidlib/p2p/solid';
 import { t } from '@shared/i18n';
+import { isIOSDevice } from '@lib/utils/detect-device.js';
 
 import styles from './ParticipantMedia.module.css';
 import { PhoneCall, PhoneOff, Mic, MicOff } from 'lucide-solid';
@@ -65,6 +66,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   // 'interrupted' rather than 'connecting'. Reset when props.stream changes.
   let videoWasConnected = isReceivingStreamData(props.stream, 'video');
   let audioWasConnected = isReceivingStreamData(props.stream, 'audio');
+  let rebuiltVideoLayerForStream: MediaStream | undefined;
   const [status, setStatus] = createSignal<MediaStatus>({
     video: trackStatus(
       props.videoEnabled ?? true,
@@ -161,10 +163,11 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     // muted video track — the reserved camera slot of an audio-only call —
     // is in srcObject and produces no frames. Attach only the audio tracks
     // until usable video exists.
+    const sourceStream = props.stream;
     const audioOnly = !videoConnected();
     const stream = audioOnly
-      ? new MediaStream(props.stream.getAudioTracks())
-      : props.stream;
+      ? new MediaStream(sourceStream.getAudioTracks())
+      : sourceStream;
 
     const syncAudioTracks = (event: MediaStreamTrackEvent) => {
       if (event.track.kind !== 'audio') return;
@@ -172,18 +175,46 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       else stream.removeTrack(event.track);
     };
     if (audioOnly) {
-      props.stream.addEventListener('addtrack', syncAudioTracks);
-      props.stream.addEventListener('removetrack', syncAudioTracks);
+      sourceStream.addEventListener('addtrack', syncAudioTracks);
+      sourceStream.addEventListener('removetrack', syncAudioTracks);
     }
 
     const shouldMute = shouldMutePlayback();
-    video.defaultMuted = shouldMute;
-    if (shouldMute) video.setAttribute('muted', '');
-    else video.removeAttribute('muted');
-    video.autoplay = true;
-    video.setAttribute('playsinline', 'true');
+    const configureVideo = (element: HTMLVideoElement) => {
+      element.defaultMuted = shouldMute;
+      if (shouldMute) element.setAttribute('muted', '');
+      else element.removeAttribute('muted');
+      element.autoplay = true;
+      element.setAttribute('playsinline', 'true');
+    };
+    configureVideo(video);
 
-    void playback.attach(video, stream, { muted: shouldMute });
+    const attachedVideo = video;
+    let disposed = false;
+    void playback
+      .attach(attachedVideo, stream, { muted: shouldMute })
+      .then((started) => {
+        if (
+          !started ||
+          disposed ||
+          props.stream !== sourceStream ||
+          video !== attachedVideo ||
+          audioOnly ||
+          !isIOSDevice() ||
+          rebuiltVideoLayerForStream === sourceStream
+        ) {
+          return;
+        }
+
+        // iOS 27 can decode live frames but paint a black video layer; replacing
+        // the element after playback starts forces WebKit to create a working one.
+        rebuiltVideoLayerForStream = sourceStream;
+        const replacement = attachedVideo.cloneNode(false) as HTMLVideoElement;
+        attachedVideo.replaceWith(replacement);
+        video = replacement;
+        configureVideo(replacement);
+        void playback.attach(replacement, stream, { muted: shouldMute });
+      });
 
     const replay = () => {
       if (video.paused) void playback.resumePlayback();
@@ -194,10 +225,11 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     video.addEventListener('pause', replay);
 
     onCleanup(() => {
+      disposed = true;
       playback.detach();
       if (audioOnly) {
-        props.stream.removeEventListener('addtrack', syncAudioTracks);
-        props.stream.removeEventListener('removetrack', syncAudioTracks);
+        sourceStream.removeEventListener('addtrack', syncAudioTracks);
+        sourceStream.removeEventListener('removetrack', syncAudioTracks);
       }
       video.removeEventListener('loadedmetadata', replay);
       video.removeEventListener('canplay', replay);
