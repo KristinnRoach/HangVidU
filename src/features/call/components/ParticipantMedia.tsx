@@ -62,6 +62,11 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   const shouldMutePlayback = () =>
     variant() === 'self-preview' || props.remoteAudioMuted === true;
 
+  // TODO: Check whether videoElement.load() is enough to fix the iOS 27 blackscreen videostream issue:
+  // https://webkit.org/blog/17967/news-from-wwdc26-webkit-in-safari-27-beta/
+  // https://developer.apple.com/videos/play/wwdc2026/204/
+  // https://developer.apple.com/forums/thread/739368
+
   // Sticky per-stream: once a track has been live, a later drop reads as
   // 'interrupted' rather than 'connecting'. Reset when props.stream changes.
   let videoWasConnected = isReceivingStreamData(props.stream, 'video');
