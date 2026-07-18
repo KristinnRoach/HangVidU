@@ -1,5 +1,5 @@
 import { For, Show, createMemo } from 'solid-js';
-import { Spinner } from '../components/Spinner';
+import { Spinner } from '@components/Spinner';
 import { useI18n } from '@shared/i18n';
 import { getLoggedInUserId } from '@auth';
 import {
@@ -9,8 +9,8 @@ import {
   conversationPeers,
   getLastReadAt,
   shortName,
-} from '../stores/conversation/conversation-list-state';
-import { openConversation } from '../stores/conversation/conversation-store';
+} from '@stores/conversation/conversation-list-state';
+import { openConversation } from '@stores/conversation/conversation-store';
 import { PresenceIndicator } from '@features/presence';
 import { StartCallButton } from '@features/call';
 
@@ -102,11 +102,18 @@ function ConversationRow(props: { row: ConversationRow }) {
     <div class='conversation-entry'>
       <Show when={props.row.peerUserId}>
         {(peerUserId) => (
-          <StartCallButton
-            calleeId={peerUserId()}
-            calleeName={label()}
-            audioOnly={false}
-          />
+          <div class='call-buttons'>
+            <StartCallButton
+              calleeId={peerUserId()}
+              calleeName={label()}
+              audioOnly={true}
+            />
+            <StartCallButton
+              calleeId={peerUserId()}
+              calleeName={label()}
+              audioOnly={false}
+            />
+          </div>
         )}
       </Show>
       <button

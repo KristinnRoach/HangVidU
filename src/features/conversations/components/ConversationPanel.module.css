@@ -48,10 +48,8 @@
 
 .messageTimestamp {
   align-self: center;
-  margin: 0.25em 0 0;
   color: #c0c0c0;
-  font-size: 0.75rem;
-  line-height: 1.2;
+  font-size: 0.85rem;
   text-align: center;
 }
 
@@ -131,7 +129,6 @@
 
   width: fit-content;
   max-width: 80%;
-  line-height: 1.4;
   text-wrap: pretty;
 }
 
@@ -281,7 +278,6 @@
   padding: 6px;
   border: 1px solid #ccc;
   border-radius: 0.25rem;
-  line-height: 1.4;
 
   /* Auto-grow textarea sizing: */
 

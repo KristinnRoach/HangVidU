@@ -46,7 +46,6 @@
   flex-direction: column;
   align-items: center;
   gap: 1rem;
-  line-height: 1.5;
 
   .header {
     display: flex;

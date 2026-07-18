@@ -56,7 +56,6 @@
 .dialog-title {
   margin: 0;
   font-size: clamp(1.4rem, 3vw, 2rem);
-  line-height: 1.05;
 }
 
 .dialog-subtitle {

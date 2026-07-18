@@ -3,6 +3,8 @@
 
 body {
   font-family: var(--font-family-primary);
+  font-size: 1.125rem;
+  line-height: 1.4;
 }
 
 h1 {

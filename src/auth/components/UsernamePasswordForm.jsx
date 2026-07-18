@@ -135,12 +135,16 @@ export default function UsernamePasswordForm(props) {
         }}
         required
       />
-      <button type='submit' disabled={busy()}>
+      <button
+        class={styles.button + ' ' + styles.submit}
+        type='submit'
+        disabled={busy()}
+      >
         {mode() === 'signup' ? t('auth.sign_up') : t('auth.sign_in')}
       </button>
 
       <button
-        class={styles.modeToggle}
+        class={styles.button + ' ' + styles.modeToggle}
         type='button'
         onClick={() => {
           setError('');

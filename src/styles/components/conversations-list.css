@@ -2,42 +2,7 @@
    CONVERSATIONS LIST (src/app/ConversationsList.tsx)
    ============================================ */
 
-.contact-call-btn {
-  background: none;
-  border: none;
-  box-shadow: none;
-  padding: 0.2rem;
-  cursor: pointer;
-  color: rgb(62, 189, 62);
-
-  flex-shrink: 0;
-
-  & .lucide-icon {
-    width: 20px;
-    height: 20px;
-    rotate: 0deg;
-    transition: all 0.2s ease;
-  }
-}
-
-@media (hover: hover) and (pointer: fine) {
-  & .contact-call-btn:hover {
-    background: transparent;
-
-    & .lucide-icon {
-      opacity: 1;
-      rotate: 15deg;
-      color: rgb(47, 195, 47);
-    }
-  }
-}
-
 .conversations-container {
-  background: var(--bg-brighter);
-
-  border: 2px solid #8d8d8d;
-  border-radius: 12px;
-
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -45,6 +10,10 @@
 
   padding: 0.5rem;
   margin: var(--spacing-2xl) auto;
+
+  background: var(--bg-brighter);
+  border: 2px solid #8d8d8d;
+  border-radius: 12px;
 
   overflow-y: auto;
   /* max-height: 88dvh; */
@@ -58,13 +27,13 @@
     flex-direction: column;
     row-gap: 0.5rem;
 
-    & .conversation-entry {
+    & .conversation-entry,
+    .contact-call-btn {
       display: flex;
       align-items: center;
       padding: 0.2rem 0.4rem;
-
-      column-gap: 8px;
       min-width: 0;
+      column-gap: 0.5rem;
 
       & .presence-indicator {
         display: inline-block;
@@ -81,27 +50,19 @@
       }
 
       & .contact-name {
-        -webkit-user-select: none;
-        user-select: none;
-        padding: 4px;
+        padding: 0.2rem 0.4rem;
         border-radius: 6px;
-        font-size: 1rem;
+        font-size: 1.25rem;
+        font-weight: lighter;
+        letter-spacing: 0.05em;
         min-width: 0;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
         cursor: pointer;
+        -webkit-user-select: none;
+        user-select: none;
         transition: background-color 0.2s ease;
-      }
-
-      @media (hover: hover) and (pointer: fine) {
-        & .contact-name:hover {
-          background-color: rgba(91, 168, 95, 0.2);
-        }
-      }
-
-      & .contact-name:active {
-        background-color: rgba(91, 168, 95, 0.4);
       }
 
       & .unread-badge {
@@ -112,13 +73,43 @@
         text-shadow: 0 0 2px rgb(0 0 0);
         min-width: 18px;
         height: 18px;
-        line-height: 18px;
         text-align: center;
         border-radius: 50%;
         padding: 0 5px;
         flex-shrink: 0;
         box-sizing: border-box;
       }
+    }
+  }
+}
+
+.call-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+
+  & .contact-call-btn {
+    background: none;
+    color: rgb(62, 189, 62);
+    cursor: pointer;
+
+    & .lucide-icon {
+      rotate: 0deg;
+      transition: all 0.2s ease;
+    }
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .contact-call-btn:hover,
+  .contact-name:hover {
+    background: none;
+    scale: 1.125;
+
+    & .lucide-icon {
+      opacity: 1;
+      rotate: 15deg;
+      color: rgb(47, 195, 47);
     }
   }
 }
