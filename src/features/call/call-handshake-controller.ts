@@ -54,6 +54,9 @@ type EnterRoomOptions = {
   autoExitOnEmpty?: boolean;
 };
 
+/** Why a call was torn down — logged so field reports are unambiguous. */
+type HangUpReason = 'user' | 'peer-left' | 'enter-room-error' | 'accept-error';
+
 export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
   private readonly createSignaling: CreateRoomSignaling;
@@ -298,7 +301,7 @@ export class CallHandshakeController {
       } catch (err) {
         console.error('Error entering room on callee accept:', err);
         this.stopMediaStream(localStream);
-        this.hangUp();
+        this.hangUp('enter-room-error');
       } finally {
         svc
           .ackCallResponse(response.roomId)
@@ -394,7 +397,7 @@ export class CallHandshakeController {
         dataChannel: true,
         onAlone: (detail) => {
           if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
-          if (autoExitOnEmpty) this.hangUp();
+          if (autoExitOnEmpty) this.hangUp('peer-left');
         },
       });
       if (!room)
@@ -502,7 +505,7 @@ export class CallHandshakeController {
       )
       .catch((err) => {
         console.error('Error accepting incoming call:', err);
-        this.hangUp();
+        this.hangUp('accept-error');
       });
   };
 
@@ -521,7 +524,15 @@ export class CallHandshakeController {
       .catch((err) => console.error('Error declining incoming call:', err));
   };
 
-  hangUp = (): void => {
+  hangUp = (reason: HangUpReason = 'user'): void => {
+    // ponytail: normal console.log (not gated behind DEV) so field reports of
+    // "call ended unexpectedly" can be diagnosed from a phone's remote console.
+    console.log('[call] hangUp', {
+      reason,
+      roomId: this._handshakeState?.call.roomId,
+      members: this.p2p.members(),
+      state: this.p2p.state(),
+    });
     this.p2p.close();
   };
 
