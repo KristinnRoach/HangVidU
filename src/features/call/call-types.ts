@@ -16,6 +16,14 @@ export type StartCallDetails = {
   audioOnly: boolean;
 };
 
+/**
+ * In-call connection status.
+ * - `connected`: normal, remote peer present (or call not yet joined).
+ * - `reconnecting`: remote dropped without a `bye`; inside the grace window.
+ * - `failed`: grace window elapsed; shown briefly before teardown.
+ */
+export type CallReconnectStatus = 'connected' | 'reconnecting' | 'failed';
+
 export type CallHandshakeState =
   | null
   | {

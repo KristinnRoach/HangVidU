@@ -15,6 +15,7 @@ import {
 import { createCallLocalTrackSlots } from './call-media.js';
 import type {
   CallHandshakeState,
+  CallReconnectStatus,
   OutgoingCall,
   StartCallDetails,
 } from './call-types.js';
@@ -39,7 +40,29 @@ type CallHandshakeControllerOptions = {
   getCallerName: () => string;
   onStateChange: (state: CallHandshakeState) => void;
   onCalleeBusy: (busy: boolean) => void;
+  onReconnectStatus: (status: CallReconnectStatus) => void;
 };
+
+/**
+ * Grace window after the remote peer drops *without* a `bye` — a silent drop
+ * (backgrounded app, network flap) gets this long to re-join before teardown.
+ */
+const RECONNECT_GRACE_MS = 10_000;
+/** How long "Could not reconnect" is shown before the call finally exits. */
+const RECONNECT_FAILED_DISPLAY_MS = 2_500;
+
+/** Data-channel control message sent to signal an intentional hangup. */
+const BYE_MESSAGE = JSON.stringify({ t: 'bye' });
+
+/** True when `data` is our `{ t: 'bye' }` control message. */
+function isByeMessage(data: unknown): boolean {
+  if (typeof data !== 'string') return false;
+  try {
+    return (JSON.parse(data) as { t?: unknown }).t === 'bye';
+  } catch {
+    return false;
+  }
+}
 
 export type IncomingCallNotificationDetails = {
   roomId: string;
@@ -55,7 +78,12 @@ type EnterRoomOptions = {
 };
 
 /** Why a call was torn down — logged so field reports are unambiguous. */
-type HangUpReason = 'user' | 'peer-left' | 'enter-room-error' | 'accept-error';
+type HangUpReason =
+  | 'user'
+  | 'peer-left'
+  | 'reconnect-timeout'
+  | 'enter-room-error'
+  | 'accept-error';
 
 export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
@@ -63,10 +91,16 @@ export class CallHandshakeController {
   private readonly getCallerName: () => string;
   private readonly onStateChange: (state: CallHandshakeState) => void;
   private readonly onCalleeBusy: (busy: boolean) => void;
+  private readonly onReconnectStatus: (status: CallReconnectStatus) => void;
 
   private _handshakeState: CallHandshakeState = null;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  private reconnectTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  private reconnectFailedTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  // Set when the remote sent a `bye`: their departure was intentional, so
+  // going `alone` should exit immediately instead of waiting out the grace.
+  private peerSaidBye = false;
   private unsubCalleeResponse: (() => void) | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
   private pendingOutgoingLocalStream: MediaStream | undefined;
@@ -79,12 +113,14 @@ export class CallHandshakeController {
     getCallerName,
     onStateChange,
     onCalleeBusy,
+    onReconnectStatus,
   }: CallHandshakeControllerOptions) {
     this.p2p = p2p;
     this.createSignaling = createSignaling;
     this.getCallerName = getCallerName;
     this.onStateChange = onStateChange;
     this.onCalleeBusy = onCalleeBusy;
+    this.onReconnectStatus = onReconnectStatus;
   }
 
   private setHandshakeState(state: CallHandshakeState): void {
@@ -375,6 +411,7 @@ export class CallHandshakeController {
     const localStream = await (
       getLocalStream ?? (() => this.getCallLocalStream(audioOnly))
     )();
+    this.resetReconnectState();
     let room;
     try {
       room = await this.p2p.join({
@@ -395,9 +432,20 @@ export class CallHandshakeController {
         },
         memberCapacity,
         dataChannel: true,
+        onMemberJoined: () => {
+          // A (re)join cancels any in-progress reconnect grace; the peer's back.
+          if (autoExitOnEmpty) this.cancelReconnectGrace();
+        },
+        onDataChannelMessage: ({ data }) => {
+          if (isByeMessage(data)) this.peerSaidBye = true;
+        },
         onAlone: (detail) => {
           if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
-          if (autoExitOnEmpty) this.hangUp('peer-left');
+          if (!autoExitOnEmpty) return;
+          // Intentional leave (peer sent `bye`) → exit now. Silent drop → give
+          // the peer a grace window to re-join before tearing the call down.
+          if (this.peerSaidBye) this.hangUp('peer-left');
+          else this.startReconnectGrace();
         },
       });
       if (!room)
@@ -525,6 +573,16 @@ export class CallHandshakeController {
   };
 
   hangUp = (reason: HangUpReason = 'user'): void => {
+    // Tell the peer this leave is intentional so their side exits immediately
+    // instead of showing "Reconnecting…" (best-effort; skipped if the channel
+    // is already gone). Only the local user pressing hang up is intentional.
+    if (reason === 'user') {
+      try {
+        this.p2p.broadcast(BYE_MESSAGE);
+      } catch (err) {
+        console.warn('[call] failed to broadcast bye:', err);
+      }
+    }
     // ponytail: normal console.log (not gated behind DEV) so field reports of
     // "call ended unexpectedly" can be diagnosed from a phone's remote console.
     console.log('[call] hangUp', {
@@ -533,8 +591,51 @@ export class CallHandshakeController {
       members: this.p2p.members(),
       state: this.p2p.state(),
     });
+    this.resetReconnectState();
     this.p2p.close();
   };
+
+  /** Remote dropped without a `bye`: hold the room open for the grace window. */
+  private startReconnectGrace(): void {
+    this.clearReconnectTimers();
+    this.onReconnectStatus('reconnecting');
+    this.reconnectTimeoutId = setTimeout(() => {
+      this.reconnectTimeoutId = undefined;
+      this.onReconnectStatus('failed');
+      this.reconnectFailedTimeoutId = setTimeout(() => {
+        this.reconnectFailedTimeoutId = undefined;
+        this.hangUp('reconnect-timeout');
+      }, RECONNECT_FAILED_DISPLAY_MS);
+    }, RECONNECT_GRACE_MS);
+  }
+
+  /** Peer came back inside the grace window: return to the connected state. */
+  private cancelReconnectGrace(): void {
+    if (
+      this.reconnectTimeoutId == null &&
+      this.reconnectFailedTimeoutId == null
+    )
+      return;
+    this.clearReconnectTimers();
+    this.onReconnectStatus('connected');
+  }
+
+  private clearReconnectTimers(): void {
+    if (this.reconnectTimeoutId != null) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = undefined;
+    }
+    if (this.reconnectFailedTimeoutId != null) {
+      clearTimeout(this.reconnectFailedTimeoutId);
+      this.reconnectFailedTimeoutId = undefined;
+    }
+  }
+
+  private resetReconnectState(): void {
+    this.clearReconnectTimers();
+    this.peerSaidBye = false;
+    this.onReconnectStatus('connected');
+  }
 
   private clearOutgoingCallTimeout(): void {
     if (!this.outgoingCallTimeoutId) return;
@@ -560,6 +661,7 @@ export class CallHandshakeController {
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();
     this.clearCalleeBusyResetTimeout();
+    this.resetReconnectState();
     this.stopPendingOutgoingLocalStream();
     this.setHandshakeState(null);
     this.onCalleeBusy(false);
