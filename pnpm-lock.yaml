@@ -230,8 +230,8 @@ importers:
         specifier: ^0.1.5
         version: 0.1.5
       '@kidlib/p2p':
-        specifier: ^0.4.0
-        version: 0.4.0(solid-js@1.9.13)
+        specifier: ^0.5.0
+        version: 0.5.0(solid-js@1.9.13)
       '@mediabunny/ac3':
         specifier: ^1.49.0
         version: 1.49.0(mediabunny@1.49.0)
@@ -1827,8 +1827,8 @@ packages:
   '@kidlib/create-component@0.1.5':
     resolution: {integrity: sha512-viom5Q6hIMz13plwb6665OT+2N3OBLs+8T7dNT5G9+0UQFcCtOI0iFE0tq0PNf5nnkNsrhS/NkhkyFvclTbMKA==}
 
-  '@kidlib/p2p@0.4.0':
-    resolution: {integrity: sha512-XKxYQCeYzo3SQTyH6XMPoKq6N8ms8xnvNxn+RP5H2sALZwQ6wMRtXyagUxMtI8Fnlg7NbLipq9u7V/nVdHwdeg==}
+  '@kidlib/p2p@0.5.0':
+    resolution: {integrity: sha512-mpakkCLJrfRADfeSMqDyGwBmgHQ8fQzzgCINjvL7rIrPCAs1RMNCtQvIXw2t+ceB7xS8q8Eh07V8ebqPlk0H9A==}
     peerDependencies:
       solid-js: '>=1.8.0'
     peerDependenciesMeta:
@@ -6965,7 +6965,7 @@ snapshots:
 
   '@kidlib/create-component@0.1.5': {}
 
-  '@kidlib/p2p@0.4.0(solid-js@1.9.13)':
+  '@kidlib/p2p@0.5.0(solid-js@1.9.13)':
     optionalDependencies:
       solid-js: 1.9.13
 
