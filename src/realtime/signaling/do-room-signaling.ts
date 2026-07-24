@@ -3,6 +3,7 @@ import type {
   P2PRoomPeerSignalingOptions,
   P2PRoomPresenceData,
   P2PRoomPresenceMember,
+  P2PRoomPresenceSnapshot,
   P2PRoomSignaling,
   RtcSignalingSource,
 } from '@kidlib/p2p';
@@ -54,7 +55,7 @@ export function createDoRoomSignaling({
 
   let joinedPeerId: string | null = null;
   let localData: P2PRoomPresenceData | undefined;
-  const peersHandlers = new Set<(members: P2PRoomPresenceMember[]) => void>();
+  const peersHandlers = new Set<(snapshot: P2PRoomPresenceSnapshot) => void>();
   const relaySubs = new Set<RelaySubscription>();
 
   // Build the join message, omitting `data` when absent so the no-presence
@@ -72,7 +73,12 @@ export function createDoRoomSignaling({
           memberId: p.peerId,
           data: p.data,
         }));
-        peersHandlers.forEach((h) => h(members));
+        // Envelope carries no `departed` yet: the DO doesn't tag explicit
+        // leaves, so every departure defaults to `dropped`. Intentional
+        // hangups are still distinguished by the data-channel `bye`. Populating
+        // `departed` (and dropping `bye`) is the step-2 DO change.
+        const snapshot: P2PRoomPresenceSnapshot = { members };
+        peersHandlers.forEach((h) => h(snapshot));
         return;
       }
       case 'relay':
@@ -112,8 +118,8 @@ export function createDoRoomSignaling({
       // instead of a stale snapshot. Timeout fallback keeps a flaky server
       // from hanging the join forever (degrades to pre-ack behavior).
       const ack = new Promise<void>((resolve) => {
-        const handler = (members: P2PRoomPresenceMember[]) => {
-          if (!members.some((m) => m.memberId === peerId)) return;
+        const handler = (snapshot: P2PRoomPresenceSnapshot) => {
+          if (!snapshot.members.some((m) => m.memberId === peerId)) return;
           peersHandlers.delete(handler);
           clearTimeout(timeoutId);
           resolve();

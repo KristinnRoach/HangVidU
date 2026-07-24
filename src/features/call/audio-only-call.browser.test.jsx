@@ -25,10 +25,11 @@ function createHub() {
     }
   };
 
-  const snapshot = () =>
-    [...clients.entries()]
+  const snapshot = () => ({
+    members: [...clients.entries()]
       .filter(([, c]) => c.present)
-      .map(([peerId, c]) => ({ memberId: peerId, data: c.data }));
+      .map(([peerId, c]) => ({ memberId: peerId, data: c.data })),
+  });
 
   const broadcastPeers = () => {
     const peers = snapshot();
@@ -167,7 +168,7 @@ describe('audio-only call over reserved slots', () => {
         onError: ({ error }) =>
           log.push(`[${peerId}] error: ${error?.message ?? error}`),
       });
-      cleanups.push(() => room.close());
+      cleanups.push(() => room.dispose());
       return { room, remoteStreams };
     };
 

@@ -79,7 +79,7 @@ async function flushPromises() {
 function createP2PMock(overrides = {}) {
   return {
     join: vi.fn(),
-    close: vi.fn(),
+    dispose: vi.fn(() => Promise.resolve()),
     broadcast: vi.fn(),
     state: vi.fn(() => 'idle'),
     members: vi.fn(() => []),
@@ -277,15 +277,15 @@ describe('CallHandshakeController', () => {
       // Silent drop (no bye): grace window, not an immediate teardown.
       joinOptions?.onAlone?.({ members: ['callee-id'], memberCount: 1 });
       expect(onReconnectStatus).toHaveBeenLastCalledWith('reconnecting');
-      expect(p2p.close).not.toHaveBeenCalled();
+      expect(p2p.dispose).not.toHaveBeenCalled();
 
       // Grace elapses → "failed" shown → final teardown after the display delay.
       vi.advanceTimersByTime(10_000);
       expect(onReconnectStatus).toHaveBeenLastCalledWith('failed');
-      expect(p2p.close).not.toHaveBeenCalled();
+      expect(p2p.dispose).not.toHaveBeenCalled();
 
       vi.advanceTimersByTime(2_500);
-      expect(p2p.close).toHaveBeenCalledTimes(1);
+      expect(p2p.dispose).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }
@@ -320,7 +320,7 @@ describe('CallHandshakeController', () => {
     joinOptions?.onAlone?.({ members: ['callee-id'], memberCount: 1 });
 
     expect(onReconnectStatus).not.toHaveBeenCalledWith('reconnecting');
-    expect(p2p.close).toHaveBeenCalledTimes(1);
+    expect(p2p.dispose).toHaveBeenCalledTimes(1);
   });
 
   it('cancels the reconnect grace when the peer rejoins', async () => {
@@ -356,7 +356,7 @@ describe('CallHandshakeController', () => {
 
       // Timers were cleared: no teardown even after the full window elapses.
       vi.advanceTimersByTime(20_000);
-      expect(p2p.close).not.toHaveBeenCalled();
+      expect(p2p.dispose).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }
@@ -371,7 +371,7 @@ describe('CallHandshakeController', () => {
     controller.hangUp('user');
 
     expect(p2p.broadcast).toHaveBeenCalledWith(JSON.stringify({ t: 'bye' }));
-    expect(p2p.close).toHaveBeenCalledTimes(1);
+    expect(p2p.dispose).toHaveBeenCalledTimes(1);
   });
 
   it('does not notify accepted when joining the room fails', async () => {
@@ -400,7 +400,7 @@ describe('CallHandshakeController', () => {
     await flushPromises();
 
     expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
-    await vi.waitFor(() => expect(p2p.close).toHaveBeenCalled());
+    await vi.waitFor(() => expect(p2p.dispose).toHaveBeenCalled());
     expect(p2p.error).toHaveBeenCalledTimes(1);
     stream
       .getTracks()

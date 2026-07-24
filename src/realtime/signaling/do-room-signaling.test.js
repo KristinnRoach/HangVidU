@@ -54,7 +54,7 @@ describe('createDoRoomSignaling', () => {
   it('maps presence members onto onPeers subscribers', () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
     const seen = [];
-    signaling.onPeers((members) => seen.push(members));
+    signaling.onPeers((snapshot) => seen.push(snapshot));
 
     socket.emit({
       t: 'peers',
@@ -63,11 +63,14 @@ describe('createDoRoomSignaling', () => {
         { peerId: 'peer-b' },
       ],
     });
+    // Envelope shape; no `departed` until the DO tags explicit leaves (step 2).
     expect(seen).toEqual([
-      [
-        { memberId: 'peer-a', data: { muted: true } },
-        { memberId: 'peer-b', data: undefined },
-      ],
+      {
+        members: [
+          { memberId: 'peer-a', data: { muted: true } },
+          { memberId: 'peer-b', data: undefined },
+        ],
+      },
     ]);
   });
 

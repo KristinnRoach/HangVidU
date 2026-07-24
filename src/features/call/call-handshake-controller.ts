@@ -151,7 +151,7 @@ export class CallHandshakeController {
    */
   init(): void {
     // Runs on every auth change incl. login, so it must not tear down an active
-    // call (p2p.close here black-screens a call that's mid-join). Only a switch
+    // call (p2p.dispose here black-screens a call that's mid-join). Only a switch
     // to a *different* user does full teardown; full cleanup() is otherwise
     // reserved for logout/unmount.
     const localUID = getLoggedInUserId();
@@ -592,7 +592,12 @@ export class CallHandshakeController {
       state: this.p2p.state(),
     });
     this.resetReconnectState();
-    this.p2p.close();
+    // dispose() is async in @kidlib/p2p ≥0.4; hangUp stays sync (called from
+    // click + timer callbacks). Surface teardown failures — a silently failed
+    // dispose is the "call won't end / black screen" bug class we log for.
+    void this.p2p.dispose().catch((err) => {
+      console.warn('[call] p2p dispose failed on hangUp:', err);
+    });
   };
 
   /** Remote dropped without a `bye`: hold the room open for the grace window. */
@@ -665,7 +670,9 @@ export class CallHandshakeController {
     this.stopPendingOutgoingLocalStream();
     this.setHandshakeState(null);
     this.onCalleeBusy(false);
-    this.p2p.close();
+    void this.p2p.dispose().catch((err) => {
+      console.warn('[call] p2p dispose failed on cleanup:', err);
+    });
     cleanupCallService();
     this.lastBoundUID = undefined;
   }
