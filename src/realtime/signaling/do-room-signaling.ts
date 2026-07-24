@@ -73,11 +73,17 @@ export function createDoRoomSignaling({
           memberId: p.peerId,
           data: p.data,
         }));
-        // Envelope carries no `departed` yet: the DO doesn't tag explicit
-        // leaves, so every departure defaults to `dropped`. Intentional
-        // hangups are still distinguished by the data-channel `bye`. Populating
-        // `departed` (and dropping `bye`) is the step-2 DO change.
-        const snapshot: P2PRoomPresenceSnapshot = { members };
+        // The DO tags explicit `{t:'leave'}` departures on the same snapshot
+        // where the peer drops out of `members`; anything absent without a
+        // `departed` entry defaults to `dropped` in 0.4.0. This is what lets the
+        // call controller tell an intentional hangup from a silent drop.
+        const departed = message.departed?.map((memberId) => ({
+          memberId,
+          reason: 'left' as const,
+        }));
+        const snapshot: P2PRoomPresenceSnapshot = departed
+          ? { members, departed }
+          : { members };
         peersHandlers.forEach((h) => h(snapshot));
         return;
       }

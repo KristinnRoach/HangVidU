@@ -44,25 +44,13 @@ type CallHandshakeControllerOptions = {
 };
 
 /**
- * Grace window after the remote peer drops *without* a `bye` — a silent drop
- * (backgrounded app, network flap) gets this long to re-join before teardown.
+ * Grace window after the remote peer drops silently (backgrounded app, network
+ * flap) — reported by @kidlib/p2p as a `dropped` departure. The peer gets this
+ * long to re-join before teardown. An explicit `left` departure skips it.
  */
 const RECONNECT_GRACE_MS = 10_000;
 /** How long "Could not reconnect" is shown before the call finally exits. */
 const RECONNECT_FAILED_DISPLAY_MS = 2_500;
-
-/** Data-channel control message sent to signal an intentional hangup. */
-const BYE_MESSAGE = JSON.stringify({ t: 'bye' });
-
-/** True when `data` is our `{ t: 'bye' }` control message. */
-function isByeMessage(data: unknown): boolean {
-  if (typeof data !== 'string') return false;
-  try {
-    return (JSON.parse(data) as { t?: unknown }).t === 'bye';
-  } catch {
-    return false;
-  }
-}
 
 export type IncomingCallNotificationDetails = {
   roomId: string;
@@ -98,9 +86,6 @@ export class CallHandshakeController {
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private reconnectFailedTimeoutId: ReturnType<typeof setTimeout> | undefined;
-  // Set when the remote sent a `bye`: their departure was intentional, so
-  // going `alone` should exit immediately instead of waiting out the grace.
-  private peerSaidBye = false;
   private unsubCalleeResponse: (() => void) | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
   private pendingOutgoingLocalStream: MediaStream | undefined;
@@ -436,15 +421,13 @@ export class CallHandshakeController {
           // A (re)join cancels any in-progress reconnect grace; the peer's back.
           if (autoExitOnEmpty) this.cancelReconnectGrace();
         },
-        onDataChannelMessage: ({ data }) => {
-          if (isByeMessage(data)) this.peerSaidBye = true;
-        },
         onAlone: (detail) => {
           if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
           if (!autoExitOnEmpty) return;
-          // Intentional leave (peer sent `bye`) → exit now. Silent drop → give
-          // the peer a grace window to re-join before tearing the call down.
-          if (this.peerSaidBye) this.hangUp('peer-left');
+          // `left` = every departure that emptied the room was an explicit
+          // signaling leave (intentional hangup) → exit now. `dropped` = a
+          // silent drop → give the peer a grace window to re-join first.
+          if (detail.reason === 'left') this.hangUp('peer-left');
           else this.startReconnectGrace();
         },
       });
@@ -573,16 +556,10 @@ export class CallHandshakeController {
   };
 
   hangUp = (reason: HangUpReason = 'user'): void => {
-    // Tell the peer this leave is intentional so their side exits immediately
-    // instead of showing "Reconnecting…" (best-effort; skipped if the channel
-    // is already gone). Only the local user pressing hang up is intentional.
-    if (reason === 'user') {
-      try {
-        this.p2p.broadcast(BYE_MESSAGE);
-      } catch (err) {
-        console.warn('[call] failed to broadcast bye:', err);
-      }
-    }
+    // The peer's side learns this leave is intentional from the signaling
+    // `leave` the room sends during dispose() — the DO tags it as a `left`
+    // departure, so their `onAlone` exits immediately instead of showing
+    // "Reconnecting…". No app-level control message is needed.
     // ponytail: normal console.log (not gated behind DEV) so field reports of
     // "call ended unexpectedly" can be diagnosed from a phone's remote console.
     console.log('[call] hangUp', {
@@ -600,7 +577,7 @@ export class CallHandshakeController {
     });
   };
 
-  /** Remote dropped without a `bye`: hold the room open for the grace window. */
+  /** Remote dropped silently (`dropped`): hold the room open for the grace window. */
   private startReconnectGrace(): void {
     this.clearReconnectTimers();
     this.onReconnectStatus('reconnecting');
@@ -638,7 +615,6 @@ export class CallHandshakeController {
 
   private resetReconnectState(): void {
     this.clearReconnectTimers();
-    this.peerSaidBye = false;
     this.onReconnectStatus('connected');
   }
 

@@ -81,10 +81,15 @@ export class SignalingRoom extends DurableObject<Env> {
         });
         this.broadcastPeers();
         return;
-      case 'leave':
-        this.clearPeerPresence(this.getSocketState(ws).peerId);
-        this.broadcastPeers();
+      case 'leave': {
+        // Explicit leave: tag the departing peer as `left` on the same snapshot
+        // where it drops out of presence, so the client can distinguish an
+        // intentional hangup from a silent drop (socket close/error → dropped).
+        const { peerId } = this.getSocketState(ws);
+        this.clearPeerPresence(peerId);
+        this.broadcastPeers(peerId ? [peerId] : undefined);
         return;
+      }
       case 'presence': {
         // Update self-asserted presence data; ignore until joined (no identity
         // to attach it to). Re-broadcast so a data-only change (e.g. mute
@@ -134,10 +139,11 @@ export class SignalingRoom extends DurableObject<Env> {
     });
   }
 
-  private broadcastPeers(): void {
+  private broadcastPeers(departed?: PeerId[]): void {
     const payload: ServerMessage = {
       t: 'peers',
       peers: this.presenceMembers(),
+      ...(departed && departed.length ? { departed } : {}),
     };
     // All sockets, including watchers — see the connect-time snapshot note.
     for (const ws of this.ctx.getWebSockets()) {

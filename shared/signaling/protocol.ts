@@ -35,9 +35,16 @@ export type ClientMessage =
   | { t: 'presence'; data: PresenceData }
   | { t: 'relay'; to: PeerId; channel: RelayChannel; data: unknown };
 
-/** Durable Object → client. */
+/**
+ * Durable Object → client.
+ *
+ * `departed` lists peers that left explicitly (`{t:'leave'}`) in the same
+ * snapshot where they disappear from `peers`. It is populated ONLY on the
+ * explicit-leave path — a socket close/error/eviction never sets it, so the
+ * client treats any absent member without a `departed` entry as a silent drop.
+ */
 export type ServerMessage =
-  | { t: 'peers'; peers: PresenceMember[] }
+  | { t: 'peers'; peers: PresenceMember[]; departed?: PeerId[] }
   | { t: 'relay'; from: PeerId; channel: RelayChannel; data: unknown }
   | { t: 'error'; message: string };
 

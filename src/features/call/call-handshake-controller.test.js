@@ -248,7 +248,7 @@ describe('CallHandshakeController', () => {
     await expect(joinOptions.getLocalStream()).resolves.toBe(stream);
   });
 
-  it('holds a reconnect grace window when the remote peer drops without a bye, then tears down', async () => {
+  it('holds a reconnect grace window when the remote peer drops silently, then tears down', async () => {
     vi.useFakeTimers();
     try {
       let joinOptions;
@@ -274,8 +274,12 @@ describe('CallHandshakeController', () => {
       controller.acceptIncoming();
       await flushPromises();
 
-      // Silent drop (no bye): grace window, not an immediate teardown.
-      joinOptions?.onAlone?.({ members: ['callee-id'], memberCount: 1 });
+      // Silent drop (`dropped`): grace window, not an immediate teardown.
+      joinOptions?.onAlone?.({
+        members: ['callee-id'],
+        memberCount: 1,
+        reason: 'dropped',
+      });
       expect(onReconnectStatus).toHaveBeenLastCalledWith('reconnecting');
       expect(p2p.dispose).not.toHaveBeenCalled();
 
@@ -291,7 +295,7 @@ describe('CallHandshakeController', () => {
     }
   });
 
-  it('exits immediately when the remote peer sends a bye before leaving', async () => {
+  it('exits immediately on an explicit `left` departure, skipping the grace window', async () => {
     let joinOptions;
     const acceptResponse = deferred();
     mocks.respondToIncomingCallInvite.mockReturnValue(acceptResponse.promise);
@@ -315,9 +319,12 @@ describe('CallHandshakeController', () => {
     controller.acceptIncoming();
     await flushPromises();
 
-    // Intentional leave: bye arrives, then the room goes alone → immediate close.
-    joinOptions?.onDataChannelMessage?.({ data: JSON.stringify({ t: 'bye' }) });
-    joinOptions?.onAlone?.({ members: ['callee-id'], memberCount: 1 });
+    // Intentional hangup: the room reports `alone` with reason `left` → close now.
+    joinOptions?.onAlone?.({
+      members: ['callee-id'],
+      memberCount: 1,
+      reason: 'left',
+    });
 
     expect(onReconnectStatus).not.toHaveBeenCalledWith('reconnecting');
     expect(p2p.dispose).toHaveBeenCalledTimes(1);
@@ -348,7 +355,11 @@ describe('CallHandshakeController', () => {
       controller.acceptIncoming();
       await flushPromises();
 
-      joinOptions?.onAlone?.({ members: ['callee-id'], memberCount: 1 });
+      joinOptions?.onAlone?.({
+        members: ['callee-id'],
+        memberCount: 1,
+        reason: 'dropped',
+      });
       expect(onReconnectStatus).toHaveBeenLastCalledWith('reconnecting');
 
       joinOptions?.onMemberJoined?.({ memberId: 'caller-id' });
@@ -360,18 +371,6 @@ describe('CallHandshakeController', () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it('broadcasts a bye when the local user hangs up', async () => {
-    const p2p = createP2PMock({
-      join: vi.fn(async () => ({ roomId: 'room-1', members: ['callee-id'] })),
-    });
-    const controller = createController(p2p);
-
-    controller.hangUp('user');
-
-    expect(p2p.broadcast).toHaveBeenCalledWith(JSON.stringify({ t: 'bye' }));
-    expect(p2p.dispose).toHaveBeenCalledTimes(1);
   });
 
   it('does not notify accepted when joining the room fails', async () => {

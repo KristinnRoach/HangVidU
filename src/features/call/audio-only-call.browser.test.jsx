@@ -31,8 +31,10 @@ function createHub() {
       .map(([peerId, c]) => ({ memberId: peerId, data: c.data })),
   });
 
-  const broadcastPeers = () => {
-    const peers = snapshot();
+  const broadcastPeers = (departedId) => {
+    const peers = departedId
+      ? { ...snapshot(), departed: [{ memberId: departedId, reason: 'left' }] }
+      : snapshot();
     peersListeners.forEach((cb) => cb(peers));
   };
 
@@ -51,7 +53,7 @@ function createHub() {
         leave() {
           const c = selfId && clients.get(selfId);
           if (c) c.present = false;
-          broadcastPeers();
+          broadcastPeers(selfId ?? undefined);
         },
         onPeers(cb) {
           peersListeners.add(cb);

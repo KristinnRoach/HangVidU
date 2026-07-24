@@ -63,13 +63,32 @@ describe('createDoRoomSignaling', () => {
         { peerId: 'peer-b' },
       ],
     });
-    // Envelope shape; no `departed` until the DO tags explicit leaves (step 2).
+    // No `departed` on the wire → bare `{ members }` envelope.
     expect(seen).toEqual([
       {
         members: [
           { memberId: 'peer-a', data: { muted: true } },
           { memberId: 'peer-b', data: undefined },
         ],
+      },
+    ]);
+  });
+
+  it('maps wire `departed` onto snapshot departures tagged `left`', () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    const seen = [];
+    signaling.onPeers((snapshot) => seen.push(snapshot));
+
+    // An explicit leave: peer-b is gone from members and listed in departed.
+    socket.emit({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+      departed: ['peer-b'],
+    });
+    expect(seen).toEqual([
+      {
+        members: [{ memberId: 'peer-a', data: undefined }],
+        departed: [{ memberId: 'peer-b', reason: 'left' }],
       },
     ]);
   });
