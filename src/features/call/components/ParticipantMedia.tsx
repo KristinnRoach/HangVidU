@@ -22,6 +22,7 @@ type ParticipantMediaProps = {
   videoEnabled?: boolean;
   audioEnabled?: boolean;
   remoteAudioMuted?: boolean;
+  screenShare?: boolean;
 };
 
 type MediaTrackStatus = 'off' | 'connecting' | 'interrupted' | 'connected';
@@ -245,7 +246,10 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   return (
     <div
       class={styles.surface}
-      classList={{ [styles.selfPreview]: variant() === 'self-preview' }}
+      classList={{
+        [styles.selfPreview]: variant() === 'self-preview',
+        [styles.screenShare]: props.screenShare,
+      }}
     >
       <video
         ref={video}

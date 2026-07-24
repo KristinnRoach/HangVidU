@@ -70,7 +70,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
   function enqueuePresenceUpdate(
     room: NonNullable<ReturnType<SolidP2PRoom['room']>>,
-    data: { micOn?: boolean; cameraOn?: boolean },
+    data: { micOn?: boolean; cameraOn?: boolean; screenShare?: boolean },
   ) {
     const update = presenceWriteChain.then(async () => {
       const currentData =
@@ -389,6 +389,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       screenTrack = undefined;
       cameraBeforeScreenShare = null;
       setScreenSharing(false);
+      void enqueuePresenceUpdate(room, { screenShare: false }).catch(() => {});
       displayTrack?.stop();
     } finally {
       syncTrackState();
@@ -457,6 +458,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
       screenTrack = displayTrack;
       setScreenSharing(true);
+      void enqueuePresenceUpdate(room, { screenShare: true }).catch(() => {});
       await finishCommittedCameraChange(room, true, replacementError);
       syncTrackState();
     } catch (error) {

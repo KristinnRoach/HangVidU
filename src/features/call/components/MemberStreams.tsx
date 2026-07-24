@@ -21,6 +21,10 @@ export function MemberStreams(props: MemberStreamsProps) {
     p2p.memberPresence().find((member) => member.memberId === memberId)?.data
       ?.micOn === true;
 
+  const memberScreenShare = (memberId: string) =>
+    p2p.memberPresence().find((member) => member.memberId === memberId)?.data
+      ?.screenShare === true;
+
   return (
     <div
       classList={{
@@ -45,6 +49,7 @@ export function MemberStreams(props: MemberStreamsProps) {
             stream={stream.stream}
             videoEnabled={memberCameraOn(stream.memberId)}
             audioEnabled={memberMicOn(stream.memberId)}
+            screenShare={memberScreenShare(stream.memberId)}
             remoteAudioMuted={props.remoteAudioMuted}
           />
         )}

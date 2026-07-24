@@ -26,6 +26,13 @@
   object-position: center center;
 }
 
+/* Screen shares must show the whole window/screen, not crop-to-fill.
+   Scoped on the surface (not the video) so it survives the iOS video-element
+   clone in ParticipantMedia, which drops the reactive class binding. */
+.screenShare .media {
+  object-fit: contain;
+}
+
 .selfPreview {
   position: absolute;
   top: var(--gap);
