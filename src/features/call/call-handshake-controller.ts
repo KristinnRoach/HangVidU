@@ -564,8 +564,11 @@ export class CallHandshakeController {
     // "call ended unexpectedly" can be diagnosed from a phone's remote console.
     console.log('[call] hangUp', {
       reason,
-      roomId: this._handshakeState?.call.roomId,
-      members: this.p2p.members(),
+      // Live room accessor — _handshakeState is cleared at join, so it would
+      // log undefined here. members().length (not the UIDs) keeps the field
+      // signal without leaking peer identifiers into a production console.
+      roomId: this.p2p.room()?.roomId,
+      memberCount: this.p2p.members().length,
       state: this.p2p.state(),
     });
     this.resetReconnectState();

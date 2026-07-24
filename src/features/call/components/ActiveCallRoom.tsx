@@ -37,7 +37,7 @@ export function ActiveCallRoom() {
       <MemberStreams remoteAudioMuted={remoteAudioMuted()} media={media} />
 
       <Show when={reconnectStatus() !== 'connected'}>
-        <div class={styles.reconnecting}>
+        <div class={styles.reconnecting} role='status' aria-live='polite'>
           <p>
             {reconnectStatus() === 'failed'
               ? t('call.reconnect_failed')
@@ -48,7 +48,9 @@ export function ActiveCallRoom() {
 
       <Show
         when={
-          p2p.state() === 'joined' && p2p.remoteMemberStreams().length === 0
+          p2p.state() === 'joined' &&
+          p2p.remoteMemberStreams().length === 0 &&
+          reconnectStatus() === 'connected'
         }
       >
         <div class={styles.waiting}>
