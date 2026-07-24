@@ -54,7 +54,7 @@ describe('createDoRoomSignaling', () => {
   it('maps presence members onto onPeers subscribers', () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
     const seen = [];
-    signaling.onPeers((members) => seen.push(members));
+    signaling.onPeers((snapshot) => seen.push(snapshot));
 
     socket.emit({
       t: 'peers',
@@ -63,11 +63,33 @@ describe('createDoRoomSignaling', () => {
         { peerId: 'peer-b' },
       ],
     });
+    // No `departed` on the wire → bare `{ members }` envelope.
     expect(seen).toEqual([
-      [
-        { memberId: 'peer-a', data: { muted: true } },
-        { memberId: 'peer-b', data: undefined },
-      ],
+      {
+        members: [
+          { memberId: 'peer-a', data: { muted: true } },
+          { memberId: 'peer-b', data: undefined },
+        ],
+      },
+    ]);
+  });
+
+  it('maps wire `departed` onto snapshot departures tagged `left`', () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    const seen = [];
+    signaling.onPeers((snapshot) => seen.push(snapshot));
+
+    // An explicit leave: peer-b is gone from members and listed in departed.
+    socket.emit({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+      departed: ['peer-b'],
+    });
+    expect(seen).toEqual([
+      {
+        members: [{ memberId: 'peer-a', data: undefined }],
+        departed: [{ memberId: 'peer-b', reason: 'left' }],
+      },
     ]);
   });
 

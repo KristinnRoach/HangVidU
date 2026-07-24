@@ -3,6 +3,7 @@ import type {
   P2PRoomPeerSignalingOptions,
   P2PRoomPresenceData,
   P2PRoomPresenceMember,
+  P2PRoomPresenceSnapshot,
   P2PRoomSignaling,
   RtcSignalingSource,
 } from '@kidlib/p2p';
@@ -54,7 +55,7 @@ export function createDoRoomSignaling({
 
   let joinedPeerId: string | null = null;
   let localData: P2PRoomPresenceData | undefined;
-  const peersHandlers = new Set<(members: P2PRoomPresenceMember[]) => void>();
+  const peersHandlers = new Set<(snapshot: P2PRoomPresenceSnapshot) => void>();
   const relaySubs = new Set<RelaySubscription>();
 
   // Build the join message, omitting `data` when absent so the no-presence
@@ -72,7 +73,18 @@ export function createDoRoomSignaling({
           memberId: p.peerId,
           data: p.data,
         }));
-        peersHandlers.forEach((h) => h(members));
+        // The DO tags explicit `{t:'leave'}` departures on the same snapshot
+        // where the peer drops out of `members`; anything absent without a
+        // `departed` entry defaults to `dropped` in 0.4.0. This is what lets the
+        // call controller tell an intentional hangup from a silent drop.
+        const departed = message.departed?.map((memberId) => ({
+          memberId,
+          reason: 'left' as const,
+        }));
+        const snapshot: P2PRoomPresenceSnapshot = departed
+          ? { members, departed }
+          : { members };
+        peersHandlers.forEach((h) => h(snapshot));
         return;
       }
       case 'relay':
@@ -112,8 +124,8 @@ export function createDoRoomSignaling({
       // instead of a stale snapshot. Timeout fallback keeps a flaky server
       // from hanging the join forever (degrades to pre-ack behavior).
       const ack = new Promise<void>((resolve) => {
-        const handler = (members: P2PRoomPresenceMember[]) => {
-          if (!members.some((m) => m.memberId === peerId)) return;
+        const handler = (snapshot: P2PRoomPresenceSnapshot) => {
+          if (!snapshot.members.some((m) => m.memberId === peerId)) return;
           peersHandlers.delete(handler);
           clearTimeout(timeoutId);
           resolve();

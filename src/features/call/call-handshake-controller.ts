@@ -15,6 +15,7 @@ import {
 import { createCallLocalTrackSlots } from './call-media.js';
 import type {
   CallHandshakeState,
+  CallReconnectStatus,
   OutgoingCall,
   StartCallDetails,
 } from './call-types.js';
@@ -39,7 +40,17 @@ type CallHandshakeControllerOptions = {
   getCallerName: () => string;
   onStateChange: (state: CallHandshakeState) => void;
   onCalleeBusy: (busy: boolean) => void;
+  onReconnectStatus: (status: CallReconnectStatus) => void;
 };
+
+/**
+ * Grace window after the remote peer drops silently (backgrounded app, network
+ * flap) — reported by @kidlib/p2p as a `dropped` departure. The peer gets this
+ * long to re-join before teardown. An explicit `left` departure skips it.
+ */
+const RECONNECT_GRACE_MS = 10_000;
+/** How long "Could not reconnect" is shown before the call finally exits. */
+const RECONNECT_FAILED_DISPLAY_MS = 2_500;
 
 export type IncomingCallNotificationDetails = {
   roomId: string;
@@ -54,16 +65,27 @@ type EnterRoomOptions = {
   autoExitOnEmpty?: boolean;
 };
 
+/** Why a call was torn down — logged so field reports are unambiguous. */
+type HangUpReason =
+  | 'user'
+  | 'peer-left'
+  | 'reconnect-timeout'
+  | 'enter-room-error'
+  | 'accept-error';
+
 export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
   private readonly createSignaling: CreateRoomSignaling;
   private readonly getCallerName: () => string;
   private readonly onStateChange: (state: CallHandshakeState) => void;
   private readonly onCalleeBusy: (busy: boolean) => void;
+  private readonly onReconnectStatus: (status: CallReconnectStatus) => void;
 
   private _handshakeState: CallHandshakeState = null;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  private reconnectTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  private reconnectFailedTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private unsubCalleeResponse: (() => void) | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
   private pendingOutgoingLocalStream: MediaStream | undefined;
@@ -76,12 +98,14 @@ export class CallHandshakeController {
     getCallerName,
     onStateChange,
     onCalleeBusy,
+    onReconnectStatus,
   }: CallHandshakeControllerOptions) {
     this.p2p = p2p;
     this.createSignaling = createSignaling;
     this.getCallerName = getCallerName;
     this.onStateChange = onStateChange;
     this.onCalleeBusy = onCalleeBusy;
+    this.onReconnectStatus = onReconnectStatus;
   }
 
   private setHandshakeState(state: CallHandshakeState): void {
@@ -112,7 +136,7 @@ export class CallHandshakeController {
    */
   init(): void {
     // Runs on every auth change incl. login, so it must not tear down an active
-    // call (p2p.close here black-screens a call that's mid-join). Only a switch
+    // call (p2p.dispose here black-screens a call that's mid-join). Only a switch
     // to a *different* user does full teardown; full cleanup() is otherwise
     // reserved for logout/unmount.
     const localUID = getLoggedInUserId();
@@ -298,7 +322,7 @@ export class CallHandshakeController {
       } catch (err) {
         console.error('Error entering room on callee accept:', err);
         this.stopMediaStream(localStream);
-        this.hangUp();
+        this.hangUp('enter-room-error');
       } finally {
         svc
           .ackCallResponse(response.roomId)
@@ -372,6 +396,7 @@ export class CallHandshakeController {
     const localStream = await (
       getLocalStream ?? (() => this.getCallLocalStream(audioOnly))
     )();
+    this.resetReconnectState();
     let room;
     try {
       room = await this.p2p.join({
@@ -392,9 +417,18 @@ export class CallHandshakeController {
         },
         memberCapacity,
         dataChannel: true,
+        onMemberJoined: () => {
+          // A (re)join cancels any in-progress reconnect grace; the peer's back.
+          if (autoExitOnEmpty) this.cancelReconnectGrace();
+        },
         onAlone: (detail) => {
           if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
-          if (autoExitOnEmpty) this.hangUp();
+          if (!autoExitOnEmpty) return;
+          // `left` = every departure that emptied the room was an explicit
+          // signaling leave (intentional hangup) → exit now. `dropped` = a
+          // silent drop → give the peer a grace window to re-join first.
+          if (detail.reason === 'left') this.hangUp('peer-left');
+          else this.startReconnectGrace();
         },
       });
       if (!room)
@@ -502,7 +536,7 @@ export class CallHandshakeController {
       )
       .catch((err) => {
         console.error('Error accepting incoming call:', err);
-        this.hangUp();
+        this.hangUp('accept-error');
       });
   };
 
@@ -521,9 +555,71 @@ export class CallHandshakeController {
       .catch((err) => console.error('Error declining incoming call:', err));
   };
 
-  hangUp = (): void => {
-    this.p2p.close();
+  hangUp = (reason: HangUpReason = 'user'): void => {
+    // The peer's side learns this leave is intentional from the signaling
+    // `leave` the room sends during dispose() — the DO tags it as a `left`
+    // departure, so their `onAlone` exits immediately instead of showing
+    // "Reconnecting…". No app-level control message is needed.
+    // ponytail: normal console.log (not gated behind DEV) so field reports of
+    // "call ended unexpectedly" can be diagnosed from a phone's remote console.
+    console.log('[call] hangUp', {
+      reason,
+      // Live room accessor — _handshakeState is cleared at join, so it would
+      // log undefined here. members().length (not the UIDs) keeps the field
+      // signal without leaking peer identifiers into a production console.
+      roomId: this.p2p.room()?.roomId,
+      memberCount: this.p2p.members().length,
+      state: this.p2p.state(),
+    });
+    this.resetReconnectState();
+    // dispose() is async in @kidlib/p2p ≥0.4; hangUp stays sync (called from
+    // click + timer callbacks). Surface teardown failures — a silently failed
+    // dispose is the "call won't end / black screen" bug class we log for.
+    void this.p2p.dispose().catch((err) => {
+      console.warn('[call] p2p dispose failed on hangUp:', err);
+    });
   };
+
+  /** Remote dropped silently (`dropped`): hold the room open for the grace window. */
+  private startReconnectGrace(): void {
+    this.clearReconnectTimers();
+    this.onReconnectStatus('reconnecting');
+    this.reconnectTimeoutId = setTimeout(() => {
+      this.reconnectTimeoutId = undefined;
+      this.onReconnectStatus('failed');
+      this.reconnectFailedTimeoutId = setTimeout(() => {
+        this.reconnectFailedTimeoutId = undefined;
+        this.hangUp('reconnect-timeout');
+      }, RECONNECT_FAILED_DISPLAY_MS);
+    }, RECONNECT_GRACE_MS);
+  }
+
+  /** Peer came back inside the grace window: return to the connected state. */
+  private cancelReconnectGrace(): void {
+    if (
+      this.reconnectTimeoutId == null &&
+      this.reconnectFailedTimeoutId == null
+    )
+      return;
+    this.clearReconnectTimers();
+    this.onReconnectStatus('connected');
+  }
+
+  private clearReconnectTimers(): void {
+    if (this.reconnectTimeoutId != null) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = undefined;
+    }
+    if (this.reconnectFailedTimeoutId != null) {
+      clearTimeout(this.reconnectFailedTimeoutId);
+      this.reconnectFailedTimeoutId = undefined;
+    }
+  }
+
+  private resetReconnectState(): void {
+    this.clearReconnectTimers();
+    this.onReconnectStatus('connected');
+  }
 
   private clearOutgoingCallTimeout(): void {
     if (!this.outgoingCallTimeoutId) return;
@@ -549,10 +645,13 @@ export class CallHandshakeController {
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();
     this.clearCalleeBusyResetTimeout();
+    this.resetReconnectState();
     this.stopPendingOutgoingLocalStream();
     this.setHandshakeState(null);
     this.onCalleeBusy(false);
-    this.p2p.close();
+    void this.p2p.dispose().catch((err) => {
+      console.warn('[call] p2p dispose failed on cleanup:', err);
+    });
     cleanupCallService();
     this.lastBoundUID = undefined;
   }

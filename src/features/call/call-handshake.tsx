@@ -20,6 +20,7 @@ import {
 } from './call-handshake-controller.js';
 import type {
   CallHandshakeState,
+  CallReconnectStatus,
   OutgoingCall,
   StartCallDetails,
 } from './call-types.js';
@@ -29,6 +30,7 @@ type CallHandshakeContextValue = {
   hangUp: () => void;
 
   isCalleeBusy: Accessor<boolean>;
+  reconnectStatus: Accessor<CallReconnectStatus>;
   incomingCall: Accessor<MailboxInvite | null>;
   outgoingCall: Accessor<OutgoingCall | null>;
   cancelOutgoing: () => void;
@@ -96,6 +98,8 @@ export function CallHandshakeProvider(props: ParentProps) {
   const [handshakeState, setHandshakeState] =
     createSignal<CallHandshakeState>(null);
   const [isCalleeBusy, setIsCalleeBusy] = createSignal(false);
+  const [reconnectStatus, setReconnectStatus] =
+    createSignal<CallReconnectStatus>('connected');
 
   const controller = new CallHandshakeController({
     p2p,
@@ -113,6 +117,7 @@ export function CallHandshakeProvider(props: ParentProps) {
     },
     onStateChange: setHandshakeState,
     onCalleeBusy: setIsCalleeBusy,
+    onReconnectStatus: setReconnectStatus,
   });
 
   const incomingCall = (): MailboxInvite | null => {
@@ -127,8 +132,10 @@ export function CallHandshakeProvider(props: ParentProps) {
 
   const value: CallHandshakeContextValue = {
     startCall: controller.startCall,
-    hangUp: controller.hangUp,
+    // Wrap so a click handler's MouseEvent can't leak in as the hangUp reason.
+    hangUp: () => controller.hangUp('user'),
     isCalleeBusy,
+    reconnectStatus,
     incomingCall,
     outgoingCall,
     cancelOutgoing: controller.cancelOutgoing,

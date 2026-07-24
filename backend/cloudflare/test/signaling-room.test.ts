@@ -24,6 +24,7 @@ async function connect(roomId: string) {
 
   return {
     send: (m: unknown) => ws.send(JSON.stringify(m)),
+    close: () => ws.close(),
     next: () =>
       new Promise<ServerMessage>((resolve) => {
         const m = queue.shift();
@@ -118,6 +119,59 @@ describe('SignalingRoom', () => {
         peers: [{ peerId: 'peer-a', data: { muted: true } }],
       });
     }
+  });
+
+  it('tags an explicit leave as departed on the snapshot where the peer drops out', async () => {
+    const a = await connect('room-departed');
+    expect(await a.next()).toEqual({ t: 'peers', peers: [] });
+    a.send({ t: 'join', peerId: 'peer-a' });
+    expect(await a.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+    });
+
+    const b = await connect('room-departed');
+    expect(await b.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+    });
+    b.send({ t: 'join', peerId: 'peer-b' });
+    await nextMembers(a, ['peer-a', 'peer-b']);
+    await nextMembers(b, ['peer-a', 'peer-b']);
+
+    // Explicit leave → peer gone from `peers` AND listed in `departed`, atomically.
+    b.send({ t: 'leave' });
+    expect(await a.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+      departed: ['peer-b'],
+    });
+  });
+
+  it('does not tag a silent socket drop as departed', async () => {
+    const a = await connect('room-dropped');
+    expect(await a.next()).toEqual({ t: 'peers', peers: [] });
+    a.send({ t: 'join', peerId: 'peer-a' });
+    expect(await a.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+    });
+
+    const b = await connect('room-dropped');
+    expect(await b.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+    });
+    b.send({ t: 'join', peerId: 'peer-b' });
+    await nextMembers(a, ['peer-a', 'peer-b']);
+
+    // Socket close (no `leave`) → member gone, but NO `departed` (strict equality
+    // fails if the field is present), so the client treats it as a drop.
+    b.close();
+    expect(await a.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+    });
   });
 
   it('rejects presence before join', async () => {

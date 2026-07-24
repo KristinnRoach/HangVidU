@@ -76,6 +76,31 @@ async function flushPromises() {
   await Promise.resolve();
 }
 
+function createP2PMock(overrides = {}) {
+  return {
+    join: vi.fn(),
+    dispose: vi.fn(() => Promise.resolve()),
+    broadcast: vi.fn(),
+    state: vi.fn(() => 'idle'),
+    members: vi.fn(() => []),
+    error: vi.fn(),
+    room: vi.fn(),
+    ...overrides,
+  };
+}
+
+function createController(p2p, overrides = {}) {
+  return new CallHandshakeController({
+    p2p,
+    createSignaling: vi.fn(),
+    getCallerName: () => 'Callee',
+    onStateChange: vi.fn(),
+    onCalleeBusy: vi.fn(),
+    onReconnectStatus: vi.fn(),
+    ...overrides,
+  });
+}
+
 const { CallHandshakeController } =
   await import('./call-handshake-controller.js');
 
@@ -114,17 +139,7 @@ describe('CallHandshakeController', () => {
 
   it('dismisses a matching incoming call when another device handles it', () => {
     const onStateChange = vi.fn();
-    const controller = new CallHandshakeController({
-      p2p: {
-        close: vi.fn(),
-        state: vi.fn(() => 'idle'),
-        room: vi.fn(),
-      },
-      createSignaling: vi.fn(),
-      getCallerName: () => 'Callee',
-      onStateChange,
-      onCalleeBusy: vi.fn(),
-    });
+    const controller = createController(createP2PMock(), { onStateChange });
 
     controller.init();
     mocks.incomingCallback?.({
@@ -148,19 +163,8 @@ describe('CallHandshakeController', () => {
 
   it('joins the room before notifying the caller that an incoming call was accepted', async () => {
     const join = deferred();
-    const p2p = {
-      join: vi.fn(() => join.promise),
-      close: vi.fn(),
-      state: vi.fn(() => 'idle'),
-      room: vi.fn(),
-    };
-    const controller = new CallHandshakeController({
-      p2p,
-      createSignaling: vi.fn(),
-      getCallerName: () => 'Callee',
-      onStateChange: vi.fn(),
-      onCalleeBusy: vi.fn(),
-    });
+    const p2p = createP2PMock({ join: vi.fn(() => join.promise) });
+    const controller = createController(p2p);
 
     controller.init();
     mocks.incomingCallback?.({
@@ -201,22 +205,13 @@ describe('CallHandshakeController', () => {
   it('reserves a video slot when joining an audio-only call', async () => {
     const stream = createMediaStream({ audio: true, video: false });
     mocks.getUserMedia.mockResolvedValue(stream);
-    const p2p = {
+    const p2p = createP2PMock({
       join: vi.fn(async () => ({
         roomId: 'room-1',
         members: ['callee-id'],
       })),
-      close: vi.fn(),
-      state: vi.fn(() => 'idle'),
-      room: vi.fn(),
-    };
-    const controller = new CallHandshakeController({
-      p2p,
-      createSignaling: vi.fn(),
-      getCallerName: () => 'Callee',
-      onStateChange: vi.fn(),
-      onCalleeBusy: vi.fn(),
     });
+    const controller = createController(p2p);
 
     controller.init();
     mocks.incomingCallback?.({
@@ -253,26 +248,65 @@ describe('CallHandshakeController', () => {
     await expect(joinOptions.getLocalStream()).resolves.toBe(stream);
   });
 
-  it('closes a notification-opened call when the remote caller leaves while the accept response is pending', async () => {
-    let onAlone;
+  it('holds a reconnect grace window when the remote peer drops silently, then tears down', async () => {
+    vi.useFakeTimers();
+    try {
+      let joinOptions;
+      const acceptResponse = deferred();
+      mocks.respondToIncomingCallInvite.mockReturnValue(acceptResponse.promise);
+      const p2p = createP2PMock({
+        join: vi.fn(async (options) => {
+          joinOptions = options;
+          return { roomId: 'room-1', members: ['callee-id'] };
+        }),
+      });
+      const onReconnectStatus = vi.fn();
+      const controller = createController(p2p, { onReconnectStatus });
+
+      controller.showIncomingCallFromNotification({
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        audioOnly: false,
+        startedAt: Date.now(),
+      });
+
+      controller.acceptIncoming();
+      await flushPromises();
+
+      // Silent drop (`dropped`): grace window, not an immediate teardown.
+      joinOptions?.onAlone?.({
+        members: ['callee-id'],
+        memberCount: 1,
+        reason: 'dropped',
+      });
+      expect(onReconnectStatus).toHaveBeenLastCalledWith('reconnecting');
+      expect(p2p.dispose).not.toHaveBeenCalled();
+
+      // Grace elapses → "failed" shown → final teardown after the display delay.
+      vi.advanceTimersByTime(10_000);
+      expect(onReconnectStatus).toHaveBeenLastCalledWith('failed');
+      expect(p2p.dispose).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(2_500);
+      expect(p2p.dispose).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('exits immediately on an explicit `left` departure, skipping the grace window', async () => {
+    let joinOptions;
     const acceptResponse = deferred();
     mocks.respondToIncomingCallInvite.mockReturnValue(acceptResponse.promise);
-    const p2p = {
+    const p2p = createP2PMock({
       join: vi.fn(async (options) => {
-        onAlone = options.onAlone;
+        joinOptions = options;
         return { roomId: 'room-1', members: ['callee-id'] };
       }),
-      close: vi.fn(),
-      state: vi.fn(() => 'idle'),
-      room: vi.fn(),
-    };
-    const controller = new CallHandshakeController({
-      p2p,
-      createSignaling: vi.fn(),
-      getCallerName: () => 'Callee',
-      onStateChange: vi.fn(),
-      onCalleeBusy: vi.fn(),
     });
+    const onReconnectStatus = vi.fn();
+    const controller = createController(p2p, { onReconnectStatus });
 
     controller.showIncomingCallFromNotification({
       roomId: 'room-1',
@@ -285,35 +319,69 @@ describe('CallHandshakeController', () => {
     controller.acceptIncoming();
     await flushPromises();
 
-    expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledWith({
-      roomId: 'room-1',
-      callerId: 'caller-id',
-      responseType: 'accepted',
+    // Intentional hangup: the room reports `alone` with reason `left` → close now.
+    joinOptions?.onAlone?.({
+      members: ['callee-id'],
+      memberCount: 1,
+      reason: 'left',
     });
 
-    onAlone?.({ members: ['callee-id'], memberCount: 1 });
+    expect(onReconnectStatus).not.toHaveBeenCalledWith('reconnecting');
+    expect(p2p.dispose).toHaveBeenCalledTimes(1);
+  });
 
-    expect(p2p.close).toHaveBeenCalledTimes(1);
+  it('cancels the reconnect grace when the peer rejoins', async () => {
+    vi.useFakeTimers();
+    try {
+      let joinOptions;
+      const acceptResponse = deferred();
+      mocks.respondToIncomingCallInvite.mockReturnValue(acceptResponse.promise);
+      const p2p = createP2PMock({
+        join: vi.fn(async (options) => {
+          joinOptions = options;
+          return { roomId: 'room-1', members: ['callee-id'] };
+        }),
+      });
+      const onReconnectStatus = vi.fn();
+      const controller = createController(p2p, { onReconnectStatus });
+
+      controller.showIncomingCallFromNotification({
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        audioOnly: false,
+        startedAt: Date.now(),
+      });
+      controller.acceptIncoming();
+      await flushPromises();
+
+      joinOptions?.onAlone?.({
+        members: ['callee-id'],
+        memberCount: 1,
+        reason: 'dropped',
+      });
+      expect(onReconnectStatus).toHaveBeenLastCalledWith('reconnecting');
+
+      joinOptions?.onMemberJoined?.({ memberId: 'caller-id' });
+      expect(onReconnectStatus).toHaveBeenLastCalledWith('connected');
+
+      // Timers were cleared: no teardown even after the full window elapses.
+      vi.advanceTimersByTime(20_000);
+      expect(p2p.dispose).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not notify accepted when joining the room fails', async () => {
     const joinError = new Error('camera blocked');
     const stream = createMediaStream({ audio: true, video: true });
     mocks.getUserMedia.mockResolvedValue(stream);
-    const p2p = {
+    const p2p = createP2PMock({
       join: vi.fn(() => Promise.resolve(undefined)),
-      close: vi.fn(),
-      state: vi.fn(() => 'idle'),
       error: vi.fn(() => joinError),
-      room: vi.fn(),
-    };
-    const controller = new CallHandshakeController({
-      p2p,
-      createSignaling: vi.fn(),
-      getCallerName: () => 'Callee',
-      onStateChange: vi.fn(),
-      onCalleeBusy: vi.fn(),
     });
+    const controller = createController(p2p);
 
     controller.init();
     mocks.incomingCallback?.({
@@ -331,7 +399,7 @@ describe('CallHandshakeController', () => {
     await flushPromises();
 
     expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
-    await vi.waitFor(() => expect(p2p.close).toHaveBeenCalled());
+    await vi.waitFor(() => expect(p2p.dispose).toHaveBeenCalled());
     expect(p2p.error).toHaveBeenCalledTimes(1);
     stream
       .getTracks()
@@ -342,19 +410,8 @@ describe('CallHandshakeController', () => {
     const send = deferred();
     const join = deferred();
     mocks.sendOutgoingCallInvite.mockReturnValue(send.promise);
-    const p2p = {
-      join: vi.fn(() => join.promise),
-      close: vi.fn(),
-      state: vi.fn(() => 'idle'),
-      room: vi.fn(),
-    };
-    const controller = new CallHandshakeController({
-      p2p,
-      createSignaling: vi.fn(),
-      getCallerName: () => 'Callee',
-      onStateChange: vi.fn(),
-      onCalleeBusy: vi.fn(),
-    });
+    const p2p = createP2PMock({ join: vi.fn(() => join.promise) });
+    const controller = createController(p2p);
 
     const start = controller.startCall({
       calleeId: 'callee-id',
@@ -387,17 +444,8 @@ describe('CallHandshakeController', () => {
 
   it('publishes declined when the callee rejects', async () => {
     mocks.getLoggedInUserId.mockReturnValue('caller-id');
-    const controller = new CallHandshakeController({
-      p2p: {
-        join: vi.fn(),
-        close: vi.fn(),
-        state: vi.fn(() => 'idle'),
-        room: vi.fn(),
-      },
-      createSignaling: vi.fn(),
+    const controller = createController(createP2PMock({ join: vi.fn() }), {
       getCallerName: () => 'Caller',
-      onStateChange: vi.fn(),
-      onCalleeBusy: vi.fn(),
     });
 
     await controller.startCall({
@@ -420,17 +468,8 @@ describe('CallHandshakeController', () => {
 
   it('publishes unanswered when the caller cancels while ringing', async () => {
     mocks.getLoggedInUserId.mockReturnValue('caller-id');
-    const controller = new CallHandshakeController({
-      p2p: {
-        join: vi.fn(),
-        close: vi.fn(),
-        state: vi.fn(() => 'idle'),
-        room: vi.fn(),
-      },
-      createSignaling: vi.fn(),
+    const controller = createController(createP2PMock({ join: vi.fn() }), {
       getCallerName: () => 'Caller',
-      onStateChange: vi.fn(),
-      onCalleeBusy: vi.fn(),
     });
 
     await controller.startCall({
@@ -448,19 +487,8 @@ describe('CallHandshakeController', () => {
 
   it('does not send the invite when caller media permission fails', async () => {
     mocks.getUserMedia.mockRejectedValue(new Error('camera blocked'));
-    const p2p = {
-      join: vi.fn(),
-      close: vi.fn(),
-      state: vi.fn(() => 'idle'),
-      room: vi.fn(),
-    };
-    const controller = new CallHandshakeController({
-      p2p,
-      createSignaling: vi.fn(),
-      getCallerName: () => 'Caller',
-      onStateChange: vi.fn(),
-      onCalleeBusy: vi.fn(),
-    });
+    const p2p = createP2PMock({ join: vi.fn() });
+    const controller = createController(p2p, { getCallerName: () => 'Caller' });
 
     await controller.startCall({
       calleeId: 'callee-id',
@@ -477,19 +505,8 @@ describe('CallHandshakeController', () => {
     const media = deferred();
     const stop = vi.fn();
     mocks.getUserMedia.mockReturnValue(media.promise);
-    const p2p = {
-      join: vi.fn(),
-      close: vi.fn(),
-      state: vi.fn(() => 'idle'),
-      room: vi.fn(),
-    };
-    const controller = new CallHandshakeController({
-      p2p,
-      createSignaling: vi.fn(),
-      getCallerName: () => 'Caller',
-      onStateChange: vi.fn(),
-      onCalleeBusy: vi.fn(),
-    });
+    const p2p = createP2PMock({ join: vi.fn() });
+    const controller = createController(p2p, { getCallerName: () => 'Caller' });
 
     const start = controller.startCall({
       calleeId: 'callee-id',
