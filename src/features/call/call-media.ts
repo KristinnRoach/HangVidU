@@ -67,17 +67,25 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   let cameraBeforeScreenShare: MediaStreamTrack | null = null;
   let screenStopRequested = false;
   let presenceWriteChain = Promise.resolve();
+  // Authoritative local presence. setPresenceData does a full replace and
+  // room.memberPresence only reflects the async echo, so merging against it
+  // races: back-to-back writes clobber each other (e.g. cameraOn overwriting
+  // screenShare on share start). Merge here instead.
+  let localPresence: {
+    micOn?: boolean;
+    cameraOn?: boolean;
+    screenShare?: boolean;
+  } = {};
 
   function enqueuePresenceUpdate(
     room: NonNullable<ReturnType<SolidP2PRoom['room']>>,
     data: { micOn?: boolean; cameraOn?: boolean; screenShare?: boolean },
   ) {
-    const update = presenceWriteChain.then(async () => {
-      const currentData =
-        room.memberPresence.find((member) => member.memberId === room.peerId)
-          ?.data ?? {};
-      await room.setPresenceData({ ...currentData, ...data });
-    });
+    localPresence = { ...localPresence, ...data };
+    const snapshot = localPresence;
+    const update = presenceWriteChain.then(() =>
+      room.setPresenceData(snapshot),
+    );
     presenceWriteChain = update.catch(() => {});
     return update;
   }
