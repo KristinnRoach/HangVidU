@@ -26,13 +26,6 @@
   object-position: center center;
 }
 
-/* Screen shares must show the whole window/screen, not crop-to-fill.
-   Scoped on the surface (not the video) so it survives the iOS video-element
-   clone in ParticipantMedia, which drops the reactive class binding. */
-.screenShare .media {
-  object-fit: contain;
-}
-
 .selfPreview {
   position: absolute;
   top: var(--gap);
@@ -46,6 +39,17 @@
   -webkit-user-select: none;
   user-select: none;
   transition: top var(--duration-default) var(--easing-default);
+}
+
+/* Screen shares must show the whole window/screen, not crop-to-fill.
+   Scoped on the surface (not the video) so it survives the iOS video-element
+   clone in ParticipantMedia, which drops the reactive class binding. */
+.screenShare .media {
+  object-fit: contain;
+}
+
+.screenShare.selfPreview .media {
+  transform: none;
 }
 
 /* The top bar overlays calls. Keep the preview below it while visible. */
