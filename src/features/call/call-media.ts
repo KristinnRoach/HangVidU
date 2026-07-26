@@ -76,11 +76,19 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     cameraOn?: boolean;
     screenShare?: boolean;
   } = {};
+  let presenceSeeded = false;
 
   function enqueuePresenceUpdate(
     room: NonNullable<ReturnType<SolidP2PRoom['room']>>,
     data: { micOn?: boolean; cameraOn?: boolean; screenShare?: boolean },
   ) {
+    // Seed from the join-time state (published directly via room join, not
+    // through here) on the first write, so a single-flag delta doesn't
+    // full-replace away the other initial flags.
+    if (!presenceSeeded) {
+      localPresence = { micOn: micOn(), cameraOn: cameraOn() };
+      presenceSeeded = true;
+    }
     localPresence = { ...localPresence, ...data };
     const snapshot = localPresence;
     const update = presenceWriteChain.then(() =>
