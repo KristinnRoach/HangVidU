@@ -31,14 +31,19 @@
   top: var(--gap);
   left: var(--gap);
 
-  width: clamp(120px, 20%, 300px);
-  height: clamp(120px, 20%, 300px);
+  width: clamp(120px, 25%, 300px);
+  height: clamp(120px, 20%, 200px);
 
   font-size: 12px;
   z-index: 1;
   -webkit-user-select: none;
   user-select: none;
   transition: top var(--duration-default) var(--easing-default);
+}
+
+.selfPreview .media {
+  transform: scaleX(-1);
+  overflow: hidden;
 }
 
 /* Screen shares must show the whole window/screen, not crop-to-fill.
@@ -55,10 +60,6 @@
 /* The top bar overlays calls. Keep the preview below it while visible. */
 :global(#top-bar[data-visible='true']) ~ :global(#main-content) .selfPreview {
   top: calc(var(--topbar-height) + var(--gap));
-}
-
-.selfPreview .media {
-  transform: scaleX(-1);
 }
 
 .audioOnly {
