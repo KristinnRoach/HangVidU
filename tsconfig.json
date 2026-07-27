@@ -7,7 +7,6 @@
     "jsxImportSource": "solid-js",
 
     "paths": {
-      "@app/*": ["./src/app/*"],
       "@auth": ["./src/auth/index.js"],
       "@auth/*": ["./src/auth/*"],
       "@components/*": ["./src/components/*"],
@@ -22,8 +21,7 @@
       "@realtime/*": ["./src/realtime/*"],
       "@shared/*": ["./src/shared/*"],
       "@storage/*": ["./src/storage/*"],
-      "@stores/*": ["./src/stores/*"],
-      "@styles/*": ["./src/styles/*"]
+      "@stores/*": ["./src/stores/*"]
     },
 
     "strict": true,
