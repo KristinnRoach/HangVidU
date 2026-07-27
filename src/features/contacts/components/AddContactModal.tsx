@@ -71,19 +71,22 @@ function openEmailComposeFallback(
   const body = encodeURIComponent(
     t_('contact.invite.body', { name: senderName, link: referralLink }),
   );
-  const rawTo = contacts.map((c) => c.email).join(',');
-  const encodedTo = contacts.map((c) => encodeURIComponent(c.email)).join(',');
-  const firstContact = contacts[0];
+  const recipients = contacts.map(({ email }) => email.trim()).filter(Boolean);
+  if (recipients.length === 0) return;
+
+  const rawTo = recipients.join(',');
+  const encodedTo = recipients.map(encodeURIComponent).join(',');
+  const firstRecipient = recipients[0];
   const recipientParam =
-    contacts.length === 1 && firstContact
-      ? `to=${encodeURIComponent(firstContact.email)}`
+    recipients.length === 1 && firstRecipient
+      ? `to=${encodeURIComponent(firstRecipient)}`
       : `bcc=${encodedTo}`;
   const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&${recipientParam}&su=${subject}&body=${body}`;
   const opened = window.open(gmailUrl, '_blank', 'noopener,noreferrer');
   if (!opened) {
     const mailtoLink =
-      contacts.length === 1 && firstContact
-        ? `mailto:${encodeURIComponent(firstContact.email)}?subject=${subject}&body=${body}`
+      recipients.length === 1 && firstRecipient
+        ? `mailto:${encodeURIComponent(firstRecipient)}?subject=${subject}&body=${body}`
         : `mailto:?bcc=${rawTo}&subject=${subject}&body=${body}`;
     window.location.href = mailtoLink;
   }
