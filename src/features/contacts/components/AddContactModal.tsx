@@ -82,8 +82,8 @@ function openEmailComposeFallback(
   const opened = window.open(gmailUrl, '_blank', 'noopener,noreferrer');
   if (!opened) {
     const mailtoLink =
-      contacts.length === 1
-        ? `mailto:${encodeURIComponent(firstContact?.email ?? '')}?subject=${subject}&body=${body}`
+      contacts.length === 1 && firstContact
+        ? `mailto:${encodeURIComponent(firstContact.email)}?subject=${subject}&body=${body}`
         : `mailto:?bcc=${rawTo}&subject=${subject}&body=${body}`;
     window.location.href = mailtoLink;
   }
