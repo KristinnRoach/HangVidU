@@ -98,12 +98,12 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
   return (
     <div
       class={styles.callControls}
-      classList={{ [styles.hidden]: !visible() }}
+      classList={{ [styles.hidden!]: !visible() }}
     >
       <button
         type='button'
         onClick={toggleMic}
-        classList={{ [styles.off]: !media.micOn() }}
+        classList={{ [styles.off!]: !media.micOn() }}
         title={media.micOn() ? 'Mute mic' : 'Unmute mic'}
         aria-label={media.micOn() ? 'Mute mic' : 'Unmute mic'}
       >
@@ -113,7 +113,7 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
         type='button'
         onClick={toggleCam}
         disabled={media.cameraPending() || media.screenSharing()}
-        classList={{ [styles.off]: !media.cameraOn() }}
+        classList={{ [styles.off!]: !media.cameraOn() }}
         title={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
         aria-label={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
       >
@@ -137,7 +137,7 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
           type='button'
           onClick={toggleScreenShare}
           disabled={media.cameraPending()}
-          classList={{ [styles.off]: !media.screenSharing() }}
+          classList={{ [styles.off!]: !media.screenSharing() }}
           title={media.screenSharing() ? 'Stop sharing screen' : 'Share screen'}
           aria-label={
             media.screenSharing() ? 'Stop sharing screen' : 'Share screen'
@@ -149,7 +149,7 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
       <button
         type='button'
         onClick={() => props.onRemoteAudioMutedChange(!props.remoteAudioMuted)}
-        classList={{ [styles.off]: props.remoteAudioMuted }}
+        classList={{ [styles.off!]: props.remoteAudioMuted }}
         title={
           props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
         }

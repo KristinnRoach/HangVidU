@@ -27,6 +27,7 @@
     },
 
     "strict": true,
+    "noUncheckedIndexedAccess": true,
     "allowJs": true,
     "checkJs": false,
     "noEmit": true,

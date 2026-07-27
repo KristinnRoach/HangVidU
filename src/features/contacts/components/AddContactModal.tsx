@@ -73,16 +73,17 @@ function openEmailComposeFallback(
   );
   const rawTo = contacts.map((c) => c.email).join(',');
   const encodedTo = contacts.map((c) => encodeURIComponent(c.email)).join(',');
+  const firstContact = contacts[0];
   const recipientParam =
-    contacts.length === 1
-      ? `to=${encodeURIComponent(contacts[0].email)}`
+    contacts.length === 1 && firstContact
+      ? `to=${encodeURIComponent(firstContact.email)}`
       : `bcc=${encodedTo}`;
   const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&${recipientParam}&su=${subject}&body=${body}`;
   const opened = window.open(gmailUrl, '_blank', 'noopener,noreferrer');
   if (!opened) {
     const mailtoLink =
       contacts.length === 1
-        ? `mailto:${encodeURIComponent(contacts[0].email)}?subject=${subject}&body=${body}`
+        ? `mailto:${encodeURIComponent(firstContact?.email ?? '')}?subject=${subject}&body=${body}`
         : `mailto:?bcc=${rawTo}&subject=${subject}&body=${body}`;
     window.location.href = mailtoLink;
   }
@@ -267,7 +268,7 @@ export function AddContactModal(props: Props) {
     const safe = Object.hasOwn(statusConfig, result.status)
       ? result.status
       : 'copy_failed';
-    const cfg = statusConfig[safe];
+    const cfg = statusConfig[safe] ?? { toast: showErrorToast, type: 'error' };
     const key = `contact.invite.share.${safe}`;
     cfg.toast?.(t(key));
     setStatus({ text: t(key), type: cfg.type });

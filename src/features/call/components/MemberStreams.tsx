@@ -28,9 +28,9 @@ export function MemberStreams(props: MemberStreamsProps) {
   return (
     <div
       classList={{
-        [styles.roomMembers]: true,
-        [styles.direct]: p2p.memberCount() <= 2,
-        [styles.group]: p2p.memberCount() > 2,
+        [styles.roomMembers!]: true,
+        [styles.direct!]: p2p.memberCount() <= 2,
+        [styles.group!]: p2p.memberCount() > 2,
       }}
     >
       <Show when={p2p.localStream()}>

@@ -283,10 +283,12 @@ export function suggestHandle(user: UserLike, suffix = '') {
 function randomSuffix(): number {
   const limit = Math.floor(0xffffffff / 90) * 90;
   const buf = new Uint32Array(1);
-  let x: number;
+  let x = 0;
   do {
     globalThis.crypto.getRandomValues(buf);
-    x = buf[0];
+    const value = buf[0];
+    if (value === undefined) continue;
+    x = value;
   } while (x >= limit);
   return 10 + (x % 90);
 }
