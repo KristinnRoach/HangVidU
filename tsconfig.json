@@ -36,7 +36,9 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitOverride": true,
+    "moduleDetection": "force"
   },
   "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"]
 }
