@@ -40,6 +40,7 @@ export function MemberStreams(props: MemberStreamsProps) {
             variant='self-preview'
             videoEnabled={props.media.cameraOn() || props.media.screenSharing()}
             audioEnabled={props.media.micOn()}
+            screenShare={props.media.screenSharing()}
           />
         )}
       </Show>

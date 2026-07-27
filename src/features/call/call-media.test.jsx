@@ -141,7 +141,7 @@ describe('call media', () => {
       await media.setMicEnabled(false);
       expect(media.micOn()).toBe(false);
       expect(room.setPresenceData).toHaveBeenCalledWith({
-        cameraOn: true,
+        cameraOn: false,
         micOn: false,
       });
       await media.setCameraEnabled(true);
@@ -154,7 +154,10 @@ describe('call media', () => {
         camera,
       );
       expect(media.cameraOn()).toBe(true);
-      expect(room.setPresenceData).toHaveBeenCalledWith({ cameraOn: true });
+      expect(room.setPresenceData).toHaveBeenCalledWith({
+        cameraOn: true,
+        micOn: false,
+      });
 
       const backCamera = createTrack('video');
       camera.getSettings = () => ({ deviceId: 'facetime-camera' });
@@ -350,7 +353,10 @@ describe('call media', () => {
       );
       expect(camera.stop).toHaveBeenCalledOnce();
       expect(media.cameraOn()).toBe(false);
-      expect(room.setPresenceData).toHaveBeenCalledWith({ cameraOn: false });
+      expect(room.setPresenceData).toHaveBeenCalledWith({
+        cameraOn: false,
+        micOn: true,
+      });
       dispose();
     });
   });
@@ -383,7 +389,10 @@ describe('call media', () => {
         replacementError,
       );
 
-      expect(room.setPresenceData).toHaveBeenCalledWith({ cameraOn: false });
+      expect(room.setPresenceData).toHaveBeenCalledWith({
+        cameraOn: false,
+        micOn: true,
+      });
       expect(camera.stop).toHaveBeenCalledOnce();
       dispose();
     });
@@ -416,7 +425,10 @@ describe('call media', () => {
 
       await expect(media.setCameraEnabled(true)).rejects.toBe(replacementError);
 
-      expect(room.setPresenceData).toHaveBeenCalledWith({ cameraOn: true });
+      expect(room.setPresenceData).toHaveBeenCalledWith({
+        cameraOn: true,
+        micOn: true,
+      });
       expect(camera.stop).not.toHaveBeenCalled();
       dispose();
     });

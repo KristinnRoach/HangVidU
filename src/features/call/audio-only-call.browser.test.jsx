@@ -193,10 +193,15 @@ describe('audio-only call over reserved slots', () => {
     const bothUnmuted = () =>
       remoteAudioUnmuted(a.remoteStreams) &&
       remoteAudioUnmuted(b.remoteStreams);
-    expect(
-      await waitFor(bothUnmuted, 5000),
-      `remote audio receiving RTP (unmuted) on both sides; log:\n${log.join('\n')}`,
-    ).toBe(true);
+    // Firefox never flips a remote track's `.muted` to false for loopback
+    // audio, so the unmute transition only signals RTP flow on Chromium/WebKit.
+    // The end-to-end playback assertion below carries Firefox instead.
+    if (server.browser !== 'firefox') {
+      expect(
+        await waitFor(bothUnmuted, 5000),
+        `remote audio receiving RTP (unmuted) on both sides; log:\n${log.join('\n')}`,
+      ).toBe(true);
+    }
 
     // Chromium surfaces the reserved camera slot as a muted video track, which
     // was the original regression condition. Firefox can deliver the same
