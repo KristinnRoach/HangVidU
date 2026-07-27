@@ -68,9 +68,7 @@ Mirror the shape of `en.ts`. Enforce parity:
 ```ts
 import en from './en';
 // ...
-const is = {
-  /* ... */
-} satisfies typeof en;
+const is = {/* ... */} satisfies typeof en;
 export default is;
 ```
 

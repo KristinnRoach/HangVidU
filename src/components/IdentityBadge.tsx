@@ -5,7 +5,7 @@ function smartTruncateName(fullName: string, maxLength = 10): string {
     return fullName;
   }
 
-  const firstName = fullName.split(' ')[0];
+  const firstName = fullName.split(' ')[0] ?? '';
   if (firstName.length <= maxLength) {
     return firstName;
   }

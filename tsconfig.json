@@ -7,7 +7,6 @@
     "jsxImportSource": "solid-js",
 
     "paths": {
-      "@app/*": ["./src/app/*"],
       "@auth": ["./src/auth/index.js"],
       "@auth/*": ["./src/auth/*"],
       "@components/*": ["./src/components/*"],
@@ -22,11 +21,11 @@
       "@realtime/*": ["./src/realtime/*"],
       "@shared/*": ["./src/shared/*"],
       "@storage/*": ["./src/storage/*"],
-      "@stores/*": ["./src/stores/*"],
-      "@styles/*": ["./src/styles/*"]
+      "@stores/*": ["./src/stores/*"]
     },
 
     "strict": true,
+    "noUncheckedIndexedAccess": true,
     "allowJs": true,
     "checkJs": false,
     "noEmit": true,
@@ -34,7 +33,13 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "forceConsistentCasingInFileNames": true
+    "verbatimModuleSyntax": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitOverride": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "moduleDetection": "force"
   },
   "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"]
 }

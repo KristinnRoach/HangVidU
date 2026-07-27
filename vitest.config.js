@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite-plus';
 import { playwright } from 'vite-plus/test/browser-playwright';
-import { VitePWA } from 'vite-plugin-pwa';
+import { pwaPlugin } from './vite.pwa.js';
 import solid from 'vite-plugin-solid';
 
 // Enable multi-browser testing with COMPAT=true
@@ -31,28 +31,7 @@ export default defineConfig({
     dedupe: ['solid-js'],
     conditions: ['development', 'browser'],
   },
-  plugins: [
-    solid(),
-    VitePWA({
-      includeAssets: ['index.html', 'favicon.ico'],
-      registerType: 'prompt',
-      strategies: 'injectManifest',
-      srcDir: 'src',
-      filename: 'sw.js',
-      devOptions: {
-        enabled: false, // injectManifest with ES modules doesn't work in dev
-      },
-      workbox: {
-        cleanupOutdatedCaches: true,
-        navigateFallback: '/index.html', // fallback for SPA navigation
-        navigateFallbackDenylist: [
-          /^\/index\.html$/, // Don't fallback for index.html itself
-          /^\/__\//, // Exclude Firebase auth handler paths
-          /^\/auth\//, // Exclude any other auth-related paths
-        ],
-      },
-    }),
-  ],
+  plugins: [solid(), pwaPlugin()],
   test: {
     projects: [
       // Default: runs in Node with jsdom (no Playwright RPC overhead)

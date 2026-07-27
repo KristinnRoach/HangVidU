@@ -247,8 +247,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     <div
       class={styles.surface}
       classList={{
-        [styles.selfPreview]: variant() === 'self-preview',
-        [styles.screenShare]: props.screenShare,
+        [styles.selfPreview!]: variant() === 'self-preview',
+        [styles.screenShare!]: props.screenShare,
       }}
     >
       <video

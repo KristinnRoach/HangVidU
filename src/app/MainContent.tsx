@@ -277,8 +277,8 @@ function TopBar(props: TopBarProps) {
       data-visible={props.visible}
       class={topbarStyles.topBar}
       classList={{
-        [topbarStyles.hidden]: !props.visible,
-        [topbarStyles.overlay]: props.isInCall,
+        [topbarStyles.hidden!]: !props.visible,
+        [topbarStyles.overlay!]: props.isInCall,
       }}
     >
       <div id='top-bar-left' class={`${topbarStyles.stickyLeft} animated-flex`}>

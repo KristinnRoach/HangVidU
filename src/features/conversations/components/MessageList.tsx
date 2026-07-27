@@ -240,8 +240,8 @@ export function MessageList() {
                   class={styles.msg}
                   data-timestamp={userMessage().sentAt}
                   classList={{
-                    [styles.msgOwn]: userMessage().senderId === state.myUserId,
-                    [styles.msgFailed]: userMessage().status === 'failed',
+                    [styles.msgOwn!]: userMessage().senderId === state.myUserId,
+                    [styles.msgFailed!]: userMessage().status === 'failed',
                   }}
                 >
                   <span class={styles.msgText}>
@@ -283,7 +283,7 @@ function SystemMessageRow(props: { message: SystemChatMessage }) {
     props.message.callerUId === state.myUserId
       ? t('conversation.call_unanswered_outgoing')
       : t('conversation.call_unanswered_incoming', {
-          name: callerName().split(' ')[0],
+          name: callerName().split(' ')[0] ?? '',
         });
 
   return (
