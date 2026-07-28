@@ -176,7 +176,7 @@
   "auth.toggle.to_signup": "No account? Sign up",
   "auth.signing_in": "Signing in...",
   "auth.signing_out": "Signing out...",
-  "auth.guest_user": "Guest User",
+  "auth.guest_user": "Guest",
   "auth.error.generic": "Something went wrong. Please try again.",
   "auth.error.api_outage": "HangVidU's server is temporarily unavailable. Your data is safe — please try again in a few minutes.",
   "auth.error.identifier_required": "Enter your username or email.",
