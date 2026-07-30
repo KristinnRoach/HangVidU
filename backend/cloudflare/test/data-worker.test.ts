@@ -269,6 +269,7 @@ describe('POST /turn-credentials', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ ttl: 3600 }),
+      signal: expect.any(AbortSignal),
     });
     const body = (await response.json()) as {
       iceServers: RTCIceServer[];

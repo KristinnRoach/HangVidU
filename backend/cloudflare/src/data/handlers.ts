@@ -46,6 +46,7 @@ import { CALLING_TTL_MS } from '../../../../shared/constants';
 
 const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
 const TURN_CREDENTIAL_TTL_SECONDS = 3_600;
+const TURN_CREDENTIAL_FETCH_TIMEOUT_MS = 5_000;
 
 export async function handleDataRequest(
   request: Request,
@@ -127,6 +128,7 @@ export async function handleDataRequest(
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ ttl: TURN_CREDENTIAL_TTL_SECONDS }),
+          signal: AbortSignal.timeout(TURN_CREDENTIAL_FETCH_TIMEOUT_MS),
         },
       );
       if (!upstream.ok) throw new Error('TURN credential request failed');

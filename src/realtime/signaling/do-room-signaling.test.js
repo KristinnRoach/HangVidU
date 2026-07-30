@@ -197,6 +197,14 @@ describe('createDoRoomSignaling', () => {
       channel: 'ice-restart',
       data: { requestId: 'wrong-peer' },
     });
+    for (const data of [{}, { requestId: 42 }, { requestId: '' }]) {
+      socket.emit({
+        t: 'relay',
+        from: 'peer-b',
+        channel: 'ice-restart',
+        data,
+      });
+    }
 
     expect(socket.sent).toEqual([
       {

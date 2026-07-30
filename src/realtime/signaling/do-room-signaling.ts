@@ -196,7 +196,15 @@ export function createDoRoomSignaling({
         sendIceRestartRequest: (request) => sendRelay('ice-restart', request),
         onIceRestartRequest(callback) {
           return subscribeRelay(remotePeerId, 'ice-restart', (data) => {
-            if (data) callback(data as { requestId: string });
+            const request = data as { requestId?: unknown } | null;
+            if (
+              request &&
+              typeof request === 'object' &&
+              typeof request.requestId === 'string' &&
+              request.requestId.length > 0
+            ) {
+              callback({ requestId: request.requestId });
+            }
           });
         },
       };
