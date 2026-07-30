@@ -175,6 +175,40 @@ describe('createDoRoomSignaling', () => {
     expect(candidates).toEqual([{ candidate: 'c1' }]);
   });
 
+  it('sends and receives addressed ICE-restart requests', () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    const peer = signaling.createPeerSignaling({
+      localPeerId: 'peer-a',
+      remotePeerId: 'peer-b',
+    });
+    const requests = [];
+    peer.onIceRestartRequest((request) => requests.push(request));
+
+    void peer.sendIceRestartRequest({ requestId: 'restart-1' });
+    socket.emit({
+      t: 'relay',
+      from: 'peer-b',
+      channel: 'ice-restart',
+      data: { requestId: 'restart-2' },
+    });
+    socket.emit({
+      t: 'relay',
+      from: 'peer-z',
+      channel: 'ice-restart',
+      data: { requestId: 'wrong-peer' },
+    });
+
+    expect(socket.sent).toEqual([
+      {
+        t: 'relay',
+        to: 'peer-b',
+        channel: 'ice-restart',
+        data: { requestId: 'restart-1' },
+      },
+    ]);
+    expect(requests).toEqual([{ requestId: 'restart-2' }]);
+  });
+
   it('does not re-join on reconnect after leave', () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
     void signaling.join('peer-a');

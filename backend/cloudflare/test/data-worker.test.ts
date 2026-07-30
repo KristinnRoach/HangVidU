@@ -6,6 +6,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from 'vite-plus/test';
 import { insertMessage, resolveOrCreateDirect } from '../src/data/repo';
 
@@ -21,10 +22,13 @@ const KID = 'test-key-1';
 const ORIGIN = 'https://hangvidu.com';
 const JWKS_URL =
   'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+const TURN_API_TOKEN = 'test-turn-api-token';
 
 let privateKey: CryptoKey;
 const originalFetch = globalThis.fetch;
 const NO_MESSAGE = Symbol('no message');
+const turnCredentialFetch =
+  vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 
 function b64urlFromString(s: string): string {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -77,6 +81,15 @@ function jsonPost(path: string, token: string, body: unknown) {
       Origin: ORIGIN,
     },
     body: JSON.stringify(body),
+  });
+}
+
+function turnCredentialsRequest(token?: string) {
+  const headers: Record<string, string> = { Origin: ORIGIN };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return SELF.fetch('https://data/turn-credentials', {
+    method: 'POST',
+    headers,
   });
 }
 
@@ -196,6 +209,9 @@ beforeAll(async () => {
         headers: { 'cache-control': 'max-age=3600' },
       });
     }
+    if (url.includes('/credentials/generate-ice-servers')) {
+      return turnCredentialFetch(input, init);
+    }
     return originalFetch(input, init);
   }) as typeof fetch;
 });
@@ -205,6 +221,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
+  turnCredentialFetch.mockReset();
   await env.DB.batch([
     env.DB.prepare('DELETE FROM message_reactions'),
     env.DB.prepare('DELETE FROM message_attachments'),
@@ -213,6 +230,77 @@ beforeEach(async () => {
     env.DB.prepare('DELETE FROM conversations'),
     env.DB.prepare('DELETE FROM users'),
   ]);
+});
+
+describe('POST /turn-credentials', () => {
+  it('rejects unauthenticated requests without calling Cloudflare', async () => {
+    const response = await turnCredentialsRequest();
+
+    expect(response.status).toBe(401);
+    expect(turnCredentialFetch).not.toHaveBeenCalled();
+  });
+
+  it('returns short-lived ICE servers without exposing the server API token', async () => {
+    const iceServers = [
+      { urls: 'stun:stun.cloudflare.com:3478' },
+      {
+        urls: 'turn:turn.cloudflare.com:3478?transport=udp',
+        username: 'short-lived-user',
+        credential: 'short-lived-credential',
+      },
+    ];
+    turnCredentialFetch.mockImplementation(async () =>
+      Response.json({ iceServers }, { status: 201 }),
+    );
+    const token = await signToken(validClaims());
+    const before = Date.now();
+
+    const response = await turnCredentialsRequest(token);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(turnCredentialFetch).toHaveBeenCalledOnce();
+    const [url, init] = turnCredentialFetch.mock.calls[0];
+    expect(String(url)).toContain('/credentials/generate-ice-servers');
+    expect(init).toEqual({
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${TURN_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ttl: 3600 }),
+    });
+    const body = (await response.json()) as {
+      iceServers: RTCIceServer[];
+      expiresAt: number;
+    };
+    expect(body.iceServers).toEqual(iceServers);
+    expect(body.expiresAt).toBeGreaterThan(before);
+    expect(body.expiresAt).toBeLessThanOrEqual(Date.now() + 3_600_000);
+    expect(JSON.stringify(body)).not.toContain(TURN_API_TOKEN);
+  });
+
+  it.each([
+    [
+      'an HTTP error',
+      () => new Response('sensitive upstream detail', { status: 500 }),
+    ],
+    [
+      'an invalid response',
+      () => Response.json({ iceServers: [] }, { status: 201 }),
+    ],
+  ])('sanitizes %s from Cloudflare', async (_label, createUpstreamResponse) => {
+    turnCredentialFetch.mockImplementation(async () =>
+      createUpstreamResponse(),
+    );
+    const token = await signToken(validClaims());
+
+    const response = await turnCredentialsRequest(token);
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(await response.json()).toEqual({ error: 'service unavailable' });
+  });
 });
 
 describe('message reactions', () => {

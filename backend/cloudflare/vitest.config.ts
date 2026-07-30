@@ -13,7 +13,10 @@ export default defineConfig(async () => {
     plugins: [
       cloudflareTest({
         miniflare: {
-          bindings: { TEST_MIGRATIONS: migrations },
+          bindings: {
+            TEST_MIGRATIONS: migrations,
+            TURN_KEY_API_TOKEN: 'test-turn-api-token',
+          },
         },
         wrangler: { configPath: './wrangler.jsonc' },
       }),

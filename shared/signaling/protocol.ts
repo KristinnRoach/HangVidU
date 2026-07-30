@@ -13,7 +13,7 @@
 export type PeerId = string;
 
 /** Payload bucket for relayed messages. Add values to extend; never reshape. */
-export type RelayChannel = 'sdp' | 'ice';
+export type RelayChannel = 'sdp' | 'ice' | 'ice-restart';
 
 /**
  * Opaque, self-asserted per-peer presence metadata (e.g. displayName, muted,
@@ -66,7 +66,9 @@ export function isClientMessage(value: unknown): value is ClientMessage {
       return (
         typeof m.to === 'string' &&
         m.to.length > 0 &&
-        (m.channel === 'sdp' || m.channel === 'ice') &&
+        (m.channel === 'sdp' ||
+          m.channel === 'ice' ||
+          m.channel === 'ice-restart') &&
         'data' in m
       );
     default:

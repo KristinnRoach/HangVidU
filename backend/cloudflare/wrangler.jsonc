@@ -45,5 +45,6 @@
     "APP_ENV": "production",
     "FIREBASE_PROJECT_ID": "vidu-aae11",
     "R2_BUCKET_NAME": "hangvidu-files",
+    "TURN_KEY_ID": "ff936df931d23cb08b57351434e4fd9a",
   },
 }

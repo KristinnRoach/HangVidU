@@ -5,7 +5,11 @@ import {
 } from './call-service.js';
 import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
-import type { CreateRoomSignalingOptions, P2PRoomSignaling } from '@kidlib/p2p';
+import type {
+  CreateRoomSignalingOptions,
+  IceServersProvider,
+  P2PRoomSignaling,
+} from '@kidlib/p2p';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 import { publish } from '@shared/events/index.js';
 import {
@@ -28,6 +32,25 @@ import { CALLING_TTL_MS } from '../../../shared/constants';
 import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
 
 const DATA_URL = getHangViduApiBaseUrl();
+
+const provideIceServers: IceServersProvider = async ({ signal }) => {
+  try {
+    const token = await getLoggedInUserToken();
+    const response = await fetch(`${DATA_URL}/turn-credentials`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+    if (!response.ok) throw new Error('TURN credential request failed');
+    return response.json();
+  } catch (error) {
+    if (signal.aborted) throw error;
+    console.warn('[call] TURN credentials unavailable; using STUN fallback');
+    return {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    };
+  }
+};
 
 /** Lazy room-signaling factory passed to `p2p.join` — see `src/realtime/signaling`. */
 type CreateRoomSignaling = (
@@ -417,6 +440,8 @@ export class CallHandshakeController {
         },
         memberCapacity,
         dataChannel: true,
+        iceServersProvider: provideIceServers,
+        iceRecovery: {},
         onMemberJoined: () => {
           // A (re)join cancels any in-progress reconnect grace; the peer's back.
           if (autoExitOnEmpty) this.cancelReconnectGrace();

@@ -5,6 +5,7 @@ import {
   type PeerId,
   type PresenceData,
   type PresenceMember,
+  type RelayChannel,
   type ServerMessage,
 } from '../../../../shared/signaling/protocol';
 
@@ -122,7 +123,7 @@ export class SignalingRoom extends DurableObject<Env> {
   private relay(
     from: WebSocket,
     to: PeerId,
-    channel: 'sdp' | 'ice',
+    channel: RelayChannel,
     data: unknown,
   ): void {
     const fromPeerId = this.getSocketState(from).peerId;

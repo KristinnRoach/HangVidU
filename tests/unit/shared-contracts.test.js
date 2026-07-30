@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { isMailboxEnvelope } from '../../shared/user-mailbox/protocol';
+import { isClientMessage } from '../../shared/signaling/protocol';
 import { convertToEnglishLetters } from '../../shared/utils/transliteration';
 
 describe('shared contracts', () => {
@@ -17,5 +18,16 @@ describe('shared contracts', () => {
         createdAt: 1,
       }),
     ).toBe(false);
+  });
+
+  it('accepts addressed ICE-restart relay messages', () => {
+    expect(
+      isClientMessage({
+        t: 'relay',
+        to: 'peer-b',
+        channel: 'ice-restart',
+        data: { requestId: 'restart-1' },
+      }),
+    ).toBe(true);
   });
 });
