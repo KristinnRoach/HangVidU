@@ -48,7 +48,7 @@ const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
 const TURN_CREDENTIAL_TTL_SECONDS = 3_600;
 const TURN_CREDENTIAL_FETCH_TIMEOUT_MS = 5_000;
 
-function isValidIceServer(value: unknown): value is RTCIceServer {
+function isValidIceServer(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false;
 
   const server = value as Record<string, unknown>;
