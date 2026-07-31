@@ -290,6 +290,48 @@ describe('POST /turn-credentials', () => {
       'an invalid response',
       () => Response.json({ iceServers: [] }, { status: 201 }),
     ],
+    [
+      'an ICE server without urls',
+      () => Response.json({ iceServers: [{}] }, { status: 201 }),
+    ],
+    [
+      'an ICE server with an invalid urls array',
+      () =>
+        Response.json(
+          { iceServers: [{ urls: ['stun:stun.cloudflare.com:3478', 42] }] },
+          { status: 201 },
+        ),
+    ],
+    [
+      'an ICE server with a non-string username',
+      () =>
+        Response.json(
+          {
+            iceServers: [
+              {
+                urls: 'turn:turn.cloudflare.com:3478',
+                username: 42,
+              },
+            ],
+          },
+          { status: 201 },
+        ),
+    ],
+    [
+      'an ICE server with a non-string credential',
+      () =>
+        Response.json(
+          {
+            iceServers: [
+              {
+                urls: 'turn:turn.cloudflare.com:3478',
+                credential: null,
+              },
+            ],
+          },
+          { status: 201 },
+        ),
+    ],
   ])('sanitizes %s from Cloudflare', async (_label, createUpstreamResponse) => {
     turnCredentialFetch.mockImplementation(async () =>
       createUpstreamResponse(),

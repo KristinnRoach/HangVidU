@@ -48,6 +48,25 @@ const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
 const TURN_CREDENTIAL_TTL_SECONDS = 3_600;
 const TURN_CREDENTIAL_FETCH_TIMEOUT_MS = 5_000;
 
+function isValidIceServer(value: unknown): value is RTCIceServer {
+  if (!value || typeof value !== 'object') return false;
+
+  const server = value as Record<string, unknown>;
+  const hasValidUrls =
+    (typeof server.urls === 'string' && server.urls.trim().length > 0) ||
+    (Array.isArray(server.urls) &&
+      server.urls.length > 0 &&
+      server.urls.every(
+        (url) => typeof url === 'string' && url.trim().length > 0,
+      ));
+
+  return (
+    hasValidUrls &&
+    (!('username' in server) || typeof server.username === 'string') &&
+    (!('credential' in server) || typeof server.credential === 'string')
+  );
+}
+
 export async function handleDataRequest(
   request: Request,
   env: WorkerEnv,
@@ -137,7 +156,11 @@ export async function handleDataRequest(
         body && typeof body === 'object' && 'iceServers' in body
           ? (body as { iceServers?: unknown }).iceServers
           : undefined;
-      if (!Array.isArray(iceServers) || iceServers.length === 0) {
+      if (
+        !Array.isArray(iceServers) ||
+        iceServers.length === 0 ||
+        !iceServers.every(isValidIceServer)
+      ) {
         throw new Error('TURN credential response was invalid');
       }
       return json(
