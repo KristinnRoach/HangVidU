@@ -105,14 +105,13 @@ export async function openApp(path = '/') {
 
   if (clients.length > 0) {
     const client = selectWindowClient(clients);
-    await client.focus();
-
     if (path !== '/') {
       client.postMessage({
         type: 'NAVIGATE',
         path,
       });
     }
+    await client.focus();
 
     return client;
   }

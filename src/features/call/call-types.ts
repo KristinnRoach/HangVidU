@@ -36,6 +36,10 @@ export type CallHandshakeState =
       call: MailboxInvite;
     }
   | {
+      direction: 'accepting';
+      call: MailboxInvite;
+    }
+  | {
       direction: 'outgoing';
       call: OutgoingCall;
     };

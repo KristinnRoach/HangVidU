@@ -1,9 +1,10 @@
+import { reloadPageWhenAllowed } from './reload-page.js';
+
 // TODO: Consider reverting to 30min once migration has settled.
 const UPDATE_CHECK_INTERVAL = 20 * 60 * 1000;
 
 let updateCheckIntervalId = null;
 let visibilityAbortController = null;
-let controllerChangeAbortController = null;
 
 /**
  * Dynamically imports the PWA register module.
@@ -60,23 +61,6 @@ async function attemptAutoUpdate(updateSW) {
   } catch (err) {
     console.error('[PWA] Auto-update failed:', err);
   }
-}
-
-/**
- * Reloads as soon as an updated service worker takes control.
- */
-function reloadOnControllerChange() {
-  if (!('serviceWorker' in navigator)) return;
-  controllerChangeAbortController = new AbortController();
-  navigator.serviceWorker.addEventListener(
-    'controllerchange',
-    () => {
-      // TODO: Once app updates are stable, defer while p2p.state() !== 'idle'
-      // and later let the user choose when to reload.
-      window.location.reload();
-    },
-    { once: true, signal: controllerChangeAbortController.signal },
-  );
 }
 
 /**
@@ -163,11 +147,6 @@ export function stopUpdateChecks() {
     visibilityAbortController = null;
   }
 
-  if (controllerChangeAbortController !== null) {
-    controllerChangeAbortController.abort();
-    controllerChangeAbortController = null;
-  }
-
   if (updateCheckIntervalId === null && visibilityAbortController === null) {
     console.info('[PWA] Stopped automatic update checks');
   }
@@ -194,6 +173,9 @@ export async function setupUpdateHandler() {
 
     const updateSW = registerSW({
       immediate: true,
+      onNeedReload() {
+        void reloadPageWhenAllowed();
+      },
       onNeedRefresh() {
         console.info('[PWA] New version available');
         void attemptAutoUpdate(updateSW);
@@ -204,7 +186,6 @@ export async function setupUpdateHandler() {
     });
 
     // Set up all update check mechanisms
-    reloadOnControllerChange();
     await startupUpdateCheck(updateSW);
     await checkForUpdates();
     visibilityChangeCheck();
