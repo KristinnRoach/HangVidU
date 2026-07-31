@@ -135,7 +135,7 @@ describe('ParticipantMedia', () => {
       <ParticipantMedia stream={stream} videoEnabled={true} />
     ));
 
-    expect(container.textContent).toContain('Connecting video');
+    expect(container.textContent).toContain('Connecting');
   });
 
   it('explains when a previously visible remote video is interrupted', async () => {
@@ -149,7 +149,7 @@ describe('ParticipantMedia', () => {
     track.dispatchEvent(new Event('mute'));
 
     await waitFor(() =>
-      expect(container.textContent).toContain('Video connection interrupted'),
+      expect(container.textContent).toContain('Connection interrupted'),
     );
   });
 
@@ -167,7 +167,7 @@ describe('ParticipantMedia', () => {
     setVideoEnabled(true);
 
     await waitFor(() =>
-      expect(container.textContent).toContain('Video connection interrupted'),
+      expect(container.textContent).toContain('Connection interrupted'),
     );
   });
 

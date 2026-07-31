@@ -303,8 +303,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
           >
             <p class={styles.videoStatus} role='status'>
               {status().video === 'connecting'
-                ? t('call.video.connecting')
-                : t('call.video.interrupted')}
+                ? t('call.connecting')
+                : t('call.interrupted')}
             </p>
           </Match>
         </Switch>
