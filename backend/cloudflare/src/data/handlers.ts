@@ -45,6 +45,27 @@ import { isSystemMessageType } from '../../../../shared/conversation-channel/pro
 import { CALLING_TTL_MS } from '../../../../shared/constants';
 
 const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
+const TURN_CREDENTIAL_TTL_SECONDS = 3_600;
+const TURN_CREDENTIAL_FETCH_TIMEOUT_MS = 5_000;
+
+function isValidIceServer(value: unknown): value is RTCIceServer {
+  if (!value || typeof value !== 'object') return false;
+
+  const server = value as Record<string, unknown>;
+  const hasValidUrls =
+    (typeof server.urls === 'string' && server.urls.trim().length > 0) ||
+    (Array.isArray(server.urls) &&
+      server.urls.length > 0 &&
+      server.urls.every(
+        (url) => typeof url === 'string' && url.trim().length > 0,
+      ));
+
+  return (
+    hasValidUrls &&
+    (!('username' in server) || typeof server.username === 'string') &&
+    (!('credential' in server) || typeof server.credential === 'string')
+  );
+}
 
 export async function handleDataRequest(
   request: Request,
@@ -113,6 +134,52 @@ export async function handleDataRequest(
   // Everything below requires authentication.
   const identity = await authenticate(request, env);
   if (!identity) return json({ error: 'unauthorized' }, 401, cors);
+
+  if (request.method === 'POST' && url.pathname === '/turn-credentials') {
+    const issuedAt = Date.now();
+    try {
+      const upstream = await fetch(
+        `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(env.TURN_KEY_ID)}/credentials/generate-ice-servers`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ttl: TURN_CREDENTIAL_TTL_SECONDS }),
+          signal: AbortSignal.timeout(TURN_CREDENTIAL_FETCH_TIMEOUT_MS),
+        },
+      );
+      if (!upstream.ok) throw new Error('TURN credential request failed');
+      const body: unknown = await upstream.json();
+      const iceServers =
+        body && typeof body === 'object' && 'iceServers' in body
+          ? (body as { iceServers?: unknown }).iceServers
+          : undefined;
+      if (
+        !Array.isArray(iceServers) ||
+        iceServers.length === 0 ||
+        !iceServers.every(isValidIceServer)
+      ) {
+        throw new Error('TURN credential response was invalid');
+      }
+      return json(
+        {
+          iceServers,
+          expiresAt: issuedAt + TURN_CREDENTIAL_TTL_SECONDS * 1_000,
+        },
+        200,
+        cors,
+        { 'Cache-Control': 'no-store' },
+      );
+    } catch {
+      console.warn('[data] TURN credential service unavailable');
+      return json({ error: 'service unavailable' }, 503, cors, {
+        'Cache-Control': 'no-store',
+      });
+    }
+  }
+
   const callerId = identity.userId;
   const now = Date.now();
 
@@ -921,9 +988,10 @@ function json(
   body: unknown,
   status: number,
   cors: Record<string, string>,
+  headers: Record<string, string> = {},
 ): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json', ...cors },
+    headers: { 'Content-Type': 'application/json', ...cors, ...headers },
   });
 }

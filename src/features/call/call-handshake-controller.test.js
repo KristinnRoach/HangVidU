@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
   incomingCallback: undefined,
@@ -137,6 +144,10 @@ describe('CallHandshakeController', () => {
     mocks.resolveDirectConversationId.mockResolvedValue('room-1');
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('dismisses a matching incoming call when another device handles it', () => {
     const onStateChange = vi.fn();
     const controller = createController(createP2PMock(), { onStateChange });
@@ -188,6 +199,8 @@ describe('CallHandshakeController', () => {
         peerId: 'callee-id',
         memberCapacity: 2,
         dataChannel: true,
+        iceRecovery: {},
+        iceServersProvider: expect.any(Function),
       }),
     );
     expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
@@ -200,6 +213,136 @@ describe('CallHandshakeController', () => {
       callerId: 'caller-id',
       responseType: 'accepted',
     });
+  });
+
+  it('provides authenticated TURN credentials to the room', async () => {
+    const credentials = {
+      iceServers: [
+        {
+          urls: 'turn:turn.cloudflare.com:3478?transport=udp',
+          username: 'short-lived-user',
+          credential: 'short-lived-credential',
+        },
+      ],
+      expiresAt: Date.now() + 3_600_000,
+    };
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json(credentials));
+    const p2p = createP2PMock({
+      join: vi.fn(async () => ({
+        roomId: 'room-1',
+        members: ['callee-id'],
+      })),
+    });
+    const controller = createController(p2p);
+    controller.showIncomingCallFromNotification({
+      roomId: 'room-1',
+      callerId: 'caller-id',
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+    const provider = p2p.join.mock.calls[0][0].iceServersProvider;
+    const signal = new AbortController().signal;
+
+    await expect(provider({ reason: 'initial', signal })).resolves.toEqual(
+      credentials,
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.hangvidu.com/turn-credentials',
+      {
+        method: 'POST',
+        headers: { Authorization: 'Bearer token' },
+        signal: expect.any(AbortSignal),
+      },
+    );
+  });
+
+  it('falls back to Google STUN when the TURN credential fetch hangs', async () => {
+    vi.useFakeTimers();
+    try {
+      const timeout = vi
+        .spyOn(AbortSignal, 'timeout')
+        .mockImplementation((ms) => {
+          const controller = new AbortController();
+          setTimeout(() => controller.abort(new DOMException('Timed out')), ms);
+          return controller.signal;
+        });
+      vi.spyOn(globalThis, 'fetch').mockImplementation(
+        (_input, { signal }) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(signal.reason), {
+              once: true,
+            });
+          }),
+      );
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const p2p = createP2PMock({
+        join: vi.fn(async () => ({
+          roomId: 'room-1',
+          members: ['callee-id'],
+        })),
+      });
+      const controller = createController(p2p);
+      controller.showIncomingCallFromNotification({
+        roomId: 'room-1',
+        callerId: 'caller-id',
+      });
+      controller.acceptIncoming();
+      await flushPromises();
+      const provider = p2p.join.mock.calls[0][0].iceServersProvider;
+
+      const result = provider({
+        reason: 'initial',
+        signal: new AbortController().signal,
+      });
+      await vi.advanceTimersByTimeAsync(4_000);
+
+      await expect(result).resolves.toEqual({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      });
+      expect(timeout).toHaveBeenCalledWith(4_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('falls back to Google STUN after ordinary provider failure but preserves aborts', async () => {
+    const networkError = new Error('network unavailable');
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(networkError);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const p2p = createP2PMock({
+      join: vi.fn(async () => ({
+        roomId: 'room-1',
+        members: ['callee-id'],
+      })),
+    });
+    const controller = createController(p2p);
+    controller.showIncomingCallFromNotification({
+      roomId: 'room-1',
+      callerId: 'caller-id',
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+    const provider = p2p.join.mock.calls[0][0].iceServersProvider;
+
+    await expect(
+      provider({
+        reason: 'initial',
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+    expect(warn).toHaveBeenCalledWith(
+      '[call] TURN credentials unavailable; using STUN fallback',
+    );
+
+    const controllerForAbort = new AbortController();
+    controllerForAbort.abort();
+    await expect(
+      provider({ reason: 'manual', signal: controllerForAbort.signal }),
+    ).rejects.toBe(networkError);
   });
 
   it('reserves a video slot when joining an audio-only call', async () => {

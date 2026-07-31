@@ -193,6 +193,20 @@ export function createDoRoomSignaling({
             if (data) callback(data as RTCIceCandidateInit);
           });
         },
+        sendIceRestartRequest: (request) => sendRelay('ice-restart', request),
+        onIceRestartRequest(callback) {
+          return subscribeRelay(remotePeerId, 'ice-restart', (data) => {
+            const request = data as { requestId?: unknown } | null;
+            if (
+              request &&
+              typeof request === 'object' &&
+              typeof request.requestId === 'string' &&
+              request.requestId.length > 0
+            ) {
+              callback({ requestId: request.requestId });
+            }
+          });
+        },
       };
     },
 

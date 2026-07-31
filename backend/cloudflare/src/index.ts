@@ -15,6 +15,7 @@ const SIGNALING_PATH = /^\/rooms\/[^/]+\/signal$/;
 const DATA_PATHS = [
   /^\/health$/,
   /^\/me$/,
+  /^\/turn-credentials$/,
   /^\/calls\/(?:invite|response(?:\/ack)?|cancel)$/,
   /^\/users\/me\/mailbox\/ws$/,
   /^\/users\/me\/profile$/,

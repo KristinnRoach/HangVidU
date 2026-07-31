@@ -1,2 +1,1 @@
-FIREBASE_PROJECT_ID=vidu-aae11
-R2_BUCKET_NAME=hangvidu-files
+TURN_KEY_API_TOKEN=replace-with-local-turn-api-token
