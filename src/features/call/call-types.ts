@@ -22,7 +22,12 @@ export type StartCallDetails = {
  * - `reconnecting`: remote dropped silently (`dropped`); inside the grace window.
  * - `failed`: grace window elapsed; shown briefly before teardown.
  */
-export type CallReconnectStatus = 'connected' | 'reconnecting' | 'failed';
+export type CallReconnectStatus =
+  | 'connected'
+  | 'reconnecting'
+  | 'failed'
+  /** Initial WebRTC connection never came up (see `connectedTimeoutMs`). */
+  | 'connect-failed';
 
 export type CallHandshakeState =
   | null

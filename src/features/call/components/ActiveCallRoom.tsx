@@ -39,9 +39,11 @@ export function ActiveCallRoom() {
       <Show when={reconnectStatus() !== 'connected'}>
         <div class={styles.reconnecting} role='status' aria-live='polite'>
           <p>
-            {reconnectStatus() === 'failed'
-              ? t('call.reconnect_failed')
-              : t('call.reconnecting')}
+            {reconnectStatus() === 'connect-failed'
+              ? t('call.connect_failed')
+              : reconnectStatus() === 'failed'
+                ? t('call.reconnect_failed')
+                : t('call.reconnecting')}
           </p>
         </div>
       </Show>

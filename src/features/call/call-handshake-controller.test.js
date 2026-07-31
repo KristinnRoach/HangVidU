@@ -438,6 +438,58 @@ describe('CallHandshakeController', () => {
     }
   });
 
+  it('fails the call on initial peer/session errors, ignoring other room errors', async () => {
+    vi.useFakeTimers();
+    try {
+      let joinOptions;
+      mocks.respondToIncomingCallInvite.mockReturnValue(deferred().promise);
+      const p2p = createP2PMock({
+        join: vi.fn(async (options) => {
+          joinOptions = options;
+          return { roomId: 'room-1', members: ['callee-id'] };
+        }),
+      });
+      const onReconnectStatus = vi.fn();
+      const controller = createController(p2p, { onReconnectStatus });
+
+      controller.showIncomingCallFromNotification({
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        audioOnly: false,
+        startedAt: Date.now(),
+      });
+      controller.acceptIncoming();
+      await flushPromises();
+
+      expect(joinOptions?.connectedTimeoutMs).toBe(20_000);
+
+      joinOptions?.onError?.({ error: new Error('presence refresh failed') });
+      expect(onReconnectStatus).not.toHaveBeenCalledWith('connect-failed');
+
+      joinOptions?.onError?.({
+        error: new Error('Peer.start: connection failed'),
+      });
+      expect(onReconnectStatus).toHaveBeenLastCalledWith('connect-failed');
+
+      joinOptions?.onError?.({
+        error: new Error(
+          'P2PSession: data channel open timed out after 10000ms',
+        ),
+      });
+      expect(onReconnectStatus).toHaveBeenLastCalledWith('connect-failed');
+      expect(p2p.dispose).not.toHaveBeenCalled();
+
+      // A member event can cancel reconnect grace, but not the bounded exit
+      // scheduled for an initial connection failure.
+      joinOptions?.onMemberJoined?.({ memberId: 'caller-id' });
+      vi.advanceTimersByTime(4_000);
+      expect(p2p.dispose).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('exits immediately on an explicit `left` departure, skipping the grace window', async () => {
     let joinOptions;
     const acceptResponse = deferred();
