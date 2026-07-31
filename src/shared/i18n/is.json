@@ -26,6 +26,7 @@
   "call.video.interrupted": "Myndbandstenging rofnaði. Reyni að tengjast aftur…",
   "call.reconnecting": "Reyni að endurtengja…",
   "call.reconnect_failed": "Ekki tókst að endurtengja",
+  "call.connect_failed": "Ekki tókst að tengja. Prófaðu aftur eða skiptu um net.",
   "call.unknown_caller": "Óþekktur notandi",
   "call.lobby.ephemeral_prompt": "Eða hringdu skyndisímtal:",
   "call.lobby.start": "Hefja símtal",

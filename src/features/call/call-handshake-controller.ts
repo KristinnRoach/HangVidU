@@ -79,6 +79,14 @@ type CallHandshakeControllerOptions = {
 const RECONNECT_GRACE_MS = 10_000;
 /** How long "Could not reconnect" is shown before the call finally exits. */
 const RECONNECT_FAILED_DISPLAY_MS = 2_500;
+/**
+ * How long a peer session may sit un-`connected` before @kidlib/p2p fails it.
+ * Covers STUN + TURN-relay setup with room to spare; without it a blocked
+ * connection sits on "Waiting for the other person to connect…" forever.
+ */
+const CONNECTED_TIMEOUT_MS = 20_000;
+/** How long "Could not connect" is shown before the call exits to the lobby. */
+const CONNECT_FAILED_DISPLAY_MS = 4_000;
 
 export type IncomingCallNotificationDetails = {
   roomId: string;
@@ -98,6 +106,7 @@ type HangUpReason =
   | 'user'
   | 'peer-left'
   | 'reconnect-timeout'
+  | 'connect-timeout'
   | 'enter-room-error'
   | 'accept-error';
 
@@ -447,6 +456,8 @@ export class CallHandshakeController {
         dataChannel: true,
         iceServersProvider: provideIceServers,
         iceRecovery: {},
+        connectedTimeoutMs: CONNECTED_TIMEOUT_MS,
+        onError: ({ error }) => this.handleRoomError(error),
         onMemberJoined: () => {
           // A (re)join cancels any in-progress reconnect grace; the peer's back.
           if (autoExitOnEmpty) this.cancelReconnectGrace();
@@ -609,6 +620,26 @@ export class CallHandshakeController {
       console.warn('[call] p2p dispose failed on hangUp:', err);
     });
   };
+
+  /**
+   * A peer session that never reached `connected` within `connectedTimeoutMs`
+   * is a dead call, not a blip — @kidlib/p2p has already closed that member.
+   * Show a bounded failure message, then exit to the lobby so the user can retry.
+   *
+   * ponytail: matched on the message — @kidlib/p2p 0.5.1 throws a plain Error
+   * with no code/name. Ask upstream for a structured error to key off instead.
+   */
+  private handleRoomError(error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log('[call] room error', { message });
+    if (!message.includes('connection timed out')) return;
+    this.clearReconnectTimers();
+    this.onReconnectStatus('connect-failed');
+    this.reconnectFailedTimeoutId = setTimeout(() => {
+      this.reconnectFailedTimeoutId = undefined;
+      this.hangUp('connect-timeout');
+    }, CONNECT_FAILED_DISPLAY_MS);
+  }
 
   /** Remote dropped silently (`dropped`): hold the room open for the grace window. */
   private startReconnectGrace(): void {
