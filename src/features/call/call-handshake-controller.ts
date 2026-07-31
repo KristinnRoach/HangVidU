@@ -30,6 +30,7 @@ import {
 } from '../../stores/contacts-store.js';
 import { CALLING_TTL_MS } from '../../../shared/constants';
 import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
+import { t } from '@shared/i18n';
 
 const DATA_URL = getHangViduApiBaseUrl();
 const TURN_FETCH_TIMEOUT_MS = 4_000;
@@ -162,7 +163,8 @@ export class CallHandshakeController {
   // TODO: Proper in-app notification
   private alertCallStartFailed(): void {
     if (typeof window !== 'undefined') {
-      window.alert('Could not start call. Please try again.');
+      window.alert(t('call.start_failed_reload'));
+      window.location.reload();
     }
   }
 

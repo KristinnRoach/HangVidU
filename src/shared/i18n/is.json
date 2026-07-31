@@ -27,6 +27,7 @@
   "call.reconnecting": "Reyni að endurtengja…",
   "call.reconnect_failed": "Ekki tókst að endurtengja",
   "call.connect_failed": "Ekki tókst að tengja. Prófaðu aftur eða skiptu um net.",
+  "call.start_failed_reload": "Ekki tókst að hefja símtal. Endurhladdu appinu og reyndu aftur.",
   "call.unknown_caller": "Óþekktur notandi",
   "call.lobby.ephemeral_prompt": "Eða hringdu skyndisímtal:",
   "call.lobby.start": "Hefja símtal",

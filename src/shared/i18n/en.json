@@ -27,6 +27,7 @@
   "call.reconnecting": "Reconnecting…",
   "call.reconnect_failed": "Could not reconnect",
   "call.connect_failed": "Could not connect. Try again, or switch network.",
+  "call.start_failed_reload": "Could not start call. Reload app and try again.",
   "call.unknown_caller": "Unknown Caller",
   "call.lobby.ephemeral_prompt": "Or make an ephemeral call:",
   "call.lobby.start": "Start a call",
