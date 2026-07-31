@@ -1,4 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 import { createSignal } from 'solid-js';
 import { render, cleanup } from '@solidjs/testing-library';
 
@@ -7,13 +14,17 @@ const mocks = vi.hoisted(() => ({
   cleanup: vi.fn(),
   showIncomingCallFromNotification: vi.fn(),
   acceptIncoming: vi.fn(),
+  publish: vi.fn(),
   subscribe: vi.fn(),
   subscriptions: new Map(),
   user: () => null,
+  p2pState: () => 'idle',
+  controllerOptions: undefined,
 }));
 
 vi.mock('./call-handshake-controller.js', () => ({
-  CallHandshakeController: vi.fn(function () {
+  CallHandshakeController: vi.fn(function (options) {
+    mocks.controllerOptions = options;
     return {
       init: mocks.init,
       cleanup: mocks.cleanup,
@@ -25,7 +36,9 @@ vi.mock('./call-handshake-controller.js', () => ({
     };
   }),
 }));
-vi.mock('../../shared/p2p-context.js', () => ({ useP2PContext: () => ({}) }));
+vi.mock('../../shared/p2p-context.js', () => ({
+  useP2PContext: () => ({ state: (...args) => mocks.p2pState(...args) }),
+}));
 vi.mock('@realtime', () => ({ createRoomSignaling: vi.fn() }));
 vi.mock('@auth', () => ({
   getAuthProviderProfileSeed: vi.fn(() => null),
@@ -34,6 +47,7 @@ vi.mock('@auth', () => ({
   useAuth: () => ({ user: (...args) => mocks.user(...args) }),
 }));
 vi.mock('@shared/events/index.js', () => ({
+  publish: (...args) => mocks.publish(...args),
   subscribe: mocks.subscribe,
 }));
 
@@ -46,8 +60,52 @@ describe('CallHandshakeProvider', () => {
       mocks.subscriptions.set(name, handler);
       return vi.fn();
     });
+    mocks.publish.mockImplementation((name, payload) => {
+      mocks.subscriptions.get(name)?.(payload);
+    });
     mocks.user = () => null;
+    mocks.p2pState = () => 'idle';
+    mocks.controllerOptions = undefined;
     window.history.replaceState(null, '', '/');
+  });
+
+  afterEach(() => cleanup());
+
+  it('holds app reloads from an incoming invite through call teardown', async () => {
+    const { whenAppReloadAllowed } =
+      await import('../../shared/app-reload/index.js');
+    const { CallHandshakeProvider } = await import('./call-handshake');
+    const allowed = vi.fn();
+
+    render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
+    mocks.controllerOptions?.onStateChange({
+      direction: 'incoming',
+      call: { roomId: 'room-1' },
+    });
+
+    void whenAppReloadAllowed().then(allowed);
+    await Promise.resolve();
+    expect(allowed).not.toHaveBeenCalled();
+
+    mocks.controllerOptions?.onStateChange(null);
+    await vi.waitFor(() => expect(allowed).toHaveBeenCalledOnce());
+  });
+
+  it('holds app reloads while a P2P call is active', async () => {
+    const [p2pState, setP2pState] = createSignal('connected');
+    mocks.p2pState = p2pState;
+    const { whenAppReloadAllowed } =
+      await import('../../shared/app-reload/index.js');
+    const { CallHandshakeProvider } = await import('./call-handshake');
+    const allowed = vi.fn();
+
+    render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
+    void whenAppReloadAllowed().then(allowed);
+    await Promise.resolve();
+    expect(allowed).not.toHaveBeenCalled();
+
+    setP2pState('idle');
+    await vi.waitFor(() => expect(allowed).toHaveBeenCalledOnce());
   });
 
   it('attaches the incoming-call listener when auth becomes authenticated after mount', async () => {

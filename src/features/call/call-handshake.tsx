@@ -12,6 +12,7 @@ import { getAuthProviderProfileSeed, useAuth } from '@auth';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { createRoomSignaling } from '@realtime';
 import { subscribe } from '@shared/events/index.js';
+import { holdAppReload } from '@shared/app-reload/index.js';
 import { getLoggedInUserProfile } from '../../stores/user-profile-store.js';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 import {
@@ -100,6 +101,21 @@ export function CallHandshakeProvider(props: ParentProps) {
   const [isCalleeBusy, setIsCalleeBusy] = createSignal(false);
   const [reconnectStatus, setReconnectStatus] =
     createSignal<CallReconnectStatus>('connected');
+  let releaseReloadHold: (() => void) | undefined;
+
+  createEffect(() => {
+    const isReloadBlockedByCall =
+      handshakeState() !== null || p2p.state() !== 'idle';
+
+    if (isReloadBlockedByCall && !releaseReloadHold) {
+      releaseReloadHold = holdAppReload();
+    } else if (!isReloadBlockedByCall && releaseReloadHold) {
+      releaseReloadHold();
+      releaseReloadHold = undefined;
+    }
+  });
+
+  onCleanup(() => releaseReloadHold?.());
 
   const controller = new CallHandshakeController({
     p2p,

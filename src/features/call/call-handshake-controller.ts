@@ -567,7 +567,7 @@ export class CallHandshakeController {
     const localUID = getLoggedInUserId();
     if (!svc || !localUID) return;
     this.clearOutgoingCallTracking();
-    this.setHandshakeState(null);
+    this.setHandshakeState({ direction: 'accepting', call: state.call });
     this.enterRoom(state.call.roomId, localUID, state.call.audioOnly ?? false)
       .then(() =>
         svc.respondToIncomingCallInvite({
@@ -579,7 +579,8 @@ export class CallHandshakeController {
       .catch((err) => {
         console.error('Error accepting incoming call:', err);
         this.hangUp('accept-error');
-      });
+      })
+      .finally(() => this.setHandshakeState(null));
   };
 
   declineIncoming = (): void => {

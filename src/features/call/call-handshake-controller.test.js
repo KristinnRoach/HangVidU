@@ -175,7 +175,8 @@ describe('CallHandshakeController', () => {
   it('joins the room before notifying the caller that an incoming call was accepted', async () => {
     const join = deferred();
     const p2p = createP2PMock({ join: vi.fn(() => join.promise) });
-    const controller = createController(p2p);
+    const onStateChange = vi.fn();
+    const controller = createController(p2p, { onStateChange });
 
     controller.init();
     mocks.incomingCallback?.({
@@ -204,6 +205,10 @@ describe('CallHandshakeController', () => {
       }),
     );
     expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      direction: 'accepting',
+      call: expect.objectContaining({ roomId: 'room-1' }),
+    });
 
     join.resolve({ roomId: 'room-1', members: ['callee-id'] });
     await flushPromises();
@@ -212,6 +217,9 @@ describe('CallHandshakeController', () => {
       roomId: 'room-1',
       callerId: 'caller-id',
       responseType: 'accepted',
+    });
+    await vi.waitFor(() => {
+      expect(onStateChange).toHaveBeenLastCalledWith(null);
     });
   });
 

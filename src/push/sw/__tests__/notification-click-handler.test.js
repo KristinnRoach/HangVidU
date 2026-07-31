@@ -164,6 +164,9 @@ describe('window client selection', () => {
       type: 'NAVIGATE',
       path: '/?contact=user-1',
     });
+    expect(visibleClient.postMessage.mock.invocationCallOrder[0]).toBeLessThan(
+      visibleClient.focus.mock.invocationCallOrder[0],
+    );
     expect(hiddenClient.focus).not.toHaveBeenCalled();
   });
 });
