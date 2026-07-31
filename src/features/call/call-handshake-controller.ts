@@ -123,6 +123,7 @@ export class CallHandshakeController {
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private reconnectFailedTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  private connectFailedTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private unsubCalleeResponse: (() => void) | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
   private pendingOutgoingLocalStream: MediaStream | undefined;
@@ -626,17 +627,18 @@ export class CallHandshakeController {
    * is a dead call, not a blip — @kidlib/p2p has already closed that member.
    * Show a bounded failure message, then exit to the lobby so the user can retry.
    *
-   * ponytail: matched on the message — @kidlib/p2p 0.5.1 throws a plain Error
-   * with no code/name. Ask upstream for a structured error to key off instead.
+   * ponytail: matched on the message prefix — @kidlib/p2p 0.5.1 throws plain
+   * Errors with no code/name. Ask upstream for a structured error to key off.
    */
   private handleRoomError(error: unknown): void {
     const message = error instanceof Error ? error.message : String(error);
     console.log('[call] room error', { message });
-    if (!message.includes('connection timed out')) return;
+    if (!/^(?:Peer\.start|P2PSession):/.test(message)) return;
     this.clearReconnectTimers();
+    this.clearConnectFailureTimeout();
     this.onReconnectStatus('connect-failed');
-    this.reconnectFailedTimeoutId = setTimeout(() => {
-      this.reconnectFailedTimeoutId = undefined;
+    this.connectFailedTimeoutId = setTimeout(() => {
+      this.connectFailedTimeoutId = undefined;
       this.hangUp('connect-timeout');
     }, CONNECT_FAILED_DISPLAY_MS);
   }
@@ -677,8 +679,15 @@ export class CallHandshakeController {
     }
   }
 
+  private clearConnectFailureTimeout(): void {
+    if (this.connectFailedTimeoutId == null) return;
+    clearTimeout(this.connectFailedTimeoutId);
+    this.connectFailedTimeoutId = undefined;
+  }
+
   private resetReconnectState(): void {
     this.clearReconnectTimers();
+    this.clearConnectFailureTimeout();
     this.onReconnectStatus('connected');
   }
 

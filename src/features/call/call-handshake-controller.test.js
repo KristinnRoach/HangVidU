@@ -438,7 +438,7 @@ describe('CallHandshakeController', () => {
     }
   });
 
-  it('fails the call when the initial peer connection times out, ignoring other room errors', async () => {
+  it('fails the call on initial peer/session errors, ignoring other room errors', async () => {
     vi.useFakeTimers();
     try {
       let joinOptions;
@@ -468,11 +468,21 @@ describe('CallHandshakeController', () => {
       expect(onReconnectStatus).not.toHaveBeenCalledWith('connect-failed');
 
       joinOptions?.onError?.({
-        error: new Error('Peer.start: connection timed out after 20000ms'),
+        error: new Error('Peer.start: connection failed'),
+      });
+      expect(onReconnectStatus).toHaveBeenLastCalledWith('connect-failed');
+
+      joinOptions?.onError?.({
+        error: new Error(
+          'P2PSession: data channel open timed out after 10000ms',
+        ),
       });
       expect(onReconnectStatus).toHaveBeenLastCalledWith('connect-failed');
       expect(p2p.dispose).not.toHaveBeenCalled();
 
+      // A member event can cancel reconnect grace, but not the bounded exit
+      // scheduled for an initial connection failure.
+      joinOptions?.onMemberJoined?.({ memberId: 'caller-id' });
       vi.advanceTimersByTime(4_000);
       expect(p2p.dispose).toHaveBeenCalledTimes(1);
     } finally {
