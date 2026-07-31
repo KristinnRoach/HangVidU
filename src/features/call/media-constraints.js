@@ -80,26 +80,19 @@ function getVideoConstraints(facingMode, orientation = null) {
 
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
   if (isMobile) {
-    devDebug(
-      'getVideoConstraints() - mobile minimal: ',
-      facingMode && {
-        facingMode,
-      },
-    );
-    return { facingMode };
+    const constraints = facingMode ? { facingMode } : {};
+    devDebug('getVideoConstraints() - mobile minimal: ', constraints);
+    return constraints;
   }
 
   const constraints = desktopVideoConstraints[orientation];
+  const resolvedConstraints = facingMode
+    ? { facingMode, ...constraints }
+    : constraints;
 
-  devDebug('getVideoConstraints() - desktop: ', {
-    facingMode,
-    ...constraints,
-  });
+  devDebug('getVideoConstraints() - desktop: ', resolvedConstraints);
 
-  return {
-    facingMode,
-    ...constraints,
-  };
+  return resolvedConstraints;
 }
 
 export { getVideoConstraints, getAudioConstraints };
