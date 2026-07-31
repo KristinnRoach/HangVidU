@@ -32,6 +32,7 @@ import { CALLING_TTL_MS } from '../../../shared/constants';
 import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
 
 const DATA_URL = getHangViduApiBaseUrl();
+const TURN_FETCH_TIMEOUT_MS = 4_000;
 
 const provideIceServers: IceServersProvider = async ({ signal }) => {
   try {
@@ -39,13 +40,17 @@ const provideIceServers: IceServersProvider = async ({ signal }) => {
     const response = await fetch(`${DATA_URL}/turn-credentials`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
-      signal,
+      signal: AbortSignal.any([
+        signal,
+        AbortSignal.timeout(TURN_FETCH_TIMEOUT_MS),
+      ]),
     });
     if (!response.ok) throw new Error('TURN credential request failed');
     return response.json();
   } catch (error) {
     if (signal.aborted) throw error;
     console.warn('[call] TURN credentials unavailable; using STUN fallback');
+    // ponytail: STUN remains fixed for this room; retry TURN only if credential outages prove common.
     return {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     };

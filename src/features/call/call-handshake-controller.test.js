@@ -253,9 +253,58 @@ describe('CallHandshakeController', () => {
       {
         method: 'POST',
         headers: { Authorization: 'Bearer token' },
-        signal,
+        signal: expect.any(AbortSignal),
       },
     );
+  });
+
+  it('falls back to Google STUN when the TURN credential fetch hangs', async () => {
+    vi.useFakeTimers();
+    try {
+      const timeout = vi
+        .spyOn(AbortSignal, 'timeout')
+        .mockImplementation((ms) => {
+          const controller = new AbortController();
+          setTimeout(() => controller.abort(new DOMException('Timed out')), ms);
+          return controller.signal;
+        });
+      vi.spyOn(globalThis, 'fetch').mockImplementation(
+        (_input, { signal }) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(signal.reason), {
+              once: true,
+            });
+          }),
+      );
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const p2p = createP2PMock({
+        join: vi.fn(async () => ({
+          roomId: 'room-1',
+          members: ['callee-id'],
+        })),
+      });
+      const controller = createController(p2p);
+      controller.showIncomingCallFromNotification({
+        roomId: 'room-1',
+        callerId: 'caller-id',
+      });
+      controller.acceptIncoming();
+      await flushPromises();
+      const provider = p2p.join.mock.calls[0][0].iceServersProvider;
+
+      const result = provider({
+        reason: 'initial',
+        signal: new AbortController().signal,
+      });
+      await vi.advanceTimersByTimeAsync(4_000);
+
+      await expect(result).resolves.toEqual({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      });
+      expect(timeout).toHaveBeenCalledWith(4_000);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('falls back to Google STUN after ordinary provider failure but preserves aborts', async () => {
