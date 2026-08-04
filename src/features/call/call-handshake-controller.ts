@@ -30,7 +30,7 @@ import {
 } from '../../stores/contacts-store.js';
 import { CALLING_TTL_MS } from '../../../shared/constants';
 import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
-import { t } from '@shared/i18n';
+// import { t } from '@shared/i18n';
 
 const DATA_URL = getHangViduApiBaseUrl();
 const TURN_FETCH_TIMEOUT_MS = 4_000;
@@ -160,10 +160,11 @@ export class CallHandshakeController {
     });
   }
 
-  // TODO: Proper in-app notification
-  private alertCallStartFailed(): void {
+  // TODO: Proper in-app notification with i18n strings - Temporarily keeping as is for debugging in prod, 040826
+  private alertCallStartFailed(msg: string): void {
     if (typeof window !== 'undefined') {
-      window.alert(t('call.start_failed_reload'));
+      // window.alert(t('call.start_failed_reload'));
+      window.alert(msg);
       window.location.reload();
     }
   }
@@ -288,7 +289,9 @@ export class CallHandshakeController {
         err,
       );
       void stopStreamWhenReady();
-      this.alertCallStartFailed();
+      this.alertCallStartFailed(
+        'Error: Failed to resolve conversationId. Try again.',
+      );
       return;
     }
     if (mediaAttempt !== this.outgoingMediaAttempt) {
@@ -316,7 +319,7 @@ export class CallHandshakeController {
       this.pendingOutgoingLocalStream = localStream;
     } catch (err) {
       console.error('Error getting caller media before starting call:', err);
-      this.alertCallStartFailed();
+      this.alertCallStartFailed('Error getting caller media. Try again.');
       return;
     }
 
@@ -388,7 +391,7 @@ export class CallHandshakeController {
       this.stopPendingOutgoingLocalStream();
       this.setHandshakeState(null);
       console.error('Error sending outgoing call invite:', err);
-      this.alertCallStartFailed();
+      this.alertCallStartFailed('Error sending call invite. Try again.');
       return;
     }
 
