@@ -76,6 +76,9 @@ export function createMessageSyncRepository(
       const window = new Map<string, IncomingMessage>();
       const pendingEvents: ConversationServerEvent[] = [];
       let snapshotLoaded = false;
+      let refreshInFlight = false;
+      let refreshRequested = false;
+      let stopped = false;
       const emit = () => {
         const ordered = [...window.values()].sort(
           (a, b) => a.sentAt - b.sentAt,
@@ -118,30 +121,69 @@ export function createMessageSyncRepository(
         emit();
       };
 
+      const applyPendingEvents = () => {
+        if (pendingEvents.length) {
+          for (const event of pendingEvents.splice(0)) applyEvent(event);
+        } else {
+          emit();
+        }
+      };
+
+      const reconcileSnapshot = async (reportError: boolean) => {
+        if (stopped) return;
+        if (refreshInFlight) {
+          refreshRequested = true;
+          return;
+        }
+        refreshInFlight = true;
+        try {
+          const messages = await snapshot(conversationId);
+          if (stopped) return;
+          for (const message of messages) {
+            window.set(message.messageId, message);
+          }
+          snapshotLoaded = true;
+          applyPendingEvents();
+        } catch (error) {
+          if (stopped) return;
+          snapshotLoaded = true;
+          applyPendingEvents();
+          if (reportError) onError?.(error);
+        } finally {
+          refreshInFlight = false;
+          if (refreshRequested && !stopped) {
+            refreshRequested = false;
+            void reconcileSnapshot(false);
+          }
+        }
+      };
+
       const unsubscribe = client.subscribe(conversationId, (event) => {
-        if (!snapshotLoaded) {
+        if (!snapshotLoaded || refreshInFlight) {
           pendingEvents.push(event);
           return;
         }
         applyEvent(event);
       });
 
-      try {
-        for (const m of await snapshot(conversationId)) {
-          window.set(m.messageId, m);
+      const refreshWhenVisible = () => {
+        if (document.visibilityState === 'visible') {
+          void reconcileSnapshot(false);
         }
-        snapshotLoaded = true;
-        if (pendingEvents.length) {
-          for (const event of pendingEvents) applyEvent(event);
-        } else {
-          emit();
-        }
-      } catch (error) {
-        snapshotLoaded = true;
-        onError?.(error);
+      };
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', refreshWhenVisible);
       }
 
-      return unsubscribe;
+      await reconcileSnapshot(true);
+
+      return () => {
+        stopped = true;
+        unsubscribe();
+        if (typeof document !== 'undefined') {
+          document.removeEventListener('visibilitychange', refreshWhenVisible);
+        }
+      };
     },
 
     async send(message) {
