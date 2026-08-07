@@ -5,7 +5,11 @@
 // broadcast into the window (deduped by the server-honored message id).
 
 import type { Reaction } from '@lib/reactions/solid/solid.js';
-import type { ConversationServerEvent, WireMessage } from '@realtime';
+import {
+  subscribeToWakeSignals,
+  type ConversationServerEvent,
+  type WireMessage,
+} from '@realtime';
 import {
   toIncomingMessage,
   toSendMessageInput,
@@ -166,23 +170,16 @@ export function createMessageSyncRepository(
         applyEvent(event);
       });
 
-      const refreshWhenVisible = () => {
-        if (document.visibilityState === 'visible') {
-          void reconcileSnapshot(false);
-        }
-      };
-      if (typeof document !== 'undefined') {
-        document.addEventListener('visibilitychange', refreshWhenVisible);
-      }
+      const unsubscribeWake = subscribeToWakeSignals(() => {
+        void reconcileSnapshot(false);
+      });
 
       await reconcileSnapshot(true);
 
       return () => {
         stopped = true;
         unsubscribe();
-        if (typeof document !== 'undefined') {
-          document.removeEventListener('visibilitychange', refreshWhenVisible);
-        }
+        unsubscribeWake();
       };
     },
 
