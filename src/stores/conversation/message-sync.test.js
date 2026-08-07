@@ -112,6 +112,81 @@ describe('message sync reactions', () => {
     expect(snapshots).toEqual([['m1', 'm2']]);
   });
 
+  it('reconciles messages missed while the app was hidden when it becomes visible', async () => {
+    let serverRows = [wireMessage()];
+    const client = {
+      getUserId: () => 'me',
+      loadMessages: vi.fn(async () => serverRows),
+      sendMessage: vi.fn(),
+      setMyReaction: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+    };
+    const repository = createMessageSyncRepository(client);
+    const snapshots = [];
+
+    const unsubscribe = await repository.watchRecentMessages('c1', (messages) =>
+      snapshots.push(messages.map((message) => message.messageId)),
+    );
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+    serverRows = [wireMessage(), { ...wireMessage(), id: 'm2', sentAt: 2 }];
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await vi.waitFor(() => expect(snapshots.at(-1)).toEqual(['m1', 'm2']));
+
+    unsubscribe();
+  });
+
+  it('reconciles again when foregrounded during an in-flight refresh', async () => {
+    let loadCount = 0;
+    let resolveStaleRefresh;
+    const client = {
+      getUserId: () => 'me',
+      loadMessages: vi.fn(() => {
+        loadCount += 1;
+        if (loadCount === 1) return Promise.resolve([wireMessage()]);
+        if (loadCount === 2) {
+          return new Promise((resolve) => {
+            resolveStaleRefresh = resolve;
+          });
+        }
+        return Promise.resolve([
+          wireMessage(),
+          { ...wireMessage(), id: 'm2', sentAt: 2 },
+        ]);
+      }),
+      sendMessage: vi.fn(),
+      setMyReaction: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+    };
+    const repository = createMessageSyncRepository(client);
+    const snapshots = [];
+    const unsubscribe = await repository.watchRecentMessages('c1', (messages) =>
+      snapshots.push(messages.map((message) => message.messageId)),
+    );
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    // A second foreground transition occurs before the stale refresh settles.
+    document.dispatchEvent(new Event('visibilitychange'));
+    resolveStaleRefresh([wireMessage()]);
+
+    await vi.waitFor(() => expect(snapshots.at(-1)).toEqual(['m1', 'm2']));
+    unsubscribe();
+  });
+
   it('persists the desired reaction key without sending user identity', async () => {
     const client = {
       getUserId: () => 'me',

@@ -7,6 +7,7 @@
 export { createRoomSignaling } from './signaling/index.js';
 export { createConversationChannel } from './conversation-channel.js';
 export { closeUserMailbox, subscribeToUserMailbox } from './user-mailbox.js';
+export { subscribeToWakeSignals } from './wake-signals.js';
 export {
   isConversationServerEvent,
   type ConversationServerEvent,
