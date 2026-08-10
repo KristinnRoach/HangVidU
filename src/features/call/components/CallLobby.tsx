@@ -11,6 +11,7 @@ import {
   getAudioConstraints,
   getVideoConstraints,
 } from '../media-constraints.js';
+import { createCallLocalTrackSlots } from '../call-media.js';
 
 function joinErrorMessage(err: unknown, kind: string | undefined): string {
   if (kind === 'room-full') return t('call.lobby.error.full');
@@ -106,6 +107,7 @@ export function CallLobby() {
     setJoining(true);
     setCallEnded(false);
     setError(null);
+    let localStream: MediaStream | undefined;
     try {
       const uid = await signInAsGuest();
       // peerId must be unique per tab, not per user: the anonymous session is
@@ -113,20 +115,37 @@ export function CallLobby() {
       // peers by peerId (the verified identity is authn-only). Two tabs
       // joining with the same uid would collide as one peer.
       const peerId = `${uid.slice(0, 6)}-${crypto.randomUUID().slice(0, 8)}`;
+      const acquiredStream = await navigator.mediaDevices.getUserMedia({
+        video: getVideoConstraints(),
+        audio: getAudioConstraints(),
+      });
+      localStream = acquiredStream;
       const room = await p2p.join({
         roomId: id,
         peerId,
         createSignaling: createRoomSignaling,
         memberCapacity: 4,
         dataChannel: true,
-        getLocalStream: () =>
-          navigator.mediaDevices.getUserMedia({
-            video: getVideoConstraints(),
-            audio: getAudioConstraints(),
-          }),
+        // Guest calls use the same stable publication slots and initial media
+        // presence as contact calls. Without these, remote video is hidden
+        // until another control publishes presence, and camera replacement
+        // fails because the primary-video slot does not exist.
+        getLocalStream: () => Promise.resolve(acquiredStream),
+        localTrackSlots: createCallLocalTrackSlots(acquiredStream),
+        presenceData: {
+          micOn: acquiredStream
+            .getAudioTracks()
+            .some((track) => track.readyState === 'live' && track.enabled),
+          cameraOn: acquiredStream
+            .getVideoTracks()
+            .some((track) => track.readyState === 'live' && track.enabled),
+        },
       });
       if (!room) throw p2p.error() ?? new Error('Room join returned no room');
     } catch (err) {
+      // A signaling failure can happen before p2p invokes getLocalStream and
+      // assumes ownership of the tracks.
+      localStream?.getTracks().forEach((track) => track.stop());
       console.error('[CallLobby] Failed to join guest room:', err);
       setError(joinErrorMessage(err, p2p.errorKind()));
       setJoining(false);
