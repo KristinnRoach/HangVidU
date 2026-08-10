@@ -34,6 +34,34 @@ vi.mock('@shared/i18n', () => ({
 
 const { CallLobby } = await import('./CallLobby');
 
+function setupMediaDevices() {
+  const microphone = {
+    kind: 'audio',
+    enabled: true,
+    readyState: 'live',
+    stop: vi.fn(),
+  };
+  const camera = {
+    kind: 'video',
+    enabled: true,
+    readyState: 'live',
+    stop: vi.fn(),
+  };
+  const localStream = {
+    getTracks: () => [microphone, camera],
+    getAudioTracks: () => [microphone],
+    getVideoTracks: () => [camera],
+  };
+  Object.defineProperty(navigator, 'mediaDevices', {
+    configurable: true,
+    value: {
+      getSupportedConstraints: () => ({}),
+      getUserMedia: vi.fn(async () => localStream),
+    },
+  });
+  return { camera, localStream, microphone };
+}
+
 describe('CallLobby', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,30 +78,7 @@ describe('CallLobby', () => {
   });
 
   it('joins guest calls with initial presence and stable media slots', async () => {
-    const microphone = {
-      kind: 'audio',
-      enabled: true,
-      readyState: 'live',
-      stop: vi.fn(),
-    };
-    const camera = {
-      kind: 'video',
-      enabled: true,
-      readyState: 'live',
-      stop: vi.fn(),
-    };
-    const localStream = {
-      getTracks: () => [microphone, camera],
-      getAudioTracks: () => [microphone],
-      getVideoTracks: () => [camera],
-    };
-    Object.defineProperty(navigator, 'mediaDevices', {
-      configurable: true,
-      value: {
-        getSupportedConstraints: () => ({}),
-        getUserMedia: vi.fn(async () => localStream),
-      },
-    });
+    const { camera, localStream, microphone } = setupMediaDevices();
     mocks.signInAsGuest.mockResolvedValue('guest-user');
     mocks.p2p.join.mockResolvedValue({ roomId: 'guest-room' });
 
@@ -95,5 +100,20 @@ describe('CallLobby', () => {
     await expect(options.getLocalStream()).resolves.toBe(localStream);
     expect(microphone.stop).not.toHaveBeenCalled();
     expect(camera.stop).not.toHaveBeenCalled();
+  });
+
+  it('stops acquired media when joining a guest call fails', async () => {
+    const { camera, microphone } = setupMediaDevices();
+    const joinError = new Error('signaling unavailable');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.signInAsGuest.mockResolvedValue('guest-user');
+    mocks.p2p.join.mockRejectedValue(joinError);
+
+    const { getByRole } = render(() => <CallLobby />);
+    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
+
+    await waitFor(() => expect(mocks.p2p.join).toHaveBeenCalledOnce());
+    await waitFor(() => expect(microphone.stop).toHaveBeenCalledOnce());
+    expect(camera.stop).toHaveBeenCalledOnce();
   });
 });
