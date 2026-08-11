@@ -13,6 +13,11 @@ import {
 } from '../media-constraints.js';
 import { createCallLocalTrackSlots } from '../call-media.js';
 
+const buttonClass =
+  'rounded-md border border-primary px-4 py-2 font-medium tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-60';
+const primaryButtonClass = `${buttonClass} bg-primary/20 text-neutral-100 hover:bg-primary/30`;
+const hintClass = 'text-sm text-neutral-400';
+
 function joinErrorMessage(err: unknown, kind: string | undefined): string {
   if (kind === 'room-full') return t('call.lobby.error.full');
   if (
@@ -153,16 +158,16 @@ export function CallLobby() {
   }
 
   return (
-    <div class='call-lobby'>
-      <div class='call-lobby__actions'>
+    <div class='flex w-full flex-col items-center gap-3'>
+      <div class='flex flex-wrap items-center justify-center gap-2'>
         <Show
           when={roomId()}
           fallback={
-            <div class='call-lobby__start'>
+            <div class='flex flex-col items-center gap-2'>
               <p>{t('call.lobby.ephemeral_prompt')}</p>
               <button
                 type='button'
-                class='call-lobby__cta'
+                class={primaryButtonClass}
                 onClick={createRoom}
               >
                 {t('call.lobby.start')}
@@ -172,7 +177,7 @@ export function CallLobby() {
         >
           <button
             type='button'
-            class='call-lobby__cta'
+            class={primaryButtonClass}
             onClick={joinRoom}
             disabled={joining()}
           >
@@ -180,7 +185,7 @@ export function CallLobby() {
           </button>
           <button
             type='button'
-            class='call-lobby__secondary'
+            class={`${buttonClass} text-primary hover:bg-primary/10`}
             onClick={shareLink}
           >
             {copied()
@@ -193,26 +198,26 @@ export function CallLobby() {
       <Show when={roomId() && !invitedRoomId()}>
         {/* Clipboard write can fail silently — always show the link itself. */}
         <input
-          class='call-lobby__link'
+          class='w-full max-w-md rounded-md border border-primary/50 bg-transparent px-2 py-2 text-center text-sm text-neutral-400'
           type='text'
           readonly
           value={window.location.href}
           aria-label={t('call.lobby.invite_label')}
           onFocus={(e) => e.currentTarget.select()}
         />
-        <p class='call-lobby__hint'>{t('call.lobby.send_link_hint')}</p>
+        <p class={hintClass}>{t('call.lobby.send_link_hint')}</p>
       </Show>
       <Show when={invitedRoomId() && !joining()}>
-        <p class='call-lobby__hint'>{t('call.lobby.invited')}</p>
+        <p class={hintClass}>{t('call.lobby.invited')}</p>
       </Show>
       <Show when={joining()}>
-        <p class='call-lobby__hint'>{t('call.lobby.permission_hint')}</p>
+        <p class={hintClass}>{t('call.lobby.permission_hint')}</p>
       </Show>
       <Show when={callEnded() && !roomId()}>
-        <p class='call-lobby__hint'>{t('call.lobby.ended')}</p>
+        <p class={hintClass}>{t('call.lobby.ended')}</p>
       </Show>
       <Show when={error()}>
-        <p class='call-lobby__error' role='alert'>
+        <p class='text-sm text-red-400' role='alert'>
           {error()}
         </p>
       </Show>
