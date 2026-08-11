@@ -1,5 +1,6 @@
 .public-homepage {
   margin-inline: auto;
+  height: 100%;
   max-width: 90svw;
   max-height: 90svh;
   font-size: 16px;
@@ -8,10 +9,12 @@
 }
 
 .public-homepage__content {
+  position: relative;
   display: flex;
   flex-direction: column;
+  gap: 2rem;
   padding: 1rem;
-  gap: clamp(4px, 16px, 32px);
+  height: 100%;
   color: var(--text-primary);
   text-align: center;
 }
@@ -21,30 +24,37 @@
   font-size: 2rem;
   font-weight: 500;
   text-shadow: var(--text-shadow-medium);
-
   color: var(--color-primary);
   text-decoration: underline var(--color-primary-subtle);
 }
 
-.public-homepage p {
+.public-homepage__content p {
+  padding: 0.2em 0.4em;
+  letter-spacing: 0.025em;
+  text-wrap: pretty;
+}
+
+.public-homepage__login_prompt,
+.public-homepage__support {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: var(--spacing-lg) auto 0;
-  max-width: 58ch;
+  flex-wrap: wrap;
+}
+
+.public-homepage__support {
+  position: fixed;
+  bottom: var(--spacing-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.9rem;
   color: var(--text-secondary);
 }
 
-.public-homepage p.public-homepage__support {
-  gap: 0.4em;
-}
-
-.public-homepage__login_prompt {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5em;
-  flex-wrap: wrap;
+.public-homepage__support a {
+  color: var(--color-primary);
+  font-weight: 500;
+  text-decoration: underline var(--color-primary-subtle);
 }
 
 button.public-homepage__login {
