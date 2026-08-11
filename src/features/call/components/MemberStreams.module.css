@@ -10,13 +10,10 @@
 
 .roomMembers.group {
   display: grid;
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(min(var(--remote-stream-container-min-width, 100%)), 1fr)
-  );
-  gap: var(--gap);
-
-  @media (max-width: 560px) {
+  grid-template-columns: 1fr;
+  height: 100%;
+  max-height: 100svh;
+  /* @container room (width <= 800px) {
     grid-template-columns: 1fr;
-  }
+  } */
 }
