@@ -15,14 +15,7 @@ import LegalFooter from '../components/LegalFooter';
 import LocaleToggle from '../components/LocaleToggle';
 
 import PublicHomepage from './PublicHomepage';
-// Injected as a child: PublicHomepage (components layer) can't import
-// features/realtime, which the lobby needs.
-import {
-  CallLobby,
-  ActiveCallRoom,
-  CallDialogs,
-  StartCallButton,
-} from '@features/call';
+import { ActiveCallRoom, CallDialogs, StartCallButton } from '@features/call';
 import ConversationsList from './ConversationsList';
 import { ConversationPanel } from '@features/conversations';
 
@@ -159,9 +152,7 @@ export default function MainContent() {
             hidden={activeView() !== 'home'}
             class={mainStyles.activeViewContainer}
           >
-            <PublicHomepage>
-              <CallLobby />
-            </PublicHomepage>
+            <PublicHomepage />
           </div>
 
           {/* Call room renders for guests too (room-link calls). */}

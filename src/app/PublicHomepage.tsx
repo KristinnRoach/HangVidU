@@ -1,8 +1,8 @@
-import type { ParentProps } from 'solid-js';
 import { useI18n } from '@shared/i18n';
 import { LoginButton } from '@auth';
+import { CallLobby } from '@features/call';
 
-export default function PublicHomepage(props: ParentProps) {
+export default function PublicHomepage() {
   const { t } = useI18n();
 
   return (
@@ -20,7 +20,7 @@ export default function PublicHomepage(props: ParentProps) {
           <p>to save contacts and send DM's</p>
         </div>
 
-        {props.children}
+        <CallLobby />
 
         <div class='public-homepage__support'>
           <p>

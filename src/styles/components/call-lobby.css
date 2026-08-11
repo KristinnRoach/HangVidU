@@ -1,10 +1,9 @@
-.call-lobby {
-  margin-top: var(--spacing-xl);
-}
+/* .call-lobby {} */
 
 .call-lobby__actions {
   display: flex;
   justify-content: center;
+  align-items: center;
   flex-wrap: wrap;
   gap: var(--spacing-md);
 }
@@ -12,6 +11,8 @@
 .call-lobby__start {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
   gap: var(--spacing-sm);
 }
 
