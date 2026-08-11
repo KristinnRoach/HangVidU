@@ -17,10 +17,11 @@ export default function PublicHomepage() {
             textContent={'Log in'}
             class={'public-homepage__login'}
           />
-          <p>to save contacts and send DM's</p>
         </div>
 
-        <CallLobby />
+        <div class='public-homepage__call_lobby_container'>
+          <CallLobby />
+        </div>
 
         <div class='public-homepage__support'>
           <p>
