@@ -1,6 +1,5 @@
 // Guest call lobby: create a room-link call or join one via ?publicRoom=<id>.
 // No account needed — signs in anonymously for the signaling token.
-// TODO: design pass deferred until the Tailwind migration.
 import { createSignal, createEffect, on, Show } from 'solid-js';
 
 import { useP2PContext } from '@shared/p2p-context.js';
@@ -14,8 +13,8 @@ import {
 import { createCallLocalTrackSlots } from '../call-media.js';
 
 const buttonClass =
-  'rounded-md border border-primary px-4 py-2 font-medium tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-60';
-const primaryButtonClass = `${buttonClass} bg-primary/20 text-neutral-100 hover:bg-primary/30`;
+  'rounded-md px-4 py-2 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60';
+const primaryButtonClass = `${buttonClass} border border-primary bg-primary/20 text-neutral-100 hover:bg-primary/30`;
 const hintClass = 'text-sm text-neutral-400';
 
 function joinErrorMessage(err: unknown, kind: string | undefined): string {
@@ -92,18 +91,6 @@ export function CallLobby() {
     } catch {
       setCopied(false);
     }
-  }
-
-  async function shareLink() {
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ url: window.location.href });
-        return;
-      } catch {
-        // Share sheet dismissed or unavailable — fall back to copying.
-      }
-    }
-    await copyLink();
   }
 
   async function joinRoom() {
@@ -185,15 +172,19 @@ export function CallLobby() {
           </button>
           <button
             type='button'
-            class={`${buttonClass} text-primary hover:bg-primary/10`}
-            onClick={shareLink}
+            class={`${buttonClass} border border-primary/60 text-primary hover:bg-primary/10`}
+            onClick={copyLink}
           >
-            {copied()
-              ? t('call.lobby.link_copied')
-              : t('call.lobby.share_link')}
+            {t('call.lobby.copy_link')}
           </button>
         </Show>
       </div>
+
+      <Show when={copied() && roomId()}>
+        <span class={hintClass} role='status'>
+          {t('call.lobby.link_copied')}
+        </span>
+      </Show>
 
       <Show when={roomId() && !invitedRoomId()}>
         {/* Clipboard write can fail silently — always show the link itself. */}

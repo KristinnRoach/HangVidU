@@ -77,6 +77,22 @@ describe('CallLobby', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it('copies a new guest-call link and keeps the copy action available', async () => {
+    window.history.replaceState(null, '', '/');
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    const { getByRole } = render(() => <CallLobby />);
+    fireEvent.click(getByRole('button', { name: 'call.lobby.start' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    getByRole('button', { name: 'call.lobby.copy_link' });
+    expect(getByRole('status').textContent).toBe('call.lobby.link_copied');
+  });
+
   it('joins guest calls with initial presence and stable media slots', async () => {
     const { camera, localStream, microphone } = setupMediaDevices();
     mocks.signInAsGuest.mockResolvedValue('guest-user');
