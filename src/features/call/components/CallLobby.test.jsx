@@ -89,7 +89,9 @@ describe('CallLobby', () => {
     fireEvent.click(getByRole('button', { name: 'call.lobby.start' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-    getByRole('button', { name: 'call.lobby.copy_link' });
+    const copyButton = getByRole('button', { name: 'call.lobby.copy_link' });
+    fireEvent.click(copyButton);
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
     expect(getByRole('status').textContent).toBe('call.lobby.link_copied');
   });
 
