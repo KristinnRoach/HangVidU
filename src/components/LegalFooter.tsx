@@ -10,8 +10,11 @@ export default function LegalFooter() {
       id='legal-footer'
       class='absolute right-3 bottom-2 flex items-center gap-2 text-xs text-neutral-400'
     >
-      <a class={linkClass} href='mailto:kristinnroach@gmail.com'>
-        {t('home.contact')}
+      <a
+        class={linkClass}
+        href='mailto:kristinnroach@gmail.com?subject=HangVidU%20support'
+      >
+        {t('home.contact')}: kristinnroach@gmail.com
       </a>
       <span class='text-neutral-600'>&bull;</span>
       <a
