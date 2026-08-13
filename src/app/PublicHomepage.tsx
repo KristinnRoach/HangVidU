@@ -6,29 +6,23 @@ export default function PublicHomepage() {
   const { t } = useI18n();
 
   return (
-    <section class='public-homepage' aria-labelledby='public-homepage-title'>
-      <div class='public-homepage__content'>
-        <h2 id='public-homepage-title'>{t('home.title')}</h2>
-        <p>{t('home.description')}</p>
+    <section class='flex h-full flex-col items-center overflow-y-auto px-6 pt-8 pb-16 text-center text-neutral-200'>
+      <p class='text-4xl font-medium text-primary underline decoration-primary-subtle underline-offset-2'>
+        HangVidU
+      </p>
 
-        <div class='public-homepage__login_prompt'>
-          <LoginButton
-            popoverTarget='signinSheet'
-            textContent={'Log in'}
-            class={'public-homepage__login'}
-          />
-        </div>
+      <p class='mt-3 max-w-lg text-base text-neutral-400'>
+        {t('home.description')}
+      </p>
 
-        <div class='public-homepage__call_lobby_container'>
-          <CallLobby />
-        </div>
+      <LoginButton
+        popoverTarget='signinSheet'
+        textContent='Log in'
+        class='mt-7 rounded-md border border-primary bg-primary/20 px-4 py-2 font-medium text-neutral-100 transition-colors hover:bg-primary/30'
+      />
 
-        <div class='public-homepage__support'>
-          <p>
-            {t('home.contact')}:{' '}
-            <a href='mailto:kristinnroach@gmail.com'>kristinnroach@gmail.com</a>
-          </p>
-        </div>
+      <div class='mt-8 w-full max-w-md'>
+        <CallLobby />
       </div>
     </section>
   );
