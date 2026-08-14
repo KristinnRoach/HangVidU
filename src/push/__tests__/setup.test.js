@@ -133,6 +133,7 @@ describe('push-notifications setup', () => {
 
     await push.setup();
     mocks.handlers.get('evt:call:invite:sent')?.({
+      callInviteId: 'call-invite-1',
       calleeId: 'callee',
       callerId: 'caller',
       callerName: 'Caller',
@@ -141,6 +142,7 @@ describe('push-notifications setup', () => {
 
     expect(sendIncomingCall).toHaveBeenCalledWith({
       targetUserId: 'callee',
+      callInviteId: 'call-invite-1',
       callerId: 'caller',
       callerName: 'Caller',
       roomId: 'room-1',

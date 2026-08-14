@@ -16,6 +16,7 @@
  */
 
 export interface MailboxInvite {
+  callInviteId: string;
   roomId: string;
   callerId: string;
   calleeId: string;
@@ -26,6 +27,7 @@ export interface MailboxInvite {
 }
 
 export interface MailboxResponse {
+  callInviteId: string;
   roomId: string;
   responseType: 'accepted' | 'rejected' | 'busy';
   by: string;
@@ -44,8 +46,8 @@ export interface MailboxResponse {
 export type MailboxEnvelope =
   | { t: 'invite'; invite: MailboxInvite }
   | { t: 'response'; response: MailboxResponse }
-  | { t: 'cancel'; roomId: string; by: string }
-  | { t: 'handled'; roomId: string; by: string }
+  | { t: 'cancel'; callInviteId: string; roomId: string; by: string }
+  | { t: 'handled'; callInviteId: string; roomId: string; by: string }
   // Fire-and-forget "a message landed in one of your conversations" ping, fanned
   // to every member except the sender. Not persisted (no resurface on reconnect).
   | { t: 'activity'; conversationId: string; senderId: string; sentAt: number }
@@ -65,6 +67,7 @@ export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {
     const i = e.invite as Record<string, unknown> | undefined;
     return (
       !!i &&
+      typeof i.callInviteId === 'string' &&
       typeof i.roomId === 'string' &&
       typeof i.callerId === 'string' &&
       typeof i.calleeId === 'string' &&
@@ -75,6 +78,7 @@ export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {
     const r = e.response as Record<string, unknown> | undefined;
     return (
       !!r &&
+      typeof r.callInviteId === 'string' &&
       typeof r.roomId === 'string' &&
       (r.responseType === 'accepted' ||
         r.responseType === 'rejected' ||
@@ -84,7 +88,11 @@ export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {
     );
   }
   if (e.t === 'cancel' || e.t === 'handled') {
-    return typeof e.roomId === 'string' && typeof e.by === 'string';
+    return (
+      typeof e.callInviteId === 'string' &&
+      typeof e.roomId === 'string' &&
+      typeof e.by === 'string'
+    );
   }
   if (e.t === 'activity') {
     return (

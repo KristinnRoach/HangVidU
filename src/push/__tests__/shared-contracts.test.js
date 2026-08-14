@@ -15,6 +15,7 @@ describe('shared push notification contracts', () => {
       body: 'Tap to answer',
       data: {
         type: 'incoming_call',
+        callInviteId: 'call-invite-123',
         roomId: 'room-123',
         callerId: 'alice',
         callerName: 'Alice',
@@ -35,6 +36,7 @@ describe('shared push notification contracts', () => {
         body: 'Tap to answer',
         data: {
           type: 'call',
+          callInviteId: 'call-invite-legacy',
           roomId: 'room-legacy',
           callerId: 'alice',
           callerName: 'Alice',
@@ -48,6 +50,7 @@ describe('shared push notification contracts', () => {
     expect(() =>
       parseCanonicalPushNotificationData({
         type: 'call',
+        callInviteId: 'call-invite-legacy',
         roomId: 'room-legacy',
         callerId: 'alice',
         callerName: 'Alice',
@@ -63,6 +66,7 @@ describe('shared push notification contracts', () => {
       targetUserId: 'bob',
       callData: {
         type: 'incoming_call',
+        callInviteId: 'call-invite-123',
         roomId: 'room-123',
         callerId: 'alice',
         callerName: 'Alice',

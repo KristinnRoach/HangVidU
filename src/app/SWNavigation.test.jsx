@@ -144,13 +144,14 @@ describe('SWNavigation', () => {
     messageListener?.({
       data: {
         type: 'NAVIGATE',
-        path: '/?call=1&conversationId=room-1&callerId=caller-1&callerName=Caller&accept=1',
+        path: '/?call=1&conversationId=room-1&callInviteId=call-invite-1&callerId=caller-1&callerName=Caller&accept=1',
       },
     });
 
     expect(mocks.publish).toHaveBeenCalledWith(
       'evt:call:notification:opened',
       expect.objectContaining({
+        callInviteId: 'call-invite-1',
         roomId: 'room-1',
         callerId: 'caller-1',
         callerName: 'Caller',

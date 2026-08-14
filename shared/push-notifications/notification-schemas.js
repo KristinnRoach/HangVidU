@@ -13,6 +13,7 @@ const NotificationDataBaseSchema = z.object({
 export const IncomingCallNotificationDataSchema =
   NotificationDataBaseSchema.extend({
     type: z.literal('incoming_call'),
+    callInviteId: NonEmptyStringSchema,
     roomId: NonEmptyStringSchema,
     callerId: NonEmptyStringSchema,
     callerName: NonEmptyStringSchema,

@@ -589,6 +589,7 @@ export class PushNotifications {
 
   async formatCallNotification(callData) {
     const {
+      callInviteId,
       roomId,
       callerId,
       callerName,
@@ -604,6 +605,7 @@ export class PushNotifications {
     }
 
     return {
+      ...(type === 'incoming_call' && callInviteId ? { callInviteId } : {}),
       roomId,
       callerId,
       callerName: callerLabel,

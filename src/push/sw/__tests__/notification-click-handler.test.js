@@ -12,20 +12,27 @@ describe('notification click routing', () => {
       getNotificationNavigationPath(
         {
           type: 'incoming_call',
+          callInviteId: 'call-invite-123',
           roomId: 'room-123',
         },
         undefined,
       ),
-    ).toBe('/?call=1&conversationId=room-123');
+    ).toBe('/?call=1&conversationId=room-123&callInviteId=call-invite-123');
   });
 
   it('marks the incoming-call path for auto-accept on the explicit accept action', () => {
     expect(
       getNotificationNavigationPath(
-        { type: 'incoming_call', roomId: 'room-123' },
+        {
+          type: 'incoming_call',
+          callInviteId: 'call-invite-123',
+          roomId: 'room-123',
+        },
         'accept',
       ),
-    ).toBe('/?call=1&conversationId=room-123&accept=1');
+    ).toBe(
+      '/?call=1&conversationId=room-123&callInviteId=call-invite-123&accept=1',
+    );
   });
 
   it('carries caller metadata for incoming call notification clicks', () => {
@@ -33,6 +40,7 @@ describe('notification click routing', () => {
       getNotificationNavigationPath(
         {
           type: 'incoming_call',
+          callInviteId: 'call-invite-123',
           roomId: 'room-123',
           callerId: 'caller-1',
           callerName: 'Caller Name',
@@ -41,7 +49,7 @@ describe('notification click routing', () => {
         undefined,
       ),
     ).toBe(
-      '/?call=1&conversationId=room-123&callerId=caller-1&callerName=Caller+Name&timestamp=1774025000000',
+      '/?call=1&conversationId=room-123&callInviteId=call-invite-123&callerId=caller-1&callerName=Caller+Name&timestamp=1774025000000',
     );
   });
 

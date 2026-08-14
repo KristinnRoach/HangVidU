@@ -155,6 +155,7 @@ describe('CallHandshakeProvider', () => {
 
     const handler = mocks.subscriptions.get('evt:call:notification:opened');
     handler?.({
+      callInviteId: 'call-invite-1',
       roomId: 'room-1',
       callerId: 'caller-1',
       callerName: 'Caller',
@@ -162,6 +163,7 @@ describe('CallHandshakeProvider', () => {
     });
 
     expect(mocks.showIncomingCallFromNotification).toHaveBeenCalledWith({
+      callInviteId: 'call-invite-1',
       roomId: 'room-1',
       callerId: 'caller-1',
       callerName: 'Caller',
@@ -174,7 +176,7 @@ describe('CallHandshakeProvider', () => {
     window.history.replaceState(
       null,
       '',
-      '/?call=1&conversationId=room-1&callerId=caller-1',
+      '/?call=1&conversationId=room-1&callInviteId=call-invite-1&callerId=caller-1',
     );
     const { CallHandshakeProvider } = await import('./call-handshake');
     const [user] = createSignal({ uid: 'u1' });
@@ -184,6 +186,7 @@ describe('CallHandshakeProvider', () => {
 
     expect(mocks.showIncomingCallFromNotification).toHaveBeenCalledWith(
       expect.objectContaining({
+        callInviteId: 'call-invite-1',
         roomId: 'room-1',
         callerId: 'caller-1',
         startedAt: undefined,

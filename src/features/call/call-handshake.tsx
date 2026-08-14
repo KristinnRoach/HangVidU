@@ -62,10 +62,12 @@ function incomingCallNotificationDetailsFromParams(
   // plain open-conversation link handled by SWNavigation.
   if (params.get('call') !== '1') return null;
   const roomId = params.get('conversationId');
+  const callInviteId = params.get('callInviteId');
   const callerId = params.get('callerId');
-  if (!roomId || !callerId) return null;
+  if (!callInviteId || !roomId || !callerId) return null;
 
   return {
+    callInviteId,
     roomId,
     callerId,
     callerName: params.get('callerName') || undefined,
@@ -79,10 +81,12 @@ function incomingCallNotificationDetailsFromPayload(
 ): IncomingCallNotificationDetails | null {
   if (
     typeof payload.roomId !== 'string' ||
+    typeof payload.callInviteId !== 'string' ||
     typeof payload.callerId !== 'string'
   )
     return null;
   return {
+    callInviteId: payload.callInviteId,
     roomId: payload.roomId,
     callerId: payload.callerId,
     callerName:

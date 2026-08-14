@@ -7,6 +7,9 @@ import {
 } from './storage-schemas.js';
 
 export const OutboundCallNotificationDataSchema = z.object({
+  // Optional only at this deployed-client boundary. New incoming-call sends
+  // include it; missed calls do not carry a completed invite's identifier.
+  callInviteId: NonEmptyStringSchema.optional(),
   roomId: NonEmptyStringSchema,
   callerId: NonEmptyStringSchema,
   callerName: NonEmptyStringSchema,

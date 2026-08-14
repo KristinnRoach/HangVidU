@@ -686,6 +686,7 @@ describe('call cancel mailbox route', () => {
   });
 
   it('delivers the cancel envelope with room and caller identity', async () => {
+    const callInviteId = `invite-${crypto.randomUUID()}`;
     const convoId = await resolveOrCreateDirect(
       env.DB,
       'user-a',
@@ -697,7 +698,18 @@ describe('call cancel mailbox route', () => {
     const mailbox = await connectMailbox(calleeToken);
 
     try {
+      expect(
+        (
+          await jsonPost('/calls/invite', callerToken, {
+            callInviteId,
+            conversationId: convoId,
+            calleeId: 'user-b',
+          })
+        ).status,
+      ).toBe(200);
+      await mailbox.next();
       const res = await jsonPost('/calls/cancel', callerToken, {
+        callInviteId,
         conversationId: convoId,
         calleeId: 'user-b',
       });
@@ -706,6 +718,7 @@ describe('call cancel mailbox route', () => {
       expect(await res.json()).toEqual({ ok: true });
       expect(await mailbox.next()).toEqual({
         t: 'cancel',
+        callInviteId,
         roomId: convoId,
         by: 'user-a',
       });
@@ -717,6 +730,7 @@ describe('call cancel mailbox route', () => {
 
 describe('call invite retention', () => {
   it('replays a fresh pending invite when the callee connects late', async () => {
+    const callInviteId = `invite-${crypto.randomUUID()}`;
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
     const convoId = await resolveOrCreateDirect(
@@ -729,6 +743,7 @@ describe('call invite retention', () => {
     const calleeToken = await signToken(validClaims(calleeId));
 
     const res = await jsonPost('/calls/invite', callerToken, {
+      callInviteId,
       conversationId: convoId,
       calleeId,
       callerName: 'Caller',
@@ -742,6 +757,7 @@ describe('call invite retention', () => {
       expect(await mailbox.next()).toEqual({
         t: 'invite',
         invite: {
+          callInviteId,
           roomId: convoId,
           callerId,
           calleeId,
@@ -757,6 +773,7 @@ describe('call invite retention', () => {
   });
 
   it('does not replay a pending invite after caller cancel', async () => {
+    const callInviteId = `invite-${crypto.randomUUID()}`;
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
     const convoId = await resolveOrCreateDirect(
@@ -771,6 +788,7 @@ describe('call invite retention', () => {
     expect(
       (
         await jsonPost('/calls/invite', callerToken, {
+          callInviteId,
           conversationId: convoId,
           calleeId,
           expiresAt: Date.now() + 30_000,
@@ -780,6 +798,7 @@ describe('call invite retention', () => {
     expect(
       (
         await jsonPost('/calls/cancel', callerToken, {
+          callInviteId,
           conversationId: convoId,
           calleeId,
         })
@@ -795,6 +814,7 @@ describe('call invite retention', () => {
   });
 
   it('does not replay a pending invite after callee response', async () => {
+    const callInviteId = `invite-${crypto.randomUUID()}`;
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
     const convoId = await resolveOrCreateDirect(
@@ -809,6 +829,7 @@ describe('call invite retention', () => {
     expect(
       (
         await jsonPost('/calls/invite', callerToken, {
+          callInviteId,
           conversationId: convoId,
           calleeId,
           expiresAt: Date.now() + 30_000,
@@ -818,6 +839,7 @@ describe('call invite retention', () => {
     expect(
       (
         await jsonPost('/calls/response', calleeToken, {
+          callInviteId,
           conversationId: convoId,
           callerId,
           responseType: 'accepted',
@@ -831,6 +853,51 @@ describe('call invite retention', () => {
     } finally {
       mailbox.close();
     }
+  });
+
+  it('rejects a response for an older call invite without consuming the current invite', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const currentCallInviteId = `invite-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    expect(
+      (
+        await jsonPost('/calls/invite', callerToken, {
+          callInviteId: currentCallInviteId,
+          conversationId: convoId,
+          calleeId,
+          expiresAt: Date.now() + 30_000,
+        })
+      ).status,
+    ).toBe(200);
+
+    const stale = await jsonPost('/calls/response', calleeToken, {
+      callInviteId: 'older-call-invite',
+      conversationId: convoId,
+      callerId,
+      responseType: 'accepted',
+    });
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toEqual({ error: 'stale_call_invite' });
+
+    expect(
+      (
+        await jsonPost('/calls/response', calleeToken, {
+          callInviteId: currentCallInviteId,
+          conversationId: convoId,
+          callerId,
+          responseType: 'accepted',
+        })
+      ).status,
+    ).toBe(200);
   });
 
   it('rejects a forged response that targets the responder instead of the caller', async () => {
@@ -859,6 +926,7 @@ describe('call invite retention', () => {
     // device must dismiss the incoming dialog everywhere, not just clear storage.
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
+    const callInviteId = `invite-${crypto.randomUUID()}`;
     const convoId = await resolveOrCreateDirect(
       env.DB,
       callerId,
@@ -873,6 +941,7 @@ describe('call invite retention', () => {
       expect(
         (
           await jsonPost('/calls/invite', callerToken, {
+            callInviteId,
             conversationId: convoId,
             calleeId,
             expiresAt: Date.now() + 30_000,
@@ -885,6 +954,7 @@ describe('call invite retention', () => {
       expect(
         (
           await jsonPost('/calls/response', calleeToken, {
+            callInviteId,
             conversationId: convoId,
             callerId,
             responseType: 'accepted',
@@ -894,6 +964,7 @@ describe('call invite retention', () => {
 
       expect(await otherTab.next()).toEqual({
         t: 'handled',
+        callInviteId,
         roomId: convoId,
         by: calleeId,
       });
@@ -929,6 +1000,7 @@ describe('call invite retention', () => {
       expect(
         (
           await jsonPost('/calls/invite', token, {
+            callInviteId: `invite-${convoId}`,
             conversationId: convoId,
             calleeId,
             expiresAt: Date.now() + 30_000,
@@ -959,6 +1031,7 @@ describe('call invite retention', () => {
 
 describe('call response retention', () => {
   it('replays an accepted response until the caller acknowledges it', async () => {
+    const callInviteId = `invite-${crypto.randomUUID()}`;
     const callerId = `caller-${crypto.randomUUID()}`;
     const calleeId = `callee-${crypto.randomUUID()}`;
     const convoId = await resolveOrCreateDirect(
@@ -972,7 +1045,18 @@ describe('call response retention', () => {
 
     expect(
       (
+        await jsonPost('/calls/invite', callerToken, {
+          callInviteId,
+          conversationId: convoId,
+          calleeId,
+          expiresAt: Date.now() + 30_000,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
         await jsonPost('/calls/response', calleeToken, {
+          callInviteId,
           conversationId: convoId,
           callerId,
           responseType: 'accepted',
@@ -986,6 +1070,7 @@ describe('call response retention', () => {
       expect(await mailbox.next()).toEqual({
         t: 'response',
         response: {
+          callInviteId,
           roomId: convoId,
           responseType: 'accepted',
           by: calleeId,
@@ -1000,6 +1085,7 @@ describe('call response retention', () => {
     expect(
       (
         await jsonPost('/calls/response/ack', callerToken, {
+          callInviteId,
           conversationId: convoId,
         })
       ).status,
@@ -1010,6 +1096,45 @@ describe('call response retention', () => {
       expect(await nextOrNoMessage(reconnected)).toBe(NO_MESSAGE);
     } finally {
       reconnected.close();
+    }
+  });
+
+  it('treats a retried accepted response as idempotent', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const callInviteId = `invite-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    expect(
+      (
+        await jsonPost('/calls/invite', callerToken, {
+          callInviteId,
+          conversationId: convoId,
+          calleeId,
+          expiresAt: Date.now() + 30_000,
+        })
+      ).status,
+    ).toBe(200);
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      expect(
+        (
+          await jsonPost('/calls/response', calleeToken, {
+            callInviteId,
+            conversationId: convoId,
+            callerId,
+            responseType: 'accepted',
+            expiresAt: Date.now() + 30_000,
+          })
+        ).status,
+      ).toBe(200);
     }
   });
 });
