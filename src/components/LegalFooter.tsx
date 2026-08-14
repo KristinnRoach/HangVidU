@@ -12,13 +12,6 @@ export default function LegalFooter() {
     >
       <a
         class={linkClass}
-        href='mailto:kristinnroach@gmail.com?subject=HangVidU%20support'
-      >
-        {t('home.contact')}: kristinnroach@gmail.com
-      </a>
-      <span class='text-neutral-600'>&bull;</span>
-      <a
-        class={linkClass}
         href='/privacy-policy.html'
         target='_blank'
         rel='noopener noreferrer'

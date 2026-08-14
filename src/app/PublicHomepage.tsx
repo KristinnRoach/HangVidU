@@ -18,12 +18,19 @@ export default function PublicHomepage() {
       <LoginButton
         popoverTarget='signinSheet'
         textContent='Log in'
-        class='mt-7 rounded-md border border-primary bg-primary/20 px-4 py-2 font-medium text-neutral-100 transition-colors hover:bg-primary/30'
+        class='mt-9 rounded-md border border-primary bg-primary/20 px-4 py-2 font-medium text-neutral-100 transition-colors hover:bg-primary/30'
       />
 
-      <div class='mt-8 w-full max-w-md'>
+      <div class='mt-11 w-full max-w-md'>
         <CallLobby />
       </div>
+
+      <a
+        class='mt-13 text-sm text-neutral-400 hover:text-neutral-300 hover:underline'
+        href='mailto:kristinnroach@gmail.com?subject=HangVidU%20support'
+      >
+        {t('home.contact')}: kristinnroach@gmail.com
+      </a>
     </section>
   );
 }
