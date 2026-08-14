@@ -172,6 +172,86 @@ describe('CallHandshakeController', () => {
     expect(onStateChange).toHaveBeenLastCalledWith(null);
   });
 
+  it('dismisses an incoming call when its invite expires', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-14T12:00:00Z'));
+    try {
+      const onStateChange = vi.fn();
+      const controller = createController(createP2PMock(), { onStateChange });
+
+      controller.init();
+      mocks.incomingCallback?.({
+        type: 'invite',
+        invite: {
+          roomId: 'room-1',
+          callerId: 'caller-id',
+          callerName: 'Caller',
+          startedAt: Date.now(),
+          expiresAt: Date.now() + 1_000,
+        },
+      });
+
+      expect(onStateChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ direction: 'incoming' }),
+      );
+      vi.advanceTimersByTime(1_000);
+      expect(onStateChange).toHaveBeenLastCalledWith(null);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not surface an invite that is already expired', () => {
+    const onStateChange = vi.fn();
+    const controller = createController(createP2PMock(), { onStateChange });
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        startedAt: Date.now() - 2_000,
+        expiresAt: Date.now() - 1_000,
+      },
+    });
+
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  it('does not accept an invite that expired while its dialog was open', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-14T12:00:00Z'));
+    try {
+      const onStateChange = vi.fn();
+      const p2p = createP2PMock();
+      const controller = createController(p2p, { onStateChange });
+
+      controller.init();
+      mocks.incomingCallback?.({
+        type: 'invite',
+        invite: {
+          roomId: 'room-1',
+          callerId: 'caller-id',
+          callerName: 'Caller',
+          startedAt: Date.now(),
+          expiresAt: Date.now() + 1_000,
+        },
+      });
+      vi.setSystemTime(Date.now() + 1_000);
+
+      controller.acceptIncoming();
+
+      expect(onStateChange).toHaveBeenLastCalledWith(null);
+      expect(mocks.getUserMedia).not.toHaveBeenCalled();
+      expect(p2p.join).not.toHaveBeenCalled();
+      expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('joins the room before notifying the caller that an incoming call was accepted', async () => {
     const join = deferred();
     const p2p = createP2PMock({ join: vi.fn(() => join.promise) });
