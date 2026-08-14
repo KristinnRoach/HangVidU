@@ -120,6 +120,7 @@ export class CallHandshakeController {
   private readonly onReconnectStatus: (status: CallReconnectStatus) => void;
 
   private _handshakeState: CallHandshakeState = null;
+  private incomingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -148,6 +149,10 @@ export class CallHandshakeController {
   }
 
   private setHandshakeState(state: CallHandshakeState): void {
+    if (this.incomingCallTimeoutId != null) {
+      clearTimeout(this.incomingCallTimeoutId);
+      this.incomingCallTimeoutId = undefined;
+    }
     this._handshakeState = state;
     this.onStateChange(state);
   }
@@ -231,6 +236,7 @@ export class CallHandshakeController {
     call: MailboxInvite,
     callService: NonNullable<ReturnType<typeof getCallService>>,
   ): void {
+    if (this.isExpired(call)) return;
     if (this.isBusyForIncomingCall(call)) {
       callService
         .respondToIncomingCallInvite({
@@ -244,6 +250,22 @@ export class CallHandshakeController {
       return;
     }
     this.setHandshakeState({ direction: 'incoming', call });
+    if (call.expiresAt != null) {
+      this.incomingCallTimeoutId = setTimeout(
+        () => {
+          this.incomingCallTimeoutId = undefined;
+          const state = this._handshakeState;
+          if (
+            state?.direction === 'incoming' &&
+            state.call.roomId === call.roomId &&
+            this.isExpired(state.call)
+          ) {
+            this.setHandshakeState(null);
+          }
+        },
+        Math.max(0, call.expiresAt - Date.now()),
+      );
+    }
     if (import.meta.env.DEV) {
       console.debug('Received incoming call invite:', { call });
     }
@@ -255,6 +277,10 @@ export class CallHandshakeController {
       return state.call.roomId !== call.roomId;
     }
     return state !== null || this.p2p.state() !== 'idle';
+  }
+
+  private isExpired(call: MailboxInvite): boolean {
+    return call.expiresAt != null && call.expiresAt <= Date.now();
   }
 
   startCall = async (details: StartCallDetails): Promise<void> => {
@@ -568,6 +594,10 @@ export class CallHandshakeController {
   acceptIncoming = (): void => {
     const state = this._handshakeState;
     if (!state || state.direction !== 'incoming') return;
+    if (this.isExpired(state.call)) {
+      this.setHandshakeState(null);
+      return;
+    }
     const svc = getCallService();
     const localUID = getLoggedInUserId();
     if (!svc || !localUID) return;
