@@ -729,6 +729,27 @@ describe('call cancel mailbox route', () => {
 });
 
 describe('call invite retention', () => {
+  it('rejects an oversized client-supplied invite identifier', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
+    const callerToken = await signToken(validClaims(callerId));
+
+    const response = await jsonPost('/calls/invite', callerToken, {
+      callInviteId: 'x'.repeat(129),
+      conversationId: convoId,
+      calleeId,
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'callInviteId too long' });
+  });
+
   it('replays a fresh pending invite when the callee connects late', async () => {
     const callInviteId = `invite-${crypto.randomUUID()}`;
     const callerId = `caller-${crypto.randomUUID()}`;
@@ -1135,6 +1156,51 @@ describe('call response retention', () => {
           })
         ).status,
       ).toBe(200);
+    }
+  });
+
+  it('supports an omitted invite identifier during the compatibility window', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+    const mailbox = await connectMailbox(calleeToken);
+
+    try {
+      const inviteResponse = await jsonPost('/calls/invite', callerToken, {
+        conversationId: convoId,
+        calleeId,
+        expiresAt: Date.now() + 30_000,
+      });
+      expect(inviteResponse.status).toBe(200);
+      const inviteBody = (await inviteResponse.json()) as {
+        callInviteId: string;
+      };
+      expect(inviteBody.callInviteId).toBeTypeOf('string');
+      expect(inviteBody.callInviteId.length).toBeGreaterThan(0);
+      expect(await mailbox.next()).toEqual({
+        t: 'invite',
+        invite: expect.objectContaining({
+          callInviteId: inviteBody.callInviteId,
+          roomId: convoId,
+        }),
+      });
+
+      const response = await jsonPost('/calls/response', calleeToken, {
+        conversationId: convoId,
+        callerId,
+        responseType: 'accepted',
+        expiresAt: Date.now() + 30_000,
+      });
+      expect(response.status).toBe(200);
+    } finally {
+      mailbox.close();
     }
   });
 });

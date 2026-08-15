@@ -203,11 +203,17 @@ export class CallHandshakeController {
 
     this.unsubscribeIncomingCall = callService.onIncomingCall((event) => {
       if (event.type === 'cancel' || event.type === 'handled') {
+        const state = this._handshakeState;
         if (
-          this._handshakeState &&
-          this._handshakeState.direction === 'incoming' &&
-          this._handshakeState.call.callInviteId === event.callInviteId
+          state &&
+          (state.direction === 'incoming' || state.direction === 'accepting') &&
+          state.call.callInviteId === event.callInviteId
         ) {
+          if (state.direction === 'accepting') {
+            this.incomingAcceptanceAbortController?.abort(
+              new DOMException('Call invite dismissed', 'AbortError'),
+            );
+          }
           this.setHandshakeState(null);
         }
         return;
@@ -671,6 +677,11 @@ export class CallHandshakeController {
       { signal },
     )
       .then(() => {
+        if (this.isExpired(state.call) && !signal.aborted) {
+          abortController.abort(
+            new DOMException('Call invite expired', 'TimeoutError'),
+          );
+        }
         if (signal.aborted) throw signal.reason;
         return svc.respondToIncomingCallInvite({
           callInviteId: state.call.callInviteId,

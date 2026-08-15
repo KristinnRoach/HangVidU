@@ -45,6 +45,7 @@ import { isSystemMessageType } from '../../../../shared/conversation-channel/pro
 import { CALLING_TTL_MS } from '../../../../shared/constants';
 
 const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
+const MAX_CALL_INVITE_ID_LENGTH = 128;
 const TURN_CREDENTIAL_TTL_SECONDS = 3_600;
 const TURN_CREDENTIAL_FETCH_TIMEOUT_MS = 5_000;
 
@@ -211,7 +212,14 @@ export async function handleDataRequest(
     const startedAt = now;
     // The fallback keeps already-deployed clients working while every new
     // client creates and carries its own callInviteId end to end.
-    const callInviteId = str(body?.callInviteId) ?? crypto.randomUUID();
+    const suppliedCallInviteId = str(body?.callInviteId);
+    if (
+      suppliedCallInviteId &&
+      suppliedCallInviteId.length > MAX_CALL_INVITE_ID_LENGTH
+    ) {
+      return json({ error: 'callInviteId too long' }, 400, cors);
+    }
+    const callInviteId = suppliedCallInviteId ?? crypto.randomUUID();
     const expiresAt = numOrUndef(body?.expiresAt) ?? startedAt + CALLING_TTL_MS;
     await env.USER_MAILBOX.getByName(calleeId).deliver({
       t: 'invite',

@@ -76,6 +76,32 @@ describe('shared push notification contracts', () => {
     expect(request.callData.type).toBe('incoming_call');
   });
 
+  it('requires invite correlation only for incoming-call requests', () => {
+    expect(() =>
+      parseSendCallNotificationRequest({
+        targetUserId: 'bob',
+        callData: {
+          type: 'incoming_call',
+          roomId: 'room-123',
+          callerId: 'alice',
+          callerName: 'Alice',
+        },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      parseSendCallNotificationRequest({
+        targetUserId: 'bob',
+        callData: {
+          type: 'missed_call',
+          roomId: 'room-123',
+          callerId: 'alice',
+          callerName: 'Alice',
+        },
+      }),
+    ).not.toThrow();
+  });
+
   it('parses registerPushSubscription request bodies', () => {
     const request = parseRegisterPushSubscriptionRequest({
       subscription: {

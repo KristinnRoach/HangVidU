@@ -169,13 +169,17 @@ export function CallHandshakeProvider(props: ParentProps) {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     const hasAcceptMarker = params.get('accept') === '1';
+    const initialNotificationDetails =
+      incomingCallNotificationDetailsFromParams(params);
     const [queuedNotificationDetails, setQueuedNotificationDetails] =
       createSignal<IncomingCallNotificationDetails | null>(
-        incomingCallNotificationDetailsFromParams(params),
+        initialNotificationDetails,
       );
-    const [wantAcceptRoomId, setWantAcceptRoomId] = createSignal<string | null>(
+    const [wantAcceptCallInviteId, setWantAcceptCallInviteId] = createSignal<
+      string | null
+    >(
       ENABLE_NOTIFICATION_AUTO_ACCEPT && hasAcceptMarker
-        ? params.get('conversationId')
+        ? (initialNotificationDetails?.callInviteId ?? null)
         : null,
     );
     if (hasAcceptMarker) {
@@ -202,9 +206,9 @@ export function CallHandshakeProvider(props: ParentProps) {
         if (
           ENABLE_NOTIFICATION_AUTO_ACCEPT &&
           payload.accept &&
-          typeof payload.roomId === 'string'
+          notificationDetails
         ) {
-          setWantAcceptRoomId(payload.roomId);
+          setWantAcceptCallInviteId(notificationDetails.callInviteId);
         }
       },
     );
@@ -220,9 +224,9 @@ export function CallHandshakeProvider(props: ParentProps) {
 
     createEffect(() => {
       const call = incomingCall();
-      const roomId = wantAcceptRoomId();
-      if (roomId && call?.roomId === roomId) {
-        setWantAcceptRoomId(null);
+      const callInviteId = wantAcceptCallInviteId();
+      if (callInviteId && call?.callInviteId === callInviteId) {
+        setWantAcceptCallInviteId(null);
         controller.acceptIncoming();
       }
     });

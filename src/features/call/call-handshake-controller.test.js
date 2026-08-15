@@ -301,6 +301,88 @@ describe('CallHandshakeController', () => {
     }
   });
 
+  it('does not accept when the invite expires before a delayed join resolves', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-14T12:00:00Z'));
+    try {
+      const join = deferred();
+      let joinOptions;
+      const p2p = createP2PMock({
+        join: vi.fn((options) => {
+          joinOptions = options;
+          return join.promise;
+        }),
+      });
+      const controller = createController(p2p);
+
+      controller.init();
+      mocks.incomingCallback?.({
+        type: 'invite',
+        invite: {
+          callInviteId: CALL_INVITE_ID,
+          roomId: 'room-1',
+          callerId: 'caller-id',
+          callerName: 'Caller',
+          startedAt: Date.now(),
+          expiresAt: Date.now() + 1_000,
+        },
+      });
+      controller.acceptIncoming();
+      await flushPromises();
+
+      // Move the clock past the deadline without running the timeout callback.
+      vi.setSystemTime(Date.now() + 1_000);
+      join.resolve({ roomId: 'room-1', members: ['callee-id'] });
+      await flushPromises();
+
+      expect(joinOptions.signal.aborted).toBe(true);
+      expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('aborts an active acceptance when the invite is dismissed', async () => {
+    const join = deferred();
+    let joinOptions;
+    const onStateChange = vi.fn();
+    const p2p = createP2PMock({
+      join: vi.fn((options) => {
+        joinOptions = options;
+        return join.promise;
+      }),
+    });
+    const controller = createController(p2p, { onStateChange });
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+
+    mocks.incomingCallback?.({
+      type: 'cancel',
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      by: 'caller-id',
+    });
+
+    expect(joinOptions.signal.aborted).toBe(true);
+    expect(onStateChange).toHaveBeenLastCalledWith(null);
+
+    join.resolve({ roomId: 'room-1', members: ['callee-id'] });
+    await flushPromises();
+    expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+  });
+
   it('joins the room before notifying the caller that an incoming call was accepted', async () => {
     const join = deferred();
     const p2p = createP2PMock({ join: vi.fn(() => join.promise) });

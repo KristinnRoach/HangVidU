@@ -164,11 +164,15 @@ export class UserMailbox extends DurableObject<Env> {
     callInviteId?: string,
   ): Promise<void> {
     const key = responseKey(roomId);
-    if (callInviteId != null) {
-      const response = await this.ctx.storage.get<MailboxResponse>(key);
-      if (response?.callInviteId !== callInviteId) return;
+    if (callInviteId == null) {
+      await this.ctx.storage.delete(key);
+      return;
     }
-    await this.ctx.storage.delete(key);
+    await this.ctx.storage.transaction(async (storage) => {
+      const response = await storage.get<MailboxResponse>(key);
+      if (response?.callInviteId !== callInviteId) return;
+      await storage.delete(key);
+    });
   }
 
   private async storePendingInvite(invite: MailboxInvite): Promise<void> {
