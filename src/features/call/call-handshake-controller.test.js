@@ -424,9 +424,55 @@ describe('CallHandshakeController', () => {
     await flushPromises();
     expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith('[call] incoming acceptance stopped', {
-      reason: 'dismissed-during-acceptance',
+      reason: 'cancelled-during-acceptance',
       roomId: 'room-1',
       callInviteId: CALL_INVITE_ID,
+    });
+  });
+
+  it('keeps accepting when the responding callee receives its handled echo', async () => {
+    const response = deferred();
+    mocks.respondToIncomingCallInvite.mockReturnValue(response.promise);
+    let joinOptions;
+    const onStateChange = vi.fn();
+    const p2p = createP2PMock({
+      join: vi.fn(async (options) => {
+        joinOptions = options;
+        return { roomId: 'room-1', members: ['callee-id'] };
+      }),
+    });
+    const controller = createController(p2p, { onStateChange });
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+
+    mocks.incomingCallback?.({
+      type: 'handled',
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      by: 'callee-id',
+    });
+
+    expect(joinOptions.signal.aborted).toBe(false);
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      direction: 'accepting',
+      call: expect.objectContaining({ callInviteId: CALL_INVITE_ID }),
+    });
+
+    response.resolve();
+    await vi.waitFor(() => {
+      expect(onStateChange).toHaveBeenLastCalledWith(null);
     });
   });
 

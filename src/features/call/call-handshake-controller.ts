@@ -204,17 +204,20 @@ export class CallHandshakeController {
     this.unsubscribeIncomingCall = callService.onIncomingCall((event) => {
       if (event.type === 'cancel' || event.type === 'handled') {
         const state = this._handshakeState;
-        if (
-          state &&
-          (state.direction === 'incoming' || state.direction === 'accepting') &&
-          state.call.callInviteId === event.callInviteId
-        ) {
-          if (state.direction === 'accepting') {
+        if (state && state.call.callInviteId === event.callInviteId) {
+          if (state.direction === 'incoming') {
+            this.setHandshakeState(null);
+          } else if (
+            state.direction === 'accepting' &&
+            event.type === 'cancel'
+          ) {
+            // `handled` is echoed to the responding callee too; only a caller
+            // cancellation invalidates an acceptance already in progress.
             this.incomingAcceptanceAbortController?.abort(
-              new DOMException('Call invite dismissed', 'AbortError'),
+              new DOMException('Call invite cancelled', 'AbortError'),
             );
+            this.setHandshakeState(null);
           }
-          this.setHandshakeState(null);
         }
         return;
       }
@@ -709,8 +712,8 @@ export class CallHandshakeController {
             reason instanceof DOMException && reason.name === 'TimeoutError'
               ? 'expired-during-acceptance'
               : reason instanceof DOMException &&
-                  reason.message === 'Call invite dismissed'
-                ? 'dismissed-during-acceptance'
+                  reason.message === 'Call invite cancelled'
+                ? 'cancelled-during-acceptance'
                 : null;
           if (stopReason) {
             console.log('[call] incoming acceptance stopped', {
