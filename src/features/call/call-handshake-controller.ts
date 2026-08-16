@@ -913,7 +913,7 @@ export class CallHandshakeController {
     this.clearCalleeBusyResetTimeout();
     this.resetReconnectState();
     this.stopPendingOutgoingLocalStream();
-    this.activeOutgoingCall = undefined;
+    this.publishCompletedCall();
     this.setHandshakeState(null);
     this.onCalleeBusy(false);
     void this.p2p.dispose().catch((err) => {
