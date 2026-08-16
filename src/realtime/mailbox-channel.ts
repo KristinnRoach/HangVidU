@@ -66,9 +66,18 @@ export function createMailboxChannel(
       try {
         parsed = JSON.parse(event.data as string);
       } catch {
+        console.warn('[mailbox-channel] ignored malformed message');
         return;
       }
-      if (!isMailboxEnvelope(parsed)) return;
+      if (!isMailboxEnvelope(parsed)) {
+        console.warn('[mailbox-channel] ignored invalid envelope', {
+          type:
+            parsed && typeof parsed === 'object' && 't' in parsed
+              ? (parsed as { t?: unknown }).t
+              : undefined,
+        });
+        return;
+      }
       handlers.forEach((h) => h(parsed));
     });
     socket.addEventListener('close', () => {

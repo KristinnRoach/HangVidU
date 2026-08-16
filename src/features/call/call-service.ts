@@ -9,8 +9,8 @@ import { reportApiAuthFailure } from '../../infra/api-auth-failure.js';
 
 export type IncomingCallEvent =
   | { type: 'invite'; invite: MailboxInvite }
-  | { type: 'cancel'; roomId: string; by: string }
-  | { type: 'handled'; roomId: string; by: string };
+  | { type: 'cancel'; callInviteId: string; roomId: string; by: string }
+  | { type: 'handled'; callInviteId: string; roomId: string; by: string };
 
 interface CallServiceOptions {
   localUID: string;
@@ -164,6 +164,7 @@ export class CallService {
       } else if (envelope.t === 'cancel' || envelope.t === 'handled') {
         callback({
           type: envelope.t,
+          callInviteId: envelope.callInviteId,
           roomId: envelope.roomId,
           by: envelope.by,
         });
@@ -172,17 +173,20 @@ export class CallService {
   }
 
   async sendOutgoingCallInvite({
+    callInviteId,
     roomId,
     calleeId,
     callerName,
     audioOnly,
   }: {
+    callInviteId: string;
     roomId: string;
     calleeId: string;
     callerName: string;
     audioOnly: boolean;
   }): Promise<void> {
     await this.post('/calls/invite', {
+      callInviteId,
       conversationId: roomId,
       calleeId,
       callerName,
@@ -192,10 +196,12 @@ export class CallService {
   }
 
   async respondToIncomingCallInvite({
+    callInviteId,
     roomId,
     callerId,
     responseType,
   }: {
+    callInviteId: string;
     roomId: string;
     callerId: string;
     responseType: MailboxResponse['responseType'];
@@ -203,6 +209,7 @@ export class CallService {
     await this.post(
       '/calls/response',
       {
+        callInviteId,
         conversationId: roomId,
         callerId,
         responseType,
@@ -213,13 +220,16 @@ export class CallService {
   }
 
   cancelOutgoingCall({
+    callInviteId,
     calleeId,
     roomId,
   }: {
+    callInviteId: string;
     calleeId: string;
     roomId: string;
   }): Promise<void> {
     return this.post('/calls/cancel', {
+      callInviteId,
       conversationId: roomId,
       calleeId,
     });
@@ -236,8 +246,11 @@ export class CallService {
     });
   }
 
-  ackCallResponse(roomId: string): Promise<void> {
-    return this.post('/calls/response/ack', { conversationId: roomId });
+  ackCallResponse(roomId: string, callInviteId: string): Promise<void> {
+    return this.post('/calls/response/ack', {
+      conversationId: roomId,
+      callInviteId,
+    });
   }
 
   cleanup(): void {

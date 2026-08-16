@@ -62,10 +62,22 @@ function incomingCallNotificationDetailsFromParams(
   // plain open-conversation link handled by SWNavigation.
   if (params.get('call') !== '1') return null;
   const roomId = params.get('conversationId');
+  const callInviteId = params.get('callInviteId');
   const callerId = params.get('callerId');
-  if (!roomId || !callerId) return null;
+  if (!callInviteId || !roomId || !callerId) {
+    console.warn('[call] ignored invalid incoming-call notification', {
+      source: 'url',
+      missing: [
+        ...(!callInviteId ? ['callInviteId'] : []),
+        ...(!roomId ? ['conversationId'] : []),
+        ...(!callerId ? ['callerId'] : []),
+      ],
+    });
+    return null;
+  }
 
   return {
+    callInviteId,
     roomId,
     callerId,
     callerName: params.get('callerName') || undefined,
@@ -77,14 +89,27 @@ function incomingCallNotificationDetailsFromParams(
 function incomingCallNotificationDetailsFromPayload(
   payload: IncomingCallNotificationOpenedPayload,
 ): IncomingCallNotificationDetails | null {
-  if (
-    typeof payload.roomId !== 'string' ||
-    typeof payload.callerId !== 'string'
-  )
+  const callInviteId =
+    typeof payload.callInviteId === 'string' ? payload.callInviteId : undefined;
+  const roomId =
+    typeof payload.roomId === 'string' ? payload.roomId : undefined;
+  const callerId =
+    typeof payload.callerId === 'string' ? payload.callerId : undefined;
+  if (!callInviteId || !roomId || !callerId) {
+    console.warn('[call] ignored invalid incoming-call notification', {
+      source: 'event',
+      missing: [
+        ...(!callInviteId ? ['callInviteId'] : []),
+        ...(!roomId ? ['roomId'] : []),
+        ...(!callerId ? ['callerId'] : []),
+      ],
+    });
     return null;
+  }
   return {
-    roomId: payload.roomId,
-    callerId: payload.callerId,
+    callInviteId,
+    roomId,
+    callerId,
     callerName:
       typeof payload.callerName === 'string' ? payload.callerName : undefined,
     audioOnly: payload.audioOnly === true,
@@ -165,13 +190,17 @@ export function CallHandshakeProvider(props: ParentProps) {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     const hasAcceptMarker = params.get('accept') === '1';
+    const initialNotificationDetails =
+      incomingCallNotificationDetailsFromParams(params);
     const [queuedNotificationDetails, setQueuedNotificationDetails] =
       createSignal<IncomingCallNotificationDetails | null>(
-        incomingCallNotificationDetailsFromParams(params),
+        initialNotificationDetails,
       );
-    const [wantAcceptRoomId, setWantAcceptRoomId] = createSignal<string | null>(
+    const [wantAcceptCallInviteId, setWantAcceptCallInviteId] = createSignal<
+      string | null
+    >(
       ENABLE_NOTIFICATION_AUTO_ACCEPT && hasAcceptMarker
-        ? params.get('conversationId')
+        ? (initialNotificationDetails?.callInviteId ?? null)
         : null,
     );
     if (hasAcceptMarker) {
@@ -198,9 +227,9 @@ export function CallHandshakeProvider(props: ParentProps) {
         if (
           ENABLE_NOTIFICATION_AUTO_ACCEPT &&
           payload.accept &&
-          typeof payload.roomId === 'string'
+          notificationDetails
         ) {
-          setWantAcceptRoomId(payload.roomId);
+          setWantAcceptCallInviteId(notificationDetails.callInviteId);
         }
       },
     );
@@ -216,9 +245,9 @@ export function CallHandshakeProvider(props: ParentProps) {
 
     createEffect(() => {
       const call = incomingCall();
-      const roomId = wantAcceptRoomId();
-      if (roomId && call?.roomId === roomId) {
-        setWantAcceptRoomId(null);
+      const callInviteId = wantAcceptCallInviteId();
+      if (callInviteId && call?.callInviteId === callInviteId) {
+        setWantAcceptCallInviteId(null);
         controller.acceptIncoming();
       }
     });

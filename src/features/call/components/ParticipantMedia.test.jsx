@@ -172,6 +172,7 @@ describe('ParticipantMedia', () => {
   });
 
   it('shows the continue-call prompt only for autoplay-gesture rejections', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     HTMLMediaElement.prototype.play.mockRejectedValue(
       Object.assign(new Error('gesture required'), {
         name: 'NotAllowedError',
@@ -185,9 +186,15 @@ describe('ParticipantMedia', () => {
         'Continue call',
       );
     });
+    expect(warn).toHaveBeenCalledWith('[ParticipantMedia] play() rejected', {
+      variant: 'remote',
+      name: 'NotAllowedError',
+      message: 'gesture required',
+    });
   });
 
   it('ignores transient play() rejections like AbortError', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     HTMLMediaElement.prototype.play.mockRejectedValue(
       Object.assign(new Error('interrupted by a new load request'), {
         name: 'AbortError',
@@ -203,5 +210,6 @@ describe('ParticipantMedia', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(container.querySelector('button')).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
   });
 });

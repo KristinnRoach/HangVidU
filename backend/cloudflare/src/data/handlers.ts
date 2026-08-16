@@ -45,6 +45,7 @@ import { isSystemMessageType } from '../../../../shared/conversation-channel/pro
 import { CALLING_TTL_MS } from '../../../../shared/constants';
 
 const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
+const MAX_CALL_INVITE_ID_LENGTH = 128;
 const TURN_CREDENTIAL_TTL_SECONDS = 3_600;
 const TURN_CREDENTIAL_FETCH_TIMEOUT_MS = 5_000;
 
@@ -209,10 +210,21 @@ export async function handleDataRequest(
       return json({ error: 'not_found' }, 404, cors);
     }
     const startedAt = now;
+    // The fallback keeps already-deployed clients working while every new
+    // client creates and carries its own callInviteId end to end.
+    const suppliedCallInviteId = str(body?.callInviteId);
+    if (
+      suppliedCallInviteId &&
+      suppliedCallInviteId.length > MAX_CALL_INVITE_ID_LENGTH
+    ) {
+      return json({ error: 'callInviteId too long' }, 400, cors);
+    }
+    const callInviteId = suppliedCallInviteId ?? crypto.randomUUID();
     const expiresAt = numOrUndef(body?.expiresAt) ?? startedAt + CALLING_TTL_MS;
     await env.USER_MAILBOX.getByName(calleeId).deliver({
       t: 'invite',
       invite: {
+        callInviteId,
         roomId: conversationId,
         callerId,
         calleeId,
@@ -222,12 +234,13 @@ export async function handleDataRequest(
         expiresAt,
       },
     });
-    return json({ ok: true }, 200, cors);
+    return json({ ok: true, callInviteId }, 200, cors);
   }
 
   if (request.method === 'POST' && url.pathname === '/calls/response') {
     const body = await readJson(request);
     const conversationId = str(body?.conversationId);
+    const callInviteId = str(body?.callInviteId) ?? undefined;
     const targetCallerId = str(body?.callerId);
     const responseType = str(body?.responseType);
     if (
@@ -251,29 +264,55 @@ export async function handleDataRequest(
     if (otherMember !== targetCallerId) {
       return json({ error: 'not_found' }, 404, cors);
     }
-    // Retire this invite on the responder's OWN other sockets (other tabs/
-    // devices still ringing): `handled` both clears the retained invite and
-    // fans a dismiss to them. `by` is the responder who handled it.
-    await env.USER_MAILBOX.getByName(callerId).deliver({
-      t: 'handled',
-      roomId: conversationId,
-      by: callerId,
-    });
-    await env.USER_MAILBOX.getByName(targetCallerId).deliver({
-      t: 'response',
-      response: {
+    const calleeMailbox = env.USER_MAILBOX.getByName(callerId);
+    const callerMailbox = env.USER_MAILBOX.getByName(targetCallerId);
+    const invite = await calleeMailbox.handlePendingCallInvite(
+      conversationId,
+      callInviteId,
+      targetCallerId,
+      callerId,
+    );
+    if (!invite) {
+      // Accepted responses retry after client-side request timeouts. If the
+      // first request already stored this exact response, the retry succeeded.
+      const isAcceptedRetry =
+        responseType === 'accepted' &&
+        (await callerMailbox.hasPendingAcceptedResponse(
+          conversationId,
+          callInviteId,
+          callerId,
+        ));
+      if (isAcceptedRetry) return json({ ok: true }, 200, cors);
+      return json({ error: 'stale_call_invite' }, 409, cors);
+    }
+    try {
+      await callerMailbox.deliver({
+        t: 'response',
+        response: {
+          callInviteId: invite.callInviteId,
+          roomId: conversationId,
+          responseType,
+          by: callerId,
+          respondedAt: now,
+          expiresAt: numOrUndef(body?.expiresAt),
+        },
+      });
+    } catch (err) {
+      console.error('[data] call response delivery failed after consumption', {
         roomId: conversationId,
+        callInviteId: invite.callInviteId,
         responseType,
-        by: callerId,
-        respondedAt: now,
-        expiresAt: numOrUndef(body?.expiresAt),
-      },
-    });
+        err,
+      });
+      throw err;
+    }
     return json({ ok: true }, 200, cors);
   }
 
   if (request.method === 'POST' && url.pathname === '/calls/response/ack') {
-    const conversationId = str((await readJson(request))?.conversationId);
+    const body = await readJson(request);
+    const conversationId = str(body?.conversationId);
+    const callInviteId = str(body?.callInviteId) ?? undefined;
     if (!conversationId)
       return json({ error: 'conversationId required' }, 400, cors);
     if (!(await isMember(env.DB, conversationId, callerId))) {
@@ -281,6 +320,7 @@ export async function handleDataRequest(
     }
     await env.USER_MAILBOX.getByName(callerId).clearPendingResponse(
       conversationId,
+      callInviteId,
     );
     return json({ ok: true }, 200, cors);
   }
@@ -288,6 +328,7 @@ export async function handleDataRequest(
   if (request.method === 'POST' && url.pathname === '/calls/cancel') {
     const body = await readJson(request);
     const conversationId = str(body?.conversationId);
+    const callInviteId = str(body?.callInviteId) ?? undefined;
     const calleeId = str(body?.calleeId);
     if (!conversationId || !calleeId) {
       return json({ error: 'conversationId and calleeId required' }, 400, cors);
@@ -298,11 +339,12 @@ export async function handleDataRequest(
     ) {
       return json({ error: 'not_found' }, 404, cors);
     }
-    await env.USER_MAILBOX.getByName(calleeId).deliver({
-      t: 'cancel',
-      roomId: conversationId,
-      by: callerId,
-    });
+    // Cancellation is idempotent when the invite is already gone.
+    await env.USER_MAILBOX.getByName(calleeId).cancelPendingCallInvite(
+      conversationId,
+      callInviteId,
+      callerId,
+    );
     return json({ ok: true }, 200, cors);
   }
 

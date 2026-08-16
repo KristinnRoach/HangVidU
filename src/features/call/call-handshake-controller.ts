@@ -90,6 +90,7 @@ const CONNECTED_TIMEOUT_MS = 20_000;
 const CONNECT_FAILED_DISPLAY_MS = 4_000;
 
 export type IncomingCallNotificationDetails = {
+  callInviteId: string;
   roomId: string;
   callerId: string;
   callerName?: string;
@@ -100,6 +101,7 @@ export type IncomingCallNotificationDetails = {
 type EnterRoomOptions = {
   memberCapacity?: number;
   autoExitOnEmpty?: boolean;
+  signal?: AbortSignal;
 };
 
 /** Why a call was torn down — logged so field reports are unambiguous. */
@@ -120,6 +122,7 @@ export class CallHandshakeController {
   private readonly onReconnectStatus: (status: CallReconnectStatus) => void;
 
   private _handshakeState: CallHandshakeState = null;
+  private incomingAcceptanceAbortController: AbortController | undefined;
   private incomingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -200,12 +203,21 @@ export class CallHandshakeController {
 
     this.unsubscribeIncomingCall = callService.onIncomingCall((event) => {
       if (event.type === 'cancel' || event.type === 'handled') {
-        if (
-          this._handshakeState &&
-          this._handshakeState.direction === 'incoming' &&
-          this._handshakeState.call.roomId === event.roomId
-        ) {
-          this.setHandshakeState(null);
+        const state = this._handshakeState;
+        if (state && state.call.callInviteId === event.callInviteId) {
+          if (state.direction === 'incoming') {
+            this.setHandshakeState(null);
+          } else if (
+            state.direction === 'accepting' &&
+            event.type === 'cancel'
+          ) {
+            // `handled` is echoed to the responding callee too; only a caller
+            // cancellation invalidates an acceptance already in progress.
+            this.incomingAcceptanceAbortController?.abort(
+              new DOMException('Call invite cancelled', 'AbortError'),
+            );
+            this.setHandshakeState(null);
+          }
         }
         return;
       }
@@ -217,9 +229,16 @@ export class CallHandshakeController {
     details: IncomingCallNotificationDetails,
   ): void {
     const localUID = getLoggedInUserId();
-    if (!localUID || !details.roomId || !details.callerId) return;
+    if (
+      !localUID ||
+      !details.callInviteId ||
+      !details.roomId ||
+      !details.callerId
+    )
+      return;
     const startedAt = details.startedAt ?? Date.now();
     const call: MailboxInvite = {
+      callInviteId: details.callInviteId,
       roomId: details.roomId,
       callerId: details.callerId,
       calleeId: localUID,
@@ -240,6 +259,7 @@ export class CallHandshakeController {
     if (this.isBusyForIncomingCall(call)) {
       callService
         .respondToIncomingCallInvite({
+          callInviteId: call.callInviteId,
           roomId: call.roomId,
           callerId: call.callerId,
           responseType: 'busy',
@@ -257,7 +277,7 @@ export class CallHandshakeController {
           const state = this._handshakeState;
           if (
             state?.direction === 'incoming' &&
-            state.call.roomId === call.roomId &&
+            state.call.callInviteId === call.callInviteId &&
             this.isExpired(state.call)
           ) {
             this.setHandshakeState(null);
@@ -326,6 +346,7 @@ export class CallHandshakeController {
     }
 
     const nextOutgoingCall: OutgoingCall = {
+      callInviteId: crypto.randomUUID(),
       calleeId,
       calleeName,
       callerId: localUID,
@@ -356,7 +377,8 @@ export class CallHandshakeController {
     let responseReceived = false;
     this.unsubCalleeResponse?.();
     this.unsubCalleeResponse = svc.onCalleeResponse(async (response) => {
-      if (!response || response.roomId !== roomId) return;
+      if (!response || response.callInviteId !== nextOutgoingCall.callInviteId)
+        return;
       responseReceived = true;
       this.clearOutgoingCallTracking();
       try {
@@ -394,7 +416,7 @@ export class CallHandshakeController {
         this.hangUp('enter-room-error');
       } finally {
         svc
-          .ackCallResponse(response.roomId)
+          .ackCallResponse(response.roomId, response.callInviteId)
           .catch((err) =>
             console.warn(
               '[CallHandshake] Failed to acknowledge call response:',
@@ -407,6 +429,7 @@ export class CallHandshakeController {
 
     try {
       await svc.sendOutgoingCallInvite({
+        callInviteId: nextOutgoingCall.callInviteId,
         roomId,
         calleeId,
         callerName,
@@ -426,7 +449,7 @@ export class CallHandshakeController {
       state &&
       !responseReceived &&
       state.direction === 'outgoing' &&
-      state.call.roomId === roomId
+      state.call.callInviteId === nextOutgoingCall.callInviteId
     ) {
       publish('evt:call:invite:sent', nextOutgoingCall);
     }
@@ -460,11 +483,19 @@ export class CallHandshakeController {
     localUID: string,
     audioOnly = false,
     getLocalStream?: () => Promise<MediaStream>,
-    { memberCapacity = 2, autoExitOnEmpty = true }: EnterRoomOptions = {},
+    {
+      memberCapacity = 2,
+      autoExitOnEmpty = true,
+      signal,
+    }: EnterRoomOptions = {},
   ) {
     const localStream = await (
-      getLocalStream ?? (() => this.getCallLocalStream(audioOnly))
+      getLocalStream ?? (() => this.getCallLocalStream(audioOnly, signal))
     )();
+    if (signal?.aborted) {
+      this.stopMediaStream(localStream);
+      throw signal.reason;
+    }
     this.resetReconnectState();
     let room;
     try {
@@ -489,6 +520,7 @@ export class CallHandshakeController {
         iceServersProvider: provideIceServers,
         iceRecovery: {},
         connectedTimeoutMs: CONNECTED_TIMEOUT_MS,
+        signal,
         onError: ({ error }) => this.handleRoomError(error),
         onMemberJoined: () => {
           // A (re)join cancels any in-progress reconnect grace; the peer's back.
@@ -521,11 +553,31 @@ export class CallHandshakeController {
     return room;
   }
 
-  private getCallLocalStream(audioOnly: boolean): Promise<MediaStream> {
-    return navigator.mediaDevices.getUserMedia({
+  private async getCallLocalStream(
+    audioOnly: boolean,
+    signal?: AbortSignal,
+  ): Promise<MediaStream> {
+    const streamPromise = navigator.mediaDevices.getUserMedia({
       video: audioOnly ? false : getVideoConstraints(),
       audio: getAudioConstraints(),
     });
+    if (!signal) return streamPromise;
+
+    const abortPromise = new Promise<never>((_, reject) => {
+      signal.addEventListener(
+        'abort',
+        () =>
+          reject(signal.reason ?? new DOMException('Aborted', 'AbortError')),
+        { once: true },
+      );
+    });
+    void streamPromise.then(
+      (stream) => {
+        if (signal.aborted) this.stopMediaStream(stream);
+      },
+      () => {},
+    );
+    return Promise.race([streamPromise, abortPromise]);
   }
 
   private stopMediaStream(stream: MediaStream): void {
@@ -548,7 +600,7 @@ export class CallHandshakeController {
       if (
         !state ||
         state.direction !== 'outgoing' ||
-        state.call.roomId !== call.roomId
+        state.call.callInviteId !== call.callInviteId
       )
         return;
       this.setHandshakeState(null);
@@ -556,6 +608,7 @@ export class CallHandshakeController {
       this.stopPendingOutgoingLocalStream();
       callService
         .cancelOutgoingCall({
+          callInviteId: call.callInviteId,
           calleeId: call.calleeId,
           roomId: call.roomId,
         })
@@ -580,6 +633,7 @@ export class CallHandshakeController {
     publish('evt:call:invite:unanswered', state.call);
     svc
       .cancelOutgoingCall({
+        callInviteId: state.call.callInviteId,
         calleeId: state.call.calleeId,
         roomId: state.call.roomId,
       })
@@ -595,27 +649,96 @@ export class CallHandshakeController {
     const state = this._handshakeState;
     if (!state || state.direction !== 'incoming') return;
     if (this.isExpired(state.call)) {
+      console.log('[call] incoming acceptance stopped', {
+        reason: 'expired-before-start',
+        roomId: state.call.roomId,
+        callInviteId: state.call.callInviteId,
+      });
       this.setHandshakeState(null);
       return;
     }
     const svc = getCallService();
     const localUID = getLoggedInUserId();
-    if (!svc || !localUID) return;
+    if (!svc || !localUID) {
+      console.warn('[call] incoming acceptance unavailable', {
+        reason: svc ? 'not-authenticated' : 'service-unavailable',
+        roomId: state.call.roomId,
+        callInviteId: state.call.callInviteId,
+      });
+      return;
+    }
     this.clearOutgoingCallTracking();
+    this.incomingAcceptanceAbortController?.abort();
+    const abortController = new AbortController();
+    this.incomingAcceptanceAbortController = abortController;
     this.setHandshakeState({ direction: 'accepting', call: state.call });
-    this.enterRoom(state.call.roomId, localUID, state.call.audioOnly ?? false)
-      .then(() =>
-        svc.respondToIncomingCallInvite({
+    if (state.call.expiresAt != null) {
+      this.incomingCallTimeoutId = setTimeout(
+        () => {
+          this.incomingCallTimeoutId = undefined;
+          abortController.abort(
+            new DOMException('Call invite expired', 'TimeoutError'),
+          );
+        },
+        Math.max(0, state.call.expiresAt - Date.now()),
+      );
+    }
+    const { signal } = abortController;
+    this.enterRoom(
+      state.call.roomId,
+      localUID,
+      state.call.audioOnly ?? false,
+      undefined,
+      { signal },
+    )
+      .then(() => {
+        if (this.isExpired(state.call) && !signal.aborted) {
+          abortController.abort(
+            new DOMException('Call invite expired', 'TimeoutError'),
+          );
+        }
+        if (signal.aborted) throw signal.reason;
+        return svc.respondToIncomingCallInvite({
+          callInviteId: state.call.callInviteId,
           roomId: state.call.roomId,
           callerId: state.call.callerId,
           responseType: 'accepted',
-        }),
-      )
+        });
+      })
       .catch((err) => {
+        if (signal.aborted) {
+          const reason = signal.reason;
+          const stopReason =
+            reason instanceof DOMException && reason.name === 'TimeoutError'
+              ? 'expired-during-acceptance'
+              : reason instanceof DOMException &&
+                  reason.message === 'Call invite cancelled'
+                ? 'cancelled-during-acceptance'
+                : null;
+          if (stopReason) {
+            console.log('[call] incoming acceptance stopped', {
+              reason: stopReason,
+              roomId: state.call.roomId,
+              callInviteId: state.call.callInviteId,
+            });
+          }
+          return;
+        }
         console.error('Error accepting incoming call:', err);
         this.hangUp('accept-error');
       })
-      .finally(() => this.setHandshakeState(null));
+      .finally(() => {
+        if (this.incomingAcceptanceAbortController === abortController) {
+          this.incomingAcceptanceAbortController = undefined;
+        }
+        const current = this._handshakeState;
+        if (
+          current?.direction === 'accepting' &&
+          current.call.callInviteId === state.call.callInviteId
+        ) {
+          this.setHandshakeState(null);
+        }
+      });
   };
 
   declineIncoming = (): void => {
@@ -626,6 +749,7 @@ export class CallHandshakeController {
     this.setHandshakeState(null);
     svc
       .respondToIncomingCallInvite({
+        callInviteId: state.call.callInviteId,
         roomId: state.call.roomId,
         callerId: state.call.callerId,
         responseType: 'rejected',
@@ -747,6 +871,8 @@ export class CallHandshakeController {
 
   cleanup(): void {
     this.outgoingMediaAttempt += 1;
+    this.incomingAcceptanceAbortController?.abort();
+    this.incomingAcceptanceAbortController = undefined;
     this.unsubscribeIncomingCall?.();
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();

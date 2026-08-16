@@ -110,12 +110,14 @@ function createController(p2p, overrides = {}) {
 
 const { CallHandshakeController } =
   await import('./call-handshake-controller.js');
+const CALL_INVITE_ID = 'call-invite-1';
 
 describe('CallHandshakeController', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.incomingCallback = undefined;
     mocks.responseCallback = undefined;
+    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(CALL_INVITE_ID);
     Object.defineProperty(globalThis, 'navigator', {
       value: {
         mediaDevices: {
@@ -156,6 +158,7 @@ describe('CallHandshakeController', () => {
     mocks.incomingCallback?.({
       type: 'invite',
       invite: {
+        callInviteId: CALL_INVITE_ID,
         roomId: 'room-1',
         callerId: 'caller-id',
         callerName: 'Caller',
@@ -165,6 +168,7 @@ describe('CallHandshakeController', () => {
     });
     mocks.incomingCallback?.({
       type: 'handled',
+      callInviteId: CALL_INVITE_ID,
       roomId: 'room-1',
       by: 'callee-id',
     });
@@ -183,6 +187,7 @@ describe('CallHandshakeController', () => {
       mocks.incomingCallback?.({
         type: 'invite',
         invite: {
+          callInviteId: CALL_INVITE_ID,
           roomId: 'room-1',
           callerId: 'caller-id',
           callerName: 'Caller',
@@ -209,6 +214,7 @@ describe('CallHandshakeController', () => {
     mocks.incomingCallback?.({
       type: 'invite',
       invite: {
+        callInviteId: CALL_INVITE_ID,
         roomId: 'room-1',
         callerId: 'caller-id',
         callerName: 'Caller',
@@ -224,6 +230,7 @@ describe('CallHandshakeController', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-14T12:00:00Z'));
     try {
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
       const onStateChange = vi.fn();
       const p2p = createP2PMock();
       const controller = createController(p2p, { onStateChange });
@@ -232,6 +239,7 @@ describe('CallHandshakeController', () => {
       mocks.incomingCallback?.({
         type: 'invite',
         invite: {
+          callInviteId: CALL_INVITE_ID,
           roomId: 'room-1',
           callerId: 'caller-id',
           callerName: 'Caller',
@@ -247,9 +255,225 @@ describe('CallHandshakeController', () => {
       expect(mocks.getUserMedia).not.toHaveBeenCalled();
       expect(p2p.join).not.toHaveBeenCalled();
       expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith('[call] incoming acceptance stopped', {
+        reason: 'expired-before-start',
+        roomId: 'room-1',
+        callInviteId: CALL_INVITE_ID,
+      });
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('logs when incoming acceptance cannot start without its service', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const controller = createController(createP2PMock());
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+    mocks.getCallService.mockReturnValue(null);
+
+    controller.acceptIncoming();
+
+    expect(warn).toHaveBeenCalledWith(
+      '[call] incoming acceptance unavailable',
+      {
+        reason: 'service-unavailable',
+        roomId: 'room-1',
+        callInviteId: CALL_INVITE_ID,
+      },
+    );
+  });
+
+  it('aborts acceptance when media permission resolves after invite expiry', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-14T12:00:00Z'));
+    try {
+      const localStream = createMediaStream({ audio: true, video: true });
+      const pendingMedia = deferred();
+      mocks.getUserMedia.mockReturnValue(pendingMedia.promise);
+      const onStateChange = vi.fn();
+      const p2p = createP2PMock();
+      const controller = createController(p2p, { onStateChange });
+
+      controller.init();
+      mocks.incomingCallback?.({
+        type: 'invite',
+        invite: {
+          callInviteId: CALL_INVITE_ID,
+          roomId: 'room-1',
+          callerId: 'caller-id',
+          callerName: 'Caller',
+          startedAt: Date.now(),
+          expiresAt: Date.now() + 1_000,
+        },
+      });
+      controller.acceptIncoming();
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      await flushPromises();
+
+      expect(onStateChange).toHaveBeenLastCalledWith(null);
+      expect(p2p.join).not.toHaveBeenCalled();
+      expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+
+      pendingMedia.resolve(localStream);
+      await flushPromises();
+      localStream
+        .getTracks()
+        .forEach((track) => expect(track.stop).toHaveBeenCalledOnce());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not accept when the invite expires before a delayed join resolves', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-14T12:00:00Z'));
+    try {
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const join = deferred();
+      let joinOptions;
+      const p2p = createP2PMock({
+        join: vi.fn((options) => {
+          joinOptions = options;
+          return join.promise;
+        }),
+      });
+      const controller = createController(p2p);
+
+      controller.init();
+      mocks.incomingCallback?.({
+        type: 'invite',
+        invite: {
+          callInviteId: CALL_INVITE_ID,
+          roomId: 'room-1',
+          callerId: 'caller-id',
+          callerName: 'Caller',
+          startedAt: Date.now(),
+          expiresAt: Date.now() + 1_000,
+        },
+      });
+      controller.acceptIncoming();
+      await flushPromises();
+
+      // Move the clock past the deadline without running the timeout callback.
+      vi.setSystemTime(Date.now() + 1_000);
+      join.resolve({ roomId: 'room-1', members: ['callee-id'] });
+      await flushPromises();
+
+      expect(joinOptions.signal.aborted).toBe(true);
+      expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith('[call] incoming acceptance stopped', {
+        reason: 'expired-during-acceptance',
+        roomId: 'room-1',
+        callInviteId: CALL_INVITE_ID,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('aborts an active acceptance when the invite is dismissed', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const join = deferred();
+    let joinOptions;
+    const onStateChange = vi.fn();
+    const p2p = createP2PMock({
+      join: vi.fn((options) => {
+        joinOptions = options;
+        return join.promise;
+      }),
+    });
+    const controller = createController(p2p, { onStateChange });
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+
+    mocks.incomingCallback?.({
+      type: 'cancel',
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      by: 'caller-id',
+    });
+
+    expect(joinOptions.signal.aborted).toBe(true);
+    expect(onStateChange).toHaveBeenLastCalledWith(null);
+
+    join.resolve({ roomId: 'room-1', members: ['callee-id'] });
+    await flushPromises();
+    expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith('[call] incoming acceptance stopped', {
+      reason: 'cancelled-during-acceptance',
+      roomId: 'room-1',
+      callInviteId: CALL_INVITE_ID,
+    });
+  });
+
+  it('keeps accepting when the responding callee receives its handled echo', async () => {
+    const response = deferred();
+    mocks.respondToIncomingCallInvite.mockReturnValue(response.promise);
+    let joinOptions;
+    const onStateChange = vi.fn();
+    const p2p = createP2PMock({
+      join: vi.fn(async (options) => {
+        joinOptions = options;
+        return { roomId: 'room-1', members: ['callee-id'] };
+      }),
+    });
+    const controller = createController(p2p, { onStateChange });
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+
+    mocks.incomingCallback?.({
+      type: 'handled',
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      by: 'callee-id',
+    });
+
+    expect(joinOptions.signal.aborted).toBe(false);
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      direction: 'accepting',
+      call: expect.objectContaining({ callInviteId: CALL_INVITE_ID }),
+    });
+
+    response.resolve();
+    await vi.waitFor(() => {
+      expect(onStateChange).toHaveBeenLastCalledWith(null);
+    });
   });
 
   it('joins the room before notifying the caller that an incoming call was accepted', async () => {
@@ -262,6 +486,7 @@ describe('CallHandshakeController', () => {
     mocks.incomingCallback?.({
       type: 'invite',
       invite: {
+        callInviteId: CALL_INVITE_ID,
         roomId: 'room-1',
         callerId: 'caller-id',
         callerName: 'Caller',
@@ -294,6 +519,7 @@ describe('CallHandshakeController', () => {
     await flushPromises();
 
     expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledWith({
+      callInviteId: CALL_INVITE_ID,
       roomId: 'room-1',
       callerId: 'caller-id',
       responseType: 'accepted',
@@ -325,6 +551,7 @@ describe('CallHandshakeController', () => {
     });
     const controller = createController(p2p);
     controller.showIncomingCallFromNotification({
+      callInviteId: CALL_INVITE_ID,
       roomId: 'room-1',
       callerId: 'caller-id',
     });
@@ -373,6 +600,7 @@ describe('CallHandshakeController', () => {
       });
       const controller = createController(p2p);
       controller.showIncomingCallFromNotification({
+        callInviteId: CALL_INVITE_ID,
         roomId: 'room-1',
         callerId: 'caller-id',
       });
@@ -407,6 +635,7 @@ describe('CallHandshakeController', () => {
     });
     const controller = createController(p2p);
     controller.showIncomingCallFromNotification({
+      callInviteId: CALL_INVITE_ID,
       roomId: 'room-1',
       callerId: 'caller-id',
     });
@@ -448,6 +677,7 @@ describe('CallHandshakeController', () => {
     mocks.incomingCallback?.({
       type: 'invite',
       invite: {
+        callInviteId: CALL_INVITE_ID,
         roomId: 'room-1',
         callerId: 'caller-id',
         callerName: 'Caller',
@@ -495,6 +725,7 @@ describe('CallHandshakeController', () => {
       const controller = createController(p2p, { onReconnectStatus });
 
       controller.showIncomingCallFromNotification({
+        callInviteId: CALL_INVITE_ID,
         roomId: 'room-1',
         callerId: 'caller-id',
         callerName: 'Caller',
@@ -541,6 +772,7 @@ describe('CallHandshakeController', () => {
       const controller = createController(p2p, { onReconnectStatus });
 
       controller.showIncomingCallFromNotification({
+        callInviteId: CALL_INVITE_ID,
         roomId: 'room-1',
         callerId: 'caller-id',
         callerName: 'Caller',
@@ -592,6 +824,7 @@ describe('CallHandshakeController', () => {
     const controller = createController(p2p, { onReconnectStatus });
 
     controller.showIncomingCallFromNotification({
+      callInviteId: CALL_INVITE_ID,
       roomId: 'room-1',
       callerId: 'caller-id',
       callerName: 'Caller',
@@ -629,6 +862,7 @@ describe('CallHandshakeController', () => {
       const controller = createController(p2p, { onReconnectStatus });
 
       controller.showIncomingCallFromNotification({
+        callInviteId: CALL_INVITE_ID,
         roomId: 'room-1',
         callerId: 'caller-id',
         callerName: 'Caller',
@@ -670,6 +904,7 @@ describe('CallHandshakeController', () => {
     mocks.incomingCallback?.({
       type: 'invite',
       invite: {
+        callInviteId: CALL_INVITE_ID,
         roomId: 'room-1',
         callerId: 'caller-id',
         callerName: 'Caller',
@@ -705,6 +940,7 @@ describe('CallHandshakeController', () => {
     expect(mocks.responseCallback).toBeTypeOf('function');
 
     const response = mocks.responseCallback?.({
+      callInviteId: CALL_INVITE_ID,
       roomId: 'room-1',
       responseType: 'accepted',
       by: 'callee-id',
@@ -722,7 +958,10 @@ describe('CallHandshakeController', () => {
 
     join.resolve({ roomId: 'room-1', members: ['caller-id'] });
     await response;
-    expect(mocks.ackCallResponse).toHaveBeenCalledWith('room-1');
+    expect(mocks.ackCallResponse).toHaveBeenCalledWith(
+      'room-1',
+      CALL_INVITE_ID,
+    );
   });
 
   it('publishes declined when the callee rejects', async () => {
@@ -737,6 +976,7 @@ describe('CallHandshakeController', () => {
       audioOnly: false,
     });
     await mocks.responseCallback?.({
+      callInviteId: CALL_INVITE_ID,
       roomId: 'room-1',
       responseType: 'rejected',
       by: 'callee-id',

@@ -481,7 +481,11 @@ export class PushNotifications {
    * Closes every notification delivered by the current service worker.
    */
   async dismissAllNotifications() {
-    const registration = await this.getServiceWorkerRegistration();
+    const registration = await navigator.serviceWorker?.getRegistration();
+    if (!registration) {
+      this.activeNotifications.clear();
+      return;
+    }
     const notifications = await registration.getNotifications();
     notifications.forEach((notification) => notification.close());
     this.activeNotifications.clear();
@@ -589,6 +593,7 @@ export class PushNotifications {
 
   async formatCallNotification(callData) {
     const {
+      callInviteId,
       roomId,
       callerId,
       callerName,
@@ -604,6 +609,7 @@ export class PushNotifications {
     }
 
     return {
+      ...(type === 'incoming_call' && callInviteId ? { callInviteId } : {}),
       roomId,
       callerId,
       callerName: callerLabel,

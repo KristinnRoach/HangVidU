@@ -104,6 +104,7 @@ export const setup = createSingleFlightSetup({
     // Payload is the call's { calleeId, roomId, callerId, callerName }.
     const toSendArgs = (call) => ({
       targetUserId: call.calleeId,
+      callInviteId: call.callInviteId,
       roomId: call.roomId,
       callerId: call.callerId,
       callerName: call.callerName,

@@ -6,6 +6,7 @@ import { isIncomingCallType } from './notification-presentation.js';
 export function getNotificationNavigationPath(data, action) {
   const {
     type,
+    callInviteId,
     roomId,
     senderId,
     callerId,
@@ -21,6 +22,7 @@ export function getNotificationNavigationPath(data, action) {
     // call=1 routes the client to the incoming-call flow; a bare
     // conversationId just opens the conversation UI.
     const params = new URLSearchParams({ call: '1', conversationId: roomId });
+    if (callInviteId) params.set('callInviteId', callInviteId);
     if (callerId) params.set('callerId', callerId);
     if (callerName) params.set('callerName', callerName);
     if (audioOnly === true || audioOnly === 'true')

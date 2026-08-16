@@ -39,6 +39,7 @@ function dispatchUrl(url: URL): void {
     : null;
   if (callConversationId) {
     publish('evt:call:notification:opened', {
+      callInviteId: trimmedParam(url.searchParams, 'callInviteId') ?? undefined,
       roomId: callConversationId,
       callerId: trimmedParam(url.searchParams, 'callerId') ?? undefined,
       callerName: trimmedParam(url.searchParams, 'callerName') ?? undefined,

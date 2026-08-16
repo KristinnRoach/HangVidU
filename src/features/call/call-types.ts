@@ -1,6 +1,7 @@
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 
 export type OutgoingCall = {
+  callInviteId: string;
   calleeId: string;
   calleeName: string;
   callerId: string;

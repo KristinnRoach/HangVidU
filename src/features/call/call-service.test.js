@@ -64,12 +64,14 @@ describe('initCallService', () => {
     service.onIncomingCall(callback);
     mocks.envelopeCallback?.({
       t: 'handled',
+      callInviteId: 'call-invite-1',
       roomId: 'room-1',
       by: 'callee-id',
     });
 
     expect(callback).toHaveBeenCalledWith({
       type: 'handled',
+      callInviteId: 'call-invite-1',
       roomId: 'room-1',
       by: 'callee-id',
     });
@@ -91,6 +93,7 @@ describe('initCallService', () => {
     });
 
     const response = service.respondToIncomingCallInvite({
+      callInviteId: 'call-invite-1',
       roomId: 'room-1',
       callerId: 'caller-id',
       responseType: 'accepted',
@@ -104,6 +107,7 @@ describe('initCallService', () => {
     expect(url).toBe('http://localhost:8788/calls/response');
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body)).toEqual({
+      callInviteId: 'call-invite-1',
       conversationId: 'room-1',
       callerId: 'caller-id',
       responseType: 'accepted',
@@ -133,6 +137,7 @@ describe('initCallService', () => {
     });
 
     const response = service.respondToIncomingCallInvite({
+      callInviteId: 'call-invite-1',
       roomId: 'room-1',
       callerId: 'caller-id',
       responseType: 'accepted',
@@ -156,6 +161,7 @@ describe('initCallService', () => {
 
     const response = expect(
       service.respondToIncomingCallInvite({
+        callInviteId: 'call-invite-1',
         roomId: 'room-1',
         callerId: 'caller-id',
         responseType: 'rejected',

@@ -86,10 +86,68 @@ export class UserMailbox extends DurableObject<Env> {
         responseKey(envelope.response.roomId),
         envelope.response,
       );
-    } else if (envelope.t === 'cancel' || envelope.t === 'handled') {
-      await this.clearPendingInvite(envelope.roomId);
     }
 
+    this.broadcast(envelope);
+  }
+
+  async handlePendingCallInvite(
+    roomId: string,
+    callInviteId: string | undefined,
+    callerId: string,
+    by: string,
+  ): Promise<MailboxInvite | null> {
+    const invite = await this.takePendingCallInvite(
+      roomId,
+      callInviteId,
+      callerId,
+    );
+    if (!invite) return null;
+    this.broadcast({
+      t: 'handled',
+      callInviteId: invite.callInviteId,
+      roomId,
+      by,
+    });
+    return invite;
+  }
+
+  async cancelPendingCallInvite(
+    roomId: string,
+    callInviteId: string | undefined,
+    callerId: string,
+  ): Promise<void> {
+    const invite = await this.takePendingCallInvite(
+      roomId,
+      callInviteId,
+      callerId,
+    );
+    if (!invite) return;
+    this.broadcast({
+      t: 'cancel',
+      callInviteId: invite.callInviteId,
+      roomId,
+      by: callerId,
+    });
+  }
+
+  async hasPendingAcceptedResponse(
+    roomId: string,
+    callInviteId: string | undefined,
+    calleeId: string,
+  ): Promise<boolean> {
+    const response = await this.ctx.storage.get<MailboxResponse>(
+      responseKey(roomId),
+    );
+    return (
+      response?.responseType === 'accepted' &&
+      response.by === calleeId &&
+      (callInviteId == null || response.callInviteId === callInviteId) &&
+      (response.expiresAt == null || response.expiresAt > Date.now())
+    );
+  }
+
+  private broadcast(envelope: MailboxEnvelope): void {
     const payload = JSON.stringify(envelope);
     for (const ws of this.ctx.getWebSockets()) {
       try {
@@ -100,12 +158,20 @@ export class UserMailbox extends DurableObject<Env> {
     }
   }
 
-  async clearPendingInvite(roomId: string): Promise<void> {
-    await this.ctx.storage.delete(inviteKey(roomId));
-  }
-
-  async clearPendingResponse(roomId: string): Promise<void> {
-    await this.ctx.storage.delete(responseKey(roomId));
+  async clearPendingResponse(
+    roomId: string,
+    callInviteId?: string,
+  ): Promise<void> {
+    const key = responseKey(roomId);
+    if (callInviteId == null) {
+      await this.ctx.storage.delete(key);
+      return;
+    }
+    await this.ctx.storage.transaction(async (storage) => {
+      const response = await storage.get<MailboxResponse>(key);
+      if (response?.callInviteId !== callInviteId) return;
+      await storage.delete(key);
+    });
   }
 
   private async storePendingInvite(invite: MailboxInvite): Promise<void> {
@@ -115,6 +181,29 @@ export class UserMailbox extends DurableObject<Env> {
       return;
     }
     await this.ctx.storage.put(key, invite);
+  }
+
+  private async takePendingCallInvite(
+    roomId: string,
+    callInviteId: string | undefined,
+    callerId: string,
+  ): Promise<MailboxInvite | null> {
+    const key = inviteKey(roomId);
+    return this.ctx.storage.transaction(async (storage) => {
+      const invite = await storage.get<MailboxInvite>(key);
+      if (
+        !invite ||
+        invite.callerId !== callerId ||
+        (callInviteId != null && invite.callInviteId !== callInviteId)
+      )
+        return null;
+      if (invite.expiresAt != null && invite.expiresAt <= Date.now()) {
+        await storage.delete(key);
+        return null;
+      }
+      await storage.delete(key);
+      return invite;
+    });
   }
 
   /** All non-expired pending invites; sweeps any expired keys it encounters. */
