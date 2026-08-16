@@ -279,12 +279,22 @@ function SystemMessageRow(props: { message: SystemChatMessage }) {
     selectedConversation()?.members.find(
       (member) => member.user_id === props.message.senderId,
     )?.display_name ?? t('conversation.unknown_caller');
-  const text = () =>
-    props.message.callerUId === state.myUserId
+  const text = () => {
+    if (props.message.systemType === 'call.completed') {
+      const label = props.message.audioOnly
+        ? t('message.audioCall')
+        : t('message.videoCall');
+      return `${label} · ${formatCallDuration(props.message.durationSeconds)}`;
+    }
+    if (props.message.systemType === 'call.declined') {
+      return t('conversation.call_declined');
+    }
+    return props.message.callerUId === state.myUserId
       ? t('conversation.call_unanswered_outgoing')
       : t('conversation.call_unanswered_incoming', {
           name: callerName().split(' ')[0] ?? '',
         });
+  };
 
   return (
     <div class={styles.systemMessage} data-timestamp={props.message.sentAt}>
@@ -313,6 +323,15 @@ function SystemMessageRow(props: { message: SystemChatMessage }) {
       </Show>
     </div>
   );
+}
+
+function formatCallDuration(durationSeconds: number): string {
+  const hours = Math.floor(durationSeconds / 3600);
+  const minutes = Math.floor((durationSeconds % 3600) / 60);
+  const seconds = durationSeconds % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 function FileAttachment(props: {

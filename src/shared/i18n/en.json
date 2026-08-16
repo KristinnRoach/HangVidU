@@ -127,6 +127,7 @@
   "conversation.open_preview": "Open preview for {name}",
   "conversation.call_unanswered_outgoing": "Call not answered",
   "conversation.call_unanswered_incoming": "Missed call from {name}",
+  "conversation.call_declined": "Call declined",
   "conversation.unknown_caller": "Unknown caller",
   "message_input.placeholder": "Type a message...",
   "message.audioCall": "Audio call",

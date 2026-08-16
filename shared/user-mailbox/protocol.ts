@@ -50,7 +50,12 @@ export type MailboxEnvelope =
   | { t: 'handled'; callInviteId: string; roomId: string; by: string }
   // Fire-and-forget "a message landed in one of your conversations" ping, fanned
   // to every member except the sender. Not persisted (no resurface on reconnect).
-  | { t: 'activity'; conversationId: string; senderId: string; sentAt: number }
+  | {
+      t: 'activity';
+      conversationId: string;
+      senderId: string | null;
+      sentAt: number;
+    }
   // Fire-and-forget "someone sent you a contact request" nudge. Not persisted —
   // the recipient fetches pending requests from D1 on load (source of truth).
   | {
@@ -97,7 +102,7 @@ export function isMailboxEnvelope(value: unknown): value is MailboxEnvelope {
   if (e.t === 'activity') {
     return (
       typeof e.conversationId === 'string' &&
-      typeof e.senderId === 'string' &&
+      (typeof e.senderId === 'string' || e.senderId === null) &&
       typeof e.sentAt === 'number'
     );
   }

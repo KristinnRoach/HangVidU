@@ -780,17 +780,18 @@ export async function insertCallSystemMessage(
   messageId: string,
   callerUId: string,
   systemType: SystemMessageType,
+  body: string | null,
   now: number,
 ): Promise<{ message: MessageWithAttachments; created: boolean } | null> {
   const inserted = await db
     .prepare(
       `INSERT INTO messages
          (id, conversation_id, sender_id, kind, body, system_type, created_at)
-       VALUES (?, ?, ?, 'system', NULL, ?, ?)
+       VALUES (?, ?, ?, 'system', ?, ?, ?)
        ON CONFLICT(id) DO NOTHING
        RETURNING id`,
     )
-    .bind(messageId, conversationId, callerUId, systemType, now)
+    .bind(messageId, conversationId, callerUId, body, systemType, now)
     .first<{ id: string }>();
 
   const created = inserted !== null;
@@ -807,6 +808,7 @@ export async function insertCallSystemMessage(
     message.conversation_id !== conversationId ||
     message.sender_id !== callerUId ||
     message.kind !== 'system' ||
+    message.body !== body ||
     message.system_type !== systemType
   ) {
     return null;
@@ -1051,7 +1053,9 @@ export async function listConversations(
               (SELECT msg.created_at FROM messages msg
                 WHERE msg.conversation_id = c.id
                 ORDER BY msg.created_at DESC, msg.id DESC LIMIT 1) AS latest_sent_at,
-              (SELECT msg.sender_id FROM messages msg
+              (SELECT CASE WHEN msg.system_type = 'call.completed'
+                           THEN NULL ELSE msg.sender_id END
+                 FROM messages msg
                 WHERE msg.conversation_id = c.id
                 ORDER BY msg.created_at DESC, msg.id DESC LIMIT 1) AS latest_sender_id
        FROM conversations c

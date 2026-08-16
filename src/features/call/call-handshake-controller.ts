@@ -104,6 +104,11 @@ type EnterRoomOptions = {
   signal?: AbortSignal;
 };
 
+type ActiveOutgoingCall = OutgoingCall & {
+  connectedAt?: number;
+  disconnectedAt?: number;
+};
+
 /** Why a call was torn down — logged so field reports are unambiguous. */
 type HangUpReason =
   | 'user'
@@ -132,6 +137,7 @@ export class CallHandshakeController {
   private unsubCalleeResponse: (() => void) | undefined;
   private unsubscribeIncomingCall: (() => void) | undefined;
   private pendingOutgoingLocalStream: MediaStream | undefined;
+  private activeOutgoingCall: ActiveOutgoingCall | undefined;
   private outgoingMediaAttempt = 0;
   private lastBoundUID: string | undefined;
 
@@ -386,6 +392,7 @@ export class CallHandshakeController {
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
           }
+          this.activeOutgoingCall = { ...nextOutgoingCall };
           await this.enterRoom(
             response.roomId,
             localUID,
@@ -526,9 +533,18 @@ export class CallHandshakeController {
           // A (re)join cancels any in-progress reconnect grace; the peer's back.
           if (autoExitOnEmpty) this.cancelReconnectGrace();
         },
+        onDataChannelOpen: () => {
+          const call = this.activeOutgoingCall;
+          if (!call || call.roomId !== roomId) return;
+          call.connectedAt ??= Date.now();
+          call.disconnectedAt = undefined;
+        },
         onAlone: (detail) => {
           if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
           if (!autoExitOnEmpty) return;
+          if (this.activeOutgoingCall?.roomId === roomId) {
+            this.activeOutgoingCall.disconnectedAt = Date.now();
+          }
           // `left` = every departure that emptied the room was an explicit
           // signaling leave (intentional hangup) → exit now. `dropped` = a
           // silent drop → give the peer a grace window to re-join first.
@@ -773,6 +789,7 @@ export class CallHandshakeController {
       memberCount: this.p2p.members().length,
       state: this.p2p.state(),
     });
+    this.publishCompletedCall();
     this.resetReconnectState();
     // dispose() is async in @kidlib/p2p ≥0.4; hangUp stays sync (called from
     // click + timer callbacks). Surface teardown failures — a silently failed
@@ -781,6 +798,23 @@ export class CallHandshakeController {
       console.warn('[call] p2p dispose failed on hangUp:', err);
     });
   };
+
+  private publishCompletedCall(): void {
+    const call = this.activeOutgoingCall;
+    this.activeOutgoingCall = undefined;
+    if (call?.connectedAt == null) return;
+
+    const endedAt = call.disconnectedAt ?? Date.now();
+    publish('evt:call:session:completed', {
+      roomId: call.roomId,
+      startedAt: call.startedAt,
+      audioOnly: call.audioOnly,
+      durationSeconds: Math.max(
+        1,
+        Math.floor((endedAt - call.connectedAt) / 1000),
+      ),
+    });
+  }
 
   /**
    * A peer session that never reached `connected` within `connectedTimeoutMs`
@@ -879,6 +913,7 @@ export class CallHandshakeController {
     this.clearCalleeBusyResetTimeout();
     this.resetReconnectState();
     this.stopPendingOutgoingLocalStream();
+    this.activeOutgoingCall = undefined;
     this.setHandshakeState(null);
     this.onCalleeBusy(false);
     void this.p2p.dispose().catch((err) => {

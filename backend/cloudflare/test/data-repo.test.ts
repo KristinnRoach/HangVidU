@@ -4,6 +4,7 @@ import {
   directDmKey,
   getConversation,
   getReactionSummaries,
+  insertCallSystemMessage,
   insertMessage,
   isMember,
   listConversations,
@@ -306,6 +307,23 @@ describe('listConversations', () => {
     const [conversation] = await listConversations(db, 'user-a');
     expect(conversation.latest_sent_at).toBe(2000);
     expect(conversation.latest_sender_id).toBe('user-b');
+  });
+
+  it('treats completed calls as neutral list activity', async () => {
+    const convoId = await resolveOrCreateDirect(db, 'user-a', 'user-b', 1000);
+    await insertCallSystemMessage(
+      db,
+      convoId,
+      'completed-1',
+      'user-a',
+      'call.completed',
+      JSON.stringify({ audioOnly: true, durationSeconds: 83 }),
+      2000,
+    );
+
+    const [conversation] = await listConversations(db, 'user-b');
+    expect(conversation.latest_sent_at).toBe(2000);
+    expect(conversation.latest_sender_id).toBeNull();
   });
 
   it("surfaces the caller's own read marker, defaulting to 0", async () => {

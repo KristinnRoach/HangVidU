@@ -1,9 +1,15 @@
 import type { Reaction } from '@lib/reactions/solid/solid.js';
 import type {
+  CallCompletedMetadata,
   SystemMessageType,
   WireMessage,
 } from '../../../shared/conversation-channel/protocol';
-import type { ConversationId, MessageEnvelope, UserId } from './types.js';
+import type {
+  ConversationId,
+  MessageEnvelope,
+  SystemMessagePayload,
+  UserId,
+} from './types.js';
 
 export type IncomingMessage = MessageEnvelope & {
   reactions: Reaction[];
@@ -14,6 +20,7 @@ export type SendMessageInput = {
   kind: 'text' | 'file' | 'system';
   body?: string | null;
   systemType?: SystemMessageType;
+  metadata?: CallCompletedMetadata;
   attachment?: {
     r2Key: string;
     bucket: string;
@@ -56,14 +63,30 @@ export function toIncomingMessage(m: WireMessage): IncomingMessage | null {
 
   if (m.kind === 'system') {
     if (!m.systemType) return null;
-    return {
-      ...base,
-      payload: {
+    let payload: SystemMessagePayload;
+    if (m.systemType === 'call.completed') {
+      if (!m.systemMetadata) return null;
+      payload = {
         type: 'system',
-        systemType: m.systemType,
+        systemType: 'call.completed',
         callerUId: m.senderId as UserId,
-      },
-    };
+        audioOnly: m.systemMetadata.audioOnly,
+        durationSeconds: m.systemMetadata.durationSeconds,
+      };
+    } else if (m.systemType === 'call.declined') {
+      payload = {
+        type: 'system',
+        systemType: 'call.declined',
+        callerUId: m.senderId as UserId,
+      };
+    } else {
+      payload = {
+        type: 'system',
+        systemType: 'call.unanswered',
+        callerUId: m.senderId as UserId,
+      };
+    }
+    return { ...base, payload };
   }
 
   if (typeof m.body !== 'string') return null;
@@ -95,5 +118,13 @@ export function toSendMessageInput(message: MessageEnvelope): SendMessageInput {
     messageId: message.messageId,
     kind: 'system',
     systemType: payload.systemType,
+    ...(payload.systemType === 'call.completed'
+      ? {
+          metadata: {
+            audioOnly: payload.audioOnly,
+            durationSeconds: payload.durationSeconds,
+          },
+        }
+      : {}),
   };
 }

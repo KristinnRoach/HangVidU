@@ -7,7 +7,10 @@ import { resetConversationsState } from '../../stores/conversation/conversations
 import { resetConversationStore } from '../../stores/conversation/conversation-store.js';
 import { recordSystemMessage } from '../../stores/conversation/conversation-store.js';
 import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setup.js';
-import type { SystemMessageType } from '../../../shared/conversation-channel/protocol';
+import type {
+  CallCompletedMetadata,
+  SystemMessageType,
+} from '../../../shared/conversation-channel/protocol';
 
 export { ConversationPanel } from './components/ConversationPanel.js';
 
@@ -29,17 +32,19 @@ export const setup = createSingleFlightSetup({
         roomId: conversationId,
         startedAt,
       }: { roomId: string; startedAt: number },
+      metadata?: CallCompletedMetadata,
     ) => {
       const messageId = `${systemType}:${conversationId}:${startedAt}`;
-      void recordSystemMessage(conversationId, systemType, messageId).catch(
-        (error) => {
-          console.warn('[conversations] system message write failed:', {
-            systemType,
-            conversationId,
-            error,
-          });
-        },
-      );
+      const write = metadata
+        ? recordSystemMessage(conversationId, systemType, messageId, metadata)
+        : recordSystemMessage(conversationId, systemType, messageId);
+      void write.catch((error) => {
+        console.warn('[conversations] system message write failed:', {
+          systemType,
+          conversationId,
+          error,
+        });
+      });
     };
 
     subscribe(
@@ -53,6 +58,21 @@ export const setup = createSingleFlightSetup({
       'evt:call:invite:declined',
       (call: { roomId: string; startedAt: number }) =>
         recordCallSystemMessage('call.declined', call),
+      { signal },
+    );
+
+    subscribe(
+      'evt:call:session:completed',
+      (call: {
+        roomId: string;
+        startedAt: number;
+        audioOnly: boolean;
+        durationSeconds: number;
+      }) =>
+        recordCallSystemMessage('call.completed', call, {
+          audioOnly: call.audioOnly,
+          durationSeconds: call.durationSeconds,
+        }),
       { signal },
     );
 
