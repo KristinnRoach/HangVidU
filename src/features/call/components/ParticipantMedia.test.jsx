@@ -172,6 +172,7 @@ describe('ParticipantMedia', () => {
   });
 
   it('shows the continue-call prompt only for autoplay-gesture rejections', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     HTMLMediaElement.prototype.play.mockRejectedValue(
       Object.assign(new Error('gesture required'), {
         name: 'NotAllowedError',
@@ -184,6 +185,11 @@ describe('ParticipantMedia', () => {
       expect(container.querySelector('button')?.textContent).toBe(
         'Continue call',
       );
+    });
+    expect(warn).toHaveBeenCalledWith('[ParticipantMedia] play() rejected', {
+      variant: 'remote',
+      name: 'NotAllowedError',
+      message: 'gesture required',
     });
   });
 

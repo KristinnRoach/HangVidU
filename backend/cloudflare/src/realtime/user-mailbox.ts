@@ -116,20 +116,19 @@ export class UserMailbox extends DurableObject<Env> {
     roomId: string,
     callInviteId: string | undefined,
     callerId: string,
-  ): Promise<boolean> {
+  ): Promise<void> {
     const invite = await this.takePendingCallInvite(
       roomId,
       callInviteId,
       callerId,
     );
-    if (!invite) return false;
+    if (!invite) return;
     this.broadcast({
       t: 'cancel',
       callInviteId: invite.callInviteId,
       roomId,
       by: callerId,
     });
-    return true;
   }
 
   async hasPendingAcceptedResponse(

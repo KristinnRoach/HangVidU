@@ -339,6 +339,7 @@ export async function handleDataRequest(
     ) {
       return json({ error: 'not_found' }, 404, cors);
     }
+    // Cancellation is idempotent when the invite is already gone.
     await env.USER_MAILBOX.getByName(calleeId).cancelPendingCallInvite(
       conversationId,
       callInviteId,
