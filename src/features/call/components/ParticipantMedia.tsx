@@ -101,8 +101,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   const playback = createMediaPlayback({
     playsInline: true,
     onPlaybackBlocked: (err) => {
-      if (import.meta.env.DEV) {
-        const error = err as { name?: string; message?: string };
+      const error = err as { name?: string; message?: string };
+      if (import.meta.env.DEV && error?.name !== 'AbortError') {
         console.warn('[ParticipantMedia] play() rejected', {
           variant: variant(),
           name: error?.name,
