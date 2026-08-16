@@ -437,6 +437,14 @@ describe('PushNotifications', () => {
     expect(notifications[1].close).toHaveBeenCalledOnce();
   });
 
+  it('treats a missing service worker registration as nothing to dismiss', async () => {
+    navigator.serviceWorker.getRegistration.mockResolvedValue(null);
+
+    await expect(controller.dismissAllNotifications()).resolves.toBeUndefined();
+
+    expect(registration.getNotifications).not.toHaveBeenCalled();
+  });
+
   it('fails fast when no active service worker registration exists', async () => {
     navigator.serviceWorker.getRegistration.mockResolvedValue(null);
 
