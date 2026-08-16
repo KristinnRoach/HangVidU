@@ -646,12 +646,24 @@ export class CallHandshakeController {
     const state = this._handshakeState;
     if (!state || state.direction !== 'incoming') return;
     if (this.isExpired(state.call)) {
+      console.log('[call] incoming acceptance stopped', {
+        reason: 'expired-before-start',
+        roomId: state.call.roomId,
+        callInviteId: state.call.callInviteId,
+      });
       this.setHandshakeState(null);
       return;
     }
     const svc = getCallService();
     const localUID = getLoggedInUserId();
-    if (!svc || !localUID) return;
+    if (!svc || !localUID) {
+      console.warn('[call] incoming acceptance unavailable', {
+        reason: svc ? 'not-authenticated' : 'service-unavailable',
+        roomId: state.call.roomId,
+        callInviteId: state.call.callInviteId,
+      });
+      return;
+    }
     this.clearOutgoingCallTracking();
     this.incomingAcceptanceAbortController?.abort();
     const abortController = new AbortController();
@@ -691,7 +703,24 @@ export class CallHandshakeController {
         });
       })
       .catch((err) => {
-        if (signal.aborted) return;
+        if (signal.aborted) {
+          const reason = signal.reason;
+          const stopReason =
+            reason instanceof DOMException && reason.name === 'TimeoutError'
+              ? 'expired-during-acceptance'
+              : reason instanceof DOMException &&
+                  reason.message === 'Call invite dismissed'
+                ? 'dismissed-during-acceptance'
+                : null;
+          if (stopReason) {
+            console.log('[call] incoming acceptance stopped', {
+              reason: stopReason,
+              roomId: state.call.roomId,
+              callInviteId: state.call.callInviteId,
+            });
+          }
+          return;
+        }
         console.error('Error accepting incoming call:', err);
         this.hangUp('accept-error');
       })

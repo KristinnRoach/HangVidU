@@ -64,7 +64,17 @@ function incomingCallNotificationDetailsFromParams(
   const roomId = params.get('conversationId');
   const callInviteId = params.get('callInviteId');
   const callerId = params.get('callerId');
-  if (!callInviteId || !roomId || !callerId) return null;
+  if (!callInviteId || !roomId || !callerId) {
+    console.warn('[call] ignored invalid incoming-call notification', {
+      source: 'url',
+      missing: [
+        ...(!callInviteId ? ['callInviteId'] : []),
+        ...(!roomId ? ['conversationId'] : []),
+        ...(!callerId ? ['callerId'] : []),
+      ],
+    });
+    return null;
+  }
 
   return {
     callInviteId,
@@ -79,16 +89,27 @@ function incomingCallNotificationDetailsFromParams(
 function incomingCallNotificationDetailsFromPayload(
   payload: IncomingCallNotificationOpenedPayload,
 ): IncomingCallNotificationDetails | null {
-  if (
-    typeof payload.roomId !== 'string' ||
-    typeof payload.callInviteId !== 'string' ||
-    typeof payload.callerId !== 'string'
-  )
+  const callInviteId =
+    typeof payload.callInviteId === 'string' ? payload.callInviteId : undefined;
+  const roomId =
+    typeof payload.roomId === 'string' ? payload.roomId : undefined;
+  const callerId =
+    typeof payload.callerId === 'string' ? payload.callerId : undefined;
+  if (!callInviteId || !roomId || !callerId) {
+    console.warn('[call] ignored invalid incoming-call notification', {
+      source: 'event',
+      missing: [
+        ...(!callInviteId ? ['callInviteId'] : []),
+        ...(!roomId ? ['roomId'] : []),
+        ...(!callerId ? ['callerId'] : []),
+      ],
+    });
     return null;
+  }
   return {
-    callInviteId: payload.callInviteId,
-    roomId: payload.roomId,
-    callerId: payload.callerId,
+    callInviteId,
+    roomId,
+    callerId,
     callerName:
       typeof payload.callerName === 'string' ? payload.callerName : undefined,
     audioOnly: payload.audioOnly === true,

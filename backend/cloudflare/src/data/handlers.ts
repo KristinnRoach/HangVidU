@@ -285,17 +285,27 @@ export async function handleDataRequest(
       if (isAcceptedRetry) return json({ ok: true }, 200, cors);
       return json({ error: 'stale_call_invite' }, 409, cors);
     }
-    await callerMailbox.deliver({
-      t: 'response',
-      response: {
-        callInviteId: invite.callInviteId,
+    try {
+      await callerMailbox.deliver({
+        t: 'response',
+        response: {
+          callInviteId: invite.callInviteId,
+          roomId: conversationId,
+          responseType,
+          by: callerId,
+          respondedAt: now,
+          expiresAt: numOrUndef(body?.expiresAt),
+        },
+      });
+    } catch (err) {
+      console.error('[data] call response delivery failed after consumption', {
         roomId: conversationId,
+        callInviteId: invite.callInviteId,
         responseType,
-        by: callerId,
-        respondedAt: now,
-        expiresAt: numOrUndef(body?.expiresAt),
-      },
-    });
+        err,
+      });
+      throw err;
+    }
     return json({ ok: true }, 200, cors);
   }
 

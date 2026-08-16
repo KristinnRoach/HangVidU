@@ -172,6 +172,27 @@ describe('CallHandshakeProvider', () => {
     });
   });
 
+  it('logs missing correlation data without surfacing the notification', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { CallHandshakeProvider } = await import('./call-handshake');
+    const [user] = createSignal({ uid: 'u1' });
+    mocks.user = user;
+
+    render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
+
+    const handler = mocks.subscriptions.get('evt:call:notification:opened');
+    handler?.({
+      roomId: 'room-1',
+      callerId: 'caller-1',
+    });
+
+    expect(mocks.showIncomingCallFromNotification).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      '[call] ignored invalid incoming-call notification',
+      { source: 'event', missing: ['callInviteId'] },
+    );
+  });
+
   it('keeps a missing notification URL timestamp undefined', async () => {
     window.history.replaceState(
       null,
