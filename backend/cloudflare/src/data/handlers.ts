@@ -38,10 +38,14 @@ import {
   type UserProfileRow,
 } from './repo';
 import type {
+  CallCompletedMetadata,
   ConversationServerEvent,
   WireMessage,
 } from '../../../../shared/conversation-channel/protocol';
-import { isSystemMessageType } from '../../../../shared/conversation-channel/protocol';
+import {
+  isCallCompletedMetadata,
+  isSystemMessageType,
+} from '../../../../shared/conversation-channel/protocol';
 import { CALLING_TTL_MS } from '../../../../shared/constants';
 
 const MAX_ATTACHMENT_FILE_NAME_LENGTH = 180;
@@ -693,13 +697,16 @@ export async function handleDataRequest(
     const payload = await readJson(request);
     const messageId = str(payload?.messageId);
     const systemType = payload?.systemType;
-    if (!messageId || !isSystemMessageType(systemType)) {
-      return json(
-        { error: 'messageId and supported systemType required' },
-        400,
-        cors,
-      );
+    const metadata = payload?.metadata;
+    if (
+      !messageId ||
+      !isSystemMessageType(systemType) ||
+      (systemType === 'call.completed' && !isCallCompletedMetadata(metadata))
+    ) {
+      return json({ error: 'valid call event required' }, 400, cors);
     }
+    const body =
+      systemType === 'call.completed' ? JSON.stringify(metadata) : null;
 
     const result = await insertCallSystemMessage(
       env.DB,
@@ -707,6 +714,7 @@ export async function handleDataRequest(
       messageId,
       callerId,
       systemType,
+      body,
       now,
     );
     if (!result) return json({ error: 'message_id_conflict' }, 409, cors);
@@ -782,6 +790,7 @@ function toWireMessage(row: MessageWithAttachments): WireMessage {
     kind: row.kind,
     body: row.body,
     systemType: row.system_type,
+    systemMetadata: parseCallCompletedMetadata(row),
     sentAt: row.created_at,
     attachments: row.attachments.map((a) => ({
       id: a.id,
@@ -819,13 +828,25 @@ async function publishMessageActivity(
           env.USER_MAILBOX.getByName(member.user_id).deliver({
             t: 'activity',
             conversationId,
-            senderId,
+            senderId: message.systemType === 'call.completed' ? null : senderId,
             sentAt: message.sentAt,
           }),
         ),
     );
   } catch (err) {
     console.warn('[data] activity fan-out failed', { conversationId, err });
+  }
+}
+
+function parseCallCompletedMetadata(
+  row: MessageWithAttachments,
+): CallCompletedMetadata | null {
+  if (row.system_type !== 'call.completed' || row.body === null) return null;
+  try {
+    const metadata: unknown = JSON.parse(row.body);
+    return isCallCompletedMetadata(metadata) ? metadata : null;
+  } catch {
+    return null;
   }
 }
 

@@ -50,7 +50,10 @@ import type {
   IncomingMessage,
   MessageRepository,
 } from './types.js';
-import type { SystemMessageType } from '../../../shared/conversation-channel/protocol';
+import type {
+  CallCompletedMetadata,
+  SystemMessageType,
+} from '../../../shared/conversation-channel/protocol';
 import type {
   ConversationId,
   FileMessagePayload,
@@ -259,17 +262,24 @@ function fileAttachment(payload: FileMessagePayload) {
 
 function envelopeToChatMessage(message: IncomingMessage): ChatMessage | null {
   if (message.payload.type === 'system') {
-    return {
-      type: 'system',
+    const base = {
+      type: 'system' as const,
       id: message.messageId,
       conversationId: message.conversationId,
       senderId: message.senderId,
       callerUId: message.payload.callerUId,
-      systemType: message.payload.systemType,
       sentAt: message.sentAt,
-      status: 'sent',
+      status: 'sent' as const,
       reactions: [],
     };
+    return message.payload.systemType === 'call.completed'
+      ? {
+          ...base,
+          systemType: 'call.completed',
+          audioOnly: message.payload.audioOnly,
+          durationSeconds: message.payload.durationSeconds,
+        }
+      : { ...base, systemType: message.payload.systemType };
   }
 
   const text =
@@ -316,12 +326,14 @@ export async function recordSystemMessage(
   conversationId: ConversationId,
   systemType: SystemMessageType,
   messageId: string = crypto.randomUUID(),
+  metadata?: CallCompletedMetadata,
 ): Promise<void> {
   const message = await getConversationsClient().recordCallSystemMessage(
     conversationId,
     {
       messageId,
       systemType,
+      metadata,
     },
   );
   recordConversationListMessage(

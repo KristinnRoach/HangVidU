@@ -45,6 +45,26 @@ describe('conversations schema', () => {
     },
   );
 
+  it('requires call type and duration for completed calls', () => {
+    expect(
+      SystemMessagePayloadSchema.parse({
+        type: 'system',
+        systemType: 'call.completed',
+        callerUId: 'user-a',
+        audioOnly: false,
+        durationSeconds: 83,
+      }),
+    ).toMatchObject({ audioOnly: false, durationSeconds: 83 });
+
+    expect(() =>
+      SystemMessagePayloadSchema.parse({
+        type: 'system',
+        systemType: 'call.completed',
+        callerUId: 'user-a',
+      }),
+    ).toThrow();
+  });
+
   it('accepts R2-backed file payloads', () => {
     const message = MessageEnvelopeSchema.parse({
       messageId: 'msg-1',

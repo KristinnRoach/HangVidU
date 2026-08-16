@@ -83,8 +83,16 @@ export type UserChatMessage = ChatMessageBase & {
 
 export type SystemChatMessage = ChatMessageBase & {
   type: 'system';
-  systemType: SystemMessageType;
   callerUId: UserId;
-};
+} & (
+    | {
+        systemType: 'call.completed';
+        audioOnly: boolean;
+        durationSeconds: number;
+      }
+    | {
+        systemType: Exclude<SystemMessageType, 'call.completed'>;
+      }
+  );
 
 export type ChatMessage = UserChatMessage | SystemChatMessage;

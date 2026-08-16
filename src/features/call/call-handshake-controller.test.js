@@ -989,6 +989,56 @@ describe('CallHandshakeController', () => {
     );
   });
 
+  it.each(['hangUp', 'cleanup'])(
+    'publishes a completed call when %s ends the connection',
+    async (endMethod) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-08-16T12:00:00Z'));
+      try {
+        vi.spyOn(console, 'log').mockImplementation(() => {});
+        mocks.getLoggedInUserId.mockReturnValue('caller-id');
+        let joinOptions;
+        const p2p = createP2PMock({
+          join: vi.fn(async (options) => {
+            joinOptions = options;
+            return { roomId: 'room-1', members: ['caller-id'] };
+          }),
+        });
+        const controller = createController(p2p, {
+          getCallerName: () => 'Caller',
+        });
+
+        await controller.startCall({
+          calleeId: 'callee-id',
+          calleeName: 'Callee',
+          audioOnly: true,
+        });
+        await mocks.responseCallback?.({
+          callInviteId: CALL_INVITE_ID,
+          roomId: 'room-1',
+          responseType: 'accepted',
+          by: 'callee-id',
+          respondedAt: Date.now(),
+        });
+
+        joinOptions.onDataChannelOpen();
+        vi.advanceTimersByTime(83_000);
+        controller[endMethod]();
+
+        expect(mocks.publish).toHaveBeenCalledWith(
+          'evt:call:session:completed',
+          expect.objectContaining({
+            roomId: 'room-1',
+            audioOnly: true,
+            durationSeconds: 83,
+          }),
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
   it('publishes unanswered when the caller cancels while ringing', async () => {
     mocks.getLoggedInUserId.mockReturnValue('caller-id');
     const controller = createController(createP2PMock({ join: vi.fn() }), {

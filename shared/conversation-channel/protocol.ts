@@ -43,8 +43,27 @@ export interface WireReactionSummary extends WireReactionCount {
 export const SYSTEM_MESSAGE_TYPES = [
   'call.unanswered',
   'call.declined',
+  'call.completed',
 ] as const;
 export type SystemMessageType = (typeof SYSTEM_MESSAGE_TYPES)[number];
+
+export interface CallCompletedMetadata {
+  audioOnly: boolean;
+  durationSeconds: number;
+}
+
+export function isCallCompletedMetadata(
+  value: unknown,
+): value is CallCompletedMetadata {
+  if (!value || typeof value !== 'object') return false;
+  const metadata = value as Record<string, unknown>;
+  return (
+    typeof metadata.audioOnly === 'boolean' &&
+    typeof metadata.durationSeconds === 'number' &&
+    Number.isSafeInteger(metadata.durationSeconds) &&
+    metadata.durationSeconds > 0
+  );
+}
 
 export function isSystemMessageType(
   value: unknown,
@@ -60,6 +79,7 @@ export interface WireMessage {
   kind: 'text' | 'file' | 'system';
   body: string | null;
   systemType?: SystemMessageType | null;
+  systemMetadata?: CallCompletedMetadata | null;
   sentAt: number;
   attachments: WireAttachment[];
   reactions: WireReactionSummary[];
@@ -98,8 +118,12 @@ export function isConversationServerEvent(
     typeof m.senderId === 'string' &&
     (m.kind === 'text' || m.kind === 'file' || m.kind === 'system') &&
     (m.kind === 'system'
-      ? isSystemMessageType(m.systemType)
-      : m.systemType === null || m.systemType === undefined) &&
+      ? isSystemMessageType(m.systemType) &&
+        (m.systemType === 'call.completed'
+          ? isCallCompletedMetadata(m.systemMetadata)
+          : m.systemMetadata === null || m.systemMetadata === undefined)
+      : (m.systemType === null || m.systemType === undefined) &&
+        (m.systemMetadata === null || m.systemMetadata === undefined)) &&
     typeof m.sentAt === 'number' &&
     Array.isArray(m.attachments) &&
     isReactionList(m.reactions, true)

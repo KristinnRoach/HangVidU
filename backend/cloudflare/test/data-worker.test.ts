@@ -583,6 +583,33 @@ describe('system messages', () => {
     },
   );
 
+  it('persists completed-call metadata', async () => {
+    const conversationId = await resolveOrCreateDirect(
+      env.DB,
+      'user-a',
+      'user-b',
+      1000,
+    );
+    const token = await signToken(validClaims('user-a'));
+
+    const response = await jsonPost(
+      `/conversations/${conversationId}/call-events`,
+      token,
+      {
+        messageId: 'completed-1',
+        systemType: 'call.completed',
+        metadata: { audioOnly: true, durationSeconds: 83 },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).message).toMatchObject({
+      kind: 'system',
+      systemType: 'call.completed',
+      systemMetadata: { audioOnly: true, durationSeconds: 83 },
+    });
+  });
+
   it('rejects unknown system message types', async () => {
     const conversationId = await resolveOrCreateDirect(
       env.DB,

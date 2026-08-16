@@ -5,6 +5,7 @@
 // /conversations/:id, and the message endpoints (/conversations/:id/messages).
 
 import type {
+  CallCompletedMetadata,
   SystemMessageType,
   WireMessage,
   WireReactionSummary,
@@ -70,7 +71,11 @@ export interface ConversationsClient {
   ): Promise<WireMessage>;
   recordCallSystemMessage(
     conversationId: string,
-    input: { messageId: string; systemType: SystemMessageType },
+    input: {
+      messageId: string;
+      systemType: SystemMessageType;
+      metadata?: CallCompletedMetadata;
+    },
   ): Promise<WireMessage>;
   setMyReaction(
     conversationId: string,

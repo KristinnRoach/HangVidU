@@ -78,6 +78,25 @@ describe('conversations setup', () => {
     );
   });
 
+  it('records completed calls with their type and duration', async () => {
+    const { setup } = await import('../index');
+    await setup();
+
+    mocks.handlers.get('evt:call:session:completed')({
+      roomId: 'conversation-1',
+      startedAt: 123,
+      audioOnly: true,
+      durationSeconds: 83,
+    });
+
+    expect(mocks.recordSystemMessage).toHaveBeenCalledWith(
+      'conversation-1',
+      'call.completed',
+      'call.completed:conversation-1:123',
+      { audioOnly: true, durationSeconds: 83 },
+    );
+  });
+
   it('resets conversation state when activity teardown throws', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mocks.stopConversationListSync.mockImplementation(() => {
