@@ -515,7 +515,7 @@ describe('auth + membership guard on GET /conversations/:id/messages', () => {
 });
 
 describe('system messages', () => {
-  it.each(['call.unanswered', 'call.declined'] as const)(
+  it.each(['call.unanswered', 'call.declined', 'call.busy'] as const)(
     'persists and broadcasts %s with server-owned caller identity',
     async (systemType) => {
       const conversationId = await resolveOrCreateDirect(

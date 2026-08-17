@@ -32,7 +32,7 @@ describe('conversations schema', () => {
     expect(message.delivery).toBe('private');
   });
 
-  it.each(['call.unanswered', 'call.declined'])(
+  it.each(['call.unanswered', 'call.declined', 'call.busy'])(
     'supports the %s system message payload',
     (systemType) => {
       const payload = SystemMessagePayloadSchema.parse({

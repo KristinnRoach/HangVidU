@@ -73,16 +73,10 @@ export function toIncomingMessage(m: WireMessage): IncomingMessage | null {
         audioOnly: m.systemMetadata.audioOnly,
         durationSeconds: m.systemMetadata.durationSeconds,
       };
-    } else if (m.systemType === 'call.declined') {
-      payload = {
-        type: 'system',
-        systemType: 'call.declined',
-        callerUId: m.senderId as UserId,
-      };
     } else {
       payload = {
         type: 'system',
-        systemType: 'call.unanswered',
+        systemType: m.systemType,
         callerUId: m.senderId as UserId,
       };
     }

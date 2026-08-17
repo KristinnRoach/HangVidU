@@ -43,6 +43,7 @@ export interface WireReactionSummary extends WireReactionCount {
 export const SYSTEM_MESSAGE_TYPES = [
   'call.unanswered',
   'call.declined',
+  'call.busy',
   'call.completed',
 ] as const;
 export type SystemMessageType = (typeof SYSTEM_MESSAGE_TYPES)[number];

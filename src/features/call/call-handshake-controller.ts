@@ -400,6 +400,7 @@ export class CallHandshakeController {
             () => Promise.resolve(localStream),
           );
         } else if (response.responseType === 'busy') {
+          publish('evt:call:invite:busy', nextOutgoingCall);
           this.stopMediaStream(localStream);
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
