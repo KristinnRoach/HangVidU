@@ -289,6 +289,9 @@ function SystemMessageRow(props: { message: SystemChatMessage }) {
     if (props.message.systemType === 'call.declined') {
       return t('conversation.call_declined');
     }
+    if (props.message.systemType === 'call.busy') {
+      return t('conversation.call_busy');
+    }
     return props.message.callerUId === state.myUserId
       ? t('conversation.call_unanswered_outgoing')
       : t('conversation.call_unanswered_incoming', {

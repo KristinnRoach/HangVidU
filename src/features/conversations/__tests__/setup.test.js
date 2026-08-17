@@ -62,6 +62,7 @@ describe('conversations setup', () => {
   it.each([
     ['evt:call:invite:unanswered', 'call.unanswered'],
     ['evt:call:invite:declined', 'call.declined'],
+    ['evt:call:invite:busy', 'call.busy'],
   ])('records %s as a persistent system message', async (eventName, type) => {
     const { setup } = await import('../index');
     await setup();

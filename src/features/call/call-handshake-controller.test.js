@@ -989,6 +989,31 @@ describe('CallHandshakeController', () => {
     );
   });
 
+  it('publishes busy when the callee is already in a call', async () => {
+    mocks.getLoggedInUserId.mockReturnValue('caller-id');
+    const controller = createController(createP2PMock({ join: vi.fn() }), {
+      getCallerName: () => 'Caller',
+    });
+
+    await controller.startCall({
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: false,
+    });
+    await mocks.responseCallback?.({
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      responseType: 'busy',
+      by: 'callee-id',
+      respondedAt: Date.now(),
+    });
+
+    expect(mocks.publish).toHaveBeenCalledWith(
+      'evt:call:invite:busy',
+      expect.objectContaining({ roomId: 'room-1', callerId: 'caller-id' }),
+    );
+  });
+
   it.each(['hangUp', 'cleanup'])(
     'publishes a completed call when %s ends the connection',
     async (endMethod) => {

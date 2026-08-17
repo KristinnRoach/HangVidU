@@ -52,6 +52,9 @@ export const SystemMessagePayloadSchema = z.discriminatedUnion('systemType', [
     systemType: z.literal('call.declined'),
   }),
   CallSystemMessageBaseSchema.extend({
+    systemType: z.literal('call.busy'),
+  }),
+  CallSystemMessageBaseSchema.extend({
     systemType: z.literal('call.completed'),
     audioOnly: z.boolean(),
     durationSeconds: z.number().int().positive(),

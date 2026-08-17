@@ -128,6 +128,7 @@
   "conversation.call_unanswered_outgoing": "Símtali ekki svarað",
   "conversation.call_unanswered_incoming": "Ósvarað símtal frá {name}",
   "conversation.call_declined": "Símtali hafnað",
+  "conversation.call_busy": "Notandi var á tali",
   "conversation.unknown_caller": "Óþekktur hringjandi",
   "message_input.placeholder": "Skrifaðu skilaboð...",
   "message.audioCall": "Símtal",

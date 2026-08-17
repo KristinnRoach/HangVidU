@@ -62,6 +62,13 @@ export const setup = createSingleFlightSetup({
     );
 
     subscribe(
+      'evt:call:invite:busy',
+      (call: { roomId: string; startedAt: number }) =>
+        recordCallSystemMessage('call.busy', call),
+      { signal },
+    );
+
+    subscribe(
       'evt:call:session:completed',
       (call: {
         roomId: string;
