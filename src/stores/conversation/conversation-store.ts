@@ -146,6 +146,11 @@ export function selectedConversation(): Conversation | null {
   return sel ? (conversationListState().get(sel.conversationId) ?? null) : null;
 }
 
+// Read markers the server has already accepted, per conversation. Guards the
+// PUT in markActiveConversationRead; cleared on logout with the rest of the
+// login-scoped state.
+const sentReadMarkers = new Map<ConversationId, number>();
+
 const [latestReadCandidate, setLatestReadCandidate] = createSignal<{
   conversationId: ConversationId;
   myUserId: UserId;
@@ -458,6 +463,7 @@ function startWatch(
 function activate(next: ConversationSelection | null) {
   flushDraftSave();
   stopWatch?.();
+  sentReadMarkers.clear();
   setLatestReadCandidate(null);
   setSelection(next);
 
@@ -752,14 +758,21 @@ export function markActiveConversationRead(): void {
   if (!candidate || candidate.conversationId !== state.conversationId) return;
 
   markConversationRead(candidate.conversationId, candidate.sentAt);
+
+  // The caller re-runs on every watcher batch, including our own sends, so the
+  // marker often hasn't moved. Skip the PUT then: each one also fans a `read`
+  // broadcast to every connected member. Recorded before the request so a
+  // second batch can't double-send; dropped on failure so the next one retries.
+  const conversationId = candidate.conversationId;
+  if (candidate.sentAt <= (sentReadMarkers.get(conversationId) ?? 0)) return;
+  sentReadMarkers.set(conversationId, candidate.sentAt);
+
   void Promise.resolve(
-    getRepo().markConversationRead(
-      candidate.conversationId,
-      candidate.myUserId,
-    ),
+    getRepo().markConversationRead(conversationId, candidate.myUserId),
   ).catch((error) => {
+    sentReadMarkers.delete(conversationId);
     console.warn('[conversation] failed to mark conversation read', {
-      conversationId: candidate.conversationId,
+      conversationId,
       error,
     });
   });

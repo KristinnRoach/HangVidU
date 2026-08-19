@@ -122,7 +122,12 @@ export function updateMemberLastReadAt(
     if (!cur) return prev;
     const members = cur.members.map((member) =>
       member.user_id === userId
-        ? { ...member, last_read_at: lastReadAt }
+        ? {
+            ...member,
+            // Monotonic, mirroring the server's MAX(last_read_at, ?): a
+            // replayed or out-of-order broadcast must not un-read messages.
+            last_read_at: Math.max(member.last_read_at, lastReadAt),
+          }
         : member,
     );
     return new Map(prev).set(conversationId, { ...cur, members });
@@ -174,6 +179,33 @@ export function ensureDirectConversationListed(
   upsert(conversationId, { kind: 'direct', members: [peer] });
 }
 
+function knownReadAt(members: ConversationMember[], userId: string): number {
+  return members.find((member) => member.user_id === userId)?.last_read_at ?? 0;
+}
+
+function hasNewerReadMarker(
+  existing: Conversation,
+  fetched: Conversation,
+): boolean {
+  return fetched.members.some(
+    (member) =>
+      knownReadAt(existing.members, member.user_id) > member.last_read_at,
+  );
+}
+
+/** Seed members, keeping any read marker a live broadcast already moved past. */
+function mergeReadMarkers(
+  existing: ConversationMember[],
+  fetched: ConversationMember[],
+): ConversationMember[] {
+  return fetched.map((member) => {
+    const known = knownReadAt(existing, member.user_id);
+    return known > member.last_read_at
+      ? { ...member, last_read_at: known }
+      : member;
+  });
+}
+
 /** Refetch the current conversation-list state snapshot (seed). */
 export async function refreshConversationListState(): Promise<void> {
   const me = getLoggedInUserId();
@@ -198,9 +230,23 @@ export async function refreshConversationListState(): Promise<void> {
     setListState((current) => {
       for (const [rowKey, existing] of current) {
         const fetched = map.get(rowKey);
-        if (fetched && existing.latestSentAt > fetched.latestSentAt) {
-          map.set(rowKey, existing);
-        }
+        if (!fetched) continue;
+        // The seed row wins (fresher members: read markers, display names),
+        // but two things the local row can hold are newer than the snapshot:
+        // activity recorded in-tab since the request went out, and a read
+        // marker a live broadcast advanced past what the query returned.
+        const locallyNewer = existing.latestSentAt > fetched.latestSentAt;
+        if (!locallyNewer && !hasNewerReadMarker(existing, fetched)) continue;
+        map.set(rowKey, {
+          ...fetched,
+          members: mergeReadMarkers(existing.members, fetched.members),
+          latestSentAt: locallyNewer
+            ? existing.latestSentAt
+            : fetched.latestSentAt,
+          latestSenderId: locallyNewer
+            ? existing.latestSenderId
+            : fetched.latestSenderId,
+        });
       }
       return map;
     });

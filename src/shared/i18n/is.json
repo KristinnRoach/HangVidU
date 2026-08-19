@@ -126,6 +126,8 @@
   "conversation.file_send_failed": "Ekki tókst að senda skrána.",
   "conversation.open_preview": "Opna forskoðun fyrir {name}",
   "conversation.read": "Lesið",
+  "conversation.sending": "Sendi",
+  "conversation.send_failed": "Sending mistókst",
   "conversation.call_unanswered_outgoing": "Símtali ekki svarað",
   "conversation.call_unanswered_incoming": "Ósvarað símtal frá {name}",
   "conversation.call_declined": "Símtali hafnað",

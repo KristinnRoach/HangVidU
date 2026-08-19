@@ -107,7 +107,9 @@ export function isConversationServerEvent(
   if (!value || typeof value !== 'object') return false;
   const e = value as Record<string, unknown>;
   if (e.t === 'read') {
-    return typeof e.userId === 'string' && typeof e.lastReadAt === 'number';
+    // isFinite, not typeof: a NaN marker compares false against every sentAt
+    // and would silently disable receipts for the conversation.
+    return typeof e.userId === 'string' && Number.isFinite(e.lastReadAt);
   }
   if (e.t === 'reaction') {
     return (

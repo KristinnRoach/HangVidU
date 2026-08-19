@@ -1,4 +1,12 @@
-import { For, Show, createEffect, createSignal, on, onCleanup } from 'solid-js';
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+  onCleanup,
+} from 'solid-js';
 import { Download } from 'lucide-solid';
 import { useI18n } from '@shared/i18n';
 // eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:reactions` directive
@@ -117,10 +125,26 @@ export function MessageList() {
     return peer?.last_read_at ?? 0;
   };
 
-  const isReadByPeer = (message: ChatMessage) =>
-    readReceiptsEnabled() &&
-    message.senderId === state.myUserId &&
-    message.sentAt <= peerLastReadAt();
+  // Id of the newest own message the peer has read. Only that one shows the
+  // checkmark — a tick on every earlier message is noise, since read is
+  // cumulative. Null when receipts are off or nothing has been read yet.
+  const lastReadByPeerId = createMemo(() => {
+    if (!readReceiptsEnabled()) return null;
+    const readAt = peerLastReadAt();
+    if (!readAt) return null;
+    for (let i = state.messages.length - 1; i >= 0; i--) {
+      const message = state.messages[i];
+      if (
+        message?.type === 'user' &&
+        message.senderId === state.myUserId &&
+        message.status === 'sent' &&
+        message.sentAt <= readAt
+      ) {
+        return message.id;
+      }
+    }
+    return null;
+  });
 
   const attachmentUrl = (msg: ChatMessage) => {
     const conversationId = state.conversationId;
@@ -273,20 +297,30 @@ export function MessageList() {
                       />
                     )}
                   </Show>
+                  {/* role="img" so the aria-label is exposed: ARIA ignores
+                      aria-label on a plain (role=generic) span. */}
                   <Show when={userMessage().status === 'sending'}>
-                    <span class={styles.msgStatus}>…</span>
-                  </Show>
-                  <Show when={userMessage().status === 'failed'}>
-                    <span class={styles.msgStatus}>!</span>
-                  </Show>
-                  <Show
-                    when={
-                      userMessage().status === 'sent' &&
-                      isReadByPeer(userMessage())
-                    }
-                  >
                     <span
                       class={styles.msgStatus}
+                      role='img'
+                      aria-label={t('conversation.sending')}
+                    >
+                      …
+                    </span>
+                  </Show>
+                  <Show when={userMessage().status === 'failed'}>
+                    <span
+                      class={styles.msgStatus}
+                      role='img'
+                      aria-label={t('conversation.send_failed')}
+                    >
+                      !
+                    </span>
+                  </Show>
+                  <Show when={userMessage().id === lastReadByPeerId()}>
+                    <span
+                      class={styles.msgStatus}
+                      role='img'
                       aria-label={t('conversation.read')}
                     >
                       ✓
