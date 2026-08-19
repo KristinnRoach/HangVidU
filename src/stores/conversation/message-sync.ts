@@ -75,7 +75,7 @@ export function createMessageSyncRepository(
       return snapshot(conversationId);
     },
 
-    async watchRecentMessages(conversationId, onMessages, onError) {
+    async watchRecentMessages(conversationId, onMessages, onError, onPeerRead) {
       // Window keyed by id so the live echo dedupes against the snapshot.
       const window = new Map<string, IncomingMessage>();
       const pendingEvents: ConversationServerEvent[] = [];
@@ -104,6 +104,11 @@ export function createMessageSyncRepository(
           if (!incoming) return;
           window.set(incoming.messageId, incoming);
           emit();
+          return;
+        }
+
+        if (event.t === 'read') {
+          onPeerRead?.(event.userId, event.lastReadAt);
           return;
         }
 

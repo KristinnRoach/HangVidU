@@ -14,6 +14,7 @@ import {
   markConversationRead,
   recordConversationListMessage,
   refreshConversationListState,
+  updateMemberLastReadAt,
   type Conversation,
 } from './conversation-list-state.js';
 import {
@@ -426,6 +427,11 @@ function startWatch(
       }
       setState({ history: 'error', historyError: error });
     },
+    (userId, lastReadAt) => {
+      if (disposed || conversationId !== state.conversationId) return;
+      if (userId === myUserId) return; // only the peer's marker moves the checkmark
+      updateMemberLastReadAt(conversationId, userId, lastReadAt);
+    },
   );
 
   if (typeof result === 'function') {
@@ -529,6 +535,7 @@ export async function openDirectConversation(
     user_id: contactId,
     display_name: contact ? getContactLabel(contact) : null,
     joined_at: 0,
+    last_read_at: 0,
   });
   openConversation(conversationId, { displayUI: opts?.displayUI });
 }

@@ -17,6 +17,9 @@ export interface MemberRow {
   user_id: string;
   display_name: string | null;
   joined_at: number;
+  // Read receipts (DM-only today): each member's own read marker, so a DM
+  // peer can compute "seen" against their own messages' sentAt.
+  last_read_at: number;
 }
 
 /** Insert the user if absent; refresh display_name when a non-null one is given. */
@@ -1017,7 +1020,7 @@ export async function getMembers(
 ): Promise<MemberRow[]> {
   const { results } = await db
     .prepare(
-      `SELECT m.user_id, u.display_name, m.joined_at
+      `SELECT m.user_id, u.display_name, m.joined_at, m.last_read_at
        FROM conversation_members m
        JOIN users u ON u.id = m.user_id
        WHERE m.conversation_id = ?

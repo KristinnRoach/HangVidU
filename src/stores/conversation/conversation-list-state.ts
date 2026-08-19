@@ -107,6 +107,28 @@ export function markConversationRead(
   if (nextLastReadAt !== lastReadAt) setReadVersion((v) => v + 1);
 }
 
+/**
+ * Fold a peer's live read-marker update into their member row. DM-only today
+ * (no group fan-out semantics); matched by user_id within the conversation's
+ * existing member list, so a conversation not yet seeded is a no-op.
+ */
+export function updateMemberLastReadAt(
+  conversationId: string,
+  userId: string,
+  lastReadAt: number,
+): void {
+  setListState((prev) => {
+    const cur = prev.get(conversationId);
+    if (!cur) return prev;
+    const members = cur.members.map((member) =>
+      member.user_id === userId
+        ? { ...member, last_read_at: lastReadAt }
+        : member,
+    );
+    return new Map(prev).set(conversationId, { ...cur, members });
+  });
+}
+
 function upsert(conversationId: string, next: Partial<Conversation>): void {
   setListState((prev) => {
     const cur = prev.get(conversationId);

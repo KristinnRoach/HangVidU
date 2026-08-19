@@ -145,6 +145,7 @@ describe('conversation-store', () => {
       'conversation-1',
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
   });
 

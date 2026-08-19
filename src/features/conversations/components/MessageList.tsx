@@ -31,6 +31,7 @@ import {
   formatTimestamp,
   TIMESTAMP_THRESHOLD_MS,
 } from '../utils/format-timestamp.js';
+import { readReceiptsEnabled } from '../read-receipts.js';
 
 import { StartCallButton } from '@features/call';
 
@@ -43,7 +44,7 @@ import styles from './ConversationPanel.module.css';
  */
 export function MessageList() {
   const state = getConversationState();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
 
   let messagesEl: HTMLDivElement | undefined;
   // True once the user scrolls away from the bottom to read earlier messages.
@@ -104,6 +105,22 @@ export function MessageList() {
       !previous || message.sentAt - previous.sentAt > TIMESTAMP_THRESHOLD_MS
     );
   }
+
+  // DM-only: the one other member's read marker. Group semantics (per-member
+  // breakdown / "read by all") are a later decision, not covered here.
+  const peerLastReadAt = () => {
+    const conversation = selectedConversation();
+    if (!conversation || conversation.kind !== 'direct') return 0;
+    const peer = conversation.members.find(
+      (member) => member.user_id !== state.myUserId,
+    );
+    return peer?.last_read_at ?? 0;
+  };
+
+  const isReadByPeer = (message: ChatMessage) =>
+    readReceiptsEnabled() &&
+    message.senderId === state.myUserId &&
+    message.sentAt <= peerLastReadAt();
 
   const attachmentUrl = (msg: ChatMessage) => {
     const conversationId = state.conversationId;
@@ -261,6 +278,19 @@ export function MessageList() {
                   </Show>
                   <Show when={userMessage().status === 'failed'}>
                     <span class={styles.msgStatus}>!</span>
+                  </Show>
+                  <Show
+                    when={
+                      userMessage().status === 'sent' &&
+                      isReadByPeer(userMessage())
+                    }
+                  >
+                    <span
+                      class={styles.msgStatus}
+                      aria-label={t('conversation.read')}
+                    >
+                      ✓
+                    </span>
                   </Show>
                 </div>
               )}

@@ -16,6 +16,9 @@
  * - `{ t: 'reaction', ... }` — authoritative counts after one user's reaction
  *   changed. The actor fields let each receiver derive its viewer-specific
  *   `reactedByMe` value from the shared broadcast.
+ * - `{ t: 'read', userId, lastReadAt }` — `userId` advanced their read marker
+ *   to `lastReadAt`. DM-only today (one peer); a group receiver can already
+ *   distinguish senders by `userId` if group support lands later.
  *
  * Keep payloads camelCase (wire shape), distinct from snake_case D1 rows.
  */
@@ -95,13 +98,17 @@ export type ConversationServerEvent =
       actorUserId: string;
       actorReactionKey: string | null;
       reactions: WireReactionCount[];
-    };
+    }
+  | { t: 'read'; userId: string; lastReadAt: number };
 
 export function isConversationServerEvent(
   value: unknown,
 ): value is ConversationServerEvent {
   if (!value || typeof value !== 'object') return false;
   const e = value as Record<string, unknown>;
+  if (e.t === 'read') {
+    return typeof e.userId === 'string' && typeof e.lastReadAt === 'number';
+  }
   if (e.t === 'reaction') {
     return (
       typeof e.messageId === 'string' &&

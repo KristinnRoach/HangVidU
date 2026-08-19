@@ -32,6 +32,8 @@ export type MessageRepository = {
     conversationId: ConversationId,
     onMessages: (messages: IncomingMessage[]) => void,
     onError?: (error: unknown) => void,
+    /** A member (DM peer) advanced their read marker. DM-only today. */
+    onPeerRead?: (userId: UserId, lastReadAt: number) => void,
   ): (() => void) | Promise<() => void>;
 
   send(

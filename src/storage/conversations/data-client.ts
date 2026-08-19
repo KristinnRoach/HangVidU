@@ -36,6 +36,8 @@ export interface ConversationMember {
   user_id: string;
   display_name: string | null;
   joined_at: number;
+  // Read receipts (DM-only today): this member's own read marker. 0 = never read.
+  last_read_at: number;
 }
 
 export interface Conversation {
