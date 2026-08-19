@@ -621,6 +621,17 @@ export async function handleDataRequest(
     );
     // null = no member row updated: hide existence (same as GET).
     if (lastReadAt === null) return json({ error: 'not_found' }, 404, cors);
+
+    const event: ConversationServerEvent = {
+      t: 'read',
+      userId: callerId,
+      lastReadAt,
+    };
+    try {
+      await env.CONVERSATION_CHANNEL.getByName(conversationId).broadcast(event);
+    } catch (err) {
+      console.warn('[data] read broadcast failed', { conversationId, err });
+    }
     return json({ lastReadAt }, 200, cors);
   }
 

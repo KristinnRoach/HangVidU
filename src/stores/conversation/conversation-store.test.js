@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   recordConversationListMessage: vi.fn(),
   ensureDirectConversationListed: vi.fn(),
   refreshConversationListState: vi.fn(),
+  updateMemberLastReadAt: vi.fn(),
   conversationListState: vi.fn(() => new Map()),
   resolveDirectConversationId: vi.fn(),
   getContactById: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock('./conversation-list-state', () => ({
   recordConversationListMessage: mocks.recordConversationListMessage,
   ensureDirectConversationListed: mocks.ensureDirectConversationListed,
   refreshConversationListState: mocks.refreshConversationListState,
+  updateMemberLastReadAt: mocks.updateMemberLastReadAt,
   conversationListState: mocks.conversationListState,
   conversationPeers: (conversation) =>
     conversation.members
@@ -145,6 +147,7 @@ describe('conversation-store', () => {
       'conversation-1',
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     );
   });
 
@@ -156,6 +159,65 @@ describe('conversation-store', () => {
     expect(store.loadSelectedConversationId()).toBe('group-1');
     // Unknown id: the list reseeds so kind/members/label fill in.
     expect(mocks.refreshConversationListState).toHaveBeenCalled();
+  });
+
+  it('sends the read marker once per advance, not once per watcher batch', async () => {
+    const store = await import('./conversation-store.js');
+    await store.openDirectConversation('contact-1');
+
+    watch.emit([envelope({ messageId: 'msg-1', sentAt: 1 })]);
+    store.markActiveConversationRead();
+    store.markActiveConversationRead();
+
+    // Every PUT fans a `read` broadcast to the channel, so an unchanged
+    // marker must not hit the network.
+    expect(repo.markConversationRead).toHaveBeenCalledTimes(1);
+
+    watch.emit([envelope({ messageId: 'msg-2', sentAt: 2 })]);
+    store.markActiveConversationRead();
+
+    expect(repo.markConversationRead).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries the read marker after a failed request', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    repo.markConversationRead.mockRejectedValueOnce(new Error('offline'));
+    const store = await import('./conversation-store.js');
+    await store.openDirectConversation('contact-1');
+
+    watch.emit([envelope({ messageId: 'msg-1', sentAt: 1 })]);
+    store.markActiveConversationRead();
+    await vi.waitFor(() => expect(console.warn).toHaveBeenCalled());
+
+    store.markActiveConversationRead();
+
+    expect(repo.markConversationRead).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the newer request marker when an older request fails', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let failFirst;
+    repo.markConversationRead
+      .mockImplementationOnce(
+        () => new Promise((_resolve, reject) => (failFirst = reject)),
+      )
+      .mockResolvedValue(undefined);
+    const store = await import('./conversation-store.js');
+    await store.openDirectConversation('contact-1');
+
+    watch.emit([envelope({ messageId: 'msg-1', sentAt: 1 })]);
+    store.markActiveConversationRead();
+    watch.emit([envelope({ messageId: 'msg-2', sentAt: 2 })]);
+    store.markActiveConversationRead();
+    expect(repo.markConversationRead).toHaveBeenCalledTimes(2);
+
+    // The stale failure must not roll back the newer marker, or the next
+    // batch re-sends a PUT (and its broadcast) for a marker already stored.
+    failFirst(new Error('offline'));
+    await vi.waitFor(() => expect(console.warn).toHaveBeenCalled());
+    store.markActiveConversationRead();
+
+    expect(repo.markConversationRead).toHaveBeenCalledTimes(2);
   });
 
   it('merges watcher snapshots in chronological order and maps file envelopes', async () => {

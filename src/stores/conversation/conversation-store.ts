@@ -14,6 +14,7 @@ import {
   markConversationRead,
   recordConversationListMessage,
   refreshConversationListState,
+  updateMemberLastReadAt,
   type Conversation,
 } from './conversation-list-state.js';
 import {
@@ -144,6 +145,11 @@ export function selectedConversation(): Conversation | null {
   const sel = selection();
   return sel ? (conversationListState().get(sel.conversationId) ?? null) : null;
 }
+
+// Read markers the server has already accepted, per conversation. Guards the
+// PUT in markActiveConversationRead; cleared on logout with the rest of the
+// login-scoped state.
+const sentReadMarkers = new Map<ConversationId, number>();
 
 const [latestReadCandidate, setLatestReadCandidate] = createSignal<{
   conversationId: ConversationId;
@@ -426,6 +432,11 @@ function startWatch(
       }
       setState({ history: 'error', historyError: error });
     },
+    (userId, lastReadAt) => {
+      if (disposed || conversationId !== state.conversationId) return;
+      if (userId === myUserId) return; // only the peer's marker moves the checkmark
+      updateMemberLastReadAt(conversationId, userId, lastReadAt);
+    },
   );
 
   if (typeof result === 'function') {
@@ -452,6 +463,7 @@ function startWatch(
 function activate(next: ConversationSelection | null) {
   flushDraftSave();
   stopWatch?.();
+  sentReadMarkers.clear();
   setLatestReadCandidate(null);
   setSelection(next);
 
@@ -529,6 +541,7 @@ export async function openDirectConversation(
     user_id: contactId,
     display_name: contact ? getContactLabel(contact) : null,
     joined_at: 0,
+    last_read_at: 0,
   });
   openConversation(conversationId, { displayUI: opts?.displayUI });
 }
@@ -745,14 +758,27 @@ export function markActiveConversationRead(): void {
   if (!candidate || candidate.conversationId !== state.conversationId) return;
 
   markConversationRead(candidate.conversationId, candidate.sentAt);
+
+  // The caller re-runs on every watcher batch, including our own sends, so the
+  // marker often hasn't moved. Skip the PUT then: each one also fans a `read`
+  // broadcast to every connected member. Recorded before the request so a
+  // second batch can't double-send; dropped on failure so the next one retries.
+  const conversationId = candidate.conversationId;
+  if (candidate.sentAt <= (sentReadMarkers.get(conversationId) ?? 0)) return;
+  sentReadMarkers.set(conversationId, candidate.sentAt);
+
   void Promise.resolve(
-    getRepo().markConversationRead(
-      candidate.conversationId,
-      candidate.myUserId,
-    ),
+    getRepo().markConversationRead(conversationId, candidate.myUserId),
   ).catch((error) => {
+    // Roll back only our own marker. A newer request may already have
+    // recorded a higher one, and clearing that would re-send it. The
+    // timestamp is token enough: the guard above only lets strictly
+    // increasing values through, so two in-flight requests never match.
+    if (sentReadMarkers.get(conversationId) === candidate.sentAt) {
+      sentReadMarkers.delete(conversationId);
+    }
     console.warn('[conversation] failed to mark conversation read', {
-      conversationId: candidate.conversationId,
+      conversationId,
       error,
     });
   });
