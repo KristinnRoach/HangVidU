@@ -319,7 +319,7 @@ export function MessageList() {
                   </Show>
                   <Show when={userMessage().id === lastReadByPeerId()}>
                     <span
-                      class={styles.msgStatus}
+                      class={styles.msgStatusRead}
                       role='img'
                       aria-label={t('conversation.read')}
                     >

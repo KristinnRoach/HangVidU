@@ -217,11 +217,16 @@
   margin-top: 0.4rem;
 }
 
-.msgStatus {
+.msgStatus,
+.msgStatusRead {
   font-size: 0.7em;
   margin-left: 0.5rem;
   vertical-align: bottom;
   opacity: 0.8;
+}
+
+.msgStatusRead {
+  color: #2bf42b;
 }
 
 .form {
