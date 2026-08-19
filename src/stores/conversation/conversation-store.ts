@@ -770,7 +770,13 @@ export function markActiveConversationRead(): void {
   void Promise.resolve(
     getRepo().markConversationRead(conversationId, candidate.myUserId),
   ).catch((error) => {
-    sentReadMarkers.delete(conversationId);
+    // Roll back only our own marker. A newer request may already have
+    // recorded a higher one, and clearing that would re-send it. The
+    // timestamp is token enough: the guard above only lets strictly
+    // increasing values through, so two in-flight requests never match.
+    if (sentReadMarkers.get(conversationId) === candidate.sentAt) {
+      sentReadMarkers.delete(conversationId);
+    }
     console.warn('[conversation] failed to mark conversation read', {
       conversationId,
       error,
