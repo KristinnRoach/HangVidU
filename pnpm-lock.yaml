@@ -264,11 +264,11 @@ importers:
         version: 4.4.3
     devDependencies:
       '@playwright/test':
-        specifier: ^1.61.1
-        version: 1.61.1
+        specifier: ^1.62.1
+        version: 1.62.1
       '@sentry/vite-plugin':
         specifier: ^5.4.0
-        version: 5.4.0(rollup@4.62.0)
+        version: 5.4.0(rollup@4.62.0)(supports-color@10.2.2)
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.13)
@@ -277,7 +277,7 @@ importers:
         version: 4.3.2(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))
       '@vitest/browser-playwright':
         specifier: 'catalog:'
-        version: 4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(playwright@1.61.1)(vitest@4.1.10)
+        version: 4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(playwright@1.62.1)(vitest@4.1.10)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
@@ -303,8 +303,8 @@ importers:
         specifier: ^29.1.1
         version: 29.1.1
       playwright:
-        specifier: ^1.61.1
-        version: 1.61.1
+        specifier: ^1.62.1
+        version: 1.62.1
       tailwindcss:
         specifier: ^4.3.2
         version: 4.3.2
@@ -2145,9 +2145,9 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
-  '@playwright/test@1.61.1':
-    resolution: {integrity: sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig==}
-    engines: {node: '>=18'}
+  '@playwright/test@1.62.1':
+    resolution: {integrity: sha512-DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ==}
+    engines: {node: '>=20'}
     hasBin: true
 
   '@polka/url@1.0.0-next.29':
@@ -4870,14 +4870,14 @@ packages:
     resolution: {integrity: sha512-teosUBzP9q3GMZDp/QlI/HSJHwnIBiCtDWhM/OxSB2PcR20Z0uFrrsAjKbG3e4WlQTVm5oTfmvgXEp+gk/rZ0w==}
     engines: {node: '>=20'}
 
-  playwright-core@1.61.1:
-    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
-    engines: {node: '>=18'}
+  playwright-core@1.62.1:
+    resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
+    engines: {node: '>=20'}
     hasBin: true
 
-  playwright@1.61.1:
-    resolution: {integrity: sha512-DWnY5o3YbLWK4GovuAVwpqL+1VwGNdUGrRr++8j8PtQQzvAVZUIMjKQ90fY689sEJZJBbZVw1rXaOKSTitkzPQ==}
-    engines: {node: '>=18'}
+  playwright@1.62.1:
+    resolution: {integrity: sha512-0M+L3LAD8/nm554LOla9Ayx0j0tmFZ0FBcoQ7F1VuVHpM/XpiC8RcDzBQB8W5+hA8L22THxELzeF+2WcUzvcLg==}
+    engines: {node: '>=20'}
     hasBin: true
 
   pngjs@7.0.0:
@@ -7540,9 +7540,9 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@playwright/test@1.61.1':
+  '@playwright/test@1.62.1':
     dependencies:
-      playwright: 1.61.1
+      playwright: 1.62.1
 
   '@polka/url@1.0.0-next.29': {}
 
@@ -7711,10 +7711,10 @@ snapshots:
       '@sentry/replay': 10.62.0
       '@sentry/replay-canvas': 10.62.0
 
-  '@sentry/bundler-plugins@10.70.0(rollup@4.62.0)':
+  '@sentry/bundler-plugins@10.70.0(rollup@4.62.0)(supports-color@10.2.2)':
     dependencies:
       '@babel/core': 7.29.0
-      '@sentry/cli': 2.58.6
+      '@sentry/cli': 2.58.6(supports-color@10.2.2)
       '@sentry/core': 10.70.0
       dotenv: 17.4.2
       find-up: 5.0.0
@@ -7750,9 +7750,9 @@ snapshots:
   '@sentry/cli-win32-x64@2.58.6':
     optional: true
 
-  '@sentry/cli@2.58.6':
+  '@sentry/cli@2.58.6(supports-color@10.2.2)':
     dependencies:
-      https-proxy-agent: 5.0.1
+      https-proxy-agent: 5.0.1(supports-color@10.2.2)
       node-fetch: 2.7.0
       progress: 2.0.3
       proxy-from-env: 1.1.0
@@ -7792,9 +7792,9 @@ snapshots:
       '@sentry/browser-utils': 10.62.0
       '@sentry/core': 10.62.0
 
-  '@sentry/vite-plugin@5.4.0(rollup@4.62.0)':
+  '@sentry/vite-plugin@5.4.0(rollup@4.62.0)(supports-color@10.2.2)':
     dependencies:
-      '@sentry/bundler-plugins': 10.70.0(rollup@4.62.0)
+      '@sentry/bundler-plugins': 10.70.0(rollup@4.62.0)(supports-color@10.2.2)
     transitivePeerDependencies:
       - encoding
       - rollup
@@ -8113,11 +8113,11 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
 
-  '@vitest/browser-playwright@4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(playwright@1.61.1)(vitest@4.1.10)':
+  '@vitest/browser-playwright@4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(playwright@1.62.1)(vitest@4.1.10)':
     dependencies:
       '@vitest/browser': 4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(vitest@4.1.10)
       '@vitest/mocker': 4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))
-      playwright: 1.61.1
+      playwright: 1.62.1
       tinyrainbow: 3.1.0
       vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(@vitest/browser-playwright@4.1.10)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(jsdom@29.1.1)
     transitivePeerDependencies:
@@ -8331,7 +8331,7 @@ snapshots:
 
   acorn@8.16.0: {}
 
-  agent-base@6.0.2:
+  agent-base@6.0.2(supports-color@10.2.2):
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
@@ -9456,7 +9456,7 @@ snapshots:
   http-proxy-agent@5.0.0:
     dependencies:
       '@tootallnate/once': 2.0.1
-      agent-base: 6.0.2
+      agent-base: 6.0.2(supports-color@10.2.2)
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
@@ -9470,9 +9470,9 @@ snapshots:
       - supports-color
     optional: true
 
-  https-proxy-agent@5.0.1:
+  https-proxy-agent@5.0.1(supports-color@10.2.2):
     dependencies:
-      agent-base: 6.0.2
+      agent-base: 6.0.2(supports-color@10.2.2)
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
@@ -10218,11 +10218,11 @@ snapshots:
     dependencies:
       execa: 9.6.1
 
-  playwright-core@1.61.1: {}
+  playwright-core@1.62.1: {}
 
-  playwright@1.61.1:
+  playwright@1.62.1:
     dependencies:
-      playwright-core: 1.61.1
+      playwright-core: 1.62.1
     optionalDependencies:
       fsevents: 2.3.2
 
@@ -10733,7 +10733,7 @@ snapshots:
   teeny-request@9.0.0:
     dependencies:
       http-proxy-agent: 5.0.0
-      https-proxy-agent: 5.0.1
+      https-proxy-agent: 5.0.1(supports-color@10.2.2)
       node-fetch: 2.7.0
       stream-events: 1.0.5
       uuid: 9.0.1
@@ -10997,7 +10997,7 @@ snapshots:
       oxlint-tsgolint: 7.0.2001
       vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(@vitest/browser-playwright@4.1.10)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(jsdom@29.1.1)
     optionalDependencies:
-      '@vitest/browser-playwright': 4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(playwright@1.61.1)(vitest@4.1.10)
+      '@vitest/browser-playwright': 4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(playwright@1.62.1)(vitest@4.1.10)
       '@voidzero-dev/vite-plus-darwin-arm64': 0.2.6
       '@voidzero-dev/vite-plus-darwin-x64': 0.2.6
       '@voidzero-dev/vite-plus-linux-arm64-gnu': 0.2.6
@@ -11066,7 +11066,7 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
       '@types/node': 26.0.1
-      '@vitest/browser-playwright': 4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(playwright@1.61.1)(vitest@4.1.10)
+      '@vitest/browser-playwright': 4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(playwright@1.62.1)(vitest@4.1.10)
       '@vitest/browser-preview': 4.1.10(@voidzero-dev/vite-plus-core@0.2.6(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.46.1)(typescript@7.0.2))(vitest@4.1.10)
       '@vitest/coverage-v8': 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
       jsdom: 29.1.1
