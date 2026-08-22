@@ -1,4 +1,7 @@
-import { onCleanup, onMount } from 'solid-js';
+import './infra/initSentry.js';
+
+import * as Sentry from '@sentry/browser';
+import { ErrorBoundary, onCleanup, onMount } from 'solid-js';
 import type { JSX } from 'solid-js';
 import { render } from 'solid-js/web';
 
@@ -42,6 +45,7 @@ function AppSideEffects(props: { children: JSX.Element }) {
       cleanups.push(await setupPWA());
     } catch (error) {
       console.error('[main] Side-effect setup failed:', error);
+      Sentry.captureException(error);
       runCleanups(cleanups);
     }
   });
@@ -55,9 +59,16 @@ document.getElementById('static-home')?.remove();
 
 render(
   () => (
-    <AppSideEffects>
-      <App />
-    </AppSideEffects>
+    <ErrorBoundary
+      fallback={(error) => {
+        Sentry.captureException(error);
+        return <p>Something went wrong. Please reload the page.</p>;
+      }}
+    >
+      <AppSideEffects>
+        <App />
+      </AppSideEffects>
+    </ErrorBoundary>
   ),
   document.getElementById('root')!,
 );

@@ -4,6 +4,7 @@ import { defineConfig, lazyPlugins } from 'vite-plus';
 import path from 'path';
 import { pwaPlugin } from './vite.pwa.js';
 import mkcert from 'vite-plugin-mkcert';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import solid from 'vite-plugin-solid';
 import tailwindcss from '@tailwindcss/vite';
 import boundariesConfig from './eslint.boundaries.config.js';
@@ -215,6 +216,11 @@ export default defineConfig(({ mode }) => {
     },
 
     build: {
+      // Needed so Sentry can map minified frames back to source. "hidden"
+      // emits the .map files without the sourceMappingURL comment, so
+      // browsers never fetch them; sentryVitePlugin deletes them from dist
+      // after upload so they are not served at all.
+      sourcemap: 'hidden',
       // AC3 support is intentionally emitted as a large, on-demand chunk.
       // Keep warnings focused on regressions beyond the current expected ceiling.
       chunkSizeWarningLimit: 1200,
@@ -232,6 +238,19 @@ export default defineConfig(({ mode }) => {
       solid(),
       tailwindcss(),
       pwaPlugin(basePath),
+      // Uploads source maps so production stack traces show real files and
+      // lines. Reads SENTRY_AUTH_TOKEN from .env.sentry-build-plugin
+      // (gitignored); without it the plugin logs a warning and skips upload.
+      // The token embeds its own region URL, so no `url` option is needed.
+      ...(mode === 'production'
+        ? [
+            sentryVitePlugin({
+              org: 'kristinn-roach',
+              project: 'hangvidu',
+              sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+            }),
+          ]
+        : []),
     ]),
     server: {
       port: 5173,
