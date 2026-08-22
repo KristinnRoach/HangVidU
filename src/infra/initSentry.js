@@ -65,11 +65,6 @@ if (sentryDsn) {
 
 /* Todo: Explore optional options below:
 
-Automatically upload your source maps to enable readable stack traces for Errors:
-    npx @sentry/wizard@latest -i sourcemaps --saas --org kristinn-roach --project javascript
-If you prefer to manually set up source maps, please follow this guide 'https://docs.sentry.io/platforms/javascript/sourcemaps/'
-
-
 // Add test button:
 
         <script>
