@@ -22,6 +22,11 @@ async function importPWARegister() {
  */
 async function checkForUpdates() {
   try {
+    if (navigator.onLine === false) {
+      console.debug('[PWA] Offline, skipping update check');
+      return;
+    }
+
     // Feature-detect service worker support
     if (!('serviceWorker' in navigator)) {
       console.debug(
