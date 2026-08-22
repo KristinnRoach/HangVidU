@@ -241,13 +241,12 @@ export default defineConfig(({ mode }) => {
       // Uploads source maps so production stack traces show real files and
       // lines. Reads SENTRY_AUTH_TOKEN from .env.sentry-build-plugin
       // (gitignored); without it the plugin logs a warning and skips upload.
-      // This org lives on Sentry's EU region, hence the explicit url.
+      // The token embeds its own region URL, so no `url` option is needed.
       ...(mode === 'production'
         ? [
             sentryVitePlugin({
               org: 'kristinn-roach',
               project: 'javascript',
-              url: 'https://de.sentry.io',
               sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
             }),
           ]
