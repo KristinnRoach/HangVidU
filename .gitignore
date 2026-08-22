@@ -68,3 +68,5 @@ backups/
 local/
 
 playgrounds/boundary-imports.json
+# Sentry source map upload token (secret, never commit)
+.env.sentry-build-plugin

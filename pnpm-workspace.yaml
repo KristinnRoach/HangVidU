@@ -5,6 +5,7 @@ packages:
 
 allowBuilds:
   '@firebase/util': true
+  '@sentry/cli': true
   esbuild: true
   protobufjs: true
   sharp: true
@@ -13,6 +14,7 @@ allowBuilds:
 
 onlyBuiltDependencies:
   - esbuild
+  - '@sentry/cli'
   - '@firebase/util'
   - protobufjs
   - unrs-resolver
