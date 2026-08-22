@@ -41,6 +41,8 @@ function shouldDropKnownExternalNoise(event, hint) {
 if (sentryDsn) {
   Sentry.init({
     dsn: sentryDsn,
+    // Separates local dev noise from production issues in the Sentry UI.
+    environment: import.meta.env.MODE,
     // Setting this option to true will send default PII data to Sentry.
     // For example, automatic IP address collection on events
     sendDefaultPii: true,
