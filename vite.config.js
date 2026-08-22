@@ -246,7 +246,7 @@ export default defineConfig(({ mode }) => {
         ? [
             sentryVitePlugin({
               org: 'kristinn-roach',
-              project: 'javascript',
+              project: 'hangvidu',
               sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
             }),
           ]
