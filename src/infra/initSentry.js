@@ -29,6 +29,18 @@ function getEventMessage(event, hint) {
   return '';
 }
 
+// Console capture forwards 185-odd call sites to Sentry, and this app looks
+// users up by email, so an address can ride along inside a Firebase error.
+// Opaque ids (conversation, user) are deliberately left alone: they are not
+// PII on their own and Sentry needs them to correlate events.
+const EMAIL_PATTERN = /[^\s<>()[\]{}@,;:"]+@[^\s<>()[\]{}@,;:"]+\.[a-z]{2,}/gi;
+
+export function redactEmails(value) {
+  return typeof value === 'string'
+    ? value.replace(EMAIL_PATTERN, '[redacted-email]')
+    : value;
+}
+
 function shouldDropKnownExternalNoise(event, hint) {
   if (!FILTER_EXTENSION_ASYNC_CHANNEL_ERRORS) {
     return false;
@@ -72,6 +84,14 @@ if (sentryDsn) {
     // replay is loaded up front rather than lazily.
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,
+    // beforeSend only sees error events; logs need their own hook.
+    beforeSendLog(log) {
+      log.message = redactEmails(log.message);
+      for (const [key, value] of Object.entries(log.attributes ?? {})) {
+        log.attributes[key] = redactEmails(value);
+      }
+      return log;
+    },
     // Toggle with VITE_SENTRY_FILTER_EXTENSION_ASYNC_CHANNEL_ERRORS:
     // - default (unset): enabled
     // - "0": disabled
