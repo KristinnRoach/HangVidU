@@ -56,7 +56,22 @@ if (sentryDsn) {
     // against the log quota.
     integrations: [
       Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
+      // Masking options match the SDK defaults, but are set explicitly: this
+      // app carries DM text, contact names, and camera output, so a future
+      // default flipping would leak. blockAllMedia covers video/audio, so no
+      // camera frames are ever recorded.
+      Sentry.replayIntegration({
+        maskAllText: true,
+        maskAllInputs: true,
+        blockAllMedia: true,
+      }),
     ],
+    // Buffer mode: replay records into a rolling ~60s in-memory buffer and
+    // only uploads when an error fires, so healthy sessions cost no quota.
+    // The buffer only exists once the integration is running, which is why
+    // replay is loaded up front rather than lazily.
+    replaysSessionSampleRate: 0,
+    replaysOnErrorSampleRate: 1.0,
     // Toggle with VITE_SENTRY_FILTER_EXTENSION_ASYNC_CHANNEL_ERRORS:
     // - default (unset): enabled
     // - "0": disabled
