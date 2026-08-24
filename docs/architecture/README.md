@@ -1,4 +1,4 @@
-# WIP Architecture Rules
+# Architecture Rules
 
 Where to find each rule category. All docs use bullet lists, no long prose.
 
@@ -11,5 +11,3 @@ Where to find each rule category. All docs use bullet lists, no long prose.
 | [`STYLING.md`](./STYLING.md)         | Tailwind v4 rules, tokens, cascade layers, migration    |
 
 Layer import rules are enforced by [`eslint.boundaries.config.js`](../../eslint.boundaries.config.js) — that config is the source of truth for the allow-table.
-
-Each doc ends with an **Under Consideration** section for open questions. Nothing there is binding yet.

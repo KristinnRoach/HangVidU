@@ -1,22 +1,18 @@
 # Events
 
+Bus API, primitives, and when-to-use-what: `src/shared/events/README.md`.
+This file holds only the cross-module rules that aren't about the API itself.
+
 ## Single bus
 
 - All pub/sub goes through `src/shared/events/`.
-- One shared app bus.
 - No module creates its own `EventEmitter` or local listener set.
 - No custom `on/off` APIs on controllers.
 
 ## Vocabulary
 
-- `handler` = command flow:
-  - `dispatchCommand(...)`
-  - `dispatchCommandAndAwait(...)`
-  - `handleCommand(...)`
-- `listener` = event/fact flow:
-  - `publish(...)`
-  - `publishAndAwait(...)`
-  - `subscribe(...)`
+- `handler` = command flow (`dispatchCommand`, `dispatchCommandAndAwait`, `handleCommand`).
+- `listener` = event/fact flow (`publish`, `publishAndAwait`, `subscribe`).
 
 ## Reads vs reactions
 
@@ -27,18 +23,17 @@
 
 ## Commands
 
-- Use `dispatchCommand('cmd:<module>:<entity>:<action>', payload)` for **fire-and-forget cross-module intent** where the caller does not want a typed return value or to depend on the owning module's API surface (e.g. UI opening, side-effect triggers from boundary-restricted layers).
-- For typed in-process intent (a function call that returns a value or a promise the caller awaits), prefer a direct import from the owning module's barrel. Wrapping that in a command adds ad-hoc dispatching with no benefit.
+- Use `dispatchCommand('cmd:<module>:<entity>:<action>', payload)` for
+  **fire-and-forget cross-module intent** where the caller wants neither a typed
+  return value nor a dependency on the owning module's API surface (UI opening,
+  side-effect triggers from boundary-restricted layers).
+- For typed in-process intent — a call that returns a value or a promise the
+  caller awaits — import directly from the owning module's barrel. Wrapping that
+  in a command adds dispatching with no benefit.
 - Commands are handled inside the owning module only.
-- Avoid `*:get-*` commands by default. Allowed only for explicitly documented edge cases or deferred migration steps.
+- Avoid `*:get-*` commands by default. Allowed only for documented edge cases or
+  deferred migration steps.
 
 ## Naming
 
-- See [`NAMING.md`](./NAMING.md) for event-name regex and payload shape.
-
----
-
-## Under Consideration
-
-- Standard "ready" signal per module (`evt:<module>:state:ready` or `get<Module>Ready()` promise). Currently only `auth` has `waitForAuthReady`.
-- Splitting into separate `state` and `ui` busses if/when proven valuable.
+See [`NAMING.md`](./NAMING.md).
