@@ -5,7 +5,7 @@ import path from 'path';
 import { pwaPlugin } from './vite.pwa.js';
 import mkcert from 'vite-plugin-mkcert';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-import { sentryRelease } from './scripts/sentry-release.js';
+import { headSha, sentryRelease } from './scripts/sentry-release.js';
 import solid from 'vite-plugin-solid';
 import tailwindcss from '@tailwindcss/vite';
 import boundariesConfig from './eslint.boundaries.config.js';
@@ -251,7 +251,23 @@ export default defineConfig(({ mode }) => {
               // Named explicitly so `pnpm sentry:deploy` can mark this exact
               // release as deployed. Both sides derive it from
               // scripts/sentry-release.js.
-              release: { name: sentryRelease() },
+              release: {
+                name: sentryRelease(),
+                // Pin the repo instead of letting --auto guess. Auto resolves
+                // the git remote *name*, which registered a generic repo
+                // called "origin" in Sentry and attached every commit to it.
+                // Suspect commits resolve blame through the GitHub-integrated
+                // repo, which was left with no commits at all.
+                setCommits: {
+                  repo: 'KristinnRoach/HangVidU',
+                  commit: headSha(),
+                  // Sentry's mirror of the repo can lag a fresh push. Without
+                  // these, set-commits errors out on a commit it cannot see
+                  // yet; with them it degrades to a warning.
+                  ignoreMissing: true,
+                  ignoreEmpty: true,
+                },
+              },
               sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
             }),
           ]

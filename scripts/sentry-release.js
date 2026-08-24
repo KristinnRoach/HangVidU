@@ -10,14 +10,19 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+export function headSha(short = false) {
+  return execFileSync(
+    'git',
+    ['rev-parse', ...(short ? ['--short'] : []), 'HEAD'],
+    { encoding: 'utf8' },
+  ).trim();
+}
+
 export function sentryRelease() {
   const pkg = JSON.parse(
     readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
   );
-  const sha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
-    encoding: 'utf8',
-  }).trim();
-  return `${pkg.name}@${pkg.version}+${sha}`;
+  return `${pkg.name}@${pkg.version}+${headSha(true)}`;
 }
 
 const runDirectly =
