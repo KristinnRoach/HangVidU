@@ -266,9 +266,12 @@ importers:
       '@playwright/test':
         specifier: ^1.62.1
         version: 1.62.1
+      '@sentry/cli':
+        specifier: ^2.58.6
+        version: 2.58.6
       '@sentry/vite-plugin':
         specifier: ^5.4.0
-        version: 5.4.0(rollup@4.62.0)(supports-color@10.2.2)
+        version: 5.4.0(rollup@4.62.0)
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.13)
@@ -7711,10 +7714,10 @@ snapshots:
       '@sentry/replay': 10.62.0
       '@sentry/replay-canvas': 10.62.0
 
-  '@sentry/bundler-plugins@10.70.0(rollup@4.62.0)(supports-color@10.2.2)':
+  '@sentry/bundler-plugins@10.70.0(rollup@4.62.0)':
     dependencies:
       '@babel/core': 7.29.0
-      '@sentry/cli': 2.58.6(supports-color@10.2.2)
+      '@sentry/cli': 2.58.6
       '@sentry/core': 10.70.0
       dotenv: 17.4.2
       find-up: 5.0.0
@@ -7750,9 +7753,9 @@ snapshots:
   '@sentry/cli-win32-x64@2.58.6':
     optional: true
 
-  '@sentry/cli@2.58.6(supports-color@10.2.2)':
+  '@sentry/cli@2.58.6':
     dependencies:
-      https-proxy-agent: 5.0.1(supports-color@10.2.2)
+      https-proxy-agent: 5.0.1
       node-fetch: 2.7.0
       progress: 2.0.3
       proxy-from-env: 1.1.0
@@ -7792,9 +7795,9 @@ snapshots:
       '@sentry/browser-utils': 10.62.0
       '@sentry/core': 10.62.0
 
-  '@sentry/vite-plugin@5.4.0(rollup@4.62.0)(supports-color@10.2.2)':
+  '@sentry/vite-plugin@5.4.0(rollup@4.62.0)':
     dependencies:
-      '@sentry/bundler-plugins': 10.70.0(rollup@4.62.0)(supports-color@10.2.2)
+      '@sentry/bundler-plugins': 10.70.0(rollup@4.62.0)
     transitivePeerDependencies:
       - encoding
       - rollup
@@ -8331,7 +8334,7 @@ snapshots:
 
   acorn@8.16.0: {}
 
-  agent-base@6.0.2(supports-color@10.2.2):
+  agent-base@6.0.2:
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
@@ -9456,7 +9459,7 @@ snapshots:
   http-proxy-agent@5.0.0:
     dependencies:
       '@tootallnate/once': 2.0.1
-      agent-base: 6.0.2(supports-color@10.2.2)
+      agent-base: 6.0.2
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
@@ -9470,9 +9473,9 @@ snapshots:
       - supports-color
     optional: true
 
-  https-proxy-agent@5.0.1(supports-color@10.2.2):
+  https-proxy-agent@5.0.1:
     dependencies:
-      agent-base: 6.0.2(supports-color@10.2.2)
+      agent-base: 6.0.2
       debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
@@ -10733,7 +10736,7 @@ snapshots:
   teeny-request@9.0.0:
     dependencies:
       http-proxy-agent: 5.0.0
-      https-proxy-agent: 5.0.1(supports-color@10.2.2)
+      https-proxy-agent: 5.0.1
       node-fetch: 2.7.0
       stream-events: 1.0.5
       uuid: 9.0.1

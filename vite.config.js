@@ -5,6 +5,7 @@ import path from 'path';
 import { pwaPlugin } from './vite.pwa.js';
 import mkcert from 'vite-plugin-mkcert';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { sentryRelease } from './scripts/sentry-release.js';
 import solid from 'vite-plugin-solid';
 import tailwindcss from '@tailwindcss/vite';
 import boundariesConfig from './eslint.boundaries.config.js';
@@ -247,6 +248,10 @@ export default defineConfig(({ mode }) => {
             sentryVitePlugin({
               org: 'kristinn-roach',
               project: 'hangvidu',
+              // Named explicitly so `pnpm sentry:deploy` can mark this exact
+              // release as deployed. Both sides derive it from
+              // scripts/sentry-release.js.
+              release: { name: sentryRelease() },
               sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
             }),
           ]
