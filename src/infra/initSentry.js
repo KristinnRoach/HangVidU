@@ -46,6 +46,17 @@ if (sentryDsn) {
     // Setting this option to true will send default PII data to Sentry.
     // For example, automatic IP address collection on events
     sendDefaultPii: true,
+    // Structured logs. Paired with consoleLoggingIntegration below, the
+    // console.warn/error calls the app already makes become searchable logs
+    // attached to the same events, so an error arrives with the context that
+    // led to it. Requires SDK >= 9.41.
+    enableLogs: true,
+    // Merged with the SDK's default integrations, not a replacement for them.
+    // warn/error only: console.log/info would be mostly noise and count
+    // against the log quota.
+    integrations: [
+      Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
+    ],
     // Toggle with VITE_SENTRY_FILTER_EXTENSION_ASYNC_CHANNEL_ERRORS:
     // - default (unset): enabled
     // - "0": disabled
