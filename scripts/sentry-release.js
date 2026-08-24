@@ -18,11 +18,27 @@ export function headSha(short = false) {
   ).trim();
 }
 
+// Untracked files count: a new source file that is bundled but uncommitted is
+// exactly the case this is meant to catch. Ignored paths (dist/ included) do
+// not show up here, so a build never dirties the tree on its own.
+function isWorkingTreeDirty() {
+  return (
+    execFileSync('git', ['status', '--porcelain'], {
+      encoding: 'utf8',
+    }).trim() !== ''
+  );
+}
+
 export function sentryRelease() {
   const pkg = JSON.parse(
     readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
   );
-  return `${pkg.name}@${pkg.version}+${headSha(true)}`;
+  // The suffix lands on the release name only. setCommits.commit still needs a
+  // real sha, so headSha() stays untouched. A deploy from a dirty tree ships
+  // code the named commit does not contain; without this it would quietly
+  // reuse the previous release name and mis-attribute the build.
+  const dirty = isWorkingTreeDirty() ? '-dirty' : '';
+  return `${pkg.name}@${pkg.version}+${headSha(true)}${dirty}`;
 }
 
 const runDirectly =
