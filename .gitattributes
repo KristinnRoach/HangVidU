@@ -1,0 +1,27 @@
+# Keep GitHub's language bar reflecting the application source, not tooling
+# and tests. linguist-vendored excludes a path from the stats only; diffs and
+# blame are unaffected (only linguist-generated hides diffs).
+# https://github.com/github-linguist/linguist/blob/main/docs/overrides.md
+
+# Build / lint / test config
+*.config.js       linguist-vendored
+*.config.ts       linguist-vendored
+vite.pwa.js       linguist-vendored
+eslint-plugin-local.js linguist-vendored
+
+# One-off ops and data-migration scripts
+scripts/**                    linguist-vendored
+backend/cloudflare/scripts/** linguist-vendored
+
+# Test suites
+*.test.js   linguist-vendored
+*.test.jsx  linguist-vendored
+*.test.ts   linguist-vendored
+*.test.tsx  linguist-vendored
+*.spec.js   linguist-vendored
+*.spec.jsx  linguist-vendored
+*.spec.ts   linguist-vendored
+*.spec.tsx  linguist-vendored
+__tests__/**                linguist-vendored
+tests/**                    linguist-vendored
+backend/cloudflare/test/**  linguist-vendored
