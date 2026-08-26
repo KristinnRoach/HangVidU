@@ -4,6 +4,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: auto;
+  overflow-x: hidden;
 
   letter-spacing: 0.02em;
   font-weight: 350;

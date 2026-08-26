@@ -8,6 +8,8 @@ export const DEFAULT_REACTIONS = {
   heart: '❤️',
   thumbsUp: '👍',
   laugh: '😂',
+  sad: '😢',
+  angry: '😡',
 };
 
 /**
