@@ -149,10 +149,11 @@ export class ReactionUI {
     // Position picker near the message
     const rect = messageElement.getBoundingClientRect();
     picker.style.position = 'fixed';
-    picker.style.left = `${rect.left + rect.width / 2}px`;
     picker.style.top = `${rect.top - 8}px`;
 
     document.body.appendChild(picker);
+    const halfWidth = picker.offsetWidth / 2;
+    picker.style.left = `${Math.max(halfWidth + 8, Math.min(rect.left + rect.width / 2, window.innerWidth - halfWidth - 8))}px`;
     this.activePicker = picker;
     this.activePickerMessageElement = messageElement; // Track which message this picker belongs to
 
