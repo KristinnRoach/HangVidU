@@ -159,4 +159,15 @@ describe('push-notifications setup', () => {
 
     expect(mocks.enable).toHaveBeenCalledOnce();
   });
+
+  it('dismisses a notification received while the app is visible', async () => {
+    const push = await import('../index.js');
+
+    await push.setup();
+    mocks.serviceWorkerMessageHandler?.({
+      data: { type: 'PUSH_NOTIFICATION_SHOWN' },
+    });
+
+    expect(mocks.dismissAllNotifications).toHaveBeenCalledTimes(2);
+  });
 });
