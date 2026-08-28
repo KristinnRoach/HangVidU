@@ -69,6 +69,7 @@ describe('notification presentation', () => {
 
     expect(presentation.title).toBe('Incoming call from Alice');
     expect(presentation.tag).toBe('call_notif-1');
+    expect(presentation.options.tag).toBe('call_notif-1');
     expect(presentation.options.requireInteraction).toBe(true);
     expect(presentation.options.actions).toEqual([
       { action: 'accept', title: 'Accept' },
@@ -76,5 +77,15 @@ describe('notification presentation', () => {
     expect(presentation.options.icon).toContain(
       '/HangVidU/icons/play-arrows-v1/icon-192.png',
     );
+  });
+
+  it('replaces and re-alerts repeated message notifications', () => {
+    const presentation = buildNotificationPresentation(
+      { data: { type: 'message', senderId: 'sender-1' } },
+      '/',
+    );
+
+    expect(presentation.options.tag).toBe('message_sender-1');
+    expect(presentation.options.renotify).toBe(true);
   });
 });
