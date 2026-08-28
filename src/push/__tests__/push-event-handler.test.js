@@ -4,11 +4,16 @@ import { handlePushEvent } from '../sw/index.js';
 
 describe('handlePushEvent', () => {
   let showNotification;
+  let postMessage;
 
   beforeEach(() => {
     showNotification = vi.fn().mockResolvedValue(undefined);
+    postMessage = vi.fn();
 
     globalThis.self = {
+      clients: {
+        matchAll: vi.fn().mockResolvedValue([{ postMessage }]),
+      },
       registration: {
         showNotification,
       },
@@ -45,5 +50,8 @@ describe('handlePushEvent', () => {
         requireInteraction: true,
       }),
     );
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'PUSH_NOTIFICATION_SHOWN',
+    });
   });
 });

@@ -94,6 +94,11 @@ export const setup = createSingleFlightSetup({
               ?.catch((e) => {
                 console.warn('[Push Notifications] re-register failed:', e);
               });
+          } else if (
+            event.data?.type === 'PUSH_NOTIFICATION_SHOWN' &&
+            document.visibilityState === 'visible'
+          ) {
+            void dismissAllNotifications();
           }
         },
         { signal },

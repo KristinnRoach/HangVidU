@@ -37,4 +37,16 @@ export async function handlePushEvent(event) {
     console.error('[SW] showNotification failed', error);
     throw error;
   }
+
+  try {
+    const clients = await self.clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true,
+    });
+    clients.forEach((client) =>
+      client.postMessage({ type: 'PUSH_NOTIFICATION_SHOWN' }),
+    );
+  } catch (error) {
+    console.warn('[SW] foreground notification cleanup failed', error);
+  }
 }
