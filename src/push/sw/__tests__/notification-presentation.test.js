@@ -88,4 +88,14 @@ describe('notification presentation', () => {
     expect(presentation.options.tag).toBe('message_sender-1');
     expect(presentation.options.renotify).toBe(true);
   });
+
+  it('omits replacement options without a stable identity', () => {
+    const presentation = buildNotificationPresentation(
+      { data: { type: 'message' } },
+      '/',
+    );
+
+    expect(presentation.options).not.toHaveProperty('tag');
+    expect(presentation.options.renotify).toBe(false);
+  });
 });
