@@ -9,7 +9,6 @@ export function createScreenWakeLock(enabled: Accessor<boolean>): void {
   let shouldHoldLock = false;
   let lock: WakeLockSentinel | undefined;
   let requestPending = false;
-  let releaseRetryAvailable = false;
 
   const release = () => {
     const currentLock = lock;
@@ -35,18 +34,6 @@ export function createScreenWakeLock(enabled: Accessor<boolean>): void {
       const requestedLock = await navigator.wakeLock.request('screen');
       if (shouldHoldLock && document.visibilityState === 'visible') {
         lock = requestedLock;
-        requestedLock.addEventListener(
-          'release',
-          () => {
-            if (lock !== requestedLock) return;
-            lock = undefined;
-            if (releaseRetryAvailable) {
-              releaseRetryAvailable = false;
-              queueMicrotask(() => void request());
-            }
-          },
-          { once: true },
-        );
       } else {
         void requestedLock.release();
       }
@@ -58,23 +45,14 @@ export function createScreenWakeLock(enabled: Accessor<boolean>): void {
   };
 
   const requestWhenVisible = () => {
-    if (document.visibilityState !== 'visible') return;
-    releaseRetryAvailable = true;
-    void request();
+    if (document.visibilityState === 'visible') void request();
   };
   document.addEventListener('visibilitychange', requestWhenVisible);
 
   createEffect(() => {
-    const nextShouldHoldLock = enabled();
-    if (nextShouldHoldLock && !shouldHoldLock) {
-      releaseRetryAvailable = true;
-    }
-    shouldHoldLock = nextShouldHoldLock;
+    shouldHoldLock = enabled();
     if (shouldHoldLock) void request();
-    else {
-      releaseRetryAvailable = false;
-      release();
-    }
+    else release();
   });
 
   onCleanup(() => {
