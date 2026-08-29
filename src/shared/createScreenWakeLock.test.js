@@ -10,14 +10,15 @@ function setVisibility(state) {
   document.dispatchEvent(new Event('visibilitychange'));
 }
 
-function createLock() {
-  const lock = {
-    released: false,
-    release: vi.fn(async () => {
-      lock.released = true;
-    }),
-  };
-  return lock;
+class MockWakeLock extends EventTarget {
+  released = false;
+  release = vi.fn(async () => this.releaseAutomatically());
+
+  releaseAutomatically() {
+    if (this.released) return;
+    this.released = true;
+    this.dispatchEvent(new Event('release'));
+  }
 }
 
 function stubWakeLock(request) {
@@ -37,8 +38,8 @@ afterEach(() => {
 
 describe('createScreenWakeLock', () => {
   it('holds the lock while enabled and reacquires it after returning visible', async () => {
-    const firstLock = createLock();
-    const secondLock = createLock();
+    const firstLock = new MockWakeLock();
+    const secondLock = new MockWakeLock();
     const request = vi
       .fn()
       .mockResolvedValueOnce(firstLock)
@@ -55,7 +56,7 @@ describe('createScreenWakeLock', () => {
     await vi.waitFor(() => expect(request).toHaveBeenCalledOnce());
 
     setVisibility('hidden');
-    firstLock.released = true;
+    firstLock.releaseAutomatically();
     setVisibility('visible');
     await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2));
 
@@ -68,8 +69,36 @@ describe('createScreenWakeLock', () => {
     expect(request).toHaveBeenCalledTimes(2);
   });
 
+  it('retries one automatic release without looping', async () => {
+    const firstLock = new MockWakeLock();
+    const retryLock = new MockWakeLock();
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(firstLock)
+      .mockResolvedValueOnce(retryLock);
+    stubWakeLock(request);
+
+    const [enabled, setEnabled] = createSignal(false);
+    const dispose = createRoot((dispose) => {
+      createScreenWakeLock(enabled);
+      return dispose;
+    });
+
+    setEnabled(true);
+    await vi.waitFor(() => expect(request).toHaveBeenCalledOnce());
+
+    firstLock.releaseAutomatically();
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+
+    retryLock.releaseAutomatically();
+    await Promise.resolve();
+    expect(request).toHaveBeenCalledTimes(2);
+
+    dispose();
+  });
+
   it('releases a request that resolves after being disabled', async () => {
-    const lock = createLock();
+    const lock = new MockWakeLock();
     let resolveRequest;
     const request = vi.fn(
       () =>
