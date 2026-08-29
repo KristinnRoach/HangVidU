@@ -25,7 +25,6 @@ class CallIndicators {
     this.originalFavicon = getFaviconHref();
     this.titleFlashInterval = null;
     this.isFlashing = false;
-    this.wakeLock = null;
 
     // Listen for visibility changes to auto-stop flashing
     this.setupVisibilityListener();
@@ -66,9 +65,6 @@ class CallIndicators {
 
     // Set badge (if supported)
     this.setBadge(1);
-
-    // Request wake lock (if supported)
-    void this.requestWakeLock();
   }
 
   /**
@@ -81,7 +77,6 @@ class CallIndicators {
     this.stopTitleFlashing();
     this.restoreFavicon();
     this.clearBadge();
-    this.releaseWakeLock();
   }
 
   /**
@@ -174,56 +169,6 @@ class CallIndicators {
         })
         .catch((err) => {
           console.warn('[CallIndicators] Badge clear failed:', err);
-        });
-    }
-  }
-
-  /**
-   * Request wake lock to keep screen awake during call
-   * @async
-   */
-  async requestWakeLock() {
-    if (!('wakeLock' in navigator)) {
-      return; // Wake Lock API not supported
-    }
-
-    try {
-      this.wakeLock = await navigator.wakeLock.request('screen');
-      if (import.meta.env.DEV) console.log('[CallIndicators] Wake lock active');
-
-      // Re-request wake lock if it's released (e.g., tab visibility change)
-      this.wakeLock.addEventListener(
-        'release',
-        () => {
-          if (import.meta.env.DEV) {
-            console.log('[CallIndicators] Wake lock released');
-          }
-          this.wakeLock = null;
-        },
-        { once: true },
-      );
-    } catch (err) {
-      console.warn('[CallIndicators] Wake lock failed:', err);
-    }
-  }
-
-  /**
-   * Release wake lock to allow screen to sleep
-   */
-  releaseWakeLock() {
-    if (this.wakeLock) {
-      const lock = this.wakeLock;
-      this.wakeLock = null; // Clear immediately to prevent race conditions
-
-      lock
-        .release()
-        .then(() => {
-          if (import.meta.env.DEV) {
-            console.log('[CallIndicators] Wake lock released manually');
-          }
-        })
-        .catch((err) => {
-          console.warn('[CallIndicators] Wake lock release failed:', err);
         });
     }
   }

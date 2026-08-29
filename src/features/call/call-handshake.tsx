@@ -13,6 +13,7 @@ import { useP2PContext } from '@shared/p2p-context.js';
 import { createRoomSignaling } from '@realtime';
 import { subscribe } from '@shared/events/index.js';
 import { holdAppReload } from '@shared/app-reload/index.js';
+import { createScreenWakeLock } from '@shared/createScreenWakeLock';
 import { getLoggedInUserProfile } from '../../stores/user-profile-store.js';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 import {
@@ -127,6 +128,10 @@ export function CallHandshakeProvider(props: ParentProps) {
   const [reconnectStatus, setReconnectStatus] =
     createSignal<CallReconnectStatus>('connected');
   let releaseReloadHold: (() => void) | undefined;
+
+  createScreenWakeLock(
+    () => handshakeState() !== null || p2p.state() !== 'idle',
+  );
 
   createEffect(() => {
     const isReloadBlockedByCall =
