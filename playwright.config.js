@@ -12,7 +12,7 @@ export default defineConfig({
     ...(process.env.CI ? [['github']] : []),
   ],
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: 'https://localhost:4173',
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     // Disable automatic screenshot artifact creation (was 'only-on-failure')
