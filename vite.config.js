@@ -301,6 +301,9 @@ export default defineConfig(({ mode }) => {
       // Tunnel ingress (~/.cloudflared/config.yml) points here.
       port: 4173,
       strictPort: true,
+      // Vite defaults preview.https to server.https, but mkcert (apply:'serve')
+      // only certs the dev server. Plain http matches the cloudflared ingress.
+      https: false,
       host: true,
       allowedHosts: ['dev.hangvidu.com'],
     },
