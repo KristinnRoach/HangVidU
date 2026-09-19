@@ -16,6 +16,7 @@ jobs:
       - uses: voidzero-dev/setup-vp@v1.21.0
         with:
           cache: true
+          run-install: false
       - name: Install dependencies
         run: vp install --frozen-lockfile
       - name: Check outdated packages
