@@ -14,8 +14,7 @@ export function Spinner(props: SpinnerProps) {
       style={{
         width: size(),
         height: size(),
-        'border-top-width': `calc(${size()} / 10)`,
-        'border-right-width': `calc(${size()} / 10)`,
+        'border-width': `calc(${size()} / 10)`,
       }}
       role='status'
       aria-label={props.label || 'Loading'}
