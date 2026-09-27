@@ -16,6 +16,7 @@ Use `.browser.test.js` only when the test needs real browser APIs that jsdom can
 | `pnpm test`            | Both projects (node + browser), Chromium only          |
 | `pnpm test:node`       | Node project only                                      |
 | `pnpm test:browser`    | Browser project only                                   |
+| `pnpm setup:browsers`  | Install Chromium, Firefox, and WebKit once             |
 | `pnpm test:compat`     | Node once, then browser across Chromium/Firefox/WebKit |
 | `pnpm test:all`        | `test:compat` + `test:e2e`                             |
 | `pnpm test:watch`      | Both projects in watch mode                            |
@@ -26,6 +27,8 @@ Use `.browser.test.js` only when the test needs real browser APIs that jsdom can
 | `pnpm test:e2e:headed` | Playwright with visible browser                        |
 | `pnpm test:e2e:debug`  | Playwright in debug mode                               |
 | `pnpm test:e2e:report` | Show last Playwright report                            |
+
+Install Playwright browsers once per machine (or on each fresh CI runner) before running browser tests. Compatibility tests no longer install browsers on every run.
 
 ## Structure
 
