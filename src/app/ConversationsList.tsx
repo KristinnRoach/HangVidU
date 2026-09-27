@@ -71,7 +71,7 @@ export default function ConversationsList() {
 
   return (
     <div class='conversations-container'>
-      <Show when={!isLoading()} fallback={<Spinner size={32} />}>
+      <Show when={!isLoading()} fallback={<Spinner size='2rem' />}>
         <Show
           when={rows().length > 0}
           fallback={

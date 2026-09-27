@@ -1,29 +1,23 @@
 type SpinnerProps = {
-  size?: number;
+  size?: string; // any CSS length; defaults to 1.5em so it scales with surrounding text
+  label?: string;
 };
 
-const DEFAULT_SIZE = 64;
-
+/**
+ * Spinner provides a visual cue that an action is being processed.
+ */
 export function Spinner(props: SpinnerProps) {
+  const size = () => props.size ?? '1.5em';
   return (
-    <svg
-      class='spinner'
-      width={props.size ?? DEFAULT_SIZE}
-      height={props.size ?? DEFAULT_SIZE}
-      viewBox='0 0 50 50'
+    <div
+      class='animate-spin rounded-full border-t-current border-r-transparent'
+      style={{
+        width: size(),
+        height: size(),
+        'border-width': `calc(${size()} / 10)`,
+      }}
       role='status'
-      aria-label='Loading'
-    >
-      <circle
-        cx='25'
-        cy='25'
-        r='20'
-        fill='none'
-        stroke='currentColor'
-        stroke-width='4'
-        stroke-linecap='round'
-        stroke-dasharray='80 40'
-      />
-    </svg>
+      aria-label={props.label || 'Loading'}
+    />
   );
 }
