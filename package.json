@@ -68,7 +68,8 @@
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
     "test:coverage": "vp test --run --coverage",
-    "test:compat": "playwright install chromium firefox webkit && vp test --run --project node && COMPAT=true vp test --run --project browser",
+    "setup:browsers": "playwright install chromium firefox webkit",
+    "test:compat": "vp run setup:browsers && vp test --run --project node && COMPAT=true vp test --run --project browser",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
@@ -118,8 +119,8 @@
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": ">=11.9.0",
-      "onFail": "warn"
+      "version": "^12.4.2",
+      "onFail": "download"
     }
   },
   "engines": {
