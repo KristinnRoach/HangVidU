@@ -11,24 +11,24 @@ Use `.browser.test.js` only when the test needs real browser APIs that jsdom can
 
 ## Scripts
 
-| Script                   | What it runs                                           |
-| ------------------------ | ------------------------------------------------------ |
-| `vp run test`            | Both projects (node + browser), Chromium only          |
-| `vp run test:node`       | Node project only                                      |
-| `vp run test:browser`    | Browser project only                                   |
-| `vp run setup:browsers`  | Ensure Chromium, Firefox, and WebKit are installed     |
-| `vp run test:compat`     | Node once, then browser across Chromium/Firefox/WebKit |
-| `vp run test:all`        | `test:compat` + `test:e2e`                             |
-| `vp run test:watch`      | Both projects in watch mode                            |
-| `vp run test:ui`         | Vitest UI                                              |
-| `vp run test:coverage`   | Both projects with coverage report                     |
-| `vp run test:e2e`        | Playwright end-to-end tests (separate from vitest)     |
-| `vp run test:e2e:ui`     | Playwright with interactive UI                         |
-| `vp run test:e2e:headed` | Playwright with visible browser                        |
-| `vp run test:e2e:debug`  | Playwright in debug mode                               |
-| `vp run test:e2e:report` | Show last Playwright report                            |
+| Script                | What it runs                                           |
+| --------------------- | ------------------------------------------------------ |
+| `vpr test`            | Both projects (node + browser), Chromium only          |
+| `vpr test:node`       | Node project only                                      |
+| `vpr test:browser`    | Browser project only                                   |
+| `vpr setup:browsers`  | Ensure Chromium, Firefox, and WebKit are installed     |
+| `vpr test:compat`     | Node once, then browser across Chromium/Firefox/WebKit |
+| `vpr test:all`        | `test:compat` + `test:e2e`                             |
+| `vpr test:watch`      | Both projects in watch mode                            |
+| `vpr test:ui`         | Vitest UI                                              |
+| `vpr test:coverage`   | Both projects with coverage report                     |
+| `vpr test:e2e`        | Playwright end-to-end tests (separate from vitest)     |
+| `vpr test:e2e:ui`     | Playwright with interactive UI                         |
+| `vpr test:e2e:headed` | Playwright with visible browser                        |
+| `vpr test:e2e:debug`  | Playwright in debug mode                               |
+| `vpr test:e2e:report` | Show last Playwright report                            |
 
-`vp run test:compat` handles browser installation automatically and reuses installed browsers. Other browser test commands need `vp run setup:browsers` on a fresh machine or after a Playwright upgrade.
+`vpr test:compat` handles browser installation automatically and reuses installed browsers. Other browser test commands need `vpr setup:browsers` on a fresh machine or after a Playwright upgrade.
 
 ## Structure
 
