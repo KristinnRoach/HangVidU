@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Preview is plain http (vite.config.js preview.https: false).
+const baseURL = 'http://localhost:4173';
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false, // WebRTC tests need coordination
@@ -12,7 +15,7 @@ export default defineConfig({
     ...(process.env.CI ? [['github']] : []),
   ],
   use: {
-    baseURL: 'https://localhost:4173',
+    baseURL,
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     // Disable automatic screenshot artifact creation (was 'only-on-failure')
@@ -55,8 +58,8 @@ export default defineConfig({
     // },
   ],
   webServer: {
-    command: 'pnpm build && pnpm preview',
-    port: 4173,
+    command: 'pnpm preview:local',
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
