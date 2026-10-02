@@ -8,6 +8,12 @@ import {
   createCallMedia,
 } from './call-media';
 
+const maskMocks = vi.hoisted(() => ({ createFaceMask: vi.fn() }));
+vi.mock('../experimental/face-mask', () => ({
+  faceMaskEnabled: true,
+  createFaceMask: maskMocks.createFaceMask,
+}));
+
 function createTrack(kind) {
   const listeners = new Map();
   return {
@@ -470,5 +476,109 @@ describe('call media', () => {
 
     expect(camera.stop).toHaveBeenCalledOnce();
     expect(microphone.stop).not.toHaveBeenCalled();
+  });
+});
+
+describe('experimental face mask lifecycle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        userAgent: '',
+        mediaDevices: { enumerateDevices: async () => [] },
+      },
+    });
+  });
+  function setup() {
+    const camera = createTrack('video');
+    const filtered = createTrack('video');
+    const tracks = [camera];
+    const stream = createStream(tracks);
+    const mask = { track: filtered, dispose: vi.fn(() => filtered.stop()) };
+    maskMocks.createFaceMask.mockResolvedValue(mask);
+    const room = {
+      localStream: stream,
+      setPresenceData: vi.fn(async () => {}),
+      setLocalTrack: vi.fn(async (_slot, track) => {
+        tracks.splice(0, tracks.length, ...(track ? [track] : []));
+      }),
+    };
+    let media;
+    let dispose;
+    createRoot((cleanup) => {
+      dispose = cleanup;
+      media = createCallMedia({ localStream: () => stream, room: () => room });
+    });
+    return { camera, filtered, mask, room, media, dispose };
+  }
+
+  it('publishes the mask and restores the live camera without reacquiring it', async () => {
+    const { camera, filtered, mask, room, media, dispose } = setup();
+    await media.toggleFaceMask();
+    expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+      PRIMARY_VIDEO_SLOT_ID,
+      filtered,
+    );
+    expect(media.faceMaskOn()).toBe(true);
+    expect(camera.stop).not.toHaveBeenCalled();
+    await media.toggleFaceMask();
+    expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+      PRIMARY_VIDEO_SLOT_ID,
+      camera,
+    );
+    expect(mask.dispose).toHaveBeenCalledOnce();
+    expect(media.faceMaskOn()).toBe(false);
+    dispose();
+  });
+
+  it('camera off disposes the effect and stops the retained camera', async () => {
+    const { camera, mask, room, media, dispose } = setup();
+    await media.toggleFaceMask();
+    await media.setCameraEnabled(false);
+    expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+      PRIMARY_VIDEO_SLOT_ID,
+      null,
+    );
+    expect(camera.stop).toHaveBeenCalledOnce();
+    expect(mask.dispose).toHaveBeenCalledOnce();
+    expect(media.cameraOn()).toBe(false);
+    dispose();
+  });
+
+  it('hangup stops both the raw camera and filtered track', async () => {
+    const { camera, mask, media, dispose } = setup();
+    await media.toggleFaceMask();
+    dispose();
+    expect(mask.dispose).toHaveBeenCalledOnce();
+    expect(camera.stop).toHaveBeenCalledOnce();
+  });
+
+  it('does not publish a processor that completes after hangup', async () => {
+    const { mask, room, media, dispose } = setup();
+    let finish;
+    maskMocks.createFaceMask.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = media.toggleFaceMask();
+    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+    dispose();
+    finish(mask);
+    await pending;
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+    expect(mask.dispose).toHaveBeenCalledOnce();
+  });
+
+  it('leaves the original camera published when model loading fails', async () => {
+    const { camera, room, media, dispose } = setup();
+    maskMocks.createFaceMask.mockRejectedValue(new Error('Model unavailable'));
+    await media.toggleFaceMask();
+    expect(room.localStream.getVideoTracks()).toEqual([camera]);
+    expect(media.faceMaskError()).toBe('Model unavailable');
+    expect(media.cameraPending()).toBe(false);
+    dispose();
   });
 });
