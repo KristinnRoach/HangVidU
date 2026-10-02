@@ -73,6 +73,30 @@ describe('markConversationRead', () => {
     );
   });
 
+  it('ignores an older refresh that resolves after the latest refresh', async () => {
+    vi.mocked(getLoggedInUserId).mockReturnValue('me');
+    let resolveOlder;
+    const list = vi
+      .fn()
+      .mockReturnValueOnce(new Promise((resolve) => (resolveOlder = resolve)))
+      .mockResolvedValueOnce([
+        {
+          id: 'new-dm',
+          kind: 'direct',
+          members: [{ user_id: 'me' }, { user_id: 'peer' }],
+        },
+      ]);
+    vi.mocked(getConversationsClient).mockReturnValue({ list });
+
+    const olderRefresh = refreshConversationListState();
+    await refreshConversationListState();
+    expect(conversationListState().has('new-dm')).toBe(true);
+
+    resolveOlder([]);
+    await olderRefresh;
+    expect(conversationListState().has('new-dm')).toBe(true);
+  });
+
   it('keeps group conversations from the seed', async () => {
     vi.mocked(getLoggedInUserId).mockReturnValue('me');
     vi.mocked(getConversationsClient).mockReturnValue({
