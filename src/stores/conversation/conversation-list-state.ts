@@ -293,6 +293,10 @@ export function startConversationListSync(): void {
       getToken: getLoggedInUserToken,
     },
     (envelope) => {
+      if (envelope.t === 'contact_request') {
+        void refreshConversationListState();
+        return;
+      }
       if (envelope.t !== 'activity') return; // ignore call invites/responses
       const known = listState().has(envelope.conversationId);
       upsert(envelope.conversationId, {
