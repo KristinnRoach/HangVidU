@@ -46,10 +46,12 @@ type Libraries = {
 };
 let libraries: Promise<Libraries> | undefined;
 
-function loadScript(src: string) {
+function loadScript(src: string, integrity: string) {
   return new Promise<void>((resolve, reject) => {
     const script = document.createElement('script');
     script.src = src;
+    script.integrity = integrity;
+    script.crossOrigin = 'anonymous';
     script.onload = () => resolve();
     script.onerror = () => {
       script.remove();
@@ -63,8 +65,12 @@ function loadLibraries() {
   libraries ??= (async () => {
     await loadScript(
       'https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js',
+      'sha384-bOv+b6RV+dlZvdQAx6+cJ+FK9ab8JCSVWyJ1JPhMVQjPW+4C8V2cOKK+qZDfnRnx',
     );
-    await loadScript('https://unpkg.com/ml5@1.2.1/dist/ml5.min.js');
+    await loadScript(
+      'https://unpkg.com/ml5@1.2.1/dist/ml5.min.js',
+      'sha384-M7AlPfuXf2J1G5o13KETr90B/eOykWAyIKrr60mawDnB5lltLKw/regT6SGxoWyx',
+    );
     return window as unknown as Libraries;
   })().catch((error) => {
     libraries = undefined;

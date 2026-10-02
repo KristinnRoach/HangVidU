@@ -298,7 +298,17 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
     setCameraPending(true);
     try {
-      await restoreMaskCamera();
+      if (enabled) {
+        await restoreMaskCamera();
+      } else {
+        await restoreMaskCamera().catch((error) => {
+          console.error(
+            '[CallMedia] Mask restore failed during camera off',
+            error,
+          );
+          disposeMask();
+        });
+      }
       const currentTracks = localStream()?.getVideoTracks() ?? [];
 
       if (!enabled) {

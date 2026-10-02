@@ -546,6 +546,33 @@ describe('experimental face mask lifecycle', () => {
     dispose();
   });
 
+  it('completes camera off when restoring the raw camera fails', async () => {
+    const { camera, filtered, mask, room, media, dispose } = setup();
+    await media.toggleFaceMask();
+    const replaceTrack = room.setLocalTrack.getMockImplementation();
+    room.setLocalTrack.mockImplementationOnce(async (slot, track) => {
+      await replaceTrack(slot, track);
+      throw new Error('Peer track replacement failed');
+    });
+
+    await media.setCameraEnabled(false);
+
+    expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+      PRIMARY_VIDEO_SLOT_ID,
+      null,
+    );
+    expect(camera.stop).toHaveBeenCalledOnce();
+    expect(filtered.stop).toHaveBeenCalledOnce();
+    expect(mask.dispose).toHaveBeenCalledOnce();
+    expect(media.cameraOn()).toBe(false);
+    expect(media.faceMaskOn()).toBe(false);
+    expect(media.cameraPending()).toBe(false);
+    expect(room.setPresenceData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cameraOn: false }),
+    );
+    dispose();
+  });
+
   it('hangup stops both the raw camera and filtered track', async () => {
     const { camera, mask, media, dispose } = setup();
     await media.toggleFaceMask();
