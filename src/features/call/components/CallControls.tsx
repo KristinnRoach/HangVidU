@@ -19,7 +19,7 @@ import type { CallMedia } from '../call-media';
 
 import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
-import { onMount, Show } from 'solid-js';
+import { onCleanup, onMount, Show } from 'solid-js';
 
 type StartCallButtonProps = {
   calleeId: string;
@@ -94,6 +94,21 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
 
   onMount(() => {
     if (import.meta.env.DEV) toggleMic(); // Mute mic by default in dev to avoid feedback
+    const revealFaceMask = (event: KeyboardEvent) => {
+      if (
+        event.ctrlKey &&
+        event.shiftKey &&
+        !event.altKey &&
+        !event.metaKey &&
+        !event.repeat &&
+        event.code === 'Digit9'
+      ) {
+        event.preventDefault();
+        media.enableFaceMask();
+      }
+    };
+    window.addEventListener('keydown', revealFaceMask);
+    onCleanup(() => window.removeEventListener('keydown', revealFaceMask));
   });
 
   return (
@@ -123,7 +138,7 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
       >
         {media.cameraOn() ? <Video /> : <VideoOff />}
       </button>
-      <Show when={media.faceMaskAvailable}>
+      <Show when={media.faceMaskAvailable()}>
         <button
           type='button'
           onClick={() => void media.toggleFaceMask()}

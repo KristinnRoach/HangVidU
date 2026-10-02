@@ -22,7 +22,8 @@ function uniqueCameras(devices: MediaDeviceInfo[]) {
 }
 
 export type CallMedia = {
-  faceMaskAvailable: boolean;
+  faceMaskAvailable: Accessor<boolean>;
+  enableFaceMask: () => void;
   faceMaskOn: Accessor<boolean>;
   faceMaskError: Accessor<string>;
   faceMaskStatus: Accessor<string>;
@@ -70,6 +71,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
   const screenShareAvailable = () =>
     !isMobile && typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+  const [faceMaskAvailable, setFaceMaskAvailable] =
+    createSignal(faceMaskEnabled);
   const [faceMaskOn, setFaceMaskOn] = createSignal(false);
   const [faceMaskError, setFaceMaskError] = createSignal('');
   const [faceMaskStatus, setFaceMaskStatus] = createSignal('');
@@ -96,7 +99,12 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   }
 
   async function toggleFaceMask() {
-    if (!faceMaskEnabled || cameraPending() || screenSharing() || !cameraOn())
+    if (
+      !faceMaskAvailable() ||
+      cameraPending() ||
+      screenSharing() ||
+      !cameraOn()
+    )
       return;
     const room = p2p.room();
     if (!room) return;
@@ -586,7 +594,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   }
 
   return {
-    faceMaskAvailable: faceMaskEnabled,
+    faceMaskAvailable,
+    enableFaceMask: () => setFaceMaskAvailable(true),
     faceMaskOn,
     faceMaskError,
     faceMaskStatus,

@@ -2,6 +2,8 @@
 
 Dev enables the call-control button by default. Set VITE_EXPERIMENTAL_FACE_MASK=false to hide it, or true to include it in a production build. This is a build-time flag; restart dev after changing it.
 
+During a call, press Ctrl + Shift + 9 (also on Mac) to reveal the button regardless of the build-time default. This unlocks it for the current call only and does not load libraries or activate the filter until the button is clicked.
+
 Start a video call, keep your face visible, and click the Experimental face mask icon (face in a frame). Initial loading/detection can take up to 30 seconds. The first detected face is captured and warped on a black background. Click again to restore the camera; enabling again captures a new image. Other callers should receive the filtered output.
 
 ## Deferred

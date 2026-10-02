@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   hangUp: vi.fn(),
   startCall: vi.fn(),
   media: {
+    faceMaskAvailable: () => false,
+    enableFaceMask: vi.fn(),
     micOn: () => true,
     cameraOn: () => true,
     cameraPending: () => false,
