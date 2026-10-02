@@ -206,8 +206,11 @@ function mergeReadMarkers(
   });
 }
 
+let refreshGeneration = 0;
+
 /** Refetch the current conversation-list state snapshot (seed). */
 export async function refreshConversationListState(): Promise<void> {
+  const generation = ++refreshGeneration;
   const me = getLoggedInUserId();
   if (!me) {
     setListState(new Map());
@@ -217,7 +220,7 @@ export async function refreshConversationListState(): Promise<void> {
   }
   try {
     const conversations = await getConversationsClient().list();
-    if (getLoggedInUserId() !== me) return;
+    if (generation !== refreshGeneration || getLoggedInUserId() !== me) return;
 
     const map = new Map<string, Conversation>();
     const reads = new Map<string, number>();
@@ -293,6 +296,10 @@ export function startConversationListSync(): void {
       getToken: getLoggedInUserToken,
     },
     (envelope) => {
+      if (envelope.t === 'contact_request') {
+        void refreshConversationListState();
+        return;
+      }
       if (envelope.t !== 'activity') return; // ignore call invites/responses
       const known = listState().has(envelope.conversationId);
       upsert(envelope.conversationId, {
