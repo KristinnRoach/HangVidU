@@ -6,6 +6,10 @@ import {
 
 import { faceMaskStyle } from './face-mask-style';
 
+// Output width; height is scaled to match the source aspect ratio.
+const FRAME_WIDTH = 1024; // Higher for better quality; lower for faster performance. Values to try: 640, 960, 1024, 1280 (camera is capped at 1280 in getVideoConstraints).
+
+const FACE_MASK_FEATHER = false;
 // Set false to restore the original full-frame filtered video.
 const FACE_MASK_AUTO_FRAME = true;
 const FACE_MASK_MIN_HEIGHT = 0.6; // Minimum frame-height fraction; try 0.3–0.6.
@@ -188,7 +192,7 @@ export async function createFaceMask(
         video.height = video.videoHeight;
         if (disposed) return;
         mesh = readyMesh;
-        const width = 640;
+        const width = FRAME_WIDTH;
         const height = Math.round(
           width * (video.videoHeight / video.videoWidth || 0.75),
         );
@@ -308,6 +312,21 @@ export async function createFaceMask(
             Object.assign(liveContext, faceMaskStyle.outside);
             liveContext.drawImage(video, 0, 0, width, height);
             liveContext.restore();
+            // Vignette radii are fractions of the visible half-diagonal.
+            const corner = Math.hypot(width, height) / 2; // If should follow zoom add: / zoom;
+            const vignette = liveContext.createRadialGradient(
+              centerX,
+              centerY,
+              corner * faceMaskStyle.vignette.fadeStart,
+              centerX,
+              centerY,
+              corner * faceMaskStyle.vignette.fadeEnd,
+            );
+            vignette.addColorStop(0, 'transparent');
+            vignette.addColorStop(1, faceMaskStyle.backgroundColor);
+            liveContext.fillStyle = vignette;
+            liveContext.fillRect(0, 0, width, height);
+            liveContext.fillStyle = faceMaskStyle.backgroundColor;
             if (face) {
               // Keep live eyes and mouth fully visible inside the face outline.
               liveContext.save();
@@ -337,6 +356,19 @@ export async function createFaceMask(
             maskContext.save();
             Object.assign(maskContext, faceMaskStyle.mask);
             maskContext.drawImage(image.canvas, 0, 0, width, height);
+
+            if (FACE_MASK_FEATHER) {
+              // Feather: keep only a blurred face silhouette so mesh edges fade out.
+              maskContext.globalCompositeOperation = 'destination-in';
+              maskContext.filter = 'blur(16px)';
+              maskContext.beginPath();
+
+              for (const index of faceBoundary) {
+                const point = captured.keypoints[index]!;
+                maskContext.lineTo(point.x, point.y);
+              }
+              maskContext.fill();
+            }
             maskContext.restore();
             p.texture(styledMaskTexture!);
             p.noStroke();
