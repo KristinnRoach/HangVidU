@@ -115,8 +115,7 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
     <div
       class={styles.callControls}
       classList={{
-        [styles.hidden!]:
-          !visible() && !media.faceMaskStatus() && !media.faceMaskError(),
+        [styles.hidden!]: !visible(),
       }}
     >
       <button
@@ -153,12 +152,6 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
         >
           <ScanFace />
         </button>
-        <Show when={media.faceMaskStatus()}>
-          <span role='status'>{media.faceMaskStatus()}…</span>
-        </Show>
-        <Show when={media.faceMaskError()}>
-          <span role='alert'>{media.faceMaskError()}</span>
-        </Show>
       </Show>
       <Show when={media.cameraSwitchAvailable()}>
         <button

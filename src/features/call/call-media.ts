@@ -1,3 +1,4 @@
+import { FACE_MASK_CAPTURE_MODE } from '../experimental/capture-template';
 import { createEffect, createSignal, onCleanup, type Accessor } from 'solid-js';
 import type { LocalTrackSlot } from '@kidlib/p2p';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
@@ -33,6 +34,8 @@ export type CallMedia = {
   faceMaskStatus: Accessor<string>;
   toggleFaceMask: () => Promise<void>;
   faceMaskCapturing: Accessor<boolean>;
+  faceMaskOutline: Accessor<boolean>;
+  detectFaceMask: () => void;
   faceMaskCaptureReady: Accessor<boolean>;
   captureFaceMask: () => void;
   cancelFaceMaskCapture: () => void;
@@ -84,6 +87,9 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const [faceMaskError, setFaceMaskError] = createSignal('');
   const [faceMaskStatus, setFaceMaskStatus] = createSignal('');
   const maskAbort = new AbortController();
+  const [faceMaskOutline, setFaceMaskOutline] = createSignal(
+    FACE_MASK_CAPTURE_MODE === 'outline',
+  );
   const [faceMaskCapturing, setFaceMaskCapturing] = createSignal(false);
   const [captureAction, setCaptureAction] = createSignal<
     (() => void) | undefined
@@ -132,6 +138,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       captureAbort = new AbortController();
       const cancelCapture = () => captureAbort?.abort();
       maskAbort.signal.addEventListener('abort', cancelCapture, { once: true });
+      setFaceMaskOutline(FACE_MASK_CAPTURE_MODE === 'outline');
       setFaceMaskCapturing(true);
       let nextMask: FaceMask;
       try {
@@ -140,6 +147,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
           captureAbort.signal,
           setFaceMaskStatus,
           (capture) => setCaptureAction(() => capture),
+          () => (faceMaskOutline() ? 'outline' : 'detected'),
         );
       } finally {
         maskAbort.signal.removeEventListener('abort', cancelCapture);
@@ -635,6 +643,12 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     faceMaskStatus,
     toggleFaceMask,
     faceMaskCapturing,
+    faceMaskOutline,
+    detectFaceMask: () => {
+      if (!faceMaskCapturing()) return;
+      setCaptureAction(undefined);
+      setFaceMaskOutline(false);
+    },
     faceMaskCaptureReady: () => !!captureAction(),
     captureFaceMask: () => captureAction()?.(),
     cancelFaceMaskCapture: () => captureAbort?.abort(),

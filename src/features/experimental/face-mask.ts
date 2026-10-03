@@ -1,3 +1,5 @@
+import { FACE_MASK_CAPTURE_MODE, capturePoints } from './capture-template';
+
 type Graphics = { canvas: HTMLCanvasElement; remove: () => void };
 
 type Face = { keypoints: { x: number; y: number }[] };
@@ -95,6 +97,7 @@ export async function createFaceMask(
   signal: AbortSignal,
   onProgress: (stage: string) => void = () => {},
   onCaptureReady?: (capture: (() => void) | undefined) => void,
+  captureMode: () => 'outline' | 'detected' = () => FACE_MASK_CAPTURE_MODE,
 ): Promise<FaceMask> {
   const container = document.createElement('div');
   // Keep the source playing independently of the outgoing filtered preview.
@@ -172,12 +175,24 @@ export async function createFaceMask(
         let context: CanvasRenderingContext2D;
         let faces: Face[] = [];
         let captured: Face | undefined;
+        const outlineMode = () => captureMode() === 'outline';
         const capture = () => {
-          if (disposed || captured || !faces[0]) return;
+          if (disposed || captured || (!outlineMode() && !faces[0])) return;
           context.drawImage(video, 0, 0, width, height);
-          captured = faces[0];
+          captured = outlineMode()
+            ? {
+                keypoints: capturePoints.map(([x, y]) => ({
+                  x: width / 2 + (x - 0.5) * height,
+                  y: y * height,
+                })),
+              }
+            : faces[0];
           onCaptureReady?.(undefined);
-          progress('Rendering captured face');
+          progress(
+            outlineMode()
+              ? 'Bring your face into view to animate'
+              : 'Rendering captured face',
+          );
         };
         let canvas: HTMLCanvasElement;
         let triangles: number[][] = [];
@@ -192,7 +207,13 @@ export async function createFaceMask(
             p.frameRate(20);
             p.textureMode(p.NORMAL);
             triangles = mesh!.getTriangles();
-            progress('Waiting for a face');
+            if (outlineMode() && onCaptureReady) {
+              clearTimeout(timer);
+              onCaptureReady(capture);
+              progress('Position your image inside the outline, then capture');
+            } else {
+              progress('Waiting for a face');
+            }
             mesh!.detectStart(video, (results) => {
               if (disposed) return;
               // Landmarks refer to source-video pixels, not the output canvas.
@@ -202,7 +223,7 @@ export async function createFaceMask(
                   y: (point.y * height) / video.videoHeight,
                 })),
               }));
-              if (!captured) {
+              if (!captured && (!outlineMode() || !onCaptureReady)) {
                 if (onCaptureReady) {
                   // The timeout bounds startup, not the user's adjustment time.
                   if (faces[0]) clearTimeout(timer);
@@ -222,7 +243,14 @@ export async function createFaceMask(
             p.translate(-width / 2, -height / 2);
             p.background(0);
             const face = faces[0];
-            if (!face || !captured) return;
+            if (!captured) return;
+            if (!output) {
+              output = canvas.captureStream(20).getVideoTracks()[0]!;
+              clearTimeout(timer);
+              progress('Filtered video ready');
+              resolve({ track: output, dispose });
+            }
+            if (!face) return;
             p.texture(image);
             p.noStroke();
             p.beginShape(p.TRIANGLES);
@@ -234,12 +262,6 @@ export async function createFaceMask(
               }
             }
             p.endShape();
-            if (!output) {
-              output = canvas.captureStream(20).getVideoTracks()[0]!;
-              clearTimeout(timer);
-              progress('Filtered video ready');
-              resolve({ track: output, dispose });
-            }
           };
         }, container);
       })().catch((error) => {
