@@ -14,7 +14,7 @@ If preloading is still running, the first toggle waits for it. Loading failures 
 
 ## Known limitations
 
-- CDN libraries and model assets require network access on first use. The loaded model remains in memory for the page session; ml5 1.2.1 has no public model disposal API.
+- CDN libraries and model assets require network access on first use. The renderer uses p5 1.11.13 and ml5 1.4.0, which includes the iOS WebGPU video-orientation workaround. The loaded model remains in memory for the page session; ml5 has no public model disposal API.
 - Rendering is capped at 640 pixels wide and 20fps. Background opacity applies outside the tracked face outline; tracking loss applies it to the whole frame. Mobile performance, remote playback, and browser/device compatibility need manual verification.
 - Runtime renderer failures do not automatically restore the camera. A failed peer track replacement can leave some peers on the previous track; toggle off to retry restoration.
 

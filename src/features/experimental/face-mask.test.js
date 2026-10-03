@@ -37,6 +37,11 @@ it.each([false, true])(
     const drawImage = vi.fn();
     const liveDrawImage = vi.fn();
     const vertex = vi.fn();
+    const removeGraphics = vi.fn(() => {
+      throw new TypeError(
+        "Cannot read properties of undefined (reading 'indexOf')",
+      );
+    });
     const mesh = {
       ready: Promise.resolve(),
       detectStart: vi.fn((_video, callback) => {
@@ -78,11 +83,11 @@ it.each([false, true])(
                     restore: vi.fn(),
                   }),
                 },
-                remove: vi.fn(),
+                remove: removeGraphics,
               }))
               .mockImplementationOnce(() => ({
                 canvas: { getContext: () => ({ drawImage }) },
-                remove: vi.fn(),
+                remove: removeGraphics,
               })),
             frameRate: vi.fn(),
             textureMode: vi.fn(),
@@ -157,9 +162,18 @@ it.each([false, true])(
     if (switchToDetection)
       expect(vertex).toHaveBeenNthCalledWith(1, 10, 20, 10 / 640, 20 / 480);
     expect(drawImage).toHaveBeenCalledOnce();
-    mask.dispose();
+    const sourceVideo = mesh.detectStart.mock.calls[0][0];
+    const container = sourceVideo.parentElement;
+    if (switchToDetection) controller.abort();
+    else expect(() => mask.dispose()).not.toThrow();
+    // Hangup aborts first and then explicitly disposes the mask again.
+    expect(() => mask.dispose()).not.toThrow();
+    expect(removeGraphics).not.toHaveBeenCalled();
+    expect(sketch.remove).toHaveBeenCalledOnce();
     expect(mesh.detectStop).toHaveBeenCalledOnce();
     expect(track.stop).toHaveBeenCalledOnce();
+    expect(sourceVideo.srcObject).toBeNull();
+    expect(container.isConnected).toBe(false);
   },
 );
 

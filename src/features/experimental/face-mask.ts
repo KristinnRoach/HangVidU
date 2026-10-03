@@ -6,7 +6,7 @@ import {
 
 import { faceMaskStyle } from './face-mask-style';
 
-type Graphics = { canvas: HTMLCanvasElement; remove: () => void };
+type Graphics = { canvas: HTMLCanvasElement };
 
 type Face = { keypoints: { x: number; y: number }[] };
 type Mesh = {
@@ -45,7 +45,7 @@ type Sketch = {
 };
 type Libraries = {
   p5: new (sketch: (p: Sketch) => void, container: HTMLElement) => Sketch;
-  ml5: { faceMesh: (options: { maxFaces: number }) => Mesh };
+  ml5: { faceMesh: (options: { maxFaces: number }) => Mesh | Promise<Mesh> };
 };
 let libraries: Promise<Libraries> | undefined;
 
@@ -67,12 +67,12 @@ function loadScript(src: string, integrity: string) {
 function loadLibraries() {
   libraries ??= (async () => {
     await loadScript(
-      'https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js',
-      'sha384-bOv+b6RV+dlZvdQAx6+cJ+FK9ab8JCSVWyJ1JPhMVQjPW+4C8V2cOKK+qZDfnRnx',
+      'https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.13/p5.min.js',
+      'sha384-+4pFSzqrHIcjFoiZQ8s1jUHqNylTGybto+iELDyMA+UQ0UhpTH0B92zF4Bg0mawP',
     );
     await loadScript(
-      'https://unpkg.com/ml5@1.2.1/dist/ml5.min.js',
-      'sha384-M7AlPfuXf2J1G5o13KETr90B/eOykWAyIKrr60mawDnB5lltLKw/regT6SGxoWyx',
+      'https://unpkg.com/ml5@1.4.0/dist/ml5.min.js',
+      'sha384-WhQsp6wxLjcueRBZ1VznJM97KGBK+r4P+L3yOCLEUk/H/4uAm9leYfoLx+Fauci2',
     );
     return window as unknown as Libraries;
   })().catch((error) => {
@@ -87,7 +87,8 @@ let faceModel: Promise<{ libs: Libraries; mesh: Mesh }> | undefined;
 export function preloadFaceMask() {
   faceModel ??= (async () => {
     const libs = await loadLibraries();
-    const mesh = libs.ml5.faceMesh({ maxFaces: 1 });
+    // Without a global p5 at ml5 load time, ml5 returns a Promise<Mesh>.
+    const mesh = await libs.ml5.faceMesh({ maxFaces: 1 });
     await mesh.ready;
     return { libs, mesh };
   })().catch((error) => {
@@ -118,7 +119,6 @@ export async function createFaceMask(
   document.body.append(container);
   let sketch: Sketch | undefined;
   let mesh: Mesh | undefined;
-  let capturedTexture: Graphics | undefined;
   let liveTexture: Graphics | undefined;
   let styledMaskTexture: Graphics | undefined;
   let output: MediaStreamTrack | undefined;
@@ -139,10 +139,11 @@ export async function createFaceMask(
     signal.removeEventListener('abort', abort);
     onCaptureReady?.(undefined);
     mesh?.detectStop();
-    capturedTexture?.remove();
-    liveTexture?.remove();
-    styledMaskTexture?.remove();
+    // The sketch owns buffer cleanup; Graphics.remove() breaks in p5 1.11.13.
     sketch?.remove();
+    sketch = undefined;
+    liveTexture = undefined;
+    styledMaskTexture = undefined;
     output?.stop();
     video.pause();
     video.srcObject = null;
@@ -215,7 +216,6 @@ export async function createFaceMask(
             if (disposed) return;
             canvas = p.createCanvas(width, height, p.WEBGL).elt;
             image = p.createGraphics(width, height);
-            capturedTexture = image;
             context = image.canvas.getContext('2d')!;
             liveTexture = p.createGraphics(width, height);
             liveContext = liveTexture.canvas.getContext('2d')!;
