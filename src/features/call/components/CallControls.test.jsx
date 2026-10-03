@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   hangUp: vi.fn(),
   startCall: vi.fn(),
   media: {
+    faceMaskAvailable: () => false,
+    enableFaceMask: vi.fn(),
     micOn: () => true,
     cameraOn: () => true,
     cameraPending: () => false,
@@ -83,6 +85,48 @@ describe('StartCallButton', () => {
 });
 
 describe('ActiveCallControls', () => {
+  it('keeps the face mask disabled until the call is ready', () => {
+    const toggleFaceMask = vi.fn();
+    let setReady;
+    const { getByRole } = render(() => {
+      const [ready, updateReady] = createSignal(false);
+      setReady = updateReady;
+      return (
+        <ActiveCallControls
+          media={{
+            ...mocks.media,
+            faceMaskAvailable: () => true,
+            faceMaskReady: ready,
+            faceMaskOn: () => false,
+            toggleFaceMask,
+          }}
+        />
+      );
+    });
+    const button = getByRole('button', { name: 'Experimental face mask' });
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(toggleFaceMask).not.toHaveBeenCalled();
+
+    setReady(true);
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    expect(toggleFaceMask).toHaveBeenCalledOnce();
+  });
+
+  it('reveals the face mask by default and keeps Ctrl+Shift+9 available', () => {
+    render(() => <ActiveCallControls media={mocks.media} />);
+    expect(mocks.media.enableFaceMask).toHaveBeenCalledOnce();
+    fireEvent.keyDown(window, { code: 'Digit9' });
+    expect(mocks.media.enableFaceMask).toHaveBeenCalledOnce();
+    fireEvent.keyDown(window, {
+      code: 'Digit9',
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    expect(mocks.media.enableFaceMask).toHaveBeenCalledTimes(2);
+  });
+
   it('lets the user mute remote audio locally', () => {
     const onRemoteAudioMutedChange = vi.fn();
     const { getByRole } = render(() => (

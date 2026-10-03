@@ -1,3 +1,4 @@
+import { captureOutline } from '../../experimental/capture-template';
 import { For, Show } from 'solid-js';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { ParticipantMedia } from './ParticipantMedia';
@@ -41,7 +42,62 @@ export function MemberStreams(props: MemberStreamsProps) {
             videoEnabled={props.media.cameraOn() || props.media.screenSharing()}
             audioEnabled={props.media.micOn()}
             screenShare={props.media.screenSharing()}
-          />
+            previewUncropped={props.media.faceMaskCapturing?.()}
+            overlay={(aspect) => (
+              <Show
+                when={
+                  props.media.faceMaskCapturing?.() &&
+                  props.media.faceMaskOutline()
+                }
+              >
+                <svg
+                  class={styles.captureOutline}
+                  viewBox={`0 0 ${aspect} 1`}
+                  preserveAspectRatio='xMidYMid meet'
+                  aria-hidden='true'
+                >
+                  <polygon points={captureOutline(aspect)} />
+                </svg>
+              </Show>
+            )}
+          >
+            <Show when={props.media.faceMaskCapturing?.()}>
+              <div class={styles.captureOverlay}>
+                <span role='status'>
+                  {props.media.faceMaskCaptureReady()
+                    ? props.media.faceMaskOutline()
+                      ? 'Position your image, then capture'
+                      : 'Adjust your face, then capture'
+                    : 'Preparing capture…'}
+                </span>
+                <div>
+                  <button
+                    type='button'
+                    disabled={!props.media.faceMaskCaptureReady()}
+                    onClick={props.media.captureFaceMask}
+                  >
+                    Capture
+                  </button>
+                  <Show when={props.media.faceMaskOutline()}>
+                    <button type='button' onClick={props.media.detectFaceMask}>
+                      Detect face
+                    </button>
+                  </Show>
+                  <button
+                    type='button'
+                    onClick={props.media.cancelFaceMaskCapture}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </Show>
+            <Show when={props.media.faceMaskError?.()}>
+              <div class={styles.captureOverlay} role='alert'>
+                {props.media.faceMaskError()}
+              </div>
+            </Show>
+          </ParticipantMedia>
         )}
       </Show>
       <For each={p2p.remoteMemberStreams()}>

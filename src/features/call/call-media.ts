@@ -1,6 +1,13 @@
+import { FACE_MASK_CAPTURE_MODE } from '../experimental/capture-template';
 import { createEffect, createSignal, onCleanup, type Accessor } from 'solid-js';
 import type { LocalTrackSlot } from '@kidlib/p2p';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
+
+import {
+  createFaceMask,
+  preloadFaceMask,
+  type FaceMask,
+} from '../experimental/face-mask';
 
 import { getVideoConstraints } from './media-constraints.js';
 
@@ -20,6 +27,19 @@ function uniqueCameras(devices: MediaDeviceInfo[]) {
 }
 
 export type CallMedia = {
+  faceMaskAvailable: Accessor<boolean>;
+  faceMaskReady: Accessor<boolean>;
+  enableFaceMask: () => void;
+  faceMaskOn: Accessor<boolean>;
+  faceMaskError: Accessor<string>;
+  faceMaskStatus: Accessor<string>;
+  toggleFaceMask: () => Promise<void>;
+  faceMaskCapturing: Accessor<boolean>;
+  faceMaskOutline: Accessor<boolean>;
+  detectFaceMask: () => void;
+  faceMaskCaptureReady: Accessor<boolean>;
+  captureFaceMask: () => void;
+  cancelFaceMaskCapture: () => void;
   micOn: Accessor<boolean>;
   cameraOn: Accessor<boolean>;
   cameraPending: Accessor<boolean>;
@@ -63,6 +83,136 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
   const screenShareAvailable = () =>
     !isMobile && typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+  const [faceMaskAvailable, setFaceMaskAvailable] = createSignal(false);
+  // Room presence precedes the WebRTC handshake. Wait for an open channel
+  // before loading mask libraries/model or starting detection.
+  const [faceMaskReady, setFaceMaskReady] = createSignal(false);
+  createEffect(() => {
+    if (!faceMaskAvailable()) return;
+    const channels = [...p2p.dataChannels().values()];
+    const update = () =>
+      setFaceMaskReady(
+        channels.some((channel) => channel.readyState === 'open'),
+      );
+    update();
+    for (const channel of channels) {
+      channel.addEventListener('open', update);
+      channel.addEventListener('close', update);
+    }
+    onCleanup(() => {
+      for (const channel of channels) {
+        channel.removeEventListener('open', update);
+        channel.removeEventListener('close', update);
+      }
+    });
+  });
+  const [faceMaskOn, setFaceMaskOn] = createSignal(false);
+  const [faceMaskError, setFaceMaskError] = createSignal('');
+  createEffect(() => {
+    if (!faceMaskReady()) return;
+    void preloadFaceMask().catch((error) => {
+      if (!maskAbort.signal.aborted) {
+        setFaceMaskError(
+          error instanceof Error ? error.message : 'Face mask failed',
+        );
+      }
+    });
+  });
+  const [faceMaskStatus, setFaceMaskStatus] = createSignal('');
+  const maskAbort = new AbortController();
+  const [faceMaskOutline, setFaceMaskOutline] = createSignal(
+    FACE_MASK_CAPTURE_MODE === 'outline',
+  );
+  const [faceMaskCapturing, setFaceMaskCapturing] = createSignal(false);
+  const [captureAction, setCaptureAction] = createSignal<
+    (() => void) | undefined
+  >();
+  let captureAbort: AbortController | undefined;
+  let mask: FaceMask | undefined;
+  let maskCamera: MediaStreamTrack | undefined;
+
+  function disposeMask() {
+    mask?.dispose();
+    mask = undefined;
+    maskCamera = undefined;
+    setFaceMaskOn(false);
+  }
+
+  async function restoreMaskCamera() {
+    if (!mask) return;
+    const room = p2p.room();
+    const camera = maskCamera;
+    if (room && camera?.readyState === 'live') {
+      await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, camera);
+    }
+    disposeMask();
+    syncTrackState();
+  }
+
+  async function toggleFaceMask() {
+    if (
+      !faceMaskAvailable() ||
+      !faceMaskReady() ||
+      cameraPending() ||
+      screenSharing() ||
+      !cameraOn()
+    )
+      return;
+    const room = p2p.room();
+    if (!room) return;
+    setCameraPending(true);
+    setFaceMaskError('');
+    try {
+      if (mask) {
+        await restoreMaskCamera();
+        return;
+      }
+      const camera = localStream()?.getVideoTracks()[0];
+      if (!camera) return;
+      captureAbort = new AbortController();
+      const cancelCapture = () => captureAbort?.abort();
+      maskAbort.signal.addEventListener('abort', cancelCapture, { once: true });
+      setFaceMaskOutline(FACE_MASK_CAPTURE_MODE === 'outline');
+      setFaceMaskCapturing(true);
+      let nextMask: FaceMask;
+      try {
+        nextMask = await createFaceMask(
+          camera,
+          captureAbort.signal,
+          setFaceMaskStatus,
+          (capture) => setCaptureAction(() => capture),
+          () => (faceMaskOutline() ? 'outline' : 'detected'),
+        );
+      } finally {
+        maskAbort.signal.removeEventListener('abort', cancelCapture);
+      }
+      if (maskAbort.signal.aborted) {
+        nextMask.dispose();
+        return;
+      }
+      mask = nextMask;
+      maskCamera = camera;
+      // Retain ownership of the raw camera even while it is outside localStream.
+      ownedCameraTracks.add(camera);
+      setFaceMaskOn(true);
+      await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, nextMask.track);
+      console.info('[FaceMask] Filtered track published');
+      syncTrackState();
+    } catch (error) {
+      if (!maskAbort.signal.aborted && !captureAbort?.signal.aborted) {
+        setFaceMaskError(
+          error instanceof Error ? error.message : 'Face mask failed',
+        );
+      }
+    } finally {
+      setFaceMaskCapturing(false);
+      setCaptureAction(undefined);
+      captureAbort = undefined;
+      setFaceMaskStatus('');
+      setCameraPending(false);
+    }
+  }
+
   let screenTrack: MediaStreamTrack | undefined;
   let cameraBeforeScreenShare: MediaStreamTrack | null = null;
   let screenStopRequested = false;
@@ -165,6 +315,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       'devicechange',
       onDeviceChange,
     );
+    maskAbort.abort();
+    disposeMask();
     screenTrack?.stop();
     ownedCameraTracks.forEach((track) => track.stop());
     ownedCameraTracks.clear();
@@ -220,6 +372,17 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
     setCameraPending(true);
     try {
+      if (enabled) {
+        await restoreMaskCamera();
+      } else {
+        await restoreMaskCamera().catch((error) => {
+          console.error(
+            '[CallMedia] Mask restore failed during camera off',
+            error,
+          );
+          disposeMask();
+        });
+      }
       const currentTracks = localStream()?.getVideoTracks() ?? [];
 
       if (!enabled) {
@@ -303,13 +466,16 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     const room = p2p.room();
     if (!room) throw new Error('Cannot switch camera without an active room');
 
-    const currentTrack = localStream()
-      ?.getVideoTracks()
-      .find((track) => track.readyState === 'live');
+    const currentTrack =
+      maskCamera ??
+      localStream()
+        ?.getVideoTracks()
+        .find((track) => track.readyState === 'live');
     if (!currentTrack) throw new Error('Cannot switch an inactive camera');
 
     setCameraPending(true);
     try {
+      await restoreMaskCamera();
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cameras = uniqueCameras(devices);
       const currentDeviceId = currentTrack.getSettings?.().deviceId;
@@ -429,11 +595,9 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     if (!room) throw new Error('Cannot share screen without an active room');
 
     setCameraPending(true);
-    cameraBeforeScreenShare =
-      localStream()
-        ?.getVideoTracks()
-        .find((track) => track.readyState === 'live') ?? null;
     try {
+      await restoreMaskCamera();
+      cameraBeforeScreenShare = localStream()?.getVideoTracks()[0] ?? null;
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
       });
@@ -496,6 +660,26 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   }
 
   return {
+    faceMaskAvailable,
+    faceMaskReady,
+    enableFaceMask: () => {
+      setFaceMaskAvailable(true);
+      setFaceMaskError('');
+    },
+    faceMaskOn,
+    faceMaskError,
+    faceMaskStatus,
+    toggleFaceMask,
+    faceMaskCapturing,
+    faceMaskOutline,
+    detectFaceMask: () => {
+      if (!faceMaskCapturing()) return;
+      setCaptureAction(undefined);
+      setFaceMaskOutline(false);
+    },
+    faceMaskCaptureReady: () => !!captureAction(),
+    captureFaceMask: () => captureAction()?.(),
+    cancelFaceMaskCapture: () => captureAbort?.abort(),
     micOn,
     cameraOn,
     cameraPending,

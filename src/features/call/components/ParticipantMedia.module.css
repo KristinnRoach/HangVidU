@@ -28,6 +28,7 @@
 
 .selfPreview {
   position: absolute;
+  overflow: visible;
   top: var(--gap);
   left: var(--gap);
 
@@ -42,6 +43,7 @@
 }
 
 .selfPreview .media {
+  border-radius: inherit;
   transform: scaleX(-1);
   overflow: hidden;
 }

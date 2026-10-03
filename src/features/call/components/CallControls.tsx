@@ -1,4 +1,5 @@
 import {
+  ScanFace,
   Mic,
   MicOff,
   Phone,
@@ -18,7 +19,10 @@ import type { CallMedia } from '../call-media';
 
 import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
-import { onMount, Show } from 'solid-js';
+import { onCleanup, onMount, Show } from 'solid-js';
+
+// Temporary deployment testing: set false to restore shortcut-only access.
+const REVEAL_FACE_MASK_BY_DEFAULT = true;
 
 type StartCallButtonProps = {
   calleeId: string;
@@ -93,12 +97,30 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
 
   onMount(() => {
     if (import.meta.env.DEV) toggleMic(); // Mute mic by default in dev to avoid feedback
+    if (REVEAL_FACE_MASK_BY_DEFAULT) media.enableFaceMask();
+    const revealFaceMask = (event: KeyboardEvent) => {
+      if (
+        event.ctrlKey &&
+        event.shiftKey &&
+        !event.altKey &&
+        !event.metaKey &&
+        !event.repeat &&
+        event.code === 'Digit9'
+      ) {
+        event.preventDefault();
+        media.enableFaceMask();
+      }
+    };
+    window.addEventListener('keydown', revealFaceMask);
+    onCleanup(() => window.removeEventListener('keydown', revealFaceMask));
   });
 
   return (
     <div
       class={styles.callControls}
-      classList={{ [styles.hidden!]: !visible() }}
+      classList={{
+        [styles.hidden!]: !visible(),
+      }}
     >
       <button
         type='button'
@@ -119,6 +141,25 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
       >
         {media.cameraOn() ? <Video /> : <VideoOff />}
       </button>
+      <Show when={media.faceMaskAvailable()}>
+        <button
+          type='button'
+          onClick={() => void media.toggleFaceMask()}
+          disabled={
+            !media.faceMaskReady() ||
+            media.cameraPending() ||
+            media.screenSharing() ||
+            !media.cameraOn()
+          }
+          aria-pressed={media.faceMaskOn()}
+          title={
+            media.faceMaskOn() ? 'Turn face mask off' : 'Experimental face mask'
+          }
+          aria-label='Experimental face mask'
+        >
+          <ScanFace />
+        </button>
+      </Show>
       <Show when={media.cameraSwitchAvailable()}>
         <button
           type='button'
