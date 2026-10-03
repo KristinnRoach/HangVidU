@@ -32,6 +32,10 @@ export type CallMedia = {
   faceMaskError: Accessor<string>;
   faceMaskStatus: Accessor<string>;
   toggleFaceMask: () => Promise<void>;
+  faceMaskCapturing: Accessor<boolean>;
+  faceMaskCaptureReady: Accessor<boolean>;
+  captureFaceMask: () => void;
+  cancelFaceMaskCapture: () => void;
   micOn: Accessor<boolean>;
   cameraOn: Accessor<boolean>;
   cameraPending: Accessor<boolean>;
@@ -80,6 +84,11 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const [faceMaskError, setFaceMaskError] = createSignal('');
   const [faceMaskStatus, setFaceMaskStatus] = createSignal('');
   const maskAbort = new AbortController();
+  const [faceMaskCapturing, setFaceMaskCapturing] = createSignal(false);
+  const [captureAction, setCaptureAction] = createSignal<
+    (() => void) | undefined
+  >();
+  let captureAbort: AbortController | undefined;
   let mask: FaceMask | undefined;
   let maskCamera: MediaStreamTrack | undefined;
 
@@ -120,11 +129,21 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       }
       const camera = localStream()?.getVideoTracks()[0];
       if (!camera) return;
-      const nextMask = await createFaceMask(
-        camera,
-        maskAbort.signal,
-        setFaceMaskStatus,
-      );
+      captureAbort = new AbortController();
+      const cancelCapture = () => captureAbort?.abort();
+      maskAbort.signal.addEventListener('abort', cancelCapture, { once: true });
+      setFaceMaskCapturing(true);
+      let nextMask: FaceMask;
+      try {
+        nextMask = await createFaceMask(
+          camera,
+          captureAbort.signal,
+          setFaceMaskStatus,
+          (capture) => setCaptureAction(() => capture),
+        );
+      } finally {
+        maskAbort.signal.removeEventListener('abort', cancelCapture);
+      }
       if (maskAbort.signal.aborted) {
         nextMask.dispose();
         return;
@@ -138,12 +157,15 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       console.info('[FaceMask] Filtered track published');
       syncTrackState();
     } catch (error) {
-      if (!maskAbort.signal.aborted) {
+      if (!maskAbort.signal.aborted && !captureAbort?.signal.aborted) {
         setFaceMaskError(
           error instanceof Error ? error.message : 'Face mask failed',
         );
       }
     } finally {
+      setFaceMaskCapturing(false);
+      setCaptureAction(undefined);
+      captureAbort = undefined;
       setFaceMaskStatus('');
       setCameraPending(false);
     }
@@ -612,6 +634,10 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     faceMaskError,
     faceMaskStatus,
     toggleFaceMask,
+    faceMaskCapturing,
+    faceMaskCaptureReady: () => !!captureAction(),
+    captureFaceMask: () => captureAction()?.(),
+    cancelFaceMaskCapture: () => captureAbort?.abort(),
     micOn,
     cameraOn,
     cameraPending,

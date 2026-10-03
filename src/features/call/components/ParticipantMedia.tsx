@@ -7,6 +7,7 @@ import {
   Switch,
   Match,
   Show,
+  type JSX,
 } from 'solid-js';
 import { createMediaPlayback } from '@kidlib/p2p/solid';
 import { t } from '@shared/i18n';
@@ -18,6 +19,7 @@ import { Spinner } from '@components/Spinner';
 
 type ParticipantMediaProps = {
   stream: MediaStream;
+  children?: JSX.Element;
   variant?: 'remote' | 'self-preview';
   videoEnabled?: boolean;
   audioEnabled?: boolean;
@@ -310,6 +312,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
         </Switch>
       </Show>
 
+      {props.children}
       <Show
         when={
           playback.playbackBlocked() &&

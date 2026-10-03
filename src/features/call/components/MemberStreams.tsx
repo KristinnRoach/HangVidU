@@ -41,7 +41,32 @@ export function MemberStreams(props: MemberStreamsProps) {
             videoEnabled={props.media.cameraOn() || props.media.screenSharing()}
             audioEnabled={props.media.micOn()}
             screenShare={props.media.screenSharing()}
-          />
+          >
+            <Show when={props.media.faceMaskCapturing?.()}>
+              <div class={styles.captureOverlay}>
+                <span role='status'>
+                  {props.media.faceMaskCaptureReady()
+                    ? 'Adjust your face, then capture'
+                    : 'Waiting for a face…'}
+                </span>
+                <div>
+                  <button
+                    type='button'
+                    disabled={!props.media.faceMaskCaptureReady()}
+                    onClick={props.media.captureFaceMask}
+                  >
+                    Capture
+                  </button>
+                  <button
+                    type='button'
+                    onClick={props.media.cancelFaceMaskCapture}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </Show>
+          </ParticipantMedia>
         )}
       </Show>
       <For each={p2p.remoteMemberStreams()}>

@@ -2,7 +2,7 @@
 
 Run `vp dev`, start a video call, then press **Ctrl+Shift+9** (also on Mac). This is the only activation path in dev and production: it reveals the face-mask button and preloads the pinned p5/ml5 libraries and face model. No environment flag is needed.
 
-Click the face-mask button with your face visible to capture and animate it. Click again to restore the camera. Each activation captures a fresh face; the libraries and model are reused until the page reloads. Turning off stops detection and releases the video/canvas resources.
+Click the face-mask button to start tracking while your camera preview stays live. Adjust your face, then click **Capture** at the bottom of your preview to capture and animate it. Capture is disabled until a face is detected; **Cancel** returns to the normal camera without capturing. Click again to restore the camera. Each activation captures a fresh face; the libraries and model are reused until the page reloads. Turning off stops detection and releases the video/canvas resources.
 
 If preloading is still running, the first toggle waits for it. Loading failures appear beside the controls; press the shortcut or toggle again to retry. Camera startup and first face detection still take some time.
 

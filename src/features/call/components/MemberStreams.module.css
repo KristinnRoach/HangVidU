@@ -17,3 +17,22 @@
     grid-template-columns: 1fr;
   } */
 }
+
+.captureOverlay {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 8px;
+  background: rgb(0 0 0 / 70%);
+  color: white;
+  text-align: center;
+}
+
+.captureOverlay button {
+  margin: 0 3px;
+  padding: 6px 10px;
+}

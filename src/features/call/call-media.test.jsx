@@ -525,6 +525,37 @@ describe('experimental face mask lifecycle', () => {
     dispose();
   });
 
+  it('keeps the camera live until capture and allows cancellation', async () => {
+    const { camera, mask, room, media, dispose } = setup();
+    maskMocks.createFaceMask.mockImplementation(
+      (_camera, signal, _progress, ready) =>
+        new Promise((resolve, reject) => {
+          ready(() => resolve(mask));
+          signal.addEventListener(
+            'abort',
+            () => reject(new Error('cancelled')),
+            { once: true },
+          );
+        }),
+    );
+    const cancelled = media.toggleFaceMask();
+    expect(media.faceMaskCapturing()).toBe(true);
+    expect(media.faceMaskCaptureReady()).toBe(true);
+    expect(room.localStream.getVideoTracks()).toEqual([camera]);
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+    media.cancelFaceMaskCapture();
+    await cancelled;
+    expect(media.faceMaskCapturing()).toBe(false);
+    expect(media.cameraPending()).toBe(false);
+    expect(media.faceMaskError()).toBe('');
+    const captured = media.toggleFaceMask();
+    media.captureFaceMask();
+    await captured;
+    expect(media.faceMaskOn()).toBe(true);
+    expect(media.faceMaskCaptureReady()).toBe(false);
+    dispose();
+  });
+
   it('publishes the mask and restores the live camera without reacquiring it', async () => {
     const { camera, filtered, mask, room, media, dispose } = setup();
     await media.toggleFaceMask();

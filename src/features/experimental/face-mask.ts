@@ -94,6 +94,7 @@ export async function createFaceMask(
   camera: MediaStreamTrack,
   signal: AbortSignal,
   onProgress: (stage: string) => void = () => {},
+  onCaptureReady?: (capture: (() => void) | undefined) => void,
 ): Promise<FaceMask> {
   const container = document.createElement('div');
   // Keep the source playing independently of the outgoing filtered preview.
@@ -124,6 +125,7 @@ export async function createFaceMask(
     disposed = true;
     clearTimeout(timer);
     signal.removeEventListener('abort', abort);
+    onCaptureReady?.(undefined);
     mesh?.detectStop();
     capturedTexture?.remove();
     sketch?.remove();
@@ -170,6 +172,13 @@ export async function createFaceMask(
         let context: CanvasRenderingContext2D;
         let faces: Face[] = [];
         let captured: Face | undefined;
+        const capture = () => {
+          if (disposed || captured || !faces[0]) return;
+          context.drawImage(video, 0, 0, width, height);
+          captured = faces[0];
+          onCaptureReady?.(undefined);
+          progress('Rendering captured face');
+        };
         let canvas: HTMLCanvasElement;
         let triangles: number[][] = [];
         progress('Starting renderer');
@@ -193,10 +202,18 @@ export async function createFaceMask(
                   y: (point.y * height) / video.videoHeight,
                 })),
               }));
-              if (!captured && faces[0]) {
-                context.drawImage(video, 0, 0, width, height);
-                captured = faces[0];
-                progress('Rendering captured face');
+              if (!captured) {
+                if (onCaptureReady) {
+                  // The timeout bounds startup, not the user's adjustment time.
+                  if (faces[0]) clearTimeout(timer);
+                  onCaptureReady(faces[0] ? capture : undefined);
+                  const next = faces[0]
+                    ? 'Adjust your face, then capture'
+                    : 'Waiting for a face';
+                  if (stage !== next) progress(next);
+                } else if (faces[0]) {
+                  capture();
+                }
               }
             });
           };
