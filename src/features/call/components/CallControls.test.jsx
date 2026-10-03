@@ -85,16 +85,17 @@ describe('StartCallButton', () => {
 });
 
 describe('ActiveCallControls', () => {
-  it('activates face-mask loading through Ctrl+Shift+9', () => {
+  it('preloads the face mask by default and keeps Ctrl+Shift+9 available', () => {
     render(() => <ActiveCallControls media={mocks.media} />);
+    expect(mocks.media.enableFaceMask).toHaveBeenCalledOnce();
     fireEvent.keyDown(window, { code: 'Digit9' });
-    expect(mocks.media.enableFaceMask).not.toHaveBeenCalled();
+    expect(mocks.media.enableFaceMask).toHaveBeenCalledOnce();
     fireEvent.keyDown(window, {
       code: 'Digit9',
       ctrlKey: true,
       shiftKey: true,
     });
-    expect(mocks.media.enableFaceMask).toHaveBeenCalledOnce();
+    expect(mocks.media.enableFaceMask).toHaveBeenCalledTimes(2);
   });
 
   it('lets the user mute remote audio locally', () => {

@@ -19,7 +19,10 @@ export const faceMaskStyle: {
   // A: Outside the tracked face. globalAlpha is 0–1.
   outside: { globalAlpha: 0, filter: 'none' },
   // B: Live face underneath the mask, visible through eyes/mouth.
-  inside: { globalAlpha: 1, filter: 'none' },
+  inside: {
+    globalAlpha: 1,
+    filter: 'none', // invert(75%) hue-rotate(90deg) contrast(110%) saturate(110%) brightness(110%)
+  },
   // C: Captured texture. Reducing alpha reveals B through the mask.
   mask: { globalAlpha: 1, filter: 'none' },
 };

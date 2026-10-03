@@ -21,6 +21,9 @@ import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
 import { onCleanup, onMount, Show } from 'solid-js';
 
+// Temporary deployment testing: set false to restore shortcut-only access.
+const REVEAL_FACE_MASK_BY_DEFAULT = true;
+
 type StartCallButtonProps = {
   calleeId: string;
   calleeName?: string;
@@ -94,6 +97,7 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
 
   onMount(() => {
     if (import.meta.env.DEV) toggleMic(); // Mute mic by default in dev to avoid feedback
+    if (REVEAL_FACE_MASK_BY_DEFAULT) media.enableFaceMask();
     const revealFaceMask = (event: KeyboardEvent) => {
       if (
         event.ctrlKey &&
