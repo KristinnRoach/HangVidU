@@ -1,9 +1,3 @@
-// Adapted from the working sketch preserved at ideas/face-mask.
-export const faceMaskEnabled =
-  import.meta.env.VITE_EXPERIMENTAL_FACE_MASK === 'true' ||
-  (import.meta.env.DEV &&
-    import.meta.env.VITE_EXPERIMENTAL_FACE_MASK !== 'false');
-
 type Graphics = { canvas: HTMLCanvasElement; remove: () => void };
 
 type Face = { keypoints: { x: number; y: number }[] };
@@ -79,6 +73,21 @@ function loadLibraries() {
   return libraries;
 }
 
+let faceModel: Promise<{ libs: Libraries; mesh: Mesh }> | undefined;
+
+export function preloadFaceMask() {
+  faceModel ??= (async () => {
+    const libs = await loadLibraries();
+    const mesh = libs.ml5.faceMesh({ maxFaces: 1 });
+    await mesh.ready;
+    return { libs, mesh };
+  })().catch((error) => {
+    faceModel = undefined;
+    throw error;
+  });
+  return faceModel;
+}
+
 export type FaceMask = { track: MediaStreamTrack; dispose: () => void };
 
 export async function createFaceMask(
@@ -145,17 +154,14 @@ export async function createFaceMask(
         return;
       }
       void (async () => {
-        const libs = await loadLibraries();
+        const { libs, mesh: readyMesh } = await preloadFaceMask();
         if (disposed) return;
         progress('Starting camera input');
         await video.play();
         video.width = video.videoWidth;
         video.height = video.videoHeight;
         if (disposed) return;
-        progress('Loading face model');
-        mesh = libs.ml5.faceMesh({ maxFaces: 1 });
-        await mesh.ready;
-        if (disposed) return;
+        mesh = readyMesh;
         const width = 640;
         const height = Math.round(
           width * (video.videoHeight / video.videoWidth || 0.75),

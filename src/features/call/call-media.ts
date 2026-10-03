@@ -2,7 +2,11 @@ import { createEffect, createSignal, onCleanup, type Accessor } from 'solid-js';
 import type { LocalTrackSlot } from '@kidlib/p2p';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 
-import { faceMaskEnabled, type FaceMask } from '../experimental/face-mask';
+import {
+  createFaceMask,
+  preloadFaceMask,
+  type FaceMask,
+} from '../experimental/face-mask';
 
 import { getVideoConstraints } from './media-constraints.js';
 
@@ -71,8 +75,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
   const screenShareAvailable = () =>
     !isMobile && typeof navigator.mediaDevices?.getDisplayMedia === 'function';
-  const [faceMaskAvailable, setFaceMaskAvailable] =
-    createSignal(faceMaskEnabled);
+  const [faceMaskAvailable, setFaceMaskAvailable] = createSignal(false);
   const [faceMaskOn, setFaceMaskOn] = createSignal(false);
   const [faceMaskError, setFaceMaskError] = createSignal('');
   const [faceMaskStatus, setFaceMaskStatus] = createSignal('');
@@ -117,7 +120,6 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       }
       const camera = localStream()?.getVideoTracks()[0];
       if (!camera) return;
-      const { createFaceMask } = await import('../experimental/face-mask');
       const nextMask = await createFaceMask(
         camera,
         maskAbort.signal,
@@ -595,7 +597,17 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
   return {
     faceMaskAvailable,
-    enableFaceMask: () => setFaceMaskAvailable(true),
+    enableFaceMask: () => {
+      setFaceMaskAvailable(true);
+      setFaceMaskError('');
+      void preloadFaceMask().catch((error) => {
+        if (!maskAbort.signal.aborted) {
+          setFaceMaskError(
+            error instanceof Error ? error.message : 'Face mask failed',
+          );
+        }
+      });
+    },
     faceMaskOn,
     faceMaskError,
     faceMaskStatus,

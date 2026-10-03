@@ -8,10 +8,13 @@ import {
   createCallMedia,
 } from './call-media';
 
-const maskMocks = vi.hoisted(() => ({ createFaceMask: vi.fn() }));
+const maskMocks = vi.hoisted(() => ({
+  createFaceMask: vi.fn(),
+  preloadFaceMask: vi.fn(async () => {}),
+}));
 vi.mock('../experimental/face-mask', () => ({
-  faceMaskEnabled: true,
   createFaceMask: maskMocks.createFaceMask,
+  preloadFaceMask: maskMocks.preloadFaceMask,
 }));
 
 function createTrack(kind) {
@@ -510,8 +513,17 @@ describe('experimental face mask lifecycle', () => {
       dispose = cleanup;
       media = createCallMedia({ localStream: () => stream, room: () => room });
     });
+    media.enableFaceMask();
     return { camera, filtered, mask, room, media, dispose };
   }
+
+  it('preloads the mask without replacing the camera when revealed', () => {
+    const { media, room, dispose } = setup();
+    expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+    expect(media.faceMaskOn()).toBe(false);
+    dispose();
+  });
 
   it('publishes the mask and restores the live camera without reacquiring it', async () => {
     const { camera, filtered, mask, room, media, dispose } = setup();

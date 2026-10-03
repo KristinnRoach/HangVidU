@@ -85,6 +85,18 @@ describe('StartCallButton', () => {
 });
 
 describe('ActiveCallControls', () => {
+  it('activates face-mask loading through Ctrl+Shift+9', () => {
+    render(() => <ActiveCallControls media={mocks.media} />);
+    fireEvent.keyDown(window, { code: 'Digit9' });
+    expect(mocks.media.enableFaceMask).not.toHaveBeenCalled();
+    fireEvent.keyDown(window, {
+      code: 'Digit9',
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    expect(mocks.media.enableFaceMask).toHaveBeenCalledOnce();
+  });
+
   it('lets the user mute remote audio locally', () => {
     const onRemoteAudioMutedChange = vi.fn();
     const { getByRole } = render(() => (
