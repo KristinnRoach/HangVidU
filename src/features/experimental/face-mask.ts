@@ -1,4 +1,10 @@
-import { FACE_MASK_CAPTURE_MODE, capturePoints } from './capture-template';
+import {
+  FACE_MASK_CAPTURE_MODE,
+  capturePoints,
+  faceBoundary,
+} from './capture-template';
+
+import { faceMaskStyle } from './face-mask-style';
 
 type Graphics = { canvas: HTMLCanvasElement; remove: () => void };
 
@@ -29,6 +35,7 @@ type Sketch = {
   textureMode: (mode: string) => void;
   translate: (x: number, y: number) => void;
   background: (color: number) => void;
+  image: (source: Graphics, x: number, y: number, w: number, h: number) => void;
   texture: (source: Graphics) => void;
   noStroke: () => void;
   beginShape: (mode: string) => void;
@@ -112,6 +119,8 @@ export async function createFaceMask(
   let sketch: Sketch | undefined;
   let mesh: Mesh | undefined;
   let capturedTexture: Graphics | undefined;
+  let liveTexture: Graphics | undefined;
+  let styledMaskTexture: Graphics | undefined;
   let output: MediaStreamTrack | undefined;
   let disposed = false;
   let stage = 'Loading libraries';
@@ -131,6 +140,8 @@ export async function createFaceMask(
     onCaptureReady?.(undefined);
     mesh?.detectStop();
     capturedTexture?.remove();
+    liveTexture?.remove();
+    styledMaskTexture?.remove();
     sketch?.remove();
     output?.stop();
     video.pause();
@@ -173,6 +184,8 @@ export async function createFaceMask(
         );
         let image: Graphics;
         let context: CanvasRenderingContext2D;
+        let liveContext: CanvasRenderingContext2D;
+        let maskContext: CanvasRenderingContext2D;
         let faces: Face[] = [];
         let captured: Face | undefined;
         const outlineMode = () => captureMode() === 'outline';
@@ -204,6 +217,10 @@ export async function createFaceMask(
             image = p.createGraphics(width, height);
             capturedTexture = image;
             context = image.canvas.getContext('2d')!;
+            liveTexture = p.createGraphics(width, height);
+            liveContext = liveTexture.canvas.getContext('2d')!;
+            styledMaskTexture = p.createGraphics(width, height);
+            maskContext = styledMaskTexture.canvas.getContext('2d')!;
             p.frameRate(20);
             p.textureMode(p.NORMAL);
             triangles = mesh!.getTriangles();
@@ -244,6 +261,30 @@ export async function createFaceMask(
             p.background(0);
             const face = faces[0];
             if (!captured) return;
+            liveContext.fillStyle = faceMaskStyle.backgroundColor;
+            liveContext.fillRect(0, 0, width, height);
+            liveContext.save();
+            Object.assign(liveContext, faceMaskStyle.outside);
+            liveContext.drawImage(video, 0, 0, width, height);
+            liveContext.restore();
+            if (face) {
+              // Keep live eyes and mouth fully visible inside the face outline.
+              liveContext.save();
+              liveContext.beginPath();
+              faceBoundary.forEach((index, i) => {
+                const point = face.keypoints[index]!;
+                if (i === 0) liveContext.moveTo(point.x, point.y);
+                else liveContext.lineTo(point.x, point.y);
+              });
+              liveContext.closePath();
+              liveContext.clip();
+              // Replace A beneath B so their opacity settings stay independent.
+              liveContext.fillRect(0, 0, width, height);
+              Object.assign(liveContext, faceMaskStyle.inside);
+              liveContext.drawImage(video, 0, 0, width, height);
+              liveContext.restore();
+            }
+            p.image(liveTexture!, 0, 0, width, height);
             if (!output) {
               output = canvas.captureStream(20).getVideoTracks()[0]!;
               clearTimeout(timer);
@@ -251,7 +292,12 @@ export async function createFaceMask(
               resolve({ track: output, dispose });
             }
             if (!face) return;
-            p.texture(image);
+            maskContext.clearRect(0, 0, width, height);
+            maskContext.save();
+            Object.assign(maskContext, faceMaskStyle.mask);
+            maskContext.drawImage(image.canvas, 0, 0, width, height);
+            maskContext.restore();
+            p.texture(styledMaskTexture!);
             p.noStroke();
             p.beginShape(p.TRIANGLES);
             for (const triangle of triangles) {

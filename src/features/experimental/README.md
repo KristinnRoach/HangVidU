@@ -2,7 +2,7 @@
 
 Run `vp dev`, start a video call, then press **Ctrl+Shift+9** (also on Mac). This is the only activation path in dev and production: it reveals the face-mask button and preloads the pinned p5/ml5 libraries and face model. No environment flag is needed.
 
-Click the face-mask button to keep the camera preview live and show a fixed face outline. Position an image or object inside the outline, then click **Capture** below the preview. Capture does not require a detected face. Move the object away and bring your face into view to animate the captured image; output is black whenever no face is tracked. **Cancel** keeps the normal camera without capturing.
+Click the face-mask button to keep the camera preview live and show a fixed face outline. Position an image or object inside the outline, then click **Capture** below the preview. Capture does not require a detected face. Move the object away and bring your face into view to animate the captured image; the live camera is drawn behind the mask, showing live eyes and mouth through its openings. Outside the tracked face outline, camera opacity is controlled by `faceMaskStyle.outside.globalAlpha` in `face-mask-style.ts` (`0` is black and `1` is fully visible). When no face is tracked, the whole camera frame uses that opacity. **Cancel** keeps the normal camera without capturing.
 
 Click **Detect face** beside Capture to switch the current session to detected-face capture: the outline disappears and Capture waits for a visible face. Each new activation starts in the default mode.
 
@@ -15,7 +15,7 @@ If preloading is still running, the first toggle waits for it. Loading failures 
 ## Known limitations
 
 - CDN libraries and model assets require network access on first use. The loaded model remains in memory for the page session; ml5 1.2.1 has no public model disposal API.
-- Rendering is capped at 640 pixels wide and 20fps. Tracking loss produces black output. Mobile performance, remote playback, and browser/device compatibility need manual verification.
+- Rendering is capped at 640 pixels wide and 20fps. Background opacity applies outside the tracked face outline; tracking loss applies it to the whole frame. Mobile performance, remote playback, and browser/device compatibility need manual verification.
 - Runtime renderer failures do not automatically restore the camera. A failed peer track replacement can leave some peers on the previous track; toggle off to retry restoration.
 
 ## Review handoff
@@ -39,3 +39,7 @@ Validation: formatting, lint, and types pass. The full suite passed 434 tests wi
 Next small extension (not yet implemented): add a live detected-face outline to help the user see which part of their face will be sampled before they click Capture. Show it only on the local camera preview while a capture session is in detected-face mode (after clicking Detect face, or when configured as the default), before capture, and while a face is tracked. Hide it when tracking is lost, capture completes, or the session is canceled. Outline mode keeps its existing fixed positioning guide; the animated output should not show either guide.
 
 Minimal implementation: reuse the existing SVG polygon and face-boundary indices, replacing the fixed template coordinates with the current detected keypoints. Use the same source aspect ratio and mirroring as the preview so the guide aligns with the sampled face. No additional detector or rendering library is needed.
+
+### Region styling
+
+`face-mask-style.ts` holds native Canvas image styles for `outside`, `inside`, and `mask`. Use `globalAlpha` (0–1), `filter` (a standard CSS filter chain such as `grayscale(1) contrast(1.2)`), and native shadow properties. Browser support determines which filters work; unsupported filters have no custom fallback. The mask is styled before its texture is warped, so blur and shadows affect the source image, not the final face silhouette. The captured source stays unchanged. `backgroundColor` supplies the opaque base color. Styles are read each frame; when tracking is lost only `outside` is drawn. The inside layer spans the entire face outline and becomes visible through a translucent mask.

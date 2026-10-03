@@ -35,6 +35,7 @@ it.each([false, true])(
     let capture;
     const track = { stop: vi.fn() };
     const drawImage = vi.fn();
+    const liveDrawImage = vi.fn();
     const vertex = vi.fn();
     const mesh = {
       ready: Promise.resolve(),
@@ -61,14 +62,33 @@ it.each([false, true])(
         constructor(init) {
           sketch = {
             createCanvas: () => ({ elt: outputCanvas }),
-            createGraphics: () => ({
-              canvas: { getContext: () => ({ drawImage }) },
-              remove: vi.fn(),
-            }),
+            createGraphics: vi
+              .fn(() => ({
+                canvas: {
+                  getContext: () => ({
+                    drawImage: liveDrawImage,
+                    fillRect: vi.fn(),
+                    clearRect: vi.fn(),
+                    save: vi.fn(),
+                    beginPath: vi.fn(),
+                    moveTo: vi.fn(),
+                    lineTo: vi.fn(),
+                    closePath: vi.fn(),
+                    clip: vi.fn(),
+                    restore: vi.fn(),
+                  }),
+                },
+                remove: vi.fn(),
+              }))
+              .mockImplementationOnce(() => ({
+                canvas: { getContext: () => ({ drawImage }) },
+                remove: vi.fn(),
+              })),
             frameRate: vi.fn(),
             textureMode: vi.fn(),
             translate: vi.fn(),
             background: vi.fn(),
+            image: vi.fn(),
             texture: vi.fn(),
             noStroke: vi.fn(),
             beginShape: vi.fn(),
@@ -109,6 +129,7 @@ it.each([false, true])(
             { x: 10, y: 20 },
             { x: 30, y: 40 },
             { x: 50, y: 60 },
+            ...Array.from({ length: 465 }, () => ({ x: 50, y: 60 })),
           ],
         },
       ]);
@@ -127,6 +148,7 @@ it.each([false, true])(
           { x: 10, y: 20 },
           { x: 30, y: 40 },
           { x: 50, y: 60 },
+          ...Array.from({ length: 465 }, () => ({ x: 50, y: 60 })),
         ],
       },
     ]);

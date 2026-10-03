@@ -475,13 +475,13 @@ export const capturePoints: [number, number][] = [
   [0.675511, 0.332513],
 ];
 
-const boundary = [
+export const faceBoundary = [
   10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378,
   400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21,
   54, 103, 67, 109,
 ];
 export function captureOutline(aspect: number) {
-  return boundary
+  return faceBoundary
     .map((index) => {
       const [x, y] = capturePoints[index]!;
       return `${aspect / 2 + x - 0.5},${y}`;
