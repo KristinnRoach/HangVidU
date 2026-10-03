@@ -8,6 +8,8 @@ import {
 } from 'vite-plus/test';
 import { createSignal } from 'solid-js';
 import { render, cleanup } from '@solidjs/testing-library';
+import { whenAppReloadAllowed } from '../../shared/app-reload/index.js';
+import { CallHandshakeProvider } from './call-handshake';
 
 const mocks = vi.hoisted(() => ({
   init: vi.fn(),
@@ -72,9 +74,6 @@ describe('CallHandshakeProvider', () => {
   afterEach(() => cleanup());
 
   it('holds app reloads from an incoming invite through call teardown', async () => {
-    const { whenAppReloadAllowed } =
-      await import('../../shared/app-reload/index.js');
-    const { CallHandshakeProvider } = await import('./call-handshake');
     const allowed = vi.fn();
 
     render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
@@ -94,9 +93,6 @@ describe('CallHandshakeProvider', () => {
   it('holds app reloads while a P2P call is active', async () => {
     const [p2pState, setP2pState] = createSignal('connected');
     mocks.p2pState = p2pState;
-    const { whenAppReloadAllowed } =
-      await import('../../shared/app-reload/index.js');
-    const { CallHandshakeProvider } = await import('./call-handshake');
     const allowed = vi.fn();
 
     render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
@@ -109,7 +105,6 @@ describe('CallHandshakeProvider', () => {
   });
 
   it('attaches the incoming-call listener when auth becomes authenticated after mount', async () => {
-    const { CallHandshakeProvider } = await import('./call-handshake');
     const [user, setUser] = createSignal(null);
     mocks.user = user;
 
@@ -124,7 +119,6 @@ describe('CallHandshakeProvider', () => {
   });
 
   it('does not re-attach or clean up when reactive state read inside the controller changes', async () => {
-    const { CallHandshakeProvider } = await import('./call-handshake');
     const [user] = createSignal({ uid: 'u1' });
     mocks.user = user;
 
@@ -147,7 +141,6 @@ describe('CallHandshakeProvider', () => {
   });
 
   it('uses the app bus incoming-call notification event after auth is ready', async () => {
-    const { CallHandshakeProvider } = await import('./call-handshake');
     const [user] = createSignal({ uid: 'u1' });
     mocks.user = user;
 
@@ -174,7 +167,6 @@ describe('CallHandshakeProvider', () => {
 
   it('logs missing correlation data without surfacing the notification', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const { CallHandshakeProvider } = await import('./call-handshake');
     const [user] = createSignal({ uid: 'u1' });
     mocks.user = user;
 
@@ -199,7 +191,6 @@ describe('CallHandshakeProvider', () => {
       '',
       '/?call=1&conversationId=room-1&callInviteId=call-invite-1&callerId=caller-1',
     );
-    const { CallHandshakeProvider } = await import('./call-handshake');
     const [user] = createSignal({ uid: 'u1' });
     mocks.user = user;
 
