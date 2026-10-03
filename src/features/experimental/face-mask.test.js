@@ -92,6 +92,7 @@ it.each([false, true])(
             frameRate: vi.fn(),
             textureMode: vi.fn(),
             translate: vi.fn(),
+            scale: vi.fn(),
             background: vi.fn(),
             image: vi.fn(),
             texture: vi.fn(),

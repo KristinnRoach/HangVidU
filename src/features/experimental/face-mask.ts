@@ -6,6 +6,14 @@ import {
 
 import { faceMaskStyle } from './face-mask-style';
 
+// Set false to restore the original full-frame filtered video.
+const FACE_MASK_AUTO_FRAME = true;
+const FACE_MASK_MIN_HEIGHT = 0.6; // Minimum frame-height fraction; try 0.3–0.6.
+const FACE_MASK_MAX_ZOOM = 2; // Magnification cap, >= 1; may limit minimum size.
+const FACE_MASK_CENTER_STRENGTH = 1; // 0 = original position, 1 = fully centered.
+const FACE_MASK_TARGET_Y = 0.5; // 0 = top, 0.5 = middle, 1 = bottom.
+const FACE_MASK_FOLLOW_SPEED = 1; // 0–1 per frame: 1 = instant; try 0.15 to smooth.
+
 type Graphics = { canvas: HTMLCanvasElement };
 
 type Face = { keypoints: { x: number; y: number }[] };
@@ -34,6 +42,7 @@ type Sketch = {
   frameRate: (fps: number) => void;
   textureMode: (mode: string) => void;
   translate: (x: number, y: number) => void;
+  scale: (factor: number) => void;
   background: (color: number) => void;
   image: (source: Graphics, x: number, y: number, w: number, h: number) => void;
   texture: (source: Graphics) => void;
@@ -189,6 +198,9 @@ export async function createFaceMask(
         let maskContext: CanvasRenderingContext2D;
         let faces: Face[] = [];
         let captured: Face | undefined;
+        let centerX = width / 2;
+        let centerY = height / 2;
+        let zoom = 1;
         const outlineMode = () => captureMode() === 'outline';
         const capture = () => {
           if (disposed || captured || (!outlineMode() && !faces[0])) return;
@@ -257,10 +269,39 @@ export async function createFaceMask(
           };
           p.draw = () => {
             if (disposed) return;
-            p.translate(-width / 2, -height / 2);
             p.background(0);
             const face = faces[0];
             if (!captured) return;
+            if (FACE_MASK_AUTO_FRAME && face) {
+              const xs = faceBoundary.map((index) => face.keypoints[index]!.x);
+              const ys = faceBoundary.map((index) => face.keypoints[index]!.y);
+              const left = Math.min(...xs);
+              const right = Math.max(...xs);
+              const top = Math.min(...ys);
+              const bottom = Math.max(...ys);
+              const targetZoom = Math.max(
+                1,
+                Math.min(
+                  FACE_MASK_MAX_ZOOM,
+                  (height * FACE_MASK_MIN_HEIGHT) / Math.max(1, bottom - top),
+                ),
+              );
+              zoom += (targetZoom - zoom) * FACE_MASK_FOLLOW_SPEED;
+              const targetX =
+                width / 2 +
+                ((left + right) / 2 - width / 2) * FACE_MASK_CENTER_STRENGTH;
+              const targetY =
+                height / 2 +
+                ((top + bottom) / 2 -
+                  height / 2 -
+                  ((FACE_MASK_TARGET_Y - 0.5) * height) / zoom) *
+                  FACE_MASK_CENTER_STRENGTH;
+              centerX += (targetX - centerX) * FACE_MASK_FOLLOW_SPEED;
+              centerY += (targetY - centerY) * FACE_MASK_FOLLOW_SPEED;
+            }
+            // Frame both layers together; retain the last view if tracking stops.
+            p.scale(zoom);
+            p.translate(-centerX, -centerY);
             liveContext.fillStyle = faceMaskStyle.backgroundColor;
             liveContext.fillRect(0, 0, width, height);
             liveContext.save();
@@ -320,3 +361,20 @@ export async function createFaceMask(
     throw error;
   }
 }
+
+/* Optional tuning, only if smoothing still leaves visible jitter:
+ *
+ * CENTER_DEAD_ZONE = 0.05 (fraction of output width/height):
+ * Before updating each center coordinate, compare its target delta with
+ * width * CENTER_DEAD_ZONE / zoom (or height for Y). Update only outside
+ * that band. Subtract the band from the delta so following starts gently.
+ *
+ * ZOOM_DEAD_ZONE = 0.03 (fraction of output height):
+ * Add a session-local "zooming" boolean alongside zoom. Start compensating
+ * below MIN_HEIGHT - ZOOM_DEAD_ZONE; stop above MIN_HEIGHT + ZOOM_DEAD_ZONE.
+ * When compensating, use the existing capped targetZoom; otherwise target 1.
+ * Keep smoothing after this decision. This avoids toggling at the threshold,
+ * but allows face size to drift slightly below the requested minimum.
+ *
+ * Keep these inside the AUTO_FRAME branch; no extra detector or UI is needed.
+ */
