@@ -74,6 +74,7 @@ it.each([false, true])(
                     drawImage: liveDrawImage,
                     fillRect: vi.fn(),
                     clearRect: vi.fn(),
+                    createRadialGradient: () => ({ addColorStop: vi.fn() }),
                     save: vi.fn(),
                     beginPath: vi.fn(),
                     moveTo: vi.fn(),
@@ -160,8 +161,9 @@ it.each([false, true])(
     ]);
     sketch.draw();
     expect(vertex).toHaveBeenCalledTimes(3);
+    // Landmarks scale from the 640x480 source to the 1024x768 output.
     if (switchToDetection)
-      expect(vertex).toHaveBeenNthCalledWith(1, 10, 20, 10 / 640, 20 / 480);
+      expect(vertex).toHaveBeenNthCalledWith(1, 16, 32, 10 / 640, 20 / 480);
     expect(drawImage).toHaveBeenCalledOnce();
     const sourceVideo = mesh.detectStart.mock.calls[0][0];
     const container = sourceVideo.parentElement;
