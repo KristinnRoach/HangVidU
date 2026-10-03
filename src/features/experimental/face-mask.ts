@@ -10,6 +10,8 @@ import { faceMaskStyle } from './face-mask-style';
 const FRAME_WIDTH = 1024; // Higher for better quality; lower for faster performance. Values to try: 640, 960, 1024, 1280 (camera is capped at 1280 in getVideoConstraints).
 
 const FACE_MASK_FEATHER = false;
+// Skip triangles that fold over when the head turns (their winding flips).
+const FACE_MASK_CULL_FOLDED = true;
 // Set false to restore the original full-frame filtered video.
 const FACE_MASK_AUTO_FRAME = true;
 const FACE_MASK_MIN_HEIGHT = 0.6; // Minimum frame-height fraction; try 0.3–0.6.
@@ -373,7 +375,17 @@ export async function createFaceMask(
             p.texture(styledMaskTexture!);
             p.noStroke();
             p.beginShape(p.TRIANGLES);
+            // Most of the face faces the camera, so the majority winding is "front".
+            const front = Math.sign(
+              triangles.reduce((sum, t) => sum + signedArea(t, face), 0),
+            );
             for (const triangle of triangles) {
+              if (
+                FACE_MASK_CULL_FOLDED &&
+                Math.sign(signedArea(triangle, face)) !== front
+              ) {
+                continue;
+              }
               for (const index of triangle) {
                 const point = face.keypoints[index]!;
                 const uv = captured.keypoints[index]!;
@@ -394,6 +406,12 @@ export async function createFaceMask(
   }
 }
 
+/** 2D signed area; its sign flips when a triangle folds over (faces away). */
+function signedArea([i, j, k]: number[], { keypoints: points }: Face) {
+  const [a, b, c] = [points[i!]!, points[j!]!, points[k!]!];
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
 /* Optional tuning, only if smoothing still leaves visible jitter:
  *
  * CENTER_DEAD_ZONE = 0.05 (fraction of output width/height):
@@ -409,4 +427,24 @@ export async function createFaceMask(
  * but allows face size to drift slightly below the requested minimum.
  *
  * Keep these inside the AUTO_FRAME branch; no extra detector or UI is needed.
+ */
+
+/* TODO try depth instead of (or with) FACE_MASK_CULL_FOLDED, so far-side
+ * triangles are hidden behind near ones by the WEBGL depth test:
+ *
+ * 1. Keep z in the detectStart mapping: z: (point.z * width) / video.videoWidth
+ *    (same scale as x). Add z?: number to Face keypoints.
+ * 2. Before p.beginShape(p.TRIANGLES), clear depth so the full-frame
+ *    p.image(liveTexture) at z = 0 can't hide the mask:
+ *    const gl = p.drawingContext; gl.clear(gl.DEPTH_BUFFER_BIT);
+ *    (add drawingContext: WebGLRenderingContext to the P5 type).
+ * 3. Emit p.vertex(point.x, point.y, -(point.z ?? 0), uv.x / width, uv.y / height).
+ *    MediaPipe z is smaller toward the camera; p5's camera looks down -z, so
+ *    negate. If the near cheek disappears instead of the far one, drop the minus.
+ *    Change the P5 vertex type to (x, y, z, u, v).
+ * 4. Compare with FACE_MASK_CULL_FOLDED on and off.
+ * 5. Update the vertex expectation in face-mask.test.js (5 args).
+ *
+ * Caveat: with FACE_MASK_FEATHER on, transparent edge pixels still write depth
+ * and can punch holes; leave feather off while testing.
  */
