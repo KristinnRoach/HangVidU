@@ -1,6 +1,6 @@
 # Experimental face mask
 
-WIP: for temporary deployment testing, entering a call automatically reveals the face-mask button and preloads the pinned p5/ml5 libraries and face model, as if **Ctrl+Shift+9** had been pressed. The filter itself still requires capture. Set `REVEAL_FACE_MASK_BY_DEFAULT` to `false` in `src/features/call/components/CallControls.tsx` to restore shortcut-only access in dev and production. The shortcut remains available for retrying preload. No environment flag is needed.
+WIP: for temporary deployment testing, entering a call automatically reveals the face-mask button, as if **Ctrl+Shift+9** had been pressed. Revealing it does not load p5, ml5, or the face model. The button stays disabled until the call data channel opens; the pinned libraries and model then preload automatically. The filter itself still requires capture. Set `REVEAL_FACE_MASK_BY_DEFAULT` to `false` in `src/features/call/components/CallControls.tsx` to restore shortcut-only access in dev and production. The shortcut remains available to reveal the button. No environment flag is needed.
 
 Click the face-mask button to keep the camera preview live and show a fixed face outline. Position an image or object inside the outline, then click **Capture** below the preview. Capture does not require a detected face. Move the object away and bring your face into view to animate the captured image; the live camera is drawn behind the mask, showing live eyes and mouth through its openings. Outside the tracked face outline, camera opacity is controlled by `faceMaskStyle.outside.globalAlpha` in `face-mask-style.ts` (`0` is black and `1` is fully visible). When no face is tracked, the whole camera frame uses that opacity. **Cancel** keeps the normal camera without capturing.
 
@@ -10,7 +10,7 @@ The default mode is `outline`; change `FACE_MASK_CAPTURE_MODE` in `capture-templ
 
 Click the face-mask button again to restore the camera. Each activation captures a fresh image; the libraries and model are reused until the page reloads. Turning off stops detection and releases the video/canvas resources.
 
-If preloading is still running, the first toggle waits for it. Loading failures appear below the self preview; press the shortcut or toggle again to retry. Camera startup and first face detection still take some time.
+If preload is still running, the first activation waits for it. Loading failures appear below the self preview; click the face-mask button again to retry. Camera startup and first face detection still take some time.
 
 ## Known limitations
 

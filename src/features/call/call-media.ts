@@ -28,6 +28,7 @@ function uniqueCameras(devices: MediaDeviceInfo[]) {
 
 export type CallMedia = {
   faceMaskAvailable: Accessor<boolean>;
+  faceMaskReady: Accessor<boolean>;
   enableFaceMask: () => void;
   faceMaskOn: Accessor<boolean>;
   faceMaskError: Accessor<string>;
@@ -83,8 +84,40 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const screenShareAvailable = () =>
     !isMobile && typeof navigator.mediaDevices?.getDisplayMedia === 'function';
   const [faceMaskAvailable, setFaceMaskAvailable] = createSignal(false);
+  // Room presence precedes the WebRTC handshake. Wait for an open channel
+  // before loading mask libraries/model or starting detection.
+  const [faceMaskReady, setFaceMaskReady] = createSignal(false);
+  createEffect(() => {
+    if (!faceMaskAvailable()) return;
+    const channels = [...p2p.dataChannels().values()];
+    const update = () =>
+      setFaceMaskReady(
+        channels.some((channel) => channel.readyState === 'open'),
+      );
+    update();
+    for (const channel of channels) {
+      channel.addEventListener('open', update);
+      channel.addEventListener('close', update);
+    }
+    onCleanup(() => {
+      for (const channel of channels) {
+        channel.removeEventListener('open', update);
+        channel.removeEventListener('close', update);
+      }
+    });
+  });
   const [faceMaskOn, setFaceMaskOn] = createSignal(false);
   const [faceMaskError, setFaceMaskError] = createSignal('');
+  createEffect(() => {
+    if (!faceMaskReady()) return;
+    void preloadFaceMask().catch((error) => {
+      if (!maskAbort.signal.aborted) {
+        setFaceMaskError(
+          error instanceof Error ? error.message : 'Face mask failed',
+        );
+      }
+    });
+  });
   const [faceMaskStatus, setFaceMaskStatus] = createSignal('');
   const maskAbort = new AbortController();
   const [faceMaskOutline, setFaceMaskOutline] = createSignal(
@@ -119,6 +152,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   async function toggleFaceMask() {
     if (
       !faceMaskAvailable() ||
+      !faceMaskReady() ||
       cameraPending() ||
       screenSharing() ||
       !cameraOn()
@@ -627,16 +661,10 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
   return {
     faceMaskAvailable,
+    faceMaskReady,
     enableFaceMask: () => {
       setFaceMaskAvailable(true);
       setFaceMaskError('');
-      void preloadFaceMask().catch((error) => {
-        if (!maskAbort.signal.aborted) {
-          setFaceMaskError(
-            error instanceof Error ? error.message : 'Face mask failed',
-          );
-        }
-      });
     },
     faceMaskOn,
     faceMaskError,

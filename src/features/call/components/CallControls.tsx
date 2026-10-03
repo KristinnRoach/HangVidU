@@ -146,7 +146,10 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
           type='button'
           onClick={() => void media.toggleFaceMask()}
           disabled={
-            media.cameraPending() || media.screenSharing() || !media.cameraOn()
+            !media.faceMaskReady() ||
+            media.cameraPending() ||
+            media.screenSharing() ||
+            !media.cameraOn()
           }
           aria-pressed={media.faceMaskOn()}
           title={

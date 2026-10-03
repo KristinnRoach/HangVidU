@@ -493,7 +493,7 @@ describe('experimental face mask lifecycle', () => {
       },
     });
   });
-  function setup() {
+  function setup(channelState = 'open') {
     const camera = createTrack('video');
     const filtered = createTrack('video');
     const tracks = [camera];
@@ -509,19 +509,43 @@ describe('experimental face mask lifecycle', () => {
     };
     let media;
     let dispose;
+    const channel = { ...createTrack('channel'), readyState: channelState };
     createRoot((cleanup) => {
       dispose = cleanup;
-      media = createCallMedia({ localStream: () => stream, room: () => room });
+      media = createCallMedia({
+        localStream: () => stream,
+        room: () => room,
+        dataChannels: () => new Map([['remote', channel]]),
+      });
     });
     media.enableFaceMask();
-    return { camera, filtered, mask, room, media, dispose };
+    return { camera, filtered, mask, room, media, dispose, channel };
   }
 
-  it('preloads the mask without replacing the camera when revealed', () => {
-    const { media, room, dispose } = setup();
-    expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
+  it('reveals the mask without loading libraries or replacing the camera', () => {
+    const { media, room, dispose } = setup('connecting');
+    expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
+    expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
     expect(room.setLocalTrack).not.toHaveBeenCalled();
     expect(media.faceMaskOn()).toBe(false);
+    dispose();
+  });
+
+  it('starts mask initialization only after the data channel opens', async () => {
+    const { media, room, dispose, channel } = setup('connecting');
+    expect(media.faceMaskReady()).toBe(false);
+    await media.toggleFaceMask();
+    expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
+    expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+
+    channel.readyState = 'open';
+    channel.dispatch('open');
+    expect(media.faceMaskReady()).toBe(true);
+    expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
+    expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
+    await media.toggleFaceMask();
+    expect(maskMocks.createFaceMask).toHaveBeenCalledOnce();
     dispose();
   });
 
