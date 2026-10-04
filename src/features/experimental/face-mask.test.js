@@ -25,9 +25,17 @@ it('shares preloading and reuses the ready model after detection stops', async (
   expect(scripts).toHaveLength(2);
 });
 
-it.each([false, true])(
-  'captures and animates after switching to detection: %s',
-  async (switchToDetection) => {
+it.each([
+  { switchToDetection: false },
+  { switchToDetection: true },
+  { scenario: 'camera-wait' },
+  { scenario: 'camera-cancel' },
+  { scenario: 'render-error' },
+  { scenario: 'render-timeout' },
+  { scenario: 'runtime-error' },
+])(
+  'handles face-mask capture: %j',
+  async ({ switchToDetection = false, scenario }) => {
     let mode = 'outline';
     vi.resetModules();
     let sketch;
@@ -51,11 +59,20 @@ it.each([false, true])(
       getTriangles: () => [[0, 1, 2]],
     };
     const outputCanvas = document.createElement('canvas');
-    outputCanvas.captureStream = () => ({ getVideoTracks: () => [track] });
+    outputCanvas.captureStream = () => {
+      if (scenario === 'render-error') throw new Error('Canvas capture failed');
+      return { getVideoTracks: () => [track] };
+    };
     const sourceWidth = 800;
     const sourceHeight = 600;
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    let readyState = scenario?.startsWith('camera-') ? 1 : 2;
+    vi.spyOn(
+      HTMLMediaElement.prototype,
+      'readyState',
+      'get',
+    ).mockImplementation(() => readyState);
     vi.spyOn(HTMLVideoElement.prototype, 'videoWidth', 'get').mockReturnValue(
       sourceWidth,
     );
@@ -93,6 +110,7 @@ it.each([false, true])(
                 remove: removeGraphics,
               })),
             frameRate: vi.fn(),
+            pixelDensity: vi.fn(),
             textureMode: vi.fn(),
             translate: vi.fn(),
             scale: vi.fn(),
@@ -116,6 +134,7 @@ it.each([false, true])(
     );
     const { createFaceMask } = await import('./face-mask');
     const controller = new AbortController();
+    const onError = vi.fn();
     const pending = createFaceMask(
       {},
       controller.signal,
@@ -124,8 +143,27 @@ it.each([false, true])(
         capture = action;
       },
       () => mode,
+      onError,
     );
+    if (scenario?.startsWith('camera-')) {
+      await vi.waitFor(() =>
+        expect(HTMLMediaElement.prototype.play).toHaveBeenCalled(),
+      );
+      expect(capture).toBeUndefined();
+      expect(sketch).toBeUndefined();
+      if (scenario === 'camera-cancel') {
+        const rejected = expect(pending).rejects.toThrow('Face mask cancelled');
+        controller.abort();
+        await rejected;
+        expect(document.querySelector('video')).toBeNull();
+        expect(mesh.detectStart).not.toHaveBeenCalled();
+        return;
+      }
+      readyState = 2;
+      document.querySelector('video').dispatchEvent(new Event('loadeddata'));
+    }
     await vi.waitFor(() => expect(capture).toBeTypeOf('function'));
+    expect(sketch.pixelDensity).toHaveBeenCalledWith(1);
     detect([]);
     expect(capture).toBeTypeOf('function');
     if (switchToDetection) {
@@ -144,9 +182,33 @@ it.each([false, true])(
       ]);
       expect(capture).toBeTypeOf('function');
     }
+    if (scenario === 'render-timeout') {
+      vi.useFakeTimers();
+      try {
+        const rejected = expect(pending).rejects.toThrow('Face mask timed out');
+        capture();
+        await vi.advanceTimersByTimeAsync(30000);
+        await rejected;
+        expect(mesh.detectStop).toHaveBeenCalledOnce();
+        expect(sketch.remove).toHaveBeenCalledOnce();
+        expect(capture).toBeUndefined();
+      } finally {
+        vi.useRealTimers();
+      }
+      return;
+    }
     capture();
     detect([]);
     expect(drawImage).toHaveBeenCalledOnce();
+    if (scenario === 'render-error') {
+      const rejected = expect(pending).rejects.toThrow('Canvas capture failed');
+      expect(() => sketch.draw()).not.toThrow();
+      await rejected;
+      expect(mesh.detectStop).toHaveBeenCalledOnce();
+      expect(sketch.remove).toHaveBeenCalledOnce();
+      expect(capture).toBeUndefined();
+      return;
+    }
     sketch.draw();
     const mask = await pending;
     expect(mask.track).toBe(track);
@@ -177,6 +239,18 @@ it.each([false, true])(
     expect(drawImage).toHaveBeenCalledOnce();
     const sourceVideo = mesh.detectStart.mock.calls[0][0];
     const container = sourceVideo.parentElement;
+    if (scenario === 'runtime-error') {
+      sketch.texture.mockImplementation(() => {
+        throw new Error('Renderer stopped');
+      });
+      sketch.draw();
+      expect(onError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Renderer stopped' }),
+      );
+      expect(track.stop).toHaveBeenCalledOnce();
+      expect(container.isConnected).toBe(false);
+      return;
+    }
     if (switchToDetection) controller.abort();
     else expect(() => mask.dispose()).not.toThrow();
     // Hangup aborts first and then explicitly disposes the mask again.

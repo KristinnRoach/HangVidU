@@ -12,6 +12,12 @@ Click the face-mask button again to restore the camera. Each activation captures
 
 If preload is still running, the first activation waits for it. Loading failures appear below the self preview; click the face-mask button again to retry. Camera startup and first face detection still take some time.
 
+Mobile testing: the source video starts playing before library loading and must have drawable pixels before capture is offered. It stays in a nearly transparent 1px viewport area rather than being fully invisible. Canvas pixel density is fixed at 1, so high-density phone screens do not multiply the output resolution and buffer workload. After Capture, a fresh 30-second timeout bounds publishing; renderer errors during preparation are reported, and renderer errors after publishing restore the camera.
+
+A black frame can also mean no face is detected: `outside.globalAlpha` is currently `0`, so without a tracked face there is no visible layer. A captured image is deliberately static; its geometry and live eyes/mouth should move with the detected face. The pinned ml5 detection loop does not propagate asynchronous inference failures to this module, so a stalled detector remains a possible cause of frozen geometry. These changes do not yet detect that condition or verify that the outgoing canvas stream advances on a physical phone.
+
+For the next physical-device pass, test outline capture and detected-face capture, move the head and blink after capture, check the receiving device as well as the self preview, then turn the mask off/on and background/foreground the app. Record whether the raw camera was live, which preparation stage appeared, and whether the live eyes/mouth or just the mask geometry stopped moving. This distinguishes camera playback, detection, and outgoing-stream failures before choosing a fallback or availability gate.
+
 ## Known limitations
 
 - CDN libraries and model assets require network access on first use. The renderer uses p5 1.11.13 and ml5 1.4.0, which includes the iOS WebGPU video-orientation workaround. The loaded model remains in memory for the page session; ml5 has no public model disposal API.

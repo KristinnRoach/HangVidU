@@ -46,6 +46,7 @@ type Sketch = {
   ) => { elt: HTMLCanvasElement };
   createGraphics: (width: number, height: number) => Graphics;
   frameRate: (fps: number) => void;
+  pixelDensity: (density: number) => void;
   textureMode: (mode: string) => void;
   translate: (x: number, y: number) => void;
   scale: (factor: number) => void;
@@ -121,11 +122,13 @@ export async function createFaceMask(
   onProgress: (stage: string) => void = () => {},
   onCaptureReady?: (capture: (() => void) | undefined) => void,
   captureMode: () => 'outline' | 'detected' = () => FACE_MASK_CAPTURE_MODE,
+  onError: (error: Error) => void = () => {},
 ): Promise<FaceMask> {
   const container = document.createElement('div');
-  // Keep the source playing independently of the outgoing filtered preview.
+  // Keep a tiny source in the viewport. Fully invisible video can stop
+  // advancing on mobile even though play() has resolved.
   container.style.cssText =
-    'position:fixed;left:0;top:0;opacity:0;pointer-events:none;z-index:-1';
+    'position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;opacity:0.01;pointer-events:none';
   const video = document.createElement('video');
   video.muted = true;
   video.playsInline = true;
@@ -147,10 +150,12 @@ export async function createFaceMask(
   progress(stage);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let rejectPending: ((reason: Error) => void) | undefined;
+  let cancelVideoWait: (() => void) | undefined;
   const dispose = () => {
     if (disposed) return;
     disposed = true;
     clearTimeout(timer);
+    cancelVideoWait?.();
     signal.removeEventListener('abort', abort);
     onCaptureReady?.(undefined);
     mesh?.detectStop();
@@ -173,25 +178,73 @@ export async function createFaceMask(
     // Bound model loading and face acquisition; never leave the button stuck.
     return await new Promise<FaceMask>((resolve, reject) => {
       rejectPending = reject;
-      timer = setTimeout(() => {
-        reject(
-          new Error(
-            `Face mask timed out: ${stage.toLowerCase()}. Keep your face visible and try again.`,
-          ),
-        );
+      const fail = (error: unknown) => {
+        if (disposed) return;
+        if (output)
+          onError(error instanceof Error ? error : new Error(String(error)));
+        reject(error);
         dispose();
-      }, 30000);
+      };
+      const guard = (action: () => void) => () => {
+        if (disposed) return;
+        try {
+          action();
+        } catch (error) {
+          fail(error);
+        }
+      };
+      const startTimeout = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          fail(
+            new Error(
+              `Face mask timed out: ${stage.toLowerCase()}. Try again.`,
+            ),
+          );
+        }, 30000);
+      };
+      startTimeout();
       if (signal.aborted) {
         abort();
         return;
       }
       void (async () => {
-        const { libs, mesh: readyMesh } = await preloadFaceMask();
-        if (disposed) return;
         progress('Starting camera input');
+        // Start playback before awaiting libraries, while still in the toggle's
+        // user gesture. play() alone does not guarantee drawable video pixels.
         await video.play();
+        if (disposed) return;
+        if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+          await new Promise<void>((ready, failed) => {
+            const cleanup = () => {
+              video.removeEventListener('loadeddata', loaded);
+              video.removeEventListener('error', error);
+              cancelVideoWait = undefined;
+            };
+            const loaded = () => {
+              cleanup();
+              ready();
+            };
+            const error = () => {
+              cleanup();
+              failed(new Error('Face mask camera input unavailable'));
+            };
+            cancelVideoWait = () => {
+              cleanup();
+              failed(new Error('Face mask cancelled'));
+            };
+            video.addEventListener('loadeddata', loaded, { once: true });
+            video.addEventListener('error', error, { once: true });
+          });
+        }
+        if (disposed) return;
+        if (!video.videoWidth || !video.videoHeight) {
+          throw new Error('Face mask camera input has no dimensions');
+        }
         video.width = video.videoWidth;
         video.height = video.videoHeight;
+        progress('Loading libraries');
+        const { libs, mesh: readyMesh } = await preloadFaceMask();
         if (disposed) return;
         mesh = readyMesh;
         const width = FRAME_WIDTH;
@@ -210,28 +263,45 @@ export async function createFaceMask(
         const outlineMode = () => captureMode() === 'outline';
         const capture = () => {
           if (disposed || captured || (!outlineMode() && !faces[0])) return;
-          context.drawImage(video, 0, 0, width, height);
-          captured = outlineMode()
-            ? {
-                keypoints: capturePoints.map(([x, y]) => ({
-                  x: width / 2 + (x - 0.5) * height,
-                  y: y * height,
-                })),
-              }
-            : faces[0];
-          onCaptureReady?.(undefined);
-          progress(
-            outlineMode()
-              ? 'Bring your face into view to animate'
-              : 'Rendering captured face',
-          );
+          // User adjustment time is unbounded, but publishing must still be bounded.
+          startTimeout();
+          try {
+            context.drawImage(video, 0, 0, width, height);
+            captured = outlineMode()
+              ? {
+                  keypoints: capturePoints.map(([x, y]) => ({
+                    x: width / 2 + (x - 0.5) * height,
+                    y: y * height,
+                  })),
+                }
+              : faces[0];
+            onCaptureReady?.(undefined);
+            progress(
+              outlineMode()
+                ? 'Bring your face into view to animate'
+                : 'Rendering captured face',
+            );
+          } catch (error) {
+            fail(error);
+          }
         };
         let canvas: HTMLCanvasElement;
         let triangles: number[][] = [];
+        const publish = () => {
+          if (output) return;
+          output = canvas.captureStream(20).getVideoTracks()[0];
+          if (!output)
+            throw new Error('Face mask canvas produced no video track');
+          clearTimeout(timer);
+          progress('Filtered video ready');
+          resolve({ track: output, dispose });
+        };
         progress('Starting renderer');
         sketch = new libs.p5((p) => {
-          p.setup = () => {
-            if (disposed) return;
+          p.setup = guard(() => {
+            // Output pixels should not depend on the screen's Retina density.
+            // At density 3, every buffer otherwise contains nine times as many pixels.
+            p.pixelDensity(1);
             canvas = p.createCanvas(width, height, p.WEBGL).elt;
             image = p.createGraphics(width, height);
             context = image.canvas.getContext('2d')!;
@@ -272,9 +342,8 @@ export async function createFaceMask(
                 }
               }
             });
-          };
-          p.draw = () => {
-            if (disposed) return;
+          });
+          p.draw = guard(() => {
             p.background(0);
             const face = faces[0];
             if (!captured) return;
@@ -347,13 +416,10 @@ export async function createFaceMask(
               liveContext.restore();
             }
             p.image(liveTexture!, 0, 0, width, height);
-            if (!output) {
-              output = canvas.captureStream(20).getVideoTracks()[0]!;
-              clearTimeout(timer);
-              progress('Filtered video ready');
-              resolve({ track: output, dispose });
+            if (!face) {
+              publish();
+              return;
             }
-            if (!face) return;
             maskContext.clearRect(0, 0, width, height);
             maskContext.save();
             Object.assign(maskContext, faceMaskStyle.mask);
@@ -393,7 +459,9 @@ export async function createFaceMask(
               }
             }
             p.endShape();
-          };
+            // Only report readiness after the entire first frame rendered.
+            publish();
+          });
         }, container);
       })().catch((error) => {
         reject(error);

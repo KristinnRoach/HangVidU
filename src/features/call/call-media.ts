@@ -182,6 +182,15 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
           setFaceMaskStatus,
           (capture) => setCaptureAction(() => capture),
           () => (faceMaskOutline() ? 'outline' : 'detected'),
+          (error) => {
+            setFaceMaskError(error.message);
+            void restoreMaskCamera().catch((restoreError) => {
+              console.error(
+                '[FaceMask] Could not restore camera',
+                restoreError,
+              );
+            });
+          },
         );
       } finally {
         maskAbort.signal.removeEventListener('abort', cancelCapture);

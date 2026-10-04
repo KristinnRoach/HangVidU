@@ -599,6 +599,22 @@ describe('experimental face mask lifecycle', () => {
     dispose();
   });
 
+  it('restores the camera and reports a renderer failure after publishing', async () => {
+    const { camera, mask, room, media, dispose } = setup();
+    await media.toggleFaceMask();
+    const onError = maskMocks.createFaceMask.mock.calls[0][5];
+    onError(new Error('Renderer stopped'));
+    await vi.waitFor(() => expect(media.faceMaskOn()).toBe(false));
+    expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+      PRIMARY_VIDEO_SLOT_ID,
+      camera,
+    );
+    expect(media.faceMaskError()).toBe('Renderer stopped');
+    expect(mask.dispose).toHaveBeenCalledOnce();
+    expect(camera.stop).not.toHaveBeenCalled();
+    dispose();
+  });
+
   it('camera off disposes the effect and stops the retained camera', async () => {
     const { camera, mask, room, media, dispose } = setup();
     await media.toggleFaceMask();
