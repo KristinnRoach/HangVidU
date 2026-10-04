@@ -15,7 +15,7 @@ If preload is still running, the first activation waits for it. Loading failures
 ## Known limitations
 
 - CDN libraries and model assets require network access on first use. The renderer uses p5 1.11.13 and ml5 1.4.0, which includes the iOS WebGPU video-orientation workaround. The loaded model remains in memory for the page session; ml5 has no public model disposal API.
-- Rendering is capped at 640 pixels wide and 20fps. Background opacity applies outside the tracked face outline; tracking loss applies it to the whole frame. Mobile performance, remote playback, and browser/device compatibility need manual verification.
+- Output size, framing, and region styles are still being tuned. Background opacity applies outside the tracked face outline; tracking loss applies it to the whole frame. Mobile performance, remote playback, and browser/device compatibility need manual verification.
 - Runtime renderer failures do not automatically restore the camera. A failed peer track replacement can leave some peers on the previous track; toggle off to retry restoration.
 
 ## Review handoff
@@ -33,8 +33,6 @@ The fixed guide and texture coordinates share the canonical face template in `ca
 - `src/features/call/components/ParticipantMedia.tsx`: adds optional children/overlay and uncropped-preview props; tracks source-video aspect ratio so the guide aligns with the video. This is a shared call component: review regular remote playback and the existing iOS video replacement path.
 - `src/features/call/components/ParticipantMedia.module.css`: allows content outside the self-preview bounds so controls remain visible below it; preserves rounded corners on the video. Review preview clipping and layering in direct/group calls and on small screens.
 - `src/features/call/call-media.test.jsx` and `src/features/call/components/CallControls.test.jsx`: cover the integration lifecycle, capture/cancellation, and reveal shortcut.
-
-Validation: formatting, lint, and types pass. The full suite passed 434 tests with one skipped before the Detect face addition. After that addition, all 27 focused experiment, call-media, MemberStreams, and CallControls tests passed, including switching from outline to detected capture. The user manually confirmed fixed-outline capture, corrected proportions, and removal of toolbar text. The Detect face button still awaits explicit manual confirmation. No deployment has been performed.
 
 Next small extension (not yet implemented): add a live detected-face outline to help the user see which part of their face will be sampled before they click Capture. Show it only on the local camera preview while a capture session is in detected-face mode (after clicking Detect face, or when configured as the default), before capture, and while a face is tracked. Hide it when tracking is lost, capture completes, or the session is canceled. Outline mode keeps its existing fixed positioning guide; the animated output should not show either guide.
 

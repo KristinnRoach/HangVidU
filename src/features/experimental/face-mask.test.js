@@ -52,13 +52,15 @@ it.each([false, true])(
     };
     const outputCanvas = document.createElement('canvas');
     outputCanvas.captureStream = () => ({ getVideoTracks: () => [track] });
+    const sourceWidth = 800;
+    const sourceHeight = 600;
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
     vi.spyOn(HTMLVideoElement.prototype, 'videoWidth', 'get').mockReturnValue(
-      640,
+      sourceWidth,
     );
     vi.spyOn(HTMLVideoElement.prototype, 'videoHeight', 'get').mockReturnValue(
-      480,
+      sourceHeight,
     );
     vi.stubGlobal('MediaStream', class {});
     vi.stubGlobal('window', {
@@ -66,7 +68,7 @@ it.each([false, true])(
       p5: class {
         constructor(init) {
           sketch = {
-            createCanvas: () => ({ elt: outputCanvas }),
+            createCanvas: vi.fn(() => ({ elt: outputCanvas })),
             createGraphics: vi
               .fn(() => ({
                 canvas: {
@@ -161,9 +163,17 @@ it.each([false, true])(
     ]);
     sketch.draw();
     expect(vertex).toHaveBeenCalledTimes(3);
-    // Landmarks scale from the 640x480 source to the 1024x768 output.
-    if (switchToDetection)
-      expect(vertex).toHaveBeenNthCalledWith(1, 16, 32, 10 / 640, 20 / 480);
+    // Landmarks follow the chosen output size; texture coordinates stay normalized.
+    if (switchToDetection) {
+      const [width, height] = sketch.createCanvas.mock.calls[0];
+      expect(vertex).toHaveBeenNthCalledWith(
+        1,
+        (10 * width) / sourceWidth,
+        (20 * height) / sourceHeight,
+        expect.closeTo(10 / sourceWidth),
+        expect.closeTo(20 / sourceHeight),
+      );
+    }
     expect(drawImage).toHaveBeenCalledOnce();
     const sourceVideo = mesh.detectStart.mock.calls[0][0];
     const container = sourceVideo.parentElement;

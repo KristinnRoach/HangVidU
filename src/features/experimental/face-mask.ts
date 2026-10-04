@@ -6,19 +6,19 @@ import {
 
 import { faceMaskStyle } from './face-mask-style';
 
-// Output width; height is scaled to match the source aspect ratio.
-const FRAME_WIDTH = 1024; // Higher for better quality; lower for faster performance. Values to try: 640, 960, 1024, 1280 (camera is capped at 1280 in getVideoConstraints).
+// WIP output width; height follows the source aspect ratio.
+const FRAME_WIDTH = 960;
 
 const FACE_MASK_FEATHER = false;
 // Skip triangles that fold over when the head turns (their winding flips).
 const FACE_MASK_CULL_FOLDED = true;
 // Set false to restore the original full-frame filtered video.
 const FACE_MASK_AUTO_FRAME = true;
-const FACE_MASK_MIN_HEIGHT = 0.6; // Minimum frame-height fraction; try 0.3–0.6.
+const FACE_MASK_MIN_HEIGHT = 0.4; // Minimum frame-height fraction.
 const FACE_MASK_MAX_ZOOM = 2; // Magnification cap, >= 1; may limit minimum size.
-const FACE_MASK_CENTER_STRENGTH = 1; // 0 = original position, 1 = fully centered.
+const FACE_MASK_CENTER_STRENGTH = 0.5; // 0 = original position, 1 = fully centered.
 const FACE_MASK_TARGET_Y = 0.5; // 0 = top, 0.5 = middle, 1 = bottom.
-const FACE_MASK_FOLLOW_SPEED = 1; // 0–1 per frame: 1 = instant; try 0.15 to smooth.
+const FACE_MASK_FOLLOW_SPEED = 1; // 0–1 per frame: 1 = instant; lower = smoother.
 
 type Graphics = { canvas: HTMLCanvasElement };
 
