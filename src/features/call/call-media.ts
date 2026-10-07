@@ -37,8 +37,9 @@ export type CallMedia = {
   faceMaskCapturing: Accessor<boolean>;
   faceMaskOutline: Accessor<boolean>;
   detectFaceMask: () => void;
-  faceSwapAvailable: Accessor<boolean>;
-  swapFaceMask: () => void;
+  faceMaskCaptureTrack: Accessor<MediaStreamTrack | undefined>;
+  remoteCaptureAvailable: Accessor<boolean>;
+  setFaceMaskSource: (remote: boolean) => void;
   faceMaskCaptureReady: Accessor<boolean>;
   captureFaceMask: () => void;
   cancelFaceMaskCapture: () => void;
@@ -716,16 +717,15 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     detectFaceMask: () => {
       if (!faceMaskCapturing()) return;
       setCaptureAction(undefined);
-      setCaptureTrack(undefined);
       setFaceMaskOutline(false);
     },
-    faceSwapAvailable: () => !!remoteCaptureTrack(),
-    swapFaceMask: () => {
+    faceMaskCaptureTrack: captureTrack,
+    remoteCaptureAvailable: () => !!remoteCaptureTrack(),
+    setFaceMaskSource: (remote) => {
       if (!faceMaskCapturing()) return;
-      const track = remoteCaptureTrack();
-      if (!track) return;
+      const track = remote ? remoteCaptureTrack() : undefined;
+      if ((remote && !track) || track === captureTrack()) return;
       setCaptureAction(undefined);
-      setFaceMaskOutline(false);
       setCaptureTrack(track);
     },
     faceMaskCaptureReady: () => !!captureAction(),

@@ -559,9 +559,11 @@ describe('experimental face mask lifecycle', () => {
             );
           }),
       );
-      expect(media.faceSwapAvailable()).toBe(true);
+      expect(media.remoteCaptureAvailable()).toBe(true);
       const pending = media.toggleFaceMask();
-      media.swapFaceMask();
+      media.setFaceMaskSource(true);
+      expect(media.faceMaskOutline()).toBe(true);
+      media.detectFaceMask();
       expect(media.faceMaskOutline()).toBe(false);
       expect(maskMocks.createFaceMask.mock.calls[0][6]()).toBe(remote);
       expect(room.setLocalTrack).not.toHaveBeenCalled();
@@ -598,7 +600,7 @@ describe('experimental face mask lifecycle', () => {
           data,
         })),
       );
-      expect(media.faceSwapAvailable()).toBe(false);
+      expect(media.remoteCaptureAvailable()).toBe(false);
       dispose();
     },
   );

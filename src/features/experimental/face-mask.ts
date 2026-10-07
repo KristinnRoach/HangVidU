@@ -280,10 +280,11 @@ export async function createFaceMask(
           startTimeout();
           try {
             context.drawImage(video, 0, 0, width, height);
+            const sourceHeight = width * (video.videoHeight / video.videoWidth);
             captured = outlineMode()
               ? {
                   keypoints: capturePoints.map(([x, y]) => ({
-                    x: width / 2 + (x - 0.5) * height,
+                    x: width / 2 + (x - 0.5) * sourceHeight,
                     y: y * height,
                   })),
                 }
@@ -342,7 +343,7 @@ export async function createFaceMask(
                 if (faces[0]) clearTimeout(timer);
                 onCaptureReady(faces[0] ? capture : undefined);
                 const next = faces[0]
-                  ? 'Adjust your face, then capture'
+                  ? 'Adjust face, then capture'
                   : 'Waiting for a face';
                 if (stage !== next) progress(next);
               } else if (faces[0]) {
@@ -413,7 +414,15 @@ export async function createFaceMask(
             ) {
               switchingSource = false;
               startDetection();
-              progress('Waiting for a face');
+              if (!captured && outlineMode() && onCaptureReady) {
+                clearTimeout(timer);
+                onCaptureReady(capture);
+                progress(
+                  'Position your image inside the outline, then capture',
+                );
+              } else {
+                progress('Waiting for a face');
+              }
             }
             p.background(0);
             const face = faces[0];

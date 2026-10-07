@@ -29,6 +29,7 @@ it.each([
   { switchToDetection: false },
   { switchToDetection: true },
   { switchToDetection: true, remoteCapture: true },
+  { remoteCapture: true },
   { scenario: 'camera-wait' },
   { scenario: 'camera-cancel' },
   { scenario: 'render-error' },
@@ -188,25 +189,26 @@ it.each([
     expect(sketch.pixelDensity).toHaveBeenCalledWith(1);
     detect([]);
     expect(capture).toBeTypeOf('function');
+    if (switchToDetection) mode = 'detected';
+    if (remoteCapture) {
+      captureTrack = remoteTrack;
+      const oldDetect = detect;
+      sketch.draw();
+      await Promise.resolve();
+      sketch.draw();
+      const remoteVideo = mesh.detectStart.mock.calls.at(-1)[0];
+      expect(remoteVideo).toBe(mesh.detectStart.mock.calls[0][0]);
+      expect(remoteVideo.srcObject.tracks).toEqual([remoteTrack]);
+      expect(remoteVideo.width).toBe(1280);
+      expect(remoteVideo.height).toBe(720);
+      // An inference finishing after a source switch cannot enable capture.
+      oldDetect([{ keypoints: [] }]);
+      // The pinned ml5 loop may deliver old results to its latest callback.
+      detect([{ keypoints: [] }]);
+      if (switchToDetection) expect(capture).toBeUndefined();
+      else expect(capture).toBeTypeOf('function');
+    }
     if (switchToDetection) {
-      mode = 'detected';
-      if (remoteCapture) {
-        captureTrack = remoteTrack;
-        const oldDetect = detect;
-        sketch.draw();
-        await Promise.resolve();
-        sketch.draw();
-        const remoteVideo = mesh.detectStart.mock.calls.at(-1)[0];
-        expect(remoteVideo).toBe(mesh.detectStart.mock.calls[0][0]);
-        expect(remoteVideo.srcObject.tracks).toEqual([remoteTrack]);
-        expect(remoteVideo.width).toBe(1280);
-        expect(remoteVideo.height).toBe(720);
-        // An inference finishing after a source switch cannot enable capture.
-        oldDetect([{ keypoints: [] }]);
-        // The pinned ml5 loop may deliver old results to its latest callback.
-        detect([{ keypoints: [] }]);
-        expect(capture).toBeUndefined();
-      }
       detect([]);
       expect(capture).toBeUndefined();
       detect([
