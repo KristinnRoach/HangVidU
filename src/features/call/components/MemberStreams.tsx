@@ -73,7 +73,7 @@ export function MemberStreams(props: MemberStreamsProps) {
                     ? props.media.faceMaskOutline()
                       ? 'Position image, then capture'
                       : 'Adjust face, then capture'
-                    : 'Preparing capture…'}
+                    : 'Preparing…'}
                 </span>
                 <div>
                   <button
@@ -94,7 +94,7 @@ export function MemberStreams(props: MemberStreamsProps) {
                       aria-pressed={!props.media.faceMaskCaptureTrack()}
                       onClick={() => props.media.setFaceMaskSource(false)}
                     >
-                      Local
+                      Me
                     </button>
                     <button
                       type='button'
@@ -102,7 +102,7 @@ export function MemberStreams(props: MemberStreamsProps) {
                       disabled={!props.media.remoteCaptureAvailable()}
                       onClick={() => props.media.setFaceMaskSource(true)}
                     >
-                      Remote
+                      Them
                     </button>
                   </span>
                   <button
