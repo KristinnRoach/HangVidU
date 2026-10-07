@@ -146,7 +146,7 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
           type='button'
           onClick={() => void media.toggleFaceMask()}
           disabled={
-            !media.faceMaskReady() ||
+            (!media.faceMaskReady() && !media.faceMaskOn()) ||
             media.cameraPending() ||
             media.screenSharing() ||
             !media.cameraOn()

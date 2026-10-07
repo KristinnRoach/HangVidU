@@ -682,6 +682,24 @@ describe('experimental face mask lifecycle', () => {
     dispose();
   });
 
+  it('restores the camera after the data channel closes and blocks reactivation', async () => {
+    const { camera, mask, room, media, dispose, channel } = setup();
+    await media.toggleFaceMask();
+    channel.readyState = 'closed';
+    channel.dispatch('close');
+    expect(media.faceMaskReady()).toBe(false);
+    await media.toggleFaceMask();
+    expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+      PRIMARY_VIDEO_SLOT_ID,
+      camera,
+    );
+    expect(mask.dispose).toHaveBeenCalledOnce();
+    expect(media.faceMaskOn()).toBe(false);
+    await media.toggleFaceMask();
+    expect(maskMocks.createFaceMask).toHaveBeenCalledOnce();
+    dispose();
+  });
+
   it('restores the camera and reports a renderer failure after publishing', async () => {
     const { camera, mask, room, media, dispose } = setup();
     await media.toggleFaceMask();

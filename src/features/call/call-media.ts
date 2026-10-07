@@ -182,7 +182,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   async function toggleFaceMask() {
     if (
       !faceMaskAvailable() ||
-      !faceMaskReady() ||
+      (!mask && !faceMaskReady()) ||
       cameraPending() ||
       screenSharing() ||
       !cameraOn()

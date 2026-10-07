@@ -88,16 +88,19 @@ describe('ActiveCallControls', () => {
   it('keeps the face mask disabled until the call is ready', () => {
     const toggleFaceMask = vi.fn();
     let setReady;
+    let setMaskOn;
     const { getByRole } = render(() => {
       const [ready, updateReady] = createSignal(false);
+      const [maskOn, updateMaskOn] = createSignal(false);
       setReady = updateReady;
+      setMaskOn = updateMaskOn;
       return (
         <ActiveCallControls
           media={{
             ...mocks.media,
             faceMaskAvailable: () => true,
             faceMaskReady: ready,
-            faceMaskOn: () => false,
+            faceMaskOn: maskOn,
             toggleFaceMask,
           }}
         />
@@ -112,6 +115,15 @@ describe('ActiveCallControls', () => {
     expect(button.disabled).toBe(false);
     fireEvent.click(button);
     expect(toggleFaceMask).toHaveBeenCalledOnce();
+
+    setMaskOn(true);
+    setReady(false);
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    expect(toggleFaceMask).toHaveBeenCalledTimes(2);
+
+    setMaskOn(false);
+    expect(button.disabled).toBe(true);
   });
 
   it('reveals the face mask by default and keeps Ctrl+Shift+9 available', () => {
