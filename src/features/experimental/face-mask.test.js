@@ -28,6 +28,7 @@ it('shares preloading and reuses the ready model after detection stops', async (
 it.each([
   { switchToDetection: false },
   { switchToDetection: true },
+  { switchToDetection: true, remoteCapture: true },
   { scenario: 'camera-wait' },
   { scenario: 'camera-cancel' },
   { scenario: 'render-error' },
@@ -35,14 +36,19 @@ it.each([
   { scenario: 'runtime-error' },
 ])(
   'handles face-mask capture: %j',
-  async ({ switchToDetection = false, scenario }) => {
+  async ({ switchToDetection = false, remoteCapture = false, scenario }) => {
+    let captureTrack;
+    const remoteTrack = { stop: vi.fn() };
     let mode = 'outline';
     vi.resetModules();
     let sketch;
     let detect;
     let capture;
     const track = { stop: vi.fn() };
-    const drawImage = vi.fn();
+    const sampledTracks = [];
+    const drawImage = vi.fn((input) =>
+      sampledTracks.push(input.srcObject.tracks[0]),
+    );
     const liveDrawImage = vi.fn();
     const vertex = vi.fn();
     const removeGraphics = vi.fn(() => {
@@ -73,13 +79,28 @@ it.each([
       'readyState',
       'get',
     ).mockImplementation(() => readyState);
-    vi.spyOn(HTMLVideoElement.prototype, 'videoWidth', 'get').mockReturnValue(
-      sourceWidth,
+    vi.spyOn(
+      HTMLVideoElement.prototype,
+      'videoWidth',
+      'get',
+    ).mockImplementation(function () {
+      return this.srcObject?.tracks[0] === remoteTrack ? 1280 : sourceWidth;
+    });
+    vi.spyOn(
+      HTMLVideoElement.prototype,
+      'videoHeight',
+      'get',
+    ).mockImplementation(function () {
+      return this.srcObject?.tracks[0] === remoteTrack ? 720 : sourceHeight;
+    });
+    vi.stubGlobal(
+      'MediaStream',
+      class {
+        constructor(tracks) {
+          this.tracks = tracks;
+        }
+      },
     );
-    vi.spyOn(HTMLVideoElement.prototype, 'videoHeight', 'get').mockReturnValue(
-      sourceHeight,
-    );
-    vi.stubGlobal('MediaStream', class {});
     vi.stubGlobal('window', {
       ml5: { faceMesh: () => mesh },
       p5: class {
@@ -144,6 +165,7 @@ it.each([
       },
       () => mode,
       onError,
+      () => captureTrack,
     );
     if (scenario?.startsWith('camera-')) {
       await vi.waitFor(() =>
@@ -168,6 +190,23 @@ it.each([
     expect(capture).toBeTypeOf('function');
     if (switchToDetection) {
       mode = 'detected';
+      if (remoteCapture) {
+        captureTrack = remoteTrack;
+        const oldDetect = detect;
+        sketch.draw();
+        await Promise.resolve();
+        sketch.draw();
+        const remoteVideo = mesh.detectStart.mock.calls.at(-1)[0];
+        expect(remoteVideo).toBe(mesh.detectStart.mock.calls[0][0]);
+        expect(remoteVideo.srcObject.tracks).toEqual([remoteTrack]);
+        expect(remoteVideo.width).toBe(1280);
+        expect(remoteVideo.height).toBe(720);
+        // An inference finishing after a source switch cannot enable capture.
+        oldDetect([{ keypoints: [] }]);
+        // The pinned ml5 loop may deliver old results to its latest callback.
+        detect([{ keypoints: [] }]);
+        expect(capture).toBeUndefined();
+      }
       detect([]);
       expect(capture).toBeUndefined();
       detect([
@@ -197,9 +236,21 @@ it.each([
       }
       return;
     }
+    const captureVideo = mesh.detectStart.mock.calls.at(-1)[0];
     capture();
+    if (remoteCapture) {
+      expect(mesh.detectStart.mock.calls.at(-1)[0]).toBe(
+        mesh.detectStart.mock.calls[0][0],
+      );
+      expect(captureVideo.srcObject.tracks[0]).not.toBe(remoteTrack);
+      expect(sampledTracks).toEqual([remoteTrack]);
+      await Promise.resolve();
+      sketch.draw();
+      expect(captureVideo.width).toBe(sourceWidth);
+      expect(captureVideo.height).toBe(sourceHeight);
+    }
     detect([]);
-    expect(drawImage).toHaveBeenCalledOnce();
+    expect(drawImage).toHaveBeenCalledWith(captureVideo, 0, 0, 960, 720);
     if (scenario === 'render-error') {
       const rejected = expect(pending).rejects.toThrow('Canvas capture failed');
       expect(() => sketch.draw()).not.toThrow();
@@ -225,6 +276,7 @@ it.each([
     ]);
     sketch.draw();
     expect(vertex).toHaveBeenCalledTimes(3);
+    expect(remoteTrack.stop).not.toHaveBeenCalled();
     // Landmarks follow the chosen output size; texture coordinates stay normalized.
     if (switchToDetection) {
       const [width, height] = sketch.createCanvas.mock.calls[0];
@@ -232,8 +284,8 @@ it.each([
         1,
         (10 * width) / sourceWidth,
         (20 * height) / sourceHeight,
-        expect.closeTo(10 / sourceWidth),
-        expect.closeTo(20 / sourceHeight),
+        expect.closeTo(10 / (remoteCapture ? 1280 : sourceWidth)),
+        expect.closeTo(20 / (remoteCapture ? 720 : sourceHeight)),
       );
     }
     expect(drawImage).toHaveBeenCalledOnce();
@@ -251,13 +303,14 @@ it.each([
       expect(container.isConnected).toBe(false);
       return;
     }
+    const stopsBeforeDispose = mesh.detectStop.mock.calls.length;
     if (switchToDetection) controller.abort();
     else expect(() => mask.dispose()).not.toThrow();
     // Hangup aborts first and then explicitly disposes the mask again.
     expect(() => mask.dispose()).not.toThrow();
     expect(removeGraphics).not.toHaveBeenCalled();
     expect(sketch.remove).toHaveBeenCalledOnce();
-    expect(mesh.detectStop).toHaveBeenCalledOnce();
+    expect(mesh.detectStop).toHaveBeenCalledTimes(stopsBeforeDispose + 1);
     expect(track.stop).toHaveBeenCalledOnce();
     expect(sourceVideo.srcObject).toBeNull();
     expect(container.isConnected).toBe(false);

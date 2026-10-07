@@ -123,6 +123,7 @@ export async function createFaceMask(
   onCaptureReady?: (capture: (() => void) | undefined) => void,
   captureMode: () => 'outline' | 'detected' = () => FACE_MASK_CAPTURE_MODE,
   onError: (error: Error) => void = () => {},
+  captureTrack: () => MediaStreamTrack | undefined = () => undefined,
 ): Promise<FaceMask> {
   const container = document.createElement('div');
   // Keep a tiny source in the viewport. Fully invisible video can stop
@@ -135,6 +136,7 @@ export async function createFaceMask(
   video.srcObject = new MediaStream([camera]);
   container.append(video);
   document.body.append(container);
+  let detectionGeneration = 0;
   let sketch: Sketch | undefined;
   let mesh: Mesh | undefined;
   let liveTexture: Graphics | undefined;
@@ -158,6 +160,7 @@ export async function createFaceMask(
     cancelVideoWait?.();
     signal.removeEventListener('abort', abort);
     onCaptureReady?.(undefined);
+    detectionGeneration++;
     mesh?.detectStop();
     // The sketch owns buffer cleanup; Graphics.remove() breaks in p5 1.11.13.
     sketch?.remove();
@@ -261,8 +264,18 @@ export async function createFaceMask(
         let centerY = height / 2;
         let zoom = 1;
         const outlineMode = () => captureMode() === 'outline';
+        let selectedTrack: MediaStreamTrack | undefined;
+        let switchingSource = false;
+        let sourcePlaying = true;
         const capture = () => {
-          if (disposed || captured || (!outlineMode() && !faces[0])) return;
+          if (
+            disposed ||
+            captured ||
+            switchingSource ||
+            captureTrack() !== selectedTrack ||
+            (!outlineMode() && !faces[0])
+          )
+            return;
           // User adjustment time is unbounded, but publishing must still be bounded.
           startTimeout();
           try {
@@ -276,6 +289,7 @@ export async function createFaceMask(
                 }
               : faces[0];
             onCaptureReady?.(undefined);
+            if (selectedTrack) syncCaptureSource();
             progress(
               outlineMode()
                 ? 'Bring your face into view to animate'
@@ -295,6 +309,73 @@ export async function createFaceMask(
           clearTimeout(timer);
           progress('Filtered video ready');
           resolve({ track: output, dispose });
+        };
+        const startDetection = () => {
+          // Give every input the same dimensions as the working camera path.
+          video.width = video.videoWidth;
+          video.height = video.videoHeight;
+          // ml5 can deliver an in-flight result to the newly installed callback.
+          // Discard the first result after switching so source coordinates agree.
+          let skipFirstResult = detectionGeneration > 0;
+          const generation = ++detectionGeneration;
+          mesh!.detectStart(video, (results) => {
+            if (
+              disposed ||
+              generation !== detectionGeneration ||
+              (!captured && captureTrack() !== selectedTrack)
+            )
+              return;
+            if (skipFirstResult) {
+              skipFirstResult = false;
+              return;
+            }
+            // Landmarks refer to source-video pixels, not the output canvas.
+            faces = results.map((face) => ({
+              keypoints: face.keypoints.map((point) => ({
+                x: (point.x * width) / video.videoWidth,
+                y: (point.y * height) / video.videoHeight,
+              })),
+            }));
+            if (!captured && (!outlineMode() || !onCaptureReady)) {
+              if (onCaptureReady) {
+                // The timeout bounds startup, not the user's adjustment time.
+                if (faces[0]) clearTimeout(timer);
+                onCaptureReady(faces[0] ? capture : undefined);
+                const next = faces[0]
+                  ? 'Adjust your face, then capture'
+                  : 'Waiting for a face';
+                if (stage !== next) progress(next);
+              } else if (faces[0]) {
+                capture();
+              }
+            }
+          });
+        };
+
+        // Capture can use any video track; animation always follows the camera.
+        const syncCaptureSource = () => {
+          const nextTrack = captured ? undefined : captureTrack();
+          if (nextTrack === selectedTrack) return;
+          selectedTrack = nextTrack;
+          const generation = ++detectionGeneration;
+          mesh!.detectStop();
+          faces = [];
+          onCaptureReady?.(undefined);
+          switchingSource = true;
+          sourcePlaying = false;
+          startTimeout();
+          progress('Preparing capture source');
+          video.srcObject = new MediaStream([nextTrack ?? camera]);
+          // The draw loop waits for drawable pixels before starting detection.
+          void video
+            .play()
+            .then(() => {
+              if (!disposed && generation === detectionGeneration)
+                sourcePlaying = true;
+            })
+            .catch((error) => {
+              if (!disposed && generation === detectionGeneration) fail(error);
+            });
         };
         progress('Starting renderer');
         sketch = new libs.p5((p) => {
@@ -319,34 +400,24 @@ export async function createFaceMask(
             } else {
               progress('Waiting for a face');
             }
-            mesh!.detectStart(video, (results) => {
-              if (disposed) return;
-              // Landmarks refer to source-video pixels, not the output canvas.
-              faces = results.map((face) => ({
-                keypoints: face.keypoints.map((point) => ({
-                  x: (point.x * width) / video.videoWidth,
-                  y: (point.y * height) / video.videoHeight,
-                })),
-              }));
-              if (!captured && (!outlineMode() || !onCaptureReady)) {
-                if (onCaptureReady) {
-                  // The timeout bounds startup, not the user's adjustment time.
-                  if (faces[0]) clearTimeout(timer);
-                  onCaptureReady(faces[0] ? capture : undefined);
-                  const next = faces[0]
-                    ? 'Adjust your face, then capture'
-                    : 'Waiting for a face';
-                  if (stage !== next) progress(next);
-                } else if (faces[0]) {
-                  capture();
-                }
-              }
-            });
+            startDetection();
           });
           p.draw = guard(() => {
+            syncCaptureSource();
+            if (
+              switchingSource &&
+              sourcePlaying &&
+              video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+              video.videoWidth &&
+              video.videoHeight
+            ) {
+              switchingSource = false;
+              startDetection();
+              progress('Waiting for a face');
+            }
             p.background(0);
             const face = faces[0];
-            if (!captured) return;
+            if (!captured || switchingSource) return;
             if (FACE_MASK_AUTO_FRAME && face) {
               const xs = faceBoundary.map((index) => face.keypoints[index]!.x);
               const ys = faceBoundary.map((index) => face.keypoints[index]!.y);

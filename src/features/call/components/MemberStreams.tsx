@@ -85,6 +85,13 @@ export function MemberStreams(props: MemberStreamsProps) {
                   </Show>
                   <button
                     type='button'
+                    disabled={!props.media.faceSwapAvailable()}
+                    onClick={props.media.swapFaceMask}
+                  >
+                    Face Swap
+                  </button>
+                  <button
+                    type='button'
                     onClick={props.media.cancelFaceMaskCapture}
                   >
                     Cancel

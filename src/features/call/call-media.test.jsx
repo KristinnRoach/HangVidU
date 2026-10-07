@@ -1,4 +1,4 @@
-import { createRoot } from 'solid-js';
+import { createRoot, createSignal } from 'solid-js';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
@@ -493,7 +493,8 @@ describe('experimental face mask lifecycle', () => {
       },
     });
   });
-  function setup(channelState = 'open') {
+  function setup(channelState = 'open', initialRemotes = []) {
+    const [remotes, setRemotes] = createSignal(initialRemotes);
     const camera = createTrack('video');
     const filtered = createTrack('video');
     const tracks = [camera];
@@ -516,11 +517,91 @@ describe('experimental face mask lifecycle', () => {
         localStream: () => stream,
         room: () => room,
         dataChannels: () => new Map([['remote', channel]]),
+        remoteMemberStreams: () =>
+          remotes().map(({ memberId, stream }) => ({ memberId, stream })),
+        memberPresence: () =>
+          remotes().map(({ memberId, data }) => ({ memberId, data })),
       });
     });
     media.enableFaceMask();
-    return { camera, filtered, mask, room, media, dispose, channel };
+    return {
+      camera,
+      filtered,
+      mask,
+      room,
+      media,
+      dispose,
+      channel,
+      setRemotes,
+    };
   }
+
+  it.each(['capture', 'ended', 'camera-off'])(
+    'uses the remote capture source and handles %s',
+    async (action) => {
+      const remote = createTrack('video');
+      const { media, mask, room, dispose, setRemotes } = setup('open', [
+        {
+          memberId: 'remote',
+          stream: createStream([remote]),
+          data: { cameraOn: true },
+        },
+      ]);
+      let ready;
+      maskMocks.createFaceMask.mockImplementation(
+        (_camera, signal, _progress, onReady) =>
+          new Promise((resolve, reject) => {
+            ready = () => onReady(() => resolve(mask));
+            signal.addEventListener(
+              'abort',
+              () => reject(new Error('cancelled')),
+              { once: true },
+            );
+          }),
+      );
+      expect(media.faceSwapAvailable()).toBe(true);
+      const pending = media.toggleFaceMask();
+      media.swapFaceMask();
+      expect(media.faceMaskOutline()).toBe(false);
+      expect(maskMocks.createFaceMask.mock.calls[0][6]()).toBe(remote);
+      expect(room.setLocalTrack).not.toHaveBeenCalled();
+      if (action === 'capture') {
+        ready();
+        media.captureFaceMask();
+      } else if (action === 'ended') {
+        remote.dispatch('ended');
+      } else {
+        setRemotes([]);
+      }
+      await pending;
+      expect(media.faceMaskOn()).toBe(action === 'capture');
+      expect(media.faceMaskError()).toBe('');
+      expect(maskMocks.createFaceMask.mock.calls[0][6]()).toBeUndefined();
+      dispose();
+      expect(remote.stop).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { data: [] },
+    { data: [{ cameraOn: true, screenShare: true }] },
+    { data: [{ cameraOn: false }] },
+    { data: [{ cameraOn: true }, { cameraOn: true }] },
+  ])(
+    'does not select an ambiguous or unavailable remote camera: %j',
+    ({ data }) => {
+      const { media, dispose } = setup(
+        'open',
+        data.map((data, index) => ({
+          memberId: String(index),
+          stream: createStream([createTrack('video')]),
+          data,
+        })),
+      );
+      expect(media.faceSwapAvailable()).toBe(false);
+      dispose();
+    },
+  );
 
   it('reveals the mask without loading libraries or replacing the camera', () => {
     const { media, room, dispose } = setup('connecting');

@@ -37,6 +37,8 @@ export type CallMedia = {
   faceMaskCapturing: Accessor<boolean>;
   faceMaskOutline: Accessor<boolean>;
   detectFaceMask: () => void;
+  faceSwapAvailable: Accessor<boolean>;
+  swapFaceMask: () => void;
   faceMaskCaptureReady: Accessor<boolean>;
   captureFaceMask: () => void;
   cancelFaceMaskCapture: () => void;
@@ -127,7 +129,34 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const [captureAction, setCaptureAction] = createSignal<
     (() => void) | undefined
   >();
+  const [captureTrack, setCaptureTrack] = createSignal<MediaStreamTrack>();
+  const remoteCaptureTrack = () => {
+    const candidates = p2p.remoteMemberStreams().filter(({ memberId }) => {
+      const data = p2p
+        .memberPresence()
+        .find((member) => member.memberId === memberId)?.data;
+      return data?.cameraOn === true && data?.screenShare !== true;
+    });
+    if (candidates.length !== 1) return undefined;
+    return candidates[0]?.stream
+      .getVideoTracks()
+      .find(
+        (track) => track.readyState === 'live' && track.enabled && !track.muted,
+      );
+  };
   let captureAbort: AbortController | undefined;
+  createEffect(() => {
+    const track = captureTrack();
+    if (!track) return;
+    if (remoteCaptureTrack() !== track) captureAbort?.abort();
+    const cancel = () => captureAbort?.abort();
+    track.addEventListener('ended', cancel);
+    track.addEventListener('mute', cancel);
+    onCleanup(() => {
+      track.removeEventListener('ended', cancel);
+      track.removeEventListener('mute', cancel);
+    });
+  });
   let mask: FaceMask | undefined;
   let maskCamera: MediaStreamTrack | undefined;
 
@@ -172,6 +201,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       captureAbort = new AbortController();
       const cancelCapture = () => captureAbort?.abort();
       maskAbort.signal.addEventListener('abort', cancelCapture, { once: true });
+      setCaptureTrack(undefined);
       setFaceMaskOutline(FACE_MASK_CAPTURE_MODE === 'outline');
       setFaceMaskCapturing(true);
       let nextMask: FaceMask;
@@ -191,6 +221,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
               );
             });
           },
+          captureTrack,
         );
       } finally {
         maskAbort.signal.removeEventListener('abort', cancelCapture);
@@ -214,6 +245,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
         );
       }
     } finally {
+      setCaptureTrack(undefined);
       setFaceMaskCapturing(false);
       setCaptureAction(undefined);
       captureAbort = undefined;
@@ -684,7 +716,17 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     detectFaceMask: () => {
       if (!faceMaskCapturing()) return;
       setCaptureAction(undefined);
+      setCaptureTrack(undefined);
       setFaceMaskOutline(false);
+    },
+    faceSwapAvailable: () => !!remoteCaptureTrack(),
+    swapFaceMask: () => {
+      if (!faceMaskCapturing()) return;
+      const track = remoteCaptureTrack();
+      if (!track) return;
+      setCaptureAction(undefined);
+      setFaceMaskOutline(false);
+      setCaptureTrack(track);
     },
     faceMaskCaptureReady: () => !!captureAction(),
     captureFaceMask: () => captureAction()?.(),
