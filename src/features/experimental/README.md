@@ -33,12 +33,12 @@ The fixed guide and texture coordinates share the canonical face template in `ca
 ### Changes outside `src/features/experimental` to review before merging
 
 - `src/features/call/call-media.ts`: owns capture readiness and session mode, cancellation and hangup handling, model preloading, outgoing track replacement, and restoration of the retained raw camera. Review cleanup and camera-off, camera-switch, and screen-share transitions, including failed track replacement.
-- `src/features/call/components/CallControls.tsx`: reveals the experiment with Ctrl+Shift+9 and provides the mask toggle. Status/error text was removed from the toolbar to avoid layout changes; normal toolbar auto-hide is restored. Errors now appear below the self preview.
+- `src/features/call/components/CallControls.tsx`: shows the mask toggle when the browser supports it. Status/error text was removed from the toolbar to avoid layout changes; normal toolbar auto-hide is restored. Errors now appear below the self preview.
 - `src/features/call/components/MemberStreams.tsx`: adds the self-preview guide and Capture / Detect face / Cancel controls, plus error display. These appear only on the local preview.
 - `src/features/call/components/MemberStreams.module.css`: positions capture controls below the preview and draws the non-interactive mirrored SVG guide.
 - `src/features/call/components/ParticipantMedia.tsx`: adds optional children/overlay and uncropped-preview props; tracks source-video aspect ratio so the guide aligns with the video. This is a shared call component: review regular remote playback and the existing iOS video replacement path.
 - `src/features/call/components/ParticipantMedia.module.css`: allows content outside the self-preview bounds so controls remain visible below it; preserves rounded corners on the video. Review preview clipping and layering in direct/group calls and on small screens.
-- `src/features/call/call-media.test.jsx` and `src/features/call/components/CallControls.test.jsx`: cover the integration lifecycle, capture/cancellation, and reveal shortcut.
+- `src/features/call/call-media.test.jsx` and `src/features/call/components/CallControls.test.jsx`: cover the integration lifecycle, capture/cancellation, availability, and readiness.
 
 Next small extension (not yet implemented): add a live detected-face outline to help the user see which part of their face will be sampled before they click Capture. Show it only on the local camera preview while a capture session is in detected-face mode (after clicking Detect face, or when configured as the default), before capture, and while a face is tracked. Hide it when tracking is lost, capture completes, or the session is canceled. Outline mode keeps its existing fixed positioning guide; the animated output should not show either guide.
 

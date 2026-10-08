@@ -6,8 +6,7 @@ const mocks = vi.hoisted(() => ({
   hangUp: vi.fn(),
   startCall: vi.fn(),
   media: {
-    faceMaskAvailable: () => false,
-    enableFaceMask: vi.fn(),
+    faceMaskSupported: () => false,
     micOn: () => true,
     cameraOn: () => true,
     cameraPending: () => false,
@@ -98,8 +97,8 @@ describe('ActiveCallControls', () => {
         <ActiveCallControls
           media={{
             ...mocks.media,
-            faceMaskAvailable: () => true,
-            faceMaskReady: ready,
+            faceMaskSupported: () => true,
+            mediaFlowing: ready,
             faceMaskOn: maskOn,
             toggleFaceMask,
           }}

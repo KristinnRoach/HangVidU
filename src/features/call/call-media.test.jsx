@@ -68,6 +68,7 @@ describe('call media', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    maskMocks.isFaceMaskSupported.mockReturnValue(false);
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: {
@@ -105,7 +106,12 @@ describe('call media', () => {
       { kind: 'videoinput', deviceId: 'default', groupId: 'camera-1' },
       { kind: 'videoinput', deviceId: 'camera-1', groupId: 'camera-1' },
     ]);
-    const p2p = { localStream: () => undefined, room: () => undefined };
+    const p2p = {
+      dataChannels: () => new Map(),
+      remoteMemberStreams: () => [],
+      localStream: () => undefined,
+      room: () => undefined,
+    };
     let media;
     let dispose;
     createRoot((rootDispose) => {
@@ -141,6 +147,8 @@ describe('call media', () => {
       }),
     };
     const p2p = {
+      dataChannels: () => new Map(),
+      remoteMemberStreams: () => [],
       localStream: () => localStream,
       room: () => room,
     };
@@ -246,6 +254,8 @@ describe('call media', () => {
       setLocalTrack: vi.fn(async () => {}),
     };
     const p2p = {
+      dataChannels: () => new Map(),
+      remoteMemberStreams: () => [],
       localStream: () => localStream,
       room: () => room,
     };
@@ -285,6 +295,8 @@ describe('call media', () => {
       setLocalTrack: vi.fn(async () => {}),
     };
     const p2p = {
+      dataChannels: () => new Map(),
+      remoteMemberStreams: () => [],
       localStream: () => localStream,
       room: () => room,
     };
@@ -318,6 +330,8 @@ describe('call media', () => {
       }),
     };
     const p2p = {
+      dataChannels: () => new Map(),
+      remoteMemberStreams: () => [],
       localStream: () => localStream,
       room: () => room,
     };
@@ -349,6 +363,8 @@ describe('call media', () => {
       }),
     };
     const p2p = {
+      dataChannels: () => new Map(),
+      remoteMemberStreams: () => [],
       localStream: () => localStream,
       room: () => room,
     };
@@ -389,6 +405,8 @@ describe('call media', () => {
       }),
     };
     const p2p = {
+      dataChannels: () => new Map(),
+      remoteMemberStreams: () => [],
       localStream: () => localStream,
       room: () => room,
     };
@@ -427,6 +445,8 @@ describe('call media', () => {
       }),
     };
     const p2p = {
+      dataChannels: () => new Map(),
+      remoteMemberStreams: () => [],
       localStream: () => localStream,
       room: () => room,
     };
@@ -465,6 +485,8 @@ describe('call media', () => {
       }),
     };
     const p2p = {
+      dataChannels: () => new Map(),
+      remoteMemberStreams: () => [],
       localStream: () => localStream,
       room: () => room,
     };
@@ -487,6 +509,7 @@ describe('call media', () => {
 describe('experimental face mask lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    maskMocks.isFaceMaskSupported.mockReturnValue(true);
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: {
@@ -534,7 +557,6 @@ describe('experimental face mask lifecycle', () => {
           remotes().map(({ memberId, data }) => ({ memberId, data })),
       });
     });
-    media.enableFaceMask();
     return {
       camera,
       filtered,
@@ -618,8 +640,9 @@ describe('experimental face mask lifecycle', () => {
     },
   );
 
-  it('reveals the mask without loading libraries or replacing the camera', () => {
+  it('makes the mask available without loading libraries or replacing the camera', () => {
     const { media, room, dispose } = setup('connecting');
+    expect(media.faceMaskSupported()).toBe(true);
     expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
     expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
     expect(room.setLocalTrack).not.toHaveBeenCalled();
@@ -629,7 +652,7 @@ describe('experimental face mask lifecycle', () => {
 
   it('starts mask initialization only after the data channel opens', async () => {
     const { media, room, dispose, channel } = setup('connecting');
-    expect(media.faceMaskReady()).toBe(false);
+    expect(media.mediaFlowing()).toBe(false);
     await media.toggleFaceMask();
     expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
     expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
@@ -637,7 +660,7 @@ describe('experimental face mask lifecycle', () => {
 
     channel.readyState = 'open';
     channel.dispatch('open');
-    expect(media.faceMaskReady()).toBe(true);
+    expect(media.mediaFlowing()).toBe(true);
     expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
     expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
     await media.toggleFaceMask();
@@ -647,7 +670,7 @@ describe('experimental face mask lifecycle', () => {
 
   it('waits for remote media to arrive and unmute', () => {
     const { media, dispose, setRemotes } = setup('open', []);
-    expect(media.faceMaskReady()).toBe(false);
+    expect(media.mediaFlowing()).toBe(false);
     expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
     const remote = createTrack('audio');
     remote.muted = true;
@@ -657,11 +680,11 @@ describe('experimental face mask lifecycle', () => {
     expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
     remote.muted = false;
     remote.dispatch('unmute');
-    expect(media.faceMaskReady()).toBe(true);
+    expect(media.mediaFlowing()).toBe(true);
     expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
     remote.muted = true;
     remote.dispatch('mute');
-    expect(media.faceMaskReady()).toBe(false);
+    expect(media.mediaFlowing()).toBe(false);
     remote.muted = false;
     remote.dispatch('unmute');
     expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
@@ -675,22 +698,22 @@ describe('experimental face mask lifecycle', () => {
     stream.dispatch('removetrack');
     channel.readyState = 'open';
     channel.dispatch('open');
-    expect(media.faceMaskReady()).toBe(false);
+    expect(media.mediaFlowing()).toBe(false);
     expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
     tracks.push(camera);
     stream.dispatch('addtrack');
-    expect(media.faceMaskReady()).toBe(true);
+    expect(media.mediaFlowing()).toBe(true);
     expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
     camera.readyState = 'ended';
     camera.dispatch('ended');
-    expect(media.faceMaskReady()).toBe(false);
+    expect(media.mediaFlowing()).toBe(false);
     dispose();
   });
 
   it('skips the feature in unsupported environments', async () => {
     maskMocks.isFaceMaskSupported.mockReturnValueOnce(false);
     const { media, room, camera, dispose } = setup();
-    expect(media.faceMaskAvailable()).toBe(false);
+    expect(media.faceMaskSupported()).toBe(false);
     expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
     await media.toggleFaceMask();
     expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
@@ -771,7 +794,7 @@ describe('experimental face mask lifecycle', () => {
     await media.toggleFaceMask();
     channel.readyState = 'closed';
     channel.dispatch('close');
-    expect(media.faceMaskReady()).toBe(false);
+    expect(media.mediaFlowing()).toBe(false);
     await media.toggleFaceMask();
     expect(room.setLocalTrack).toHaveBeenLastCalledWith(
       PRIMARY_VIDEO_SLOT_ID,

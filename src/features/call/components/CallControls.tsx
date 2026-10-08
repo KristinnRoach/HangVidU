@@ -94,7 +94,6 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
 
   onMount(() => {
     if (import.meta.env.DEV) toggleMic(); // Mute mic by default in dev to avoid feedback
-    media.enableFaceMask();
   });
 
   return (
@@ -123,12 +122,12 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
       >
         {media.cameraOn() ? <Video /> : <VideoOff />}
       </button>
-      <Show when={media.faceMaskAvailable()}>
+      <Show when={media.faceMaskSupported()}>
         <button
           type='button'
           onClick={() => void media.toggleFaceMask()}
           disabled={
-            (!media.faceMaskReady() && !media.faceMaskOn()) ||
+            (!media.mediaFlowing() && !media.faceMaskOn()) ||
             media.cameraPending() ||
             media.screenSharing() ||
             !media.cameraOn()

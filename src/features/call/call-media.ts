@@ -28,9 +28,8 @@ function uniqueCameras(devices: MediaDeviceInfo[]) {
 }
 
 export type CallMedia = {
-  faceMaskAvailable: Accessor<boolean>;
-  faceMaskReady: Accessor<boolean>;
-  enableFaceMask: () => void;
+  faceMaskSupported: Accessor<boolean>;
+  mediaFlowing: Accessor<boolean>;
   faceMaskOn: Accessor<boolean>;
   faceMaskError: Accessor<string>;
   faceMaskStatus: Accessor<string>;
@@ -87,12 +86,11 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
   const screenShareAvailable = () =>
     !isMobile && typeof navigator.mediaDevices?.getDisplayMedia === 'function';
-  const [faceMaskAvailable, setFaceMaskAvailable] = createSignal(false);
-  // An open data channel alone does not mean media has arrived. Defer the
-  // optional model until both the local camera and remote media are live.
-  const [faceMaskReady, setFaceMaskReady] = createSignal(false);
+  const faceMaskSupported = isFaceMaskSupported();
+  // An open data channel alone does not mean media has arrived. True once the
+  // channel is open and both the local camera and remote media are live.
+  const [mediaFlowing, setMediaFlowing] = createSignal(false);
   createEffect(() => {
-    if (!faceMaskAvailable()) return;
     const channels = [...p2p.dataChannels().values()];
     const local = localStream();
     const remotes = p2p.remoteMemberStreams().map(({ stream }) => stream);
@@ -100,7 +98,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     const live = (track: MediaStreamTrack) =>
       track.readyState === 'live' && track.enabled && !track.muted;
     const update = () =>
-      setFaceMaskReady(
+      setMediaFlowing(
         channels.some((channel) => channel.readyState === 'open') &&
           !!local?.getVideoTracks().some(live) &&
           remotes.some((stream) => stream.getTracks().some(live)),
@@ -145,7 +143,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const maskAbort = new AbortController();
   let preloadStarted = false;
   createEffect(() => {
-    if (!faceMaskReady() || preloadStarted) return;
+    // Defer the optional model until media is flowing.
+    if (!faceMaskSupported || !mediaFlowing() || preloadStarted) return;
     preloadStarted = true;
     // Also contain synchronous initialization failures in this optional feature.
     void (async () => {
@@ -219,8 +218,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
   async function toggleFaceMask() {
     if (
-      !faceMaskAvailable() ||
-      (!mask && !faceMaskReady()) ||
+      !faceMaskSupported ||
+      (!mask && !mediaFlowing()) ||
       cameraPending() ||
       screenSharing() ||
       !cameraOn()
@@ -740,12 +739,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   }
 
   return {
-    faceMaskAvailable,
-    faceMaskReady,
-    enableFaceMask: () => {
-      setFaceMaskError('');
-      setFaceMaskAvailable(isFaceMaskSupported());
-    },
+    faceMaskSupported: () => faceMaskSupported,
+    mediaFlowing,
     faceMaskOn,
     faceMaskError,
     faceMaskStatus,
