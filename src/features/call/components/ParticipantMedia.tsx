@@ -256,6 +256,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       classList={{
         [styles.selfPreview!]: variant() === 'self-preview',
         [styles.screenShare!]: props.screenShare,
+        [styles.uncropped!]: props.previewUncropped,
       }}
     >
       <video

@@ -1,5 +1,14 @@
 import { captureOutline } from '../../experimental/capture-template';
 import { For, Show } from 'solid-js';
+import {
+  Camera,
+  Check,
+  LoaderCircle,
+  RotateCcw,
+  ScanFace,
+  SwitchCamera,
+  X,
+} from 'lucide-solid';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { ParticipantMedia } from './ParticipantMedia';
 import type { CallMedia } from '../call-media';
@@ -33,17 +42,117 @@ export function MemberStreams(props: MemberStreamsProps) {
     stream
       .getVideoTracks()
       .some((track) => track === props.media.faceMaskCaptureTrack());
-  const outline = (aspect: number, active: boolean, mirrored = false) => (
-    <Show when={active && props.media.faceMaskOutline()}>
+  const preview = () => props.media.faceMaskPreview?.();
+  const controls = () => (
+    <div
+      class={styles.captureOverlay}
+      classList={{
+        [styles.remoteCapture!]:
+          !!props.media.faceMaskCaptureTrack() && !preview(),
+      }}
+    >
+      <Show
+        when={!preview()}
+        fallback={
+          <>
+            <button
+              type='button'
+              class={styles.primary}
+              title='Apply mask'
+              aria-label='Apply mask'
+              onClick={props.media.applyFaceMask}
+            >
+              <Check />
+            </button>
+            <button
+              type='button'
+              title='Retake'
+              aria-label='Retake'
+              onClick={props.media.retakeFaceMask}
+            >
+              <RotateCcw />
+            </button>
+          </>
+        }
+      >
+        <Show when={!props.media.faceMaskCaptureReady()}>
+          <span role='status' aria-label='Looking for a face'>
+            <LoaderCircle class={styles.spinner} />
+          </span>
+        </Show>
+        <Show when={props.media.faceMaskOutline()}>
+          <span class={styles.hint}>Align face</span>
+        </Show>
+        <button
+          type='button'
+          class={styles.primary}
+          disabled={!props.media.faceMaskCaptureReady()}
+          title='Capture face'
+          aria-label='Capture face'
+          onClick={props.media.captureFaceMask}
+        >
+          <Camera />
+        </button>
+        <Show when={props.media.remoteCaptureAvailable()}>
+          <button
+            type='button'
+            title={
+              props.media.faceMaskCaptureTrack()
+                ? 'Use my camera'
+                : 'Use other camera'
+            }
+            aria-label={
+              props.media.faceMaskCaptureTrack()
+                ? 'Use my camera'
+                : 'Use other camera'
+            }
+            onClick={() =>
+              props.media.setFaceMaskSource(!props.media.faceMaskCaptureTrack())
+            }
+          >
+            <SwitchCamera />
+          </button>
+        </Show>
+        <button
+          type='button'
+          title='Manual alignment'
+          aria-label='Manual alignment'
+          aria-pressed={props.media.faceMaskOutline()}
+          onClick={props.media.toggleFaceMaskOutline}
+        >
+          <ScanFace />
+        </button>
+      </Show>
+      <button
+        type='button'
+        title='Cancel'
+        aria-label='Cancel mask'
+        onClick={props.media.cancelFaceMaskCapture}
+      >
+        <X />
+      </button>
+    </div>
+  );
+  const overlay = (aspect: number, active: boolean, mirrored = false) => (
+    <Show when={active}>
       <svg
-        class={styles.captureOutline}
+        classList={{
+          [styles.captureOutline!]: true,
+          [styles.ready!]: props.media.faceMaskCaptureReady(),
+        }}
         style={mirrored ? { transform: 'scaleX(-1)' } : undefined}
         viewBox={`0 0 ${aspect} 1`}
         preserveAspectRatio='xMidYMid meet'
         aria-hidden='true'
       >
-        <polygon points={captureOutline(aspect)} />
+        <Show
+          when={props.media.faceMaskOutline()}
+          fallback={<ellipse cx={aspect / 2} cy='0.5' rx='0.23' ry='0.38' />}
+        >
+          <polygon points={captureOutline(aspect)} />
+        </Show>
       </svg>
+      {controls()}
     </Show>
   );
 
@@ -58,65 +167,39 @@ export function MemberStreams(props: MemberStreamsProps) {
       <Show when={p2p.localStream()}>
         {(_) => (
           <ParticipantMedia
-            stream={p2p.localStream()!}
+            stream={preview() ?? p2p.localStream()!}
             variant='self-preview'
             videoEnabled={props.media.cameraOn() || props.media.screenSharing()}
             audioEnabled={props.media.micOn()}
             screenShare={props.media.screenSharing()}
-            previewUncropped={capturingLocal()}
-            overlay={(aspect) => outline(aspect, !!capturingLocal(), true)}
+            previewUncropped={capturingLocal() || !!preview()}
+            overlay={(aspect) =>
+              overlay(aspect, !!capturingLocal() && !preview(), true)
+            }
           >
-            <Show when={props.media.faceMaskCapturing?.()}>
-              <div class={styles.captureOverlay}>
-                <span role='status'>
-                  {props.media.faceMaskCaptureReady()
-                    ? props.media.faceMaskOutline()
-                      ? 'Position image, then capture'
-                      : 'Adjust face, then capture'
-                    : 'Preparing…'}
-                </span>
-                <div>
-                  <button
-                    type='button'
-                    disabled={!props.media.faceMaskCaptureReady()}
-                    onClick={props.media.captureFaceMask}
-                  >
-                    Capture
-                  </button>
-                  <Show when={props.media.faceMaskOutline()}>
-                    <button type='button' onClick={props.media.detectFaceMask}>
-                      Detect face
-                    </button>
-                  </Show>
-                  <span role='group' aria-label='Capture source'>
-                    <button
-                      type='button'
-                      aria-pressed={!props.media.faceMaskCaptureTrack()}
-                      onClick={() => props.media.setFaceMaskSource(false)}
-                    >
-                      Me
-                    </button>
-                    <button
-                      type='button'
-                      aria-pressed={!!props.media.faceMaskCaptureTrack()}
-                      disabled={!props.media.remoteCaptureAvailable()}
-                      onClick={() => props.media.setFaceMaskSource(true)}
-                    >
-                      Them
-                    </button>
-                  </span>
-                  <button
-                    type='button'
-                    onClick={props.media.cancelFaceMaskCapture}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </Show>
+            <Show when={preview()}>{controls()}</Show>
             <Show when={props.media.faceMaskError?.()}>
               <div class={styles.captureOverlay} role='alert'>
-                {props.media.faceMaskError()}
+                <span title={props.media.faceMaskError()}>
+                  Mask unavailable
+                </span>
+                <button
+                  type='button'
+                  title='Retry'
+                  aria-label='Retry mask'
+                  disabled={props.media.cameraPending()}
+                  onClick={() => void props.media.toggleFaceMask()}
+                >
+                  <RotateCcw />
+                </button>
+                <button
+                  type='button'
+                  title='Dismiss'
+                  aria-label='Dismiss mask error'
+                  onClick={props.media.dismissFaceMaskError}
+                >
+                  <X />
+                </button>
               </div>
             </Show>
           </ParticipantMedia>
@@ -132,7 +215,7 @@ export function MemberStreams(props: MemberStreamsProps) {
             remoteAudioMuted={props.remoteAudioMuted}
             previewUncropped={!!capturingRemote(stream.stream)}
             overlay={(aspect) =>
-              outline(aspect, !!capturingRemote(stream.stream))
+              overlay(aspect, !!capturingRemote(stream.stream) && !preview())
             }
           />
         )}

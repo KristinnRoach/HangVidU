@@ -509,15 +509,19 @@ export async function createFaceMask(
             ) {
               switchingSource = false;
               startDetection();
-              if (!captured && outlineMode() && onCaptureReady) {
-                clearTimeout(timer);
-                onCaptureReady(capture);
-                progress(
-                  'Position your image inside the outline, then capture',
-                );
-              } else {
-                progress('Waiting for a face');
-              }
+              progress('Waiting for a face');
+            }
+            if (
+              !captured &&
+              !switchingSource &&
+              outlineMode() &&
+              onCaptureReady
+            ) {
+              clearTimeout(timer);
+              onCaptureReady(capture);
+              const next =
+                'Position your image inside the outline, then capture';
+              if (stage !== next) progress(next);
             }
             p.background(0);
             const face = faces[0];

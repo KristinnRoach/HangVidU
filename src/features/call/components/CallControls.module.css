@@ -35,6 +35,11 @@
       background-color: rgb(216, 0, 0);
     }
 
+    &.active {
+      background-color: white;
+      color: black;
+    }
+
     &.off {
       background-color: rgba(0, 0, 0, 0.55);
       color: oklch(from var(--color-text) 85% c h);

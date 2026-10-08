@@ -42,6 +42,11 @@
   transition: top var(--duration-default) var(--easing-default);
 }
 
+.selfPreview.uncropped {
+  width: min(300px, calc(100% - 2 * var(--gap)));
+  height: min(240px, 40%);
+}
+
 .selfPreview .media {
   border-radius: inherit;
   transform: scaleX(-1);
@@ -55,7 +60,12 @@
   object-fit: contain;
 }
 
-.screenShare.selfPreview .media {
+.screenShare.selfPreview.uncropped {
+  width: min(300px, calc(100% - 2 * var(--gap)));
+  height: min(240px, 40%);
+}
+
+.selfPreview .media {
   transform: none;
 }
 

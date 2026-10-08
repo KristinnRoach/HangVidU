@@ -133,10 +133,9 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
             !media.cameraOn()
           }
           aria-pressed={media.faceMaskOn()}
-          title={
-            media.faceMaskOn() ? 'Turn face mask off' : 'Experimental face mask'
-          }
-          aria-label='Experimental face mask'
+          title={media.faceMaskOn() ? 'Remove mask' : 'Face mask'}
+          aria-label={media.faceMaskOn() ? 'Remove mask' : 'Face mask'}
+          classList={{ [styles.active!]: media.faceMaskOn() }}
         >
           <ScanFace />
         </button>

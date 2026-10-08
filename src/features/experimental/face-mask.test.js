@@ -75,10 +75,9 @@ it.each(['missing p5', 'invalid p5', 'missing ml5', 'missing faceMesh'])(
   },
 );
 
-async function setupFaceMask({ waitForCamera = false } = {}) {
+async function setupFaceMask({ waitForCamera = false, mode = 'outline' } = {}) {
   let captureTrack;
   const remoteTrack = { stop: vi.fn() };
-  let mode = 'outline';
   vi.resetModules();
   let sketch;
   let detect;
@@ -219,6 +218,9 @@ async function setupFaceMask({ waitForCamera = false } = {}) {
     get capture() {
       return capture;
     },
+    useOutline: () => {
+      mode = 'outline';
+    },
     useDetection: () => {
       mode = 'detected';
     },
@@ -333,6 +335,30 @@ it.each([
     expect(env.track.stop).toHaveBeenCalledOnce();
     expect(sourceVideo.srcObject).toBeNull();
     expect(container.isConnected).toBe(false);
+  },
+);
+
+it.each([false, true])(
+  'switches to manual capture without detection results (remote: %s)',
+  async (remote) => {
+    const env = await setupFaceMask({ mode: 'detected' });
+    await vi.waitFor(() => expect(env.sketch).toBeDefined());
+    if (remote) {
+      env.useRemote();
+      env.sketch.draw();
+      await Promise.resolve();
+      env.sketch.draw();
+    }
+    expect(env.capture).toBeUndefined();
+    env.useOutline();
+    env.sketch.draw();
+    expect(env.capture).toBeTypeOf('function');
+    env.capture();
+    await Promise.resolve();
+    env.sketch.draw();
+    const mask = await env.pending;
+    expect(mask.track).toBe(env.track);
+    mask.dispose();
   },
 );
 

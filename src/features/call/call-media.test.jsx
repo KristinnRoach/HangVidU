@@ -1,5 +1,12 @@
 import { createRoot, createSignal } from 'solid-js';
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import {
   MICROPHONE_SLOT_ID,
@@ -507,9 +514,20 @@ describe('call media', () => {
 });
 
 describe('experimental face mask lifecycle', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  async function toggleAndApply(media) {
+    const pending = media.toggleFaceMask();
+    await Promise.resolve();
+    if (media.faceMaskPreview()) media.applyFaceMask();
+    await pending;
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     maskMocks.isFaceMaskSupported.mockReturnValue(true);
+    vi.stubGlobal('MediaStream', function (tracks) {
+      return createStream(tracks);
+    });
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: {
@@ -572,7 +590,7 @@ describe('experimental face mask lifecycle', () => {
   }
 
   it.each(['capture', 'ended', 'camera-off'])(
-    'uses the remote capture source and handles %s',
+    'defaults to the remote capture source and handles %s',
     async (action) => {
       const remote = createTrack('video');
       const { media, mask, room, dispose, setRemotes } = setup('open', [
@@ -596,10 +614,10 @@ describe('experimental face mask lifecycle', () => {
       );
       expect(media.remoteCaptureAvailable()).toBe(true);
       const pending = media.toggleFaceMask();
-      media.setFaceMaskSource(true);
-      expect(media.faceMaskOutline()).toBe(true);
-      media.detectFaceMask();
+      expect(media.faceMaskCaptureTrack()).toBe(remote);
       expect(media.faceMaskOutline()).toBe(false);
+      media.toggleFaceMaskOutline();
+      expect(media.faceMaskOutline()).toBe(true);
       expect(maskMocks.createFaceMask.mock.calls[0][2].captureTrack()).toBe(
         remote,
       );
@@ -607,6 +625,8 @@ describe('experimental face mask lifecycle', () => {
       if (action === 'capture') {
         ready();
         media.captureFaceMask();
+        await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
+        media.applyFaceMask();
       } else if (action === 'ended') {
         remote.dispatch('ended');
       } else {
@@ -657,7 +677,7 @@ describe('experimental face mask lifecycle', () => {
   it('starts mask initialization only after the data channel opens', async () => {
     const { media, room, dispose, channel } = setup('connecting');
     expect(media.mediaFlowing()).toBe(false);
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
     expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
     expect(room.setLocalTrack).not.toHaveBeenCalled();
@@ -667,7 +687,7 @@ describe('experimental face mask lifecycle', () => {
     expect(media.mediaFlowing()).toBe(true);
     expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
     expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     expect(maskMocks.createFaceMask).toHaveBeenCalledOnce();
     dispose();
   });
@@ -719,7 +739,7 @@ describe('experimental face mask lifecycle', () => {
     const { media, room, camera, dispose } = setup();
     expect(media.faceMaskSupported()).toBe(false);
     expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
     expect(room.setLocalTrack).not.toHaveBeenCalled();
     expect(camera.stop).not.toHaveBeenCalled();
@@ -768,22 +788,54 @@ describe('experimental face mask lifecycle', () => {
     expect(media.faceMaskError()).toBe('');
     const captured = media.toggleFaceMask();
     media.captureFaceMask();
+    await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+    media.applyFaceMask();
     await captured;
     expect(media.faceMaskOn()).toBe(true);
     expect(media.faceMaskCaptureReady()).toBe(false);
     dispose();
   });
 
+  it('retakes or cancels a private preview without publishing it', async () => {
+    const { media, mask, room, dispose } = setup();
+    const pending = media.toggleFaceMask();
+    await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+    media.retakeFaceMask();
+    await vi.waitFor(() =>
+      expect(maskMocks.createFaceMask).toHaveBeenCalledTimes(2),
+    );
+    expect(mask.dispose).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
+    media.cancelFaceMaskCapture();
+    await pending;
+    expect(mask.dispose).toHaveBeenCalledTimes(2);
+    expect(media.faceMaskPreview()).toBeUndefined();
+    expect(media.cameraPending()).toBe(false);
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it('disposes a pending preview when the call ends', async () => {
+    const { media, mask, room, dispose } = setup();
+    const pending = media.toggleFaceMask();
+    await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
+    dispose();
+    await pending;
+    expect(mask.dispose).toHaveBeenCalledOnce();
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+  });
   it('publishes the mask and restores the live camera without reacquiring it', async () => {
     const { camera, filtered, mask, room, media, dispose } = setup();
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     expect(room.setLocalTrack).toHaveBeenLastCalledWith(
       PRIMARY_VIDEO_SLOT_ID,
       filtered,
     );
     expect(media.faceMaskOn()).toBe(true);
     expect(camera.stop).not.toHaveBeenCalled();
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     expect(room.setLocalTrack).toHaveBeenLastCalledWith(
       PRIMARY_VIDEO_SLOT_ID,
       camera,
@@ -795,25 +847,25 @@ describe('experimental face mask lifecycle', () => {
 
   it('restores the camera after the data channel closes and blocks reactivation', async () => {
     const { camera, mask, room, media, dispose, channel } = setup();
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     channel.readyState = 'closed';
     channel.dispatch('close');
     expect(media.mediaFlowing()).toBe(false);
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     expect(room.setLocalTrack).toHaveBeenLastCalledWith(
       PRIMARY_VIDEO_SLOT_ID,
       camera,
     );
     expect(mask.dispose).toHaveBeenCalledOnce();
     expect(media.faceMaskOn()).toBe(false);
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     expect(maskMocks.createFaceMask).toHaveBeenCalledOnce();
     dispose();
   });
 
   it('restores the camera and reports a renderer failure after publishing', async () => {
     const { camera, mask, room, media, dispose } = setup();
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     const { onError } = maskMocks.createFaceMask.mock.calls[0][2];
     onError(new Error('Renderer stopped'));
     await vi.waitFor(() => expect(media.faceMaskOn()).toBe(false));
@@ -829,7 +881,7 @@ describe('experimental face mask lifecycle', () => {
 
   it('camera off disposes the effect and stops the retained camera', async () => {
     const { camera, mask, room, media, dispose } = setup();
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     await media.setCameraEnabled(false);
     expect(room.setLocalTrack).toHaveBeenLastCalledWith(
       PRIMARY_VIDEO_SLOT_ID,
@@ -843,7 +895,7 @@ describe('experimental face mask lifecycle', () => {
 
   it('completes camera off when restoring the raw camera fails', async () => {
     const { camera, filtered, mask, room, media, dispose } = setup();
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     const replaceTrack = room.setLocalTrack.getMockImplementation();
     room.setLocalTrack.mockImplementationOnce(async (slot, track) => {
       await replaceTrack(slot, track);
@@ -870,7 +922,7 @@ describe('experimental face mask lifecycle', () => {
 
   it('hangup stops both the raw camera and filtered track', async () => {
     const { camera, mask, media, dispose } = setup();
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     dispose();
     expect(mask.dispose).toHaveBeenCalledOnce();
     expect(camera.stop).toHaveBeenCalledOnce();
@@ -897,7 +949,7 @@ describe('experimental face mask lifecycle', () => {
   it('leaves the original camera published when model loading fails', async () => {
     const { camera, room, media, dispose } = setup();
     maskMocks.createFaceMask.mockRejectedValue(new Error('Model unavailable'));
-    await media.toggleFaceMask();
+    await toggleAndApply(media);
     expect(room.localStream.getVideoTracks()).toEqual([camera]);
     expect(media.faceMaskError()).toBe('Model unavailable');
     expect(media.cameraPending()).toBe(false);
