@@ -14,8 +14,8 @@ const FACE_MASK_FEATHER = false;
 const FACE_MASK_CULL_FOLDED = true;
 // Set false to restore the original full-frame filtered video.
 const FACE_MASK_AUTO_FRAME = true;
-const FACE_MASK_MIN_HEIGHT = 0.4; // Minimum frame-height fraction.
-const FACE_MASK_MAX_ZOOM = 2; // Magnification cap, >= 1; may limit minimum size.
+const FACE_MASK_MIN_HEIGHT = 0.5; // Minimum frame-height fraction.
+const FACE_MASK_MAX_ZOOM = 4; // Magnification cap, >= 1; may limit minimum size.
 const FACE_MASK_CENTER_STRENGTH = 0.5; // 0 = original position, 1 = fully centered.
 const FACE_MASK_TARGET_Y = 0.5; // 0 = top, 0.5 = middle, 1 = bottom.
 const FACE_MASK_FOLLOW_SPEED = 1; // 0–1 per frame: 1 = instant; lower = smoother.
