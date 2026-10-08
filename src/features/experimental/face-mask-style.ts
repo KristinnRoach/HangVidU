@@ -1,6 +1,6 @@
 /** Native Canvas image styles; filter accepts standard CSS filter chains.
  * Browser support still determines which filters take effect.
- * Shadows/filters on the mask affect its source texture before mesh warping.
+ * Filters on the mask affect its source texture before mesh warping.
  * Layout, borders, and DOM styles are not Canvas image styles.
  * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/filter#value
  * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D#instance_properties
@@ -13,7 +13,7 @@ export const faceMaskStyle: {
   backgroundColor: string;
   outside: FaceMaskRegionStyle;
   inside: FaceMaskRegionStyle;
-  mask: FaceMaskRegionStyle;
+  mask: Omit<FaceMaskRegionStyle, keyof CanvasShadowStyles>;
   vignette: { fadeStart: number; fadeEnd: number };
 } = {
   backgroundColor: 'black',

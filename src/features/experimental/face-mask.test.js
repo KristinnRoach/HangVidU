@@ -29,7 +29,7 @@ it('shares preloading and reuses the ready model after detection stops', async (
   vi.resetModules();
   const mesh = { ready: Promise.resolve(), detectStop: vi.fn() };
   const faceMesh = vi.fn(() => mesh);
-  vi.stubGlobal('window', { ml5: { faceMesh } });
+  vi.stubGlobal('window', { p5: class {}, ml5: { faceMesh } });
   const scripts = [];
   vi.spyOn(document.head, 'append').mockImplementation((script) => {
     scripts.push(script.src);
@@ -44,6 +44,36 @@ it('shares preloading and reuses the ready model after detection stops', async (
   expect(faceMesh).toHaveBeenCalledOnce();
   expect(scripts).toHaveLength(2);
 });
+
+it.each(['missing p5', 'invalid p5', 'missing ml5', 'missing faceMesh'])(
+  'rejects %s after script loading and reloads libraries on retry',
+  async (scenario) => {
+    vi.resetModules();
+    const mesh = { ready: Promise.resolve() };
+    const faceMesh = vi.fn(() => mesh);
+    const libs = { p5: class {}, ml5: { faceMesh } };
+    const invalid = { ...libs };
+    if (scenario === 'missing p5') delete invalid.p5;
+    if (scenario === 'invalid p5') invalid.p5 = {};
+    if (scenario === 'missing ml5') delete invalid.ml5;
+    if (scenario === 'missing faceMesh') invalid.ml5 = {};
+    vi.stubGlobal('window', invalid);
+    const append = vi
+      .spyOn(document.head, 'append')
+      .mockImplementation((script) => {
+        queueMicrotask(() => script.onload());
+      });
+    const { preloadFaceMask } = await import('./face-mask');
+    await expect(preloadFaceMask()).rejects.toThrow(
+      'Could not load face mask libraries',
+    );
+    expect(faceMesh).not.toHaveBeenCalled();
+    vi.stubGlobal('window', libs);
+    expect((await preloadFaceMask()).mesh).toBe(mesh);
+    expect(faceMesh).toHaveBeenCalledOnce();
+    expect(append).toHaveBeenCalledTimes(4);
+  },
+);
 
 it.each([
   { switchToDetection: false },

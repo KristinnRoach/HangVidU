@@ -101,7 +101,13 @@ function loadLibraries() {
       'https://unpkg.com/ml5@1.4.0/dist/ml5.min.js',
       'sha384-WhQsp6wxLjcueRBZ1VznJM97KGBK+r4P+L3yOCLEUk/H/4uAm9leYfoLx+Fauci2',
     );
-    return window as unknown as Libraries;
+    const libs = window as unknown as Partial<Libraries>;
+    if (
+      typeof libs.p5 !== 'function' ||
+      typeof libs.ml5?.faceMesh !== 'function'
+    )
+      throw new Error('Could not load face mask libraries');
+    return libs as Libraries;
   })().catch((error) => {
     libraries = undefined;
     throw error;
