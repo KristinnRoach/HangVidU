@@ -584,9 +584,9 @@ describe('experimental face mask lifecycle', () => {
       ]);
       let ready;
       maskMocks.createFaceMask.mockImplementation(
-        (_camera, signal, _progress, onReady) =>
+        (_camera, signal, { onCaptureReady }) =>
           new Promise((resolve, reject) => {
-            ready = () => onReady(() => resolve(mask));
+            ready = () => onCaptureReady(() => resolve(mask));
             signal.addEventListener(
               'abort',
               () => reject(new Error('cancelled')),
@@ -600,7 +600,9 @@ describe('experimental face mask lifecycle', () => {
       expect(media.faceMaskOutline()).toBe(true);
       media.detectFaceMask();
       expect(media.faceMaskOutline()).toBe(false);
-      expect(maskMocks.createFaceMask.mock.calls[0][6]()).toBe(remote);
+      expect(maskMocks.createFaceMask.mock.calls[0][2].captureTrack()).toBe(
+        remote,
+      );
       expect(room.setLocalTrack).not.toHaveBeenCalled();
       if (action === 'capture') {
         ready();
@@ -613,7 +615,9 @@ describe('experimental face mask lifecycle', () => {
       await pending;
       expect(media.faceMaskOn()).toBe(action === 'capture');
       expect(media.faceMaskError()).toBe('');
-      expect(maskMocks.createFaceMask.mock.calls[0][6]()).toBeUndefined();
+      expect(
+        maskMocks.createFaceMask.mock.calls[0][2].captureTrack(),
+      ).toBeUndefined();
       dispose();
       expect(remote.stop).not.toHaveBeenCalled();
     },
@@ -742,9 +746,9 @@ describe('experimental face mask lifecycle', () => {
   it('keeps the camera live until capture and allows cancellation', async () => {
     const { camera, mask, room, media, dispose } = setup();
     maskMocks.createFaceMask.mockImplementation(
-      (_camera, signal, _progress, ready) =>
+      (_camera, signal, { onCaptureReady }) =>
         new Promise((resolve, reject) => {
-          ready(() => resolve(mask));
+          onCaptureReady(() => resolve(mask));
           signal.addEventListener(
             'abort',
             () => reject(new Error('cancelled')),
@@ -810,7 +814,7 @@ describe('experimental face mask lifecycle', () => {
   it('restores the camera and reports a renderer failure after publishing', async () => {
     const { camera, mask, room, media, dispose } = setup();
     await media.toggleFaceMask();
-    const onError = maskMocks.createFaceMask.mock.calls[0][5];
+    const { onError } = maskMocks.createFaceMask.mock.calls[0][2];
     onError(new Error('Renderer stopped'));
     await vi.waitFor(() => expect(media.faceMaskOn()).toBe(false));
     expect(room.setLocalTrack).toHaveBeenLastCalledWith(

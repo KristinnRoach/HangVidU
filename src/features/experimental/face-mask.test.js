@@ -75,174 +75,196 @@ it.each(['missing p5', 'invalid p5', 'missing ml5', 'missing faceMesh'])(
   },
 );
 
+async function setupFaceMask({ waitForCamera = false } = {}) {
+  let captureTrack;
+  const remoteTrack = { stop: vi.fn() };
+  let mode = 'outline';
+  vi.resetModules();
+  let sketch;
+  let detect;
+  let capture;
+  const track = { stop: vi.fn() };
+  const sampledTracks = [];
+  const drawImage = vi.fn((input) =>
+    sampledTracks.push(input.srcObject.tracks[0]),
+  );
+  const liveDrawImage = vi.fn();
+  const vertex = vi.fn();
+  const removeGraphics = vi.fn(() => {
+    throw new TypeError(
+      "Cannot read properties of undefined (reading 'indexOf')",
+    );
+  });
+  const mesh = {
+    ready: Promise.resolve(),
+    detectStart: vi.fn((_video, callback) => {
+      detect = callback;
+    }),
+    detectStop: vi.fn(),
+    getTriangles: () => [[0, 1, 2]],
+  };
+  const outputCanvas = document.createElement('canvas');
+  outputCanvas.captureStream = () => {
+    return { getVideoTracks: () => [track] };
+  };
+  const sourceWidth = 800;
+  const sourceHeight = 600;
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  let readyState = waitForCamera ? 1 : 2;
+  vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get').mockImplementation(
+    () => readyState,
+  );
+  vi.spyOn(HTMLVideoElement.prototype, 'videoWidth', 'get').mockImplementation(
+    function () {
+      return this.srcObject?.tracks[0] === remoteTrack ? 1280 : sourceWidth;
+    },
+  );
+  vi.spyOn(HTMLVideoElement.prototype, 'videoHeight', 'get').mockImplementation(
+    function () {
+      return this.srcObject?.tracks[0] === remoteTrack ? 720 : sourceHeight;
+    },
+  );
+  vi.stubGlobal(
+    'MediaStream',
+    class {
+      constructor(tracks) {
+        this.tracks = tracks;
+      }
+    },
+  );
+  vi.stubGlobal('window', {
+    ml5: { faceMesh: () => mesh },
+    p5: class {
+      constructor(init) {
+        sketch = {
+          createCanvas: vi.fn(() => ({ elt: outputCanvas })),
+          createGraphics: vi
+            .fn(() => ({
+              canvas: {
+                getContext: () => ({
+                  drawImage: liveDrawImage,
+                  fillRect: vi.fn(),
+                  clearRect: vi.fn(),
+                  createRadialGradient: () => ({ addColorStop: vi.fn() }),
+                  save: vi.fn(),
+                  beginPath: vi.fn(),
+                  moveTo: vi.fn(),
+                  lineTo: vi.fn(),
+                  closePath: vi.fn(),
+                  clip: vi.fn(),
+                  restore: vi.fn(),
+                }),
+              },
+              remove: removeGraphics,
+            }))
+            .mockImplementationOnce(() => ({
+              canvas: { getContext: () => ({ drawImage }) },
+              remove: removeGraphics,
+            })),
+          frameRate: vi.fn(),
+          pixelDensity: vi.fn(),
+          textureMode: vi.fn(),
+          translate: vi.fn(),
+          scale: vi.fn(),
+          background: vi.fn(),
+          image: vi.fn(),
+          texture: vi.fn(),
+          noStroke: vi.fn(),
+          beginShape: vi.fn(),
+          vertex,
+          endShape: vi.fn(),
+          remove: vi.fn(),
+        };
+        init(sketch);
+        sketch.setup();
+        return sketch;
+      }
+    },
+  });
+  vi.spyOn(document.head, 'append').mockImplementation((script) =>
+    queueMicrotask(() => script.onload()),
+  );
+  const { createFaceMask } = await import('./face-mask');
+  const controller = new AbortController();
+  const onError = vi.fn();
+  const pending = createFaceMask({}, controller.signal, {
+    onCaptureReady: (action) => {
+      capture = action;
+    },
+    captureMode: () => mode,
+    onError,
+    captureTrack: () => captureTrack,
+  });
+  return {
+    pending,
+    controller,
+    onError,
+    mesh,
+    outputCanvas,
+    track,
+    remoteTrack,
+    sampledTracks,
+    drawImage,
+    vertex,
+    removeGraphics,
+    sourceWidth,
+    sourceHeight,
+    get sketch() {
+      return sketch;
+    },
+    get detect() {
+      return detect;
+    },
+    get capture() {
+      return capture;
+    },
+    useDetection: () => {
+      mode = 'detected';
+    },
+    useRemote: () => {
+      captureTrack = remoteTrack;
+    },
+    cameraReady: () => {
+      readyState = 2;
+      document.querySelector('video').dispatchEvent(new Event('loadeddata'));
+    },
+  };
+}
+
+async function waitForCapture(env) {
+  await vi.waitFor(() => expect(env.capture).toBeTypeOf('function'));
+}
+
+function testFace() {
+  return {
+    keypoints: [
+      { x: 10, y: 20 },
+      { x: 30, y: 40 },
+      { x: 50, y: 60 },
+      ...Array.from({ length: 465 }, () => ({ x: 50, y: 60 })),
+    ],
+  };
+}
+
 it.each([
   { switchToDetection: false },
   { switchToDetection: true },
   { switchToDetection: true, remoteCapture: true },
   { remoteCapture: true },
-  { scenario: 'camera-wait' },
-  { scenario: 'camera-cancel' },
-  { scenario: 'render-error' },
-  { scenario: 'render-timeout' },
-  { scenario: 'runtime-error' },
 ])(
-  'handles face-mask capture: %j',
-  async ({ switchToDetection = false, remoteCapture = false, scenario }) => {
-    let captureTrack;
-    const remoteTrack = { stop: vi.fn() };
-    let mode = 'outline';
-    vi.resetModules();
-    let sketch;
-    let detect;
-    let capture;
-    const track = { stop: vi.fn() };
-    const sampledTracks = [];
-    const drawImage = vi.fn((input) =>
-      sampledTracks.push(input.srcObject.tracks[0]),
-    );
-    const liveDrawImage = vi.fn();
-    const vertex = vi.fn();
-    const removeGraphics = vi.fn(() => {
-      throw new TypeError(
-        "Cannot read properties of undefined (reading 'indexOf')",
-      );
-    });
-    const mesh = {
-      ready: Promise.resolve(),
-      detectStart: vi.fn((_video, callback) => {
-        detect = callback;
-      }),
-      detectStop: vi.fn(),
-      getTriangles: () => [[0, 1, 2]],
-    };
-    const outputCanvas = document.createElement('canvas');
-    outputCanvas.captureStream = () => {
-      if (scenario === 'render-error') throw new Error('Canvas capture failed');
-      return { getVideoTracks: () => [track] };
-    };
-    const sourceWidth = 800;
-    const sourceHeight = 600;
-    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
-    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
-    let readyState = scenario?.startsWith('camera-') ? 1 : 2;
-    vi.spyOn(
-      HTMLMediaElement.prototype,
-      'readyState',
-      'get',
-    ).mockImplementation(() => readyState);
-    vi.spyOn(
-      HTMLVideoElement.prototype,
-      'videoWidth',
-      'get',
-    ).mockImplementation(function () {
-      return this.srcObject?.tracks[0] === remoteTrack ? 1280 : sourceWidth;
-    });
-    vi.spyOn(
-      HTMLVideoElement.prototype,
-      'videoHeight',
-      'get',
-    ).mockImplementation(function () {
-      return this.srcObject?.tracks[0] === remoteTrack ? 720 : sourceHeight;
-    });
-    vi.stubGlobal(
-      'MediaStream',
-      class {
-        constructor(tracks) {
-          this.tracks = tracks;
-        }
-      },
-    );
-    vi.stubGlobal('window', {
-      ml5: { faceMesh: () => mesh },
-      p5: class {
-        constructor(init) {
-          sketch = {
-            createCanvas: vi.fn(() => ({ elt: outputCanvas })),
-            createGraphics: vi
-              .fn(() => ({
-                canvas: {
-                  getContext: () => ({
-                    drawImage: liveDrawImage,
-                    fillRect: vi.fn(),
-                    clearRect: vi.fn(),
-                    createRadialGradient: () => ({ addColorStop: vi.fn() }),
-                    save: vi.fn(),
-                    beginPath: vi.fn(),
-                    moveTo: vi.fn(),
-                    lineTo: vi.fn(),
-                    closePath: vi.fn(),
-                    clip: vi.fn(),
-                    restore: vi.fn(),
-                  }),
-                },
-                remove: removeGraphics,
-              }))
-              .mockImplementationOnce(() => ({
-                canvas: { getContext: () => ({ drawImage }) },
-                remove: removeGraphics,
-              })),
-            frameRate: vi.fn(),
-            pixelDensity: vi.fn(),
-            textureMode: vi.fn(),
-            translate: vi.fn(),
-            scale: vi.fn(),
-            background: vi.fn(),
-            image: vi.fn(),
-            texture: vi.fn(),
-            noStroke: vi.fn(),
-            beginShape: vi.fn(),
-            vertex,
-            endShape: vi.fn(),
-            remove: vi.fn(),
-          };
-          init(sketch);
-          sketch.setup();
-          return sketch;
-        }
-      },
-    });
-    vi.spyOn(document.head, 'append').mockImplementation((script) =>
-      queueMicrotask(() => script.onload()),
-    );
-    const { createFaceMask } = await import('./face-mask');
-    const controller = new AbortController();
-    const onError = vi.fn();
-    const pending = createFaceMask(
-      {},
-      controller.signal,
-      () => {},
-      (action) => {
-        capture = action;
-      },
-      () => mode,
-      onError,
-      () => captureTrack,
-    );
-    if (scenario?.startsWith('camera-')) {
-      await vi.waitFor(() =>
-        expect(HTMLMediaElement.prototype.play).toHaveBeenCalled(),
-      );
-      expect(capture).toBeUndefined();
-      expect(sketch).toBeUndefined();
-      if (scenario === 'camera-cancel') {
-        const rejected = expect(pending).rejects.toThrow('Face mask cancelled');
-        controller.abort();
-        await rejected;
-        expect(document.querySelector('video')).toBeNull();
-        expect(mesh.detectStart).not.toHaveBeenCalled();
-        return;
-      }
-      readyState = 2;
-      document.querySelector('video').dispatchEvent(new Event('loadeddata'));
-    }
-    await vi.waitFor(() => expect(capture).toBeTypeOf('function'));
+  'captures and disposes the face mask: %j',
+  async ({ switchToDetection, remoteCapture }) => {
+    const env = await setupFaceMask();
+    await waitForCapture(env);
+    const { sketch, mesh, remoteTrack, sourceWidth, sourceHeight } = env;
     expect(sketch.pixelDensity).toHaveBeenCalledWith(1);
-    detect([]);
-    expect(capture).toBeTypeOf('function');
-    if (switchToDetection) mode = 'detected';
+    env.detect([]);
+    expect(env.capture).toBeTypeOf('function');
+    if (switchToDetection) env.useDetection();
     if (remoteCapture) {
-      captureTrack = remoteTrack;
-      const oldDetect = detect;
+      env.useRemote();
+      const oldDetect = env.detect;
       sketch.draw();
       await Promise.resolve();
       sketch.draw();
@@ -251,88 +273,45 @@ it.each([
       expect(remoteVideo.srcObject.tracks).toEqual([remoteTrack]);
       expect(remoteVideo.width).toBe(1280);
       expect(remoteVideo.height).toBe(720);
-      // An inference finishing after a source switch cannot enable capture.
+      // Reject stale results from either the old or newly installed callback.
       oldDetect([{ keypoints: [] }]);
-      // The pinned ml5 loop may deliver old results to its latest callback.
-      detect([{ keypoints: [] }]);
-      if (switchToDetection) expect(capture).toBeUndefined();
-      else expect(capture).toBeTypeOf('function');
+      env.detect([{ keypoints: [] }]);
+      if (switchToDetection) expect(env.capture).toBeUndefined();
+      else expect(env.capture).toBeTypeOf('function');
     }
     if (switchToDetection) {
-      detect([]);
-      expect(capture).toBeUndefined();
-      detect([
-        {
-          keypoints: [
-            { x: 10, y: 20 },
-            { x: 30, y: 40 },
-            { x: 50, y: 60 },
-            ...Array.from({ length: 465 }, () => ({ x: 50, y: 60 })),
-          ],
-        },
-      ]);
-      expect(capture).toBeTypeOf('function');
-    }
-    if (scenario === 'render-timeout') {
-      vi.useFakeTimers();
-      try {
-        const rejected = expect(pending).rejects.toThrow('Face mask timed out');
-        capture();
-        await vi.advanceTimersByTimeAsync(30000);
-        await rejected;
-        expect(mesh.detectStop).toHaveBeenCalledOnce();
-        expect(sketch.remove).toHaveBeenCalledOnce();
-        expect(capture).toBeUndefined();
-      } finally {
-        vi.useRealTimers();
-      }
-      return;
+      env.detect([]);
+      expect(env.capture).toBeUndefined();
+      env.detect([testFace()]);
+      expect(env.capture).toBeTypeOf('function');
     }
     const captureVideo = mesh.detectStart.mock.calls.at(-1)[0];
-    capture();
+    env.capture();
     if (remoteCapture) {
       expect(mesh.detectStart.mock.calls.at(-1)[0]).toBe(
         mesh.detectStart.mock.calls[0][0],
       );
       expect(captureVideo.srcObject.tracks[0]).not.toBe(remoteTrack);
-      expect(sampledTracks).toEqual([remoteTrack]);
+      expect(env.sampledTracks).toEqual([remoteTrack]);
       await Promise.resolve();
       sketch.draw();
       expect(captureVideo.width).toBe(sourceWidth);
       expect(captureVideo.height).toBe(sourceHeight);
     }
-    detect([]);
-    expect(drawImage).toHaveBeenCalledWith(captureVideo, 0, 0, 960, 720);
-    if (scenario === 'render-error') {
-      const rejected = expect(pending).rejects.toThrow('Canvas capture failed');
-      expect(() => sketch.draw()).not.toThrow();
-      await rejected;
-      expect(mesh.detectStop).toHaveBeenCalledOnce();
-      expect(sketch.remove).toHaveBeenCalledOnce();
-      expect(capture).toBeUndefined();
-      return;
-    }
+    env.detect([]);
+    expect(env.drawImage).toHaveBeenCalledWith(captureVideo, 0, 0, 960, 720);
     sketch.draw();
-    const mask = await pending;
-    expect(mask.track).toBe(track);
-    expect(vertex).not.toHaveBeenCalled();
-    detect([
-      {
-        keypoints: [
-          { x: 10, y: 20 },
-          { x: 30, y: 40 },
-          { x: 50, y: 60 },
-          ...Array.from({ length: 465 }, () => ({ x: 50, y: 60 })),
-        ],
-      },
-    ]);
+    const mask = await env.pending;
+    expect(mask.track).toBe(env.track);
+    expect(env.vertex).not.toHaveBeenCalled();
+    env.detect([testFace()]);
     sketch.draw();
-    expect(vertex).toHaveBeenCalledTimes(3);
+    expect(env.vertex).toHaveBeenCalledTimes(3);
     expect(remoteTrack.stop).not.toHaveBeenCalled();
-    // Landmarks follow the chosen output size; texture coordinates stay normalized.
+    // Landmarks scale to output pixels; texture coordinates stay normalized.
     if (switchToDetection) {
       const [width, height] = sketch.createCanvas.mock.calls[0];
-      expect(vertex).toHaveBeenNthCalledWith(
+      expect(env.vertex).toHaveBeenNthCalledWith(
         1,
         (10 * width) / sourceWidth,
         (20 * height) / sourceHeight,
@@ -340,34 +319,102 @@ it.each([
         expect.closeTo(20 / (remoteCapture ? 720 : sourceHeight)),
       );
     }
-    expect(drawImage).toHaveBeenCalledOnce();
+    expect(env.drawImage).toHaveBeenCalledOnce();
     const sourceVideo = mesh.detectStart.mock.calls[0][0];
     const container = sourceVideo.parentElement;
-    if (scenario === 'runtime-error') {
-      sketch.texture.mockImplementation(() => {
-        throw new Error('Renderer stopped');
-      });
-      sketch.draw();
-      expect(onError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Renderer stopped' }),
-      );
-      expect(track.stop).toHaveBeenCalledOnce();
-      expect(container.isConnected).toBe(false);
-      return;
-    }
     const stopsBeforeDispose = mesh.detectStop.mock.calls.length;
-    if (switchToDetection) controller.abort();
+    if (switchToDetection) env.controller.abort();
     else expect(() => mask.dispose()).not.toThrow();
     // Hangup aborts first and then explicitly disposes the mask again.
     expect(() => mask.dispose()).not.toThrow();
-    expect(removeGraphics).not.toHaveBeenCalled();
+    expect(env.removeGraphics).not.toHaveBeenCalled();
     expect(sketch.remove).toHaveBeenCalledOnce();
     expect(mesh.detectStop).toHaveBeenCalledTimes(stopsBeforeDispose + 1);
-    expect(track.stop).toHaveBeenCalledOnce();
+    expect(env.track.stop).toHaveBeenCalledOnce();
     expect(sourceVideo.srcObject).toBeNull();
     expect(container.isConnected).toBe(false);
   },
 );
+
+it('waits for drawable camera pixels before offering capture', async () => {
+  const env = await setupFaceMask({ waitForCamera: true });
+  await vi.waitFor(() =>
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalled(),
+  );
+  expect(env.capture).toBeUndefined();
+  expect(env.sketch).toBeUndefined();
+  env.cameraReady();
+  await waitForCapture(env);
+  env.capture();
+  env.sketch.draw();
+  const mask = await env.pending;
+  mask.dispose();
+});
+
+it('cancels while waiting for camera pixels', async () => {
+  const env = await setupFaceMask({ waitForCamera: true });
+  await vi.waitFor(() =>
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalled(),
+  );
+  expect(env.capture).toBeUndefined();
+  expect(env.sketch).toBeUndefined();
+  const rejected = expect(env.pending).rejects.toThrow('Face mask cancelled');
+  env.controller.abort();
+  await rejected;
+  expect(document.querySelector('video')).toBeNull();
+  expect(env.mesh.detectStart).not.toHaveBeenCalled();
+});
+
+it('times out when the captured mask is never published', async () => {
+  const env = await setupFaceMask();
+  await waitForCapture(env);
+  vi.useFakeTimers();
+  try {
+    const rejected = expect(env.pending).rejects.toThrow('Face mask timed out');
+    env.capture();
+    await vi.advanceTimersByTimeAsync(30000);
+    await rejected;
+    expect(env.mesh.detectStop).toHaveBeenCalledOnce();
+    expect(env.sketch.remove).toHaveBeenCalledOnce();
+    expect(env.capture).toBeUndefined();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('cleans up when canvas capture fails before publishing', async () => {
+  const env = await setupFaceMask();
+  await waitForCapture(env);
+  env.outputCanvas.captureStream = () => {
+    throw new Error('Canvas capture failed');
+  };
+  env.capture();
+  const rejected = expect(env.pending).rejects.toThrow('Canvas capture failed');
+  expect(() => env.sketch.draw()).not.toThrow();
+  await rejected;
+  expect(env.mesh.detectStop).toHaveBeenCalledOnce();
+  expect(env.sketch.remove).toHaveBeenCalledOnce();
+  expect(env.capture).toBeUndefined();
+});
+
+it('reports renderer failures and cleans up after publishing', async () => {
+  const env = await setupFaceMask();
+  await waitForCapture(env);
+  env.capture();
+  env.sketch.draw();
+  await env.pending;
+  const container = env.mesh.detectStart.mock.calls[0][0].parentElement;
+  env.detect([testFace()]);
+  env.sketch.texture.mockImplementation(() => {
+    throw new Error('Renderer stopped');
+  });
+  env.sketch.draw();
+  expect(env.onError).toHaveBeenCalledWith(
+    expect.objectContaining({ message: 'Renderer stopped' }),
+  );
+  expect(env.track.stop).toHaveBeenCalledOnce();
+  expect(container.isConnected).toBe(false);
+});
 
 it('keeps the outline proportions independent of camera aspect ratio', async () => {
   const { captureOutline } = await import('./capture-template');

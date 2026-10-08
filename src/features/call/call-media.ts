@@ -32,7 +32,6 @@ export type CallMedia = {
   mediaFlowing: Accessor<boolean>;
   faceMaskOn: Accessor<boolean>;
   faceMaskError: Accessor<string>;
-  faceMaskStatus: Accessor<string>;
   toggleFaceMask: () => Promise<void>;
   faceMaskCapturing: Accessor<boolean>;
   faceMaskOutline: Accessor<boolean>;
@@ -159,7 +158,6 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       }
     })();
   });
-  const [faceMaskStatus, setFaceMaskStatus] = createSignal('');
   const [faceMaskOutline, setFaceMaskOutline] = createSignal(
     FACE_MASK_CAPTURE_MODE === 'outline',
   );
@@ -244,13 +242,10 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       setFaceMaskCapturing(true);
       let nextMask: FaceMask;
       try {
-        nextMask = await createFaceMask(
-          camera,
-          captureAbort.signal,
-          setFaceMaskStatus,
-          (capture) => setCaptureAction(() => capture),
-          () => (faceMaskOutline() ? 'outline' : 'detected'),
-          (error) => {
+        nextMask = await createFaceMask(camera, captureAbort.signal, {
+          onCaptureReady: (capture) => setCaptureAction(() => capture),
+          captureMode: () => (faceMaskOutline() ? 'outline' : 'detected'),
+          onError: (error) => {
             setFaceMaskError(error.message);
             void restoreMaskCamera().catch((restoreError) => {
               console.error(
@@ -260,7 +255,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
             });
           },
           captureTrack,
-        );
+        });
       } finally {
         maskAbort.signal.removeEventListener('abort', cancelCapture);
       }
@@ -287,7 +282,6 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       setFaceMaskCapturing(false);
       setCaptureAction(undefined);
       captureAbort = undefined;
-      setFaceMaskStatus('');
       setCameraPending(false);
     }
   }
@@ -743,7 +737,6 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     mediaFlowing,
     faceMaskOn,
     faceMaskError,
-    faceMaskStatus,
     toggleFaceMask,
     faceMaskCapturing,
     faceMaskOutline,

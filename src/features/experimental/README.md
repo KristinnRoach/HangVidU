@@ -47,3 +47,28 @@ Minimal implementation: reuse the existing SVG polygon and face-boundary indices
 ### Region styling
 
 `face-mask-style.ts` holds native Canvas image styles for `outside`, `inside`, and `mask`. Use `globalAlpha` (0–1), `filter` (a standard CSS filter chain such as `grayscale(1) contrast(1.2)`), and native shadow properties for `outside` and `inside`. The mask does not support shadows. Browser support determines which filters work; unsupported filters have no custom fallback. The mask is styled before its texture is warped, so blur affects the source image, not the final face silhouette. The captured source stays unchanged. `backgroundColor` supplies the opaque base color. Styles are read each frame; when tracking is lost only `outside` is drawn. The inside layer spans the entire face outline and becomes visible through a translucent mask.
+
+## Possible follow-up experiments
+
+These are unimplemented tuning ideas.
+
+### Smoothing
+
+If smoothing still leaves visible jitter, try these changes inside `updateFraming`:
+
+- `CENTER_DEAD_ZONE = 0.05` (fraction of output width/height): compare each target delta with `width * CENTER_DEAD_ZONE / zoom` (or height for Y). Update only outside that band, subtracting the band from the delta so following starts gently.
+- `ZOOM_DEAD_ZONE = 0.03` (fraction of output height): add a session-local `zooming` boolean. Start compensating below `FACE_MASK_MIN_HEIGHT - ZOOM_DEAD_ZONE`; stop above `FACE_MASK_MIN_HEIGHT + ZOOM_DEAD_ZONE`. Use the existing capped `targetZoom` while compensating; otherwise target 1. Keep smoothing after this decision. Face size may drift slightly below the requested minimum.
+
+No extra detector or UI is needed. To make the vignette follow zoom, divide its half-diagonal radius (`corner` in `paintBackground`) by `zoom`.
+
+### Depth testing
+
+Try depth instead of (or with) `FACE_MASK_CULL_FOLDED` so far-side triangles are hidden behind near ones by the WebGL depth test:
+
+1. Keep z in the `detectStart` mapping: `z: (point.z * width) / video.videoWidth` (same scale as x). Add `z?: number` to `Face` keypoints.
+2. Before `p.beginShape(p.TRIANGLES)`, clear depth so the full-frame `p.image(liveTexture)` at z = 0 cannot hide the mask: `const gl = p.drawingContext; gl.clear(gl.DEPTH_BUFFER_BIT);`. Add `drawingContext: WebGLRenderingContext` to `Sketch`.
+3. Emit `p.vertex(point.x, point.y, -(point.z ?? 0), uv.x / width, uv.y / height)`. MediaPipe z is smaller toward the camera; p5's camera looks down -z, so negate. If the near cheek disappears instead of the far one, drop the minus. Change the `Sketch.vertex` type to `(x, y, z, u, v)`.
+4. Compare with `FACE_MASK_CULL_FOLDED` on and off.
+5. Update the vertex expectation in `face-mask.test.js` to five arguments.
+
+With `FACE_MASK_FEATHER` on, transparent edge pixels still write depth and can punch holes; leave feather off while testing.
