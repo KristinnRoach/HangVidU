@@ -131,6 +131,65 @@ describe('MemberStreams', () => {
     expect(apply).toHaveBeenCalledOnce();
   });
 
+  it('shows local countdown and flash, with no flash for remote capture', () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    const local = new FakeStream([new FakeTrack('video')]);
+    const remote = new FakeStream([new FakeTrack('video')]);
+    const [source, setSource] = createSignal(remote.getVideoTracks()[0]);
+    const [status, setStatus] = createSignal('preparing');
+    const [preview, setPreview] = createSignal();
+    mocks.p2p = {
+      localStream: () => local,
+      memberCount: () => 2,
+      memberPresence: () => [{ memberId: 'remote', data: { cameraOn: true } }],
+      remoteMemberStreams: () => [{ memberId: 'remote', stream: remote }],
+    };
+    const { container, getByText, getByRole, queryByRole } = render(() => (
+      <MemberStreams
+        media={{
+          ...fakeMedia,
+          faceMaskCapturing: () => true,
+          faceMaskCaptureTrack: source,
+          faceMaskCaptureStatus: status,
+          faceMaskPreview: preview,
+          faceMaskOutline: () => false,
+          faceMaskCaptureReady: () => false,
+          remoteCaptureAvailable: () => true,
+        }}
+        remoteAudioMuted={false}
+      />
+    ));
+    const videos = container.querySelectorAll('video');
+    expect(getByText('Preparing…').parentElement.parentElement).toBe(
+      videos[0].parentElement,
+    );
+    setStatus('searching');
+    expect(getByText('Looking for a face', { selector: 'span' })).toBeDefined();
+    setStatus('captured');
+    expect(container.querySelector('div[aria-hidden="true"]')).toBeNull();
+    setSource(undefined);
+    setStatus(3);
+    expect(getByText('Hold still')).toBeDefined();
+    expect(getByRole('status', { name: 'Capture in 3' }).parentElement).toBe(
+      videos[0].parentElement,
+    );
+    setStatus('captured');
+    expect(queryByRole('status', { name: 'Capture in 3' })).toBeNull();
+    const flash = videos[0].parentElement.querySelector(
+      'div[aria-hidden="true"]',
+    );
+    expect(flash).not.toBeNull();
+    expect(
+      videos[1].parentElement.querySelector('div[aria-hidden="true"]'),
+    ).toBeNull();
+    setPreview(new FakeStream([new FakeTrack('video')]));
+    expect(getByText('Ready to apply')).toBeDefined();
+    expect(
+      videos[0].parentElement.querySelector('div[aria-hidden="true"]'),
+    ).toBe(flash);
+    expect(getByRole('button', { name: 'Apply mask' }).disabled).toBe(false);
+  });
+
   it('mutes remote participant playback when room audio is muted', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
     const remoteStream = new FakeStream([new FakeTrack('audio')]);

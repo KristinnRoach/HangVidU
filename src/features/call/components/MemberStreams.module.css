@@ -103,3 +103,40 @@
   stroke: white;
   stroke-dasharray: none;
 }
+
+.captureCountdown {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  font-size: 64px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 70%);
+}
+
+.captureFlash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: white;
+  opacity: 0;
+  animation: captureFlash 300ms ease-out;
+}
+
+@keyframes captureFlash {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .captureFlash {
+    animation: none;
+  }
+}

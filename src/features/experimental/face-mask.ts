@@ -3,6 +3,7 @@ import { capturePoints, faceBoundary } from './capture-template';
 import { faceMaskStyle } from './face-mask-style';
 
 const FRAME_WIDTH = 960; // Output width; height follows the source aspect ratio.
+const FACE_MASK_LOCAL_COUNTDOWN = true; // Set false for immediate local capture too.
 const FACE_MASK_FEATHER = false;
 // Skip triangles that fold over when the head turns (their winding flips).
 const FACE_MASK_CULL_FOLDED = true;
@@ -127,8 +128,17 @@ export function preloadFaceMask() {
 
 export type FaceMask = { track: MediaStreamTrack; dispose: () => void };
 
+export type FaceMaskCaptureStatus =
+  | 'preparing'
+  | 'searching'
+  | 3
+  | 2
+  | 1
+  | 'captured';
+
 type FaceMaskOptions = {
   onProgress?: (stage: string) => void;
+  onCaptureStatus?: (status: FaceMaskCaptureStatus) => void;
   onCaptureReady?: (capture: (() => void) | undefined) => void;
   captureMode?: () => 'outline' | 'detected';
   onError?: (error: Error) => void;
@@ -140,6 +150,7 @@ export async function createFaceMask(
   signal: AbortSignal,
   {
     onProgress = () => {},
+    onCaptureStatus = () => {},
     onCaptureReady,
     captureMode = () => 'detected',
     onError = () => {},
@@ -171,13 +182,16 @@ export async function createFaceMask(
     onProgress(next);
   };
   progress(stage);
+  onCaptureStatus('preparing');
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let countdownTimer: ReturnType<typeof setTimeout> | undefined;
   let rejectPending: ((reason: Error) => void) | undefined;
   let cancelVideoWait: (() => void) | undefined;
   const dispose = () => {
     if (disposed) return;
     disposed = true;
     clearTimeout(timer);
+    clearTimeout(countdownTimer);
     cancelVideoWait?.();
     signal.removeEventListener('abort', abort);
     onCaptureReady?.(undefined);
@@ -288,6 +302,11 @@ export async function createFaceMask(
         let selectedTrack: MediaStreamTrack | undefined;
         let switchingSource = false;
         let sourcePlaying = true;
+        let countdown: 3 | 2 | 1 | undefined;
+        const resetCountdown = () => {
+          clearTimeout(countdownTimer);
+          countdown = undefined;
+        };
         const capture = () => {
           if (
             disposed ||
@@ -297,6 +316,7 @@ export async function createFaceMask(
             (!outlineMode() && !faces[0])
           )
             return;
+          resetCountdown();
           // User adjustment time is unbounded, but publishing must still be bounded.
           startTimeout();
           try {
@@ -312,6 +332,7 @@ export async function createFaceMask(
               : faces[0];
             onCaptureReady?.(undefined);
             if (selectedTrack) syncCaptureSource();
+            onCaptureStatus('captured');
             progress(
               outlineMode()
                 ? 'Bring your face into view to animate'
@@ -320,6 +341,26 @@ export async function createFaceMask(
           } catch (error) {
             fail(error);
           }
+        };
+        const advanceCountdown = () => {
+          if (disposed) return;
+          if (
+            outlineMode() ||
+            switchingSource ||
+            captureTrack() !== selectedTrack ||
+            !faces[0]
+          ) {
+            resetCountdown();
+            onCaptureStatus('searching');
+            return;
+          }
+          if (countdown === 1) {
+            capture();
+            return;
+          }
+          countdown = countdown === 3 ? 2 : 1;
+          onCaptureStatus(countdown);
+          countdownTimer = setTimeout(advanceCountdown, 1000);
         };
         let canvas: HTMLCanvasElement;
         let triangles: number[][] = [];
@@ -360,9 +401,22 @@ export async function createFaceMask(
             }));
             if (!captured && (!outlineMode() || !onCaptureReady)) {
               onCaptureReady?.(undefined);
-              if (faces[0]) capture();
-              else if (stage !== 'Waiting for a face')
-                progress('Waiting for a face');
+              if (faces[0]) {
+                if (selectedTrack || !FACE_MASK_LOCAL_COUNTDOWN) {
+                  capture();
+                } else if (!countdown) {
+                  // Give a full three seconds even near the acquisition timeout.
+                  startTimeout();
+                  countdown = 3;
+                  onCaptureStatus(countdown);
+                  countdownTimer = setTimeout(advanceCountdown, 1000);
+                }
+              } else {
+                resetCountdown();
+                onCaptureStatus('searching');
+                if (stage !== 'Waiting for a face')
+                  progress('Waiting for a face');
+              }
             }
           });
         };
@@ -372,6 +426,8 @@ export async function createFaceMask(
           const nextTrack = captured ? undefined : captureTrack();
           if (nextTrack === selectedTrack) return;
           selectedTrack = nextTrack;
+          resetCountdown();
+          if (!captured) onCaptureStatus('preparing');
           const generation = ++detectionGeneration;
           mesh!.detectStop();
           faces = [];
@@ -484,6 +540,7 @@ export async function createFaceMask(
               progress('Position your image inside the outline, then capture');
             } else {
               progress('Waiting for a face');
+              onCaptureStatus('searching');
             }
             startDetection();
           });
@@ -499,6 +556,7 @@ export async function createFaceMask(
               switchingSource = false;
               startDetection();
               progress('Waiting for a face');
+              if (!captured) onCaptureStatus('searching');
             }
             if (
               !captured &&
@@ -506,6 +564,8 @@ export async function createFaceMask(
               outlineMode() &&
               onCaptureReady
             ) {
+              if (countdown) onCaptureStatus('preparing');
+              resetCountdown();
               clearTimeout(timer);
               onCaptureReady(capture);
               const next =

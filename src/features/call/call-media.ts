@@ -7,6 +7,7 @@ import {
   preloadFaceMask,
   isFaceMaskSupported,
   type FaceMask,
+  type FaceMaskCaptureStatus,
 } from '../experimental/face-mask';
 
 import { getVideoConstraints } from './media-constraints.js';
@@ -33,6 +34,7 @@ export type CallMedia = {
   faceMaskError: Accessor<string>;
   toggleFaceMask: () => Promise<void>;
   faceMaskCapturing: Accessor<boolean>;
+  faceMaskCaptureStatus: Accessor<FaceMaskCaptureStatus>;
   faceMaskOutline: Accessor<boolean>;
   toggleFaceMaskOutline: () => void;
   faceMaskPreview: Accessor<MediaStream | undefined>;
@@ -165,6 +167,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const [faceMaskPreview, setFaceMaskPreview] = createSignal<MediaStream>();
   let confirmMask: (() => void) | undefined;
   const [faceMaskCapturing, setFaceMaskCapturing] = createSignal(false);
+  const [faceMaskCaptureStatus, setFaceMaskCaptureStatus] =
+    createSignal<FaceMaskCaptureStatus>('preparing');
   const [captureAction, setCaptureAction] = createSignal<
     (() => void) | undefined
   >();
@@ -187,6 +191,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   let captureAttempt: AbortController | undefined;
   const restartFaceMaskCapture = () => {
     captureAttempt?.abort();
+    setFaceMaskCaptureStatus('preparing');
     setFaceMaskPreview(undefined);
     setCaptureAction(undefined);
   };
@@ -249,6 +254,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       maskAbort.signal.addEventListener('abort', cancelCapture, { once: true });
       setCaptureTrack(remoteCaptureTrack());
       setFaceMaskOutline(false);
+      setFaceMaskCaptureStatus('preparing');
       setFaceMaskCapturing(true);
       try {
         while (!session.signal.aborted) {
@@ -261,6 +267,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
           let candidate: FaceMask | undefined;
           try {
             candidate = await createFaceMask(camera, attempt.signal, {
+              onCaptureStatus: setFaceMaskCaptureStatus,
               onCaptureReady: (capture) => setCaptureAction(() => capture),
               captureMode: () => (faceMaskOutline() ? 'outline' : 'detected'),
               captureTrack,
@@ -321,6 +328,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     } finally {
       setCaptureTrack(undefined);
       setFaceMaskCapturing(false);
+      setFaceMaskCaptureStatus('preparing');
       setFaceMaskPreview(undefined);
       confirmMask = undefined;
       setCaptureAction(undefined);
@@ -782,6 +790,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     faceMaskError,
     toggleFaceMask,
     faceMaskCapturing,
+    faceMaskCaptureStatus,
     faceMaskOutline,
     faceMaskPreview,
     applyFaceMask: () => confirmMask?.(),

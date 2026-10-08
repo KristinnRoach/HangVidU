@@ -53,7 +53,10 @@ export function MemberStreams(props: MemberStreamsProps) {
             screenShare={props.media.screenSharing()}
             previewUncropped={!!props.media.faceMaskCapturing?.()}
             overlay={(aspect) => (
-              <FaceMaskOutline media={props.media} aspect={aspect} mirrored />
+              <>
+                <FaceMaskOutline media={props.media} aspect={aspect} mirrored />
+                <FaceMaskFeedback media={props.media} />
+              </>
             )}
           >
             <FaceMaskControls media={props.media} />
@@ -70,11 +73,14 @@ export function MemberStreams(props: MemberStreamsProps) {
             remoteAudioMuted={props.remoteAudioMuted}
             previewUncropped={capturingFrom(props.media, stream.stream)}
             overlay={(aspect) => (
-              <FaceMaskOutline
-                media={props.media}
-                aspect={aspect}
-                stream={stream.stream}
-              />
+              <>
+                <FaceMaskOutline
+                  media={props.media}
+                  aspect={aspect}
+                  stream={stream.stream}
+                />
+                <FaceMaskFeedback media={props.media} stream={stream.stream} />
+              </>
             )}
           />
         )}
@@ -124,19 +130,28 @@ function FaceMaskOutline(props: {
 
 function FaceMaskControls(props: { media: CallMedia }) {
   const preview = () => props.media.faceMaskPreview?.();
+  const statusLabel = () => {
+    if (preview()) return 'Ready to apply';
+    const status = props.media.faceMaskCaptureStatus?.() ?? 'searching';
+    if (status === 'captured') return 'Preparing preview…';
+    if (props.media.faceMaskOutline())
+      return props.media.faceMaskCaptureReady() ? 'Align face' : 'Preparing…';
+    if (typeof status === 'number') return 'Hold still';
+    return status === 'preparing' ? 'Preparing…' : 'Looking for a face';
+  };
   const primaryLabel = () =>
     preview()
       ? 'Apply mask'
       : props.media.faceMaskOutline()
         ? 'Capture face'
-        : 'Looking for a face';
+        : statusLabel();
   return (
     <>
       <Show when={props.media.faceMaskCapturing?.()}>
         <div class={styles.captureOverlay}>
-          <Show when={props.media.faceMaskOutline() && !preview()}>
-            <span class={styles.hint}>Align face</span>
-          </Show>
+          <span class={styles.hint} role='status'>
+            {statusLabel()}
+          </span>
           <button
             type='button'
             class={styles.primary}
@@ -234,5 +249,25 @@ function FaceMaskControls(props: { media: CallMedia }) {
         </div>
       </Show>
     </>
+  );
+}
+
+function FaceMaskFeedback(props: { media: CallMedia; stream?: MediaStream }) {
+  const status = () => props.media.faceMaskCaptureStatus?.();
+  return (
+    <Show when={capturingFrom(props.media, props.stream)}>
+      <Show when={typeof status() === 'number'}>
+        <span
+          class={styles.captureCountdown}
+          role='status'
+          aria-label={`Capture in ${status()}`}
+        >
+          {status()}
+        </span>
+      </Show>
+      <Show when={!props.stream && status() === 'captured'}>
+        <div class={styles.captureFlash} aria-hidden='true' />
+      </Show>
+    </Show>
   );
 }

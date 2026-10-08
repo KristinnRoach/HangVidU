@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from 'vite-plus/test';
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 it('requires canvas capture and WebGL APIs without allocating a context', async () => {
@@ -187,18 +188,21 @@ async function setupFaceMask({ waitForCamera = false, mode = 'outline' } = {}) {
   const { createFaceMask } = await import('./face-mask');
   const controller = new AbortController();
   const onError = vi.fn();
+  const onCaptureStatus = vi.fn();
   const pending = createFaceMask({}, controller.signal, {
     onCaptureReady: (action) => {
       capture = action;
     },
     captureMode: () => mode,
     onError,
+    onCaptureStatus,
     captureTrack: () => captureTrack,
   });
   return {
     pending,
     controller,
     onError,
+    onCaptureStatus,
     mesh,
     outputCanvas,
     track,
@@ -282,10 +286,24 @@ it.each([
       else expect(env.capture).toBeTypeOf('function');
     }
     if (switchToDetection) {
+      vi.useFakeTimers();
       env.detect([]);
       expect(env.capture).toBeUndefined();
       env.detect([testFace()]);
       expect(env.capture).toBeUndefined();
+      if (remoteCapture) {
+        expect(env.drawImage).toHaveBeenCalledOnce();
+        expect(env.onCaptureStatus).toHaveBeenLastCalledWith('captured');
+        expect(
+          env.onCaptureStatus.mock.calls.some(
+            ([status]) => typeof status === 'number',
+          ),
+        ).toBe(false);
+      } else {
+        expect(env.drawImage).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(3000);
+      }
+      vi.useRealTimers();
     }
     const captureVideo = mesh.detectStart.mock.calls.at(-1)[0];
     if (!switchToDetection) env.capture();
@@ -338,12 +356,21 @@ it.each([
   },
 );
 
-it('automatically captures the first detected face even with a readiness callback', async () => {
+it('counts down before automatically capturing, even with a readiness callback', async () => {
   const env = await setupFaceMask({ mode: 'detected' });
   await vi.waitFor(() => expect(env.sketch).toBeDefined());
+  vi.useFakeTimers();
   env.detect([]);
   expect(env.drawImage).not.toHaveBeenCalled();
   env.detect([testFace()]);
+  expect(env.onCaptureStatus).toHaveBeenLastCalledWith(3);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(env.onCaptureStatus).toHaveBeenLastCalledWith(2);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(env.onCaptureStatus).toHaveBeenLastCalledWith(1);
+  expect(env.drawImage).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(env.onCaptureStatus).toHaveBeenLastCalledWith('captured');
   expect(env.drawImage).toHaveBeenCalledOnce();
   expect(env.capture).toBeUndefined();
   env.sketch.draw();
@@ -352,6 +379,56 @@ it('automatically captures the first detected face even with a readiness callbac
   expect(env.drawImage).toHaveBeenCalledOnce();
   mask.dispose();
 });
+
+it('restarts the countdown after face loss and captures the latest landmarks', async () => {
+  const env = await setupFaceMask({ mode: 'detected' });
+  await vi.waitFor(() => expect(env.sketch).toBeDefined());
+  vi.useFakeTimers();
+  env.detect([testFace()]);
+  await vi.advanceTimersByTimeAsync(2000);
+  env.detect([]);
+  expect(env.onCaptureStatus).toHaveBeenLastCalledWith('searching');
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(env.drawImage).not.toHaveBeenCalled();
+  env.detect([testFace()]);
+  expect(env.onCaptureStatus).toHaveBeenLastCalledWith(3);
+  const latest = testFace();
+  latest.keypoints[0].x = 50;
+  await vi.advanceTimersByTimeAsync(2000);
+  env.detect([latest]);
+  await vi.advanceTimersByTimeAsync(1000);
+  env.sketch.draw();
+  const mask = await env.pending;
+  expect(env.vertex.mock.calls[0][2]).toBeCloseTo(50 / env.sourceWidth);
+  env.detect([testFace()]);
+  await vi.advanceTimersByTimeAsync(5000);
+  expect(env.drawImage).toHaveBeenCalledOnce();
+  mask.dispose();
+});
+
+it.each(['abort', 'source', 'manual'])(
+  'cancels a countdown on %s change',
+  async (change) => {
+    const env = await setupFaceMask({ mode: 'detected' });
+    await vi.waitFor(() => expect(env.sketch).toBeDefined());
+    vi.useFakeTimers();
+    env.detect([testFace()]);
+    await vi.advanceTimersByTimeAsync(1000);
+    if (change === 'source') {
+      env.useRemote();
+      env.sketch.draw();
+    } else if (change === 'manual') {
+      env.useOutline();
+      env.sketch.draw();
+    }
+    const rejected = expect(env.pending).rejects.toThrow('Face mask cancelled');
+    if (change === 'abort') env.controller.abort();
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(env.drawImage).not.toHaveBeenCalled();
+    if (change !== 'abort') env.controller.abort();
+    await rejected;
+  },
+);
 
 it.each([false, true])(
   'switches to manual capture without detection results (remote: %s)',

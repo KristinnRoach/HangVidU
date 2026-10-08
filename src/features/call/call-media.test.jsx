@@ -828,9 +828,12 @@ describe('experimental face mask lifecycle', () => {
       ]);
       const pending = media.toggleFaceMask();
       await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
+      maskMocks.createFaceMask.mock.calls[0][2].onCaptureStatus(2);
+      expect(media.faceMaskCaptureStatus()).toBe(2);
       if (change === 'source') media.setFaceMaskSource(false);
       else media.toggleFaceMaskOutline();
       expect(media.faceMaskPreview()).toBeUndefined();
+      expect(media.faceMaskCaptureStatus()).toBe('preparing');
       await vi.waitFor(() =>
         expect(maskMocks.createFaceMask).toHaveBeenCalledTimes(2),
       );
