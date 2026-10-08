@@ -616,8 +616,6 @@ describe('experimental face mask lifecycle', () => {
       const pending = media.toggleFaceMask();
       expect(media.faceMaskCaptureTrack()).toBe(remote);
       expect(media.faceMaskOutline()).toBe(false);
-      media.toggleFaceMaskOutline();
-      expect(media.faceMaskOutline()).toBe(true);
       expect(maskMocks.createFaceMask.mock.calls[0][2].captureTrack()).toBe(
         remote,
       );
@@ -813,6 +811,67 @@ describe('experimental face mask lifecycle', () => {
     expect(mask.dispose).toHaveBeenCalledTimes(2);
     expect(media.faceMaskPreview()).toBeUndefined();
     expect(media.cameraPending()).toBe(false);
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it.each(['source', 'mode'])(
+    'restarts a private preview when changing %s',
+    async (change) => {
+      const remote = createTrack('video');
+      const { media, mask, room, dispose } = setup('open', [
+        {
+          memberId: 'remote',
+          stream: createStream([remote]),
+          data: { cameraOn: true },
+        },
+      ]);
+      const pending = media.toggleFaceMask();
+      await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
+      if (change === 'source') media.setFaceMaskSource(false);
+      else media.toggleFaceMaskOutline();
+      expect(media.faceMaskPreview()).toBeUndefined();
+      await vi.waitFor(() =>
+        expect(maskMocks.createFaceMask).toHaveBeenCalledTimes(2),
+      );
+      expect(mask.dispose).toHaveBeenCalledOnce();
+      const options = maskMocks.createFaceMask.mock.calls[1][2];
+      expect(options.captureMode()).toBe(
+        change === 'mode' ? 'outline' : 'detected',
+      );
+      expect(options.captureTrack()).toBe(
+        change === 'source' ? undefined : remote,
+      );
+      await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
+      media.applyFaceMask();
+      await pending;
+      expect(room.setLocalTrack).toHaveBeenCalledOnce();
+      dispose();
+    },
+  );
+
+  it('restarts a pending capture when the mode changes', async () => {
+    const { media, mask, room, dispose } = setup();
+    maskMocks.createFaceMask.mockImplementationOnce(
+      (_camera, signal) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => reject(new Error('cancelled')),
+            { once: true },
+          );
+        }),
+    );
+    const pending = media.toggleFaceMask();
+    media.toggleFaceMaskOutline();
+    await vi.waitFor(() =>
+      expect(maskMocks.createFaceMask).toHaveBeenCalledTimes(2),
+    );
+    await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
+    expect(media.faceMaskError()).toBe('');
+    media.cancelFaceMaskCapture();
+    await pending;
+    expect(mask.dispose).toHaveBeenCalledOnce();
     expect(room.setLocalTrack).not.toHaveBeenCalled();
     dispose();
   });

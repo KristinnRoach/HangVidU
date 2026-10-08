@@ -1,48 +1,24 @@
 # Experimental face mask
 
-The face-mask button is revealed automatically on supported browsers (canvas capture and WebGL APIs required). Revealing it does not load p5, ml5, or the face model. The button stays disabled until a call data channel is open, the local camera is live, and live remote media has arrived. The pinned libraries and model then preload once per call. Preload failures stay within the mask feature and do not replace or stop call tracks; click the button to retry. The filter itself still requires capture.
+The face-mask button appears on browsers with canvas capture and WebGL support. It stays disabled until a call data channel is open, the local camera is live, and remote media has arrived. Libraries and the face model preload once per call; showing the button alone does not load them.
 
-Click the face-mask button to keep the camera preview live and show a fixed face outline. Position an image or object inside the outline, then click **Capture** below the preview. Capture does not require a detected face. Move the object away and bring your face into view to animate the captured image; the live camera is drawn behind the mask, showing live eyes and mouth through its openings. Outside the tracked face outline, camera opacity is controlled by `faceMaskStyle.outside.globalAlpha` in `face-mask-style.ts` (`0` is black and `1` is fully visible). When no face is tracked, the whole camera frame uses that opacity. **Cancel** keeps the normal camera without capturing.
+Opening setup defaults to automatic detection and the remote camera when exactly one eligible remote camera is available; otherwise it uses the local camera. Screen shares are excluded. The first detected face is captured into a private animated preview. The normal camera remains published until **Apply mask**. The remote stream is never modified, and animation always follows the local camera.
 
-Click **Detect face** beside Capture to switch the current session to detected-face capture: the outline disappears and Capture waits for a visible face. **Local / Remote** selects the capture source independently of the capture mode. Outline capture can sample any remote image without a detected face; Detect face uses the selected source’s face landmarks. After capture, tracking returns to your camera to animate the still image with your movements and live eyes/mouth. Remote is available when exactly one remote camera is eligible (screen shares are excluded). The guide appears on the selected preview with the whole video frame visible. The remote stream is never modified; losing its camera during capture cancels the session. Each new activation starts in the default mode.
+One icon toolbar stays on the local preview through setup and preview. The local preview keeps the same expanded size throughout setup. The primary action changes from a scanning indicator to Apply in automatic mode, or Capture to Apply in manual mode. Retake restarts capture. Switching source or mode discards the preview and restarts capture through the same cancellation path. Cancel keeps the normal camera. A lost remote capture source cancels setup.
 
-The default mode is `outline`; change `FACE_MASK_CAPTURE_MODE` in `capture-template.ts` to `detected` to restore capture using detected face points. The outline uses a fixed frontal face template, so objects will stretch to follow your expressions. The preview shows the whole camera frame during capture so the outline matches the sampled region.
+Manual alignment shows a fixed frontal face guide on the selected source with the whole video frame visible. Capture can sample an image or object without detecting a face. Automatic mode shows no outline. Each activation starts fresh in automatic mode; removing the applied mask restores the normal camera and releases its rendering resources.
 
-Click the face-mask button again to restore the camera. Each activation captures a fresh image; the libraries and model are reused until the page reloads. Turning off stops detection and releases the video/canvas resources.
+Errors appear on the local preview with Retry and Dismiss. Source-video startup and face detection can take time. Startup and detection have a 30-second timeout, and capture starts a fresh timeout to prepare the output. Waiting for Apply has no timeout. Libraries and the model are reused until page reload.
 
-If preload is still running, the first activation waits for it. Loading failures appear below the self preview; click the face-mask button again to retry. Camera startup and first face detection still take some time.
+On mobile, the source video must have drawable pixels before capture. It plays in a nearly transparent 1px viewport area rather than being fully invisible. Canvas pixel density is fixed at 1. With `faceMaskStyle.outside.globalAlpha` set to `0`, losing face tracking can produce a black frame. The pinned ml5 loop does not propagate asynchronous inference failures, so stalled tracking remains a known limitation.
 
-Mobile testing: the source video starts playing before library loading and must have drawable pixels before capture is offered. It stays in a nearly transparent 1px viewport area rather than being fully invisible. Canvas pixel density is fixed at 1, so high-density phone screens do not multiply the output resolution and buffer workload. After Capture, a fresh 30-second timeout bounds publishing; renderer errors during preparation are reported, and renderer errors after publishing restore the camera.
+For browser and physical-device review, try both sources and modes, Retake, Cancel, and source/mode changes during preview. Confirm the receiving device sees the raw camera until Apply, then test head movement, blinking, mask removal, and app background/foreground. Further UX refinement remains open, especially first-face capture quality and small-screen toolbar fit.
 
-A black frame can also mean no face is detected: `outside.globalAlpha` is currently `0`, so without a tracked face there is no visible layer. A captured image is deliberately static; its geometry and live eyes/mouth should move with the detected face. The pinned ml5 detection loop does not propagate asynchronous inference failures to this module, so a stalled detector remains a possible cause of frozen geometry. These changes do not yet detect that condition or verify that the outgoing canvas stream advances on a physical phone.
+Relevant code:
 
-For the next physical-device pass, test outline capture and detected-face capture, move the head and blink after capture, check the receiving device as well as the self preview, then turn the mask off/on and background/foreground the app. Record whether the raw camera was live, which preparation stage appeared, and whether the live eyes/mouth or just the mask geometry stopped moving. This distinguishes camera playback, detection, and outgoing-stream failures before choosing a fallback or availability gate.
-
-## Known limitations
-
-- CDN libraries and model assets require network access on first use. The renderer uses p5 1.11.13 and ml5 1.4.0, which includes the iOS WebGPU video-orientation workaround. The loaded model remains in memory for the page session; ml5 has no public model disposal API.
-- Output size, framing, and region styles are still being tuned. Background opacity applies outside the tracked face outline; tracking loss applies it to the whole frame. Mobile performance, remote playback, and browser/device compatibility need manual verification.
-- A failed peer track replacement can leave some peers on the previous track; toggle off to retry restoration.
-
-## Review handoff
-
-Current checkpoint: outline capture is the default and does not require a visible face. Capture and Cancel sit below the self preview. Detect face switches only the current capture session to detected-face capture; it removes the fixed outline and waits for tracking before enabling Capture. A new activation resets to the configured default. Live face tracking still drives both animation modes.
-
-The fixed guide and texture coordinates share the canonical face template in `capture-template.ts`. Coordinates use camera-frame height for both axes to keep face proportions on landscape cameras. During capture the preview uses `contain`, intentionally adding black bars when needed to show the whole frame. This does not resolve the separately reported intermittent camera-switch sizing issue.
-
-### Changes outside `src/features/experimental` to review before merging
-
-- `src/features/call/call-media.ts`: owns capture readiness and session mode, cancellation and hangup handling, model preloading, outgoing track replacement, and restoration of the retained raw camera. Review cleanup and camera-off, camera-switch, and screen-share transitions, including failed track replacement.
-- `src/features/call/components/CallControls.tsx`: shows the mask toggle when the browser supports it. Status/error text was removed from the toolbar to avoid layout changes; normal toolbar auto-hide is restored. Errors now appear below the self preview.
-- `src/features/call/components/MemberStreams.tsx`: adds the self-preview guide and Capture / Detect face / Cancel controls, plus error display. These appear only on the local preview.
-- `src/features/call/components/MemberStreams.module.css`: positions capture controls below the preview and draws the non-interactive mirrored SVG guide.
-- `src/features/call/components/ParticipantMedia.tsx`: adds optional children/overlay and uncropped-preview props; tracks source-video aspect ratio so the guide aligns with the video. This is a shared call component: review regular remote playback and the existing iOS video replacement path.
-- `src/features/call/components/ParticipantMedia.module.css`: allows content outside the self-preview bounds so controls remain visible below it; preserves rounded corners on the video. Review preview clipping and layering in direct/group calls and on small screens.
-- `src/features/call/call-media.test.jsx` and `src/features/call/components/CallControls.test.jsx`: cover the integration lifecycle, capture/cancellation, availability, and readiness.
-
-Next small extension (not yet implemented): add a live detected-face outline to help the user see which part of their face will be sampled before they click Capture. Show it only on the local camera preview while a capture session is in detected-face mode (after clicking Detect face, or when configured as the default), before capture, and while a face is tracked. Hide it when tracking is lost, capture completes, or the session is canceled. Outline mode keeps its existing fixed positioning guide; the animated output should not show either guide.
-
-Minimal implementation: reuse the existing SVG polygon and face-boundary indices, replacing the fixed template coordinates with the current detected keypoints. Use the same source aspect ratio and mirroring as the preview so the guide aligns with the sampled face. No additional detector or rendering library is needed.
+- `call/call-media.ts`: setup session, capture attempts, private preview, Apply, and camera restoration.
+- `call/components/MemberStreams.tsx` and its stylesheet: the stable toolbar, preview, and manual guide. `ParticipantMedia` handles playback and the expanded setup preview.
+- `experimental/face-mask.ts`: detection, capture, animation, and renderer cleanup. `capture-template.ts` holds the manual guide geometry.
 
 ### Region styling
 

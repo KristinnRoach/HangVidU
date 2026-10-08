@@ -80,7 +80,7 @@ describe('MemberStreams', () => {
     });
   });
 
-  it('keeps capture controls on the source video and previews locally', () => {
+  it('keeps the toolbar in place through source changes and preview', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
     const local = new FakeStream([new FakeTrack('video')]);
     const remote = new FakeStream([new FakeTrack('video')]);
@@ -111,17 +111,22 @@ describe('MemberStreams', () => {
       />
     ));
     const videos = container.querySelectorAll('video');
-    const captureSurface = () =>
-      getByRole('button', { name: 'Capture face' }).parentElement.parentElement;
-    expect(captureSurface().contains(videos[0])).toBe(true);
+    const toolbar = getByRole('button', {
+      name: 'Looking for a face',
+    }).parentElement;
+    const sourceButton = getByRole('button', { name: 'Use other camera' });
+    expect(toolbar.parentElement).toBe(videos[0].parentElement);
     fireEvent.click(getByRole('button', { name: 'Use other camera' }));
-    expect(captureSurface().contains(videos[1])).toBe(true);
+    expect(getByRole('button', { name: 'Use my camera' })).toBe(sourceButton);
+    expect(sourceButton.parentElement).toBe(toolbar);
+    expect(getByRole('button', { name: 'Retake' }).disabled).toBe(true);
     setPreview(new FakeStream([new FakeTrack('video')]));
-    expect(queryByRole('button', { name: 'Capture face' })).toBeNull();
+    expect(queryByRole('button', { name: 'Looking for a face' })).toBeNull();
+    expect(getByRole('button', { name: 'Retake' }).disabled).toBe(false);
+    expect(getByRole('button', { name: 'Manual alignment' })).toBeDefined();
+    expect(getByRole('button', { name: 'Use my camera' })).toBeDefined();
     const applyButton = getByRole('button', { name: 'Apply mask' });
-    expect(applyButton.parentElement.parentElement.contains(videos[0])).toBe(
-      true,
-    );
+    expect(applyButton.parentElement).toBe(toolbar);
     fireEvent.click(applyButton);
     expect(apply).toHaveBeenCalledOnce();
   });

@@ -3,7 +3,7 @@ import { For, Show } from 'solid-js';
 import {
   Camera,
   Check,
-  LoaderCircle,
+  Frame,
   RotateCcw,
   ScanFace,
   SwitchCamera,
@@ -43,84 +43,77 @@ export function MemberStreams(props: MemberStreamsProps) {
       .getVideoTracks()
       .some((track) => track === props.media.faceMaskCaptureTrack());
   const preview = () => props.media.faceMaskPreview?.();
+  const primaryLabel = () =>
+    preview()
+      ? 'Apply mask'
+      : props.media.faceMaskOutline()
+        ? 'Capture face'
+        : 'Looking for a face';
   const controls = () => (
-    <div
-      class={styles.captureOverlay}
-      classList={{
-        [styles.remoteCapture!]:
-          !!props.media.faceMaskCaptureTrack() && !preview(),
-      }}
-    >
-      <Show
-        when={!preview()}
-        fallback={
-          <>
-            <button
-              type='button'
-              class={styles.primary}
-              title='Apply mask'
-              aria-label='Apply mask'
-              onClick={props.media.applyFaceMask}
-            >
-              <Check />
-            </button>
-            <button
-              type='button'
-              title='Retake'
-              aria-label='Retake'
-              onClick={props.media.retakeFaceMask}
-            >
-              <RotateCcw />
-            </button>
-          </>
+    <div class={styles.captureOverlay}>
+      <Show when={props.media.faceMaskOutline() && !preview()}>
+        <span class={styles.hint}>Align face</span>
+      </Show>
+      <button
+        type='button'
+        class={styles.primary}
+        disabled={
+          !preview() &&
+          (!props.media.faceMaskOutline() ||
+            !props.media.faceMaskCaptureReady())
+        }
+        title={primaryLabel()}
+        aria-label={primaryLabel()}
+        onClick={() =>
+          preview()
+            ? props.media.applyFaceMask()
+            : props.media.captureFaceMask()
         }
       >
-        <Show when={!props.media.faceMaskCaptureReady()}>
-          <span role='status' aria-label='Looking for a face'>
-            <LoaderCircle class={styles.spinner} />
-          </span>
-        </Show>
-        <Show when={props.media.faceMaskOutline()}>
-          <span class={styles.hint}>Align face</span>
-        </Show>
-        <button
-          type='button'
-          class={styles.primary}
-          disabled={!props.media.faceMaskCaptureReady()}
-          title='Capture face'
-          aria-label='Capture face'
-          onClick={props.media.captureFaceMask}
-        >
+        {preview() ? (
+          <Check />
+        ) : props.media.faceMaskOutline() ? (
           <Camera />
-        </button>
-        <Show when={props.media.remoteCaptureAvailable()}>
-          <button
-            type='button'
-            title={
-              props.media.faceMaskCaptureTrack()
-                ? 'Use my camera'
-                : 'Use other camera'
-            }
-            aria-label={
-              props.media.faceMaskCaptureTrack()
-                ? 'Use my camera'
-                : 'Use other camera'
-            }
-            onClick={() =>
-              props.media.setFaceMaskSource(!props.media.faceMaskCaptureTrack())
-            }
-          >
-            <SwitchCamera />
-          </button>
-        </Show>
+        ) : (
+          <ScanFace />
+        )}
+      </button>
+      <button
+        type='button'
+        title='Retake'
+        aria-label='Retake'
+        disabled={!preview()}
+        onClick={props.media.retakeFaceMask}
+      >
+        <RotateCcw />
+      </button>
+      <button
+        type='button'
+        title='Manual alignment'
+        aria-label='Manual alignment'
+        aria-pressed={props.media.faceMaskOutline()}
+        onClick={props.media.toggleFaceMaskOutline}
+      >
+        <Frame />
+      </button>
+      <Show when={props.media.remoteCaptureAvailable()}>
         <button
           type='button'
-          title='Manual alignment'
-          aria-label='Manual alignment'
-          aria-pressed={props.media.faceMaskOutline()}
-          onClick={props.media.toggleFaceMaskOutline}
+          title={
+            props.media.faceMaskCaptureTrack()
+              ? 'Use my camera'
+              : 'Use other camera'
+          }
+          aria-label={
+            props.media.faceMaskCaptureTrack()
+              ? 'Use my camera'
+              : 'Use other camera'
+          }
+          onClick={() =>
+            props.media.setFaceMaskSource(!props.media.faceMaskCaptureTrack())
+          }
         >
-          <ScanFace />
+          <SwitchCamera />
         </button>
       </Show>
       <button
@@ -134,7 +127,7 @@ export function MemberStreams(props: MemberStreamsProps) {
     </div>
   );
   const overlay = (aspect: number, active: boolean, mirrored = false) => (
-    <Show when={active}>
+    <Show when={active && props.media.faceMaskOutline()}>
       <svg
         classList={{
           [styles.captureOutline!]: true,
@@ -145,14 +138,8 @@ export function MemberStreams(props: MemberStreamsProps) {
         preserveAspectRatio='xMidYMid meet'
         aria-hidden='true'
       >
-        <Show
-          when={props.media.faceMaskOutline()}
-          fallback={<ellipse cx={aspect / 2} cy='0.5' rx='0.23' ry='0.38' />}
-        >
-          <polygon points={captureOutline(aspect)} />
-        </Show>
+        <polygon points={captureOutline(aspect)} />
       </svg>
-      {controls()}
     </Show>
   );
 
@@ -172,12 +159,12 @@ export function MemberStreams(props: MemberStreamsProps) {
             videoEnabled={props.media.cameraOn() || props.media.screenSharing()}
             audioEnabled={props.media.micOn()}
             screenShare={props.media.screenSharing()}
-            previewUncropped={capturingLocal() || !!preview()}
+            previewUncropped={!!props.media.faceMaskCapturing?.()}
             overlay={(aspect) =>
               overlay(aspect, !!capturingLocal() && !preview(), true)
             }
           >
-            <Show when={preview()}>{controls()}</Show>
+            <Show when={props.media.faceMaskCapturing?.()}>{controls()}</Show>
             <Show when={props.media.faceMaskError?.()}>
               <div class={styles.captureOverlay} role='alert'>
                 <span title={props.media.faceMaskError()}>

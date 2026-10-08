@@ -163,7 +163,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   });
   const [faceMaskOutline, setFaceMaskOutline] = createSignal(false);
   const [faceMaskPreview, setFaceMaskPreview] = createSignal<MediaStream>();
-  let confirmMask: ((apply: boolean) => void) | undefined;
+  let confirmMask: (() => void) | undefined;
   const [faceMaskCapturing, setFaceMaskCapturing] = createSignal(false);
   const [captureAction, setCaptureAction] = createSignal<
     (() => void) | undefined
@@ -184,6 +184,12 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       );
   };
   let captureAbort: AbortController | undefined;
+  let captureAttempt: AbortController | undefined;
+  const restartFaceMaskCapture = () => {
+    captureAttempt?.abort();
+    setFaceMaskPreview(undefined);
+    setCaptureAction(undefined);
+  };
   createEffect(() => {
     const track = captureTrack();
     if (!track) return;
@@ -237,64 +243,73 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       }
       const camera = localStream()?.getVideoTracks()[0];
       if (!camera) return;
-      captureAbort = new AbortController();
-      const cancelCapture = () => captureAbort?.abort();
+      const session = new AbortController();
+      captureAbort = session;
+      const cancelCapture = () => session.abort();
       maskAbort.signal.addEventListener('abort', cancelCapture, { once: true });
       setCaptureTrack(remoteCaptureTrack());
       setFaceMaskOutline(false);
       setFaceMaskCapturing(true);
-      let nextMask: FaceMask;
       try {
-        while (true) {
-          nextMask = await createFaceMask(camera, captureAbort.signal, {
-            onCaptureReady: (capture) => setCaptureAction(() => capture),
-            captureMode: () => (faceMaskOutline() ? 'outline' : 'detected'),
-            onError: (error) => {
-              setFaceMaskError(error.message);
-              captureAbort?.abort();
-              void restoreMaskCamera().catch((restoreError) => {
-                console.error(
-                  '[FaceMask] Could not restore camera',
-                  restoreError,
-                );
-              });
-            },
-            captureTrack,
+        while (!session.signal.aborted) {
+          const attempt = new AbortController();
+          captureAttempt = attempt;
+          const cancelAttempt = () => attempt.abort();
+          session.signal.addEventListener('abort', cancelAttempt, {
+            once: true,
           });
-          if (captureAbort.signal.aborted) {
-            nextMask.dispose();
-            return;
-          }
-          setFaceMaskPreview(new MediaStream([nextMask.track]));
-          const apply = await new Promise<boolean>((resolve) => {
-            const cancel = () => resolve(false);
-            captureAbort!.signal.addEventListener('abort', cancel, {
-              once: true,
+          let candidate: FaceMask | undefined;
+          try {
+            candidate = await createFaceMask(camera, attempt.signal, {
+              onCaptureReady: (capture) => setCaptureAction(() => capture),
+              captureMode: () => (faceMaskOutline() ? 'outline' : 'detected'),
+              captureTrack,
+              onError: (error) => {
+                setFaceMaskError(error.message);
+                session.abort();
+                void restoreMaskCamera().catch((restoreError) => {
+                  console.error(
+                    '[FaceMask] Could not restore camera',
+                    restoreError,
+                  );
+                });
+              },
             });
-            confirmMask = (accepted) => {
-              captureAbort!.signal.removeEventListener('abort', cancel);
-              resolve(accepted);
-            };
-          });
-          confirmMask = undefined;
-          setFaceMaskPreview(undefined);
-          if (apply) break;
-          nextMask.dispose();
-          if (captureAbort.signal.aborted) return;
+            if (attempt.signal.aborted) continue;
+            setFaceMaskPreview(new MediaStream([candidate.track]));
+            const apply = await new Promise<boolean>((resolve) => {
+              const cancel = () => resolve(false);
+              attempt.signal.addEventListener('abort', cancel, { once: true });
+              confirmMask = () => {
+                attempt.signal.removeEventListener('abort', cancel);
+                resolve(true);
+              };
+            });
+            if (apply && !attempt.signal.aborted) {
+              mask = candidate;
+              candidate = undefined;
+              break;
+            }
+          } catch (error) {
+            if (!attempt.signal.aborted) throw error;
+          } finally {
+            session.signal.removeEventListener('abort', cancelAttempt);
+            candidate?.dispose();
+            captureAttempt = undefined;
+            confirmMask = undefined;
+            setFaceMaskPreview(undefined);
+            setCaptureAction(undefined);
+          }
         }
       } finally {
         maskAbort.signal.removeEventListener('abort', cancelCapture);
       }
-      if (maskAbort.signal.aborted || captureAbort.signal.aborted) {
-        nextMask.dispose();
-        return;
-      }
-      mask = nextMask;
+      if (!mask) return;
       maskCamera = camera;
       // Retain ownership of the raw camera even while it is outside localStream.
       ownedCameraTracks.add(camera);
       setFaceMaskOn(true);
-      await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, nextMask.track);
+      await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, mask.track);
       console.info('[FaceMask] Filtered track published');
       syncTrackState();
     } catch (error) {
@@ -769,13 +784,13 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     faceMaskCapturing,
     faceMaskOutline,
     faceMaskPreview,
-    applyFaceMask: () => confirmMask?.(true),
-    retakeFaceMask: () => confirmMask?.(false),
+    applyFaceMask: () => confirmMask?.(),
+    retakeFaceMask: restartFaceMaskCapture,
     dismissFaceMaskError: () => setFaceMaskError(''),
     toggleFaceMaskOutline: () => {
       if (!faceMaskCapturing()) return;
-      setCaptureAction(undefined);
       setFaceMaskOutline((outline) => !outline);
+      restartFaceMaskCapture();
     },
     faceMaskCaptureTrack: captureTrack,
     remoteCaptureAvailable: () => !!remoteCaptureTrack(),
@@ -783,8 +798,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       if (!faceMaskCapturing()) return;
       const track = remote ? remoteCaptureTrack() : undefined;
       if ((remote && !track) || track === captureTrack()) return;
-      setCaptureAction(undefined);
       setCaptureTrack(track);
+      restartFaceMaskCapture();
     },
     faceMaskCaptureReady: () => !!captureAction(),
     captureFaceMask: () => captureAction()?.(),

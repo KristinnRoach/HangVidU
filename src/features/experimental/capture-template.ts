@@ -2,8 +2,6 @@
 // Source: https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/modules/face_geometry/data/canonical_face_model.obj
 // Copyright Google LLC. Licensed under Apache-2.0:
 // https://www.apache.org/licenses/LICENSE-2.0
-export const FACE_MASK_CAPTURE_MODE: 'outline' | 'detected' = 'outline';
-
 export const capturePoints: [number, number][] = [
   [0.5, 0.636442],
   [0.5, 0.526756],

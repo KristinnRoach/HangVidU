@@ -1,7 +1,10 @@
+.roomMembers {
+  position: relative;
+}
+
 /* 1:1 CALL LAYOUT - (DRAFT - WIP) */
 
 .roomMembers.direct {
-  position: relative;
   height: 100%;
   width: auto;
 }
@@ -36,11 +39,6 @@
   color: white;
   font-size: 12px;
   white-space: nowrap;
-}
-
-/* Leave room for the call toolbar's maximum button height and spacing. */
-.captureOverlay.remoteCapture {
-  bottom: calc(5rem + 2 * var(--gap));
 }
 
 .captureOverlay button {
@@ -85,22 +83,6 @@
   background: rgb(0 0 0 / 70%);
 }
 
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: none;
-  }
-}
-
 .captureOutline {
   position: absolute;
   inset: 0;
@@ -113,8 +95,7 @@
   stroke-dasharray: 6 4;
 }
 
-.captureOutline polygon,
-.captureOutline ellipse {
+.captureOutline polygon {
   vector-effect: non-scaling-stroke;
 }
 

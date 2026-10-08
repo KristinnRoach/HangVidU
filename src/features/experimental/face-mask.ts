@@ -1,8 +1,4 @@
-import {
-  FACE_MASK_CAPTURE_MODE,
-  capturePoints,
-  faceBoundary,
-} from './capture-template';
+import { capturePoints, faceBoundary } from './capture-template';
 
 import { faceMaskStyle } from './face-mask-style';
 
@@ -145,7 +141,7 @@ export async function createFaceMask(
   {
     onProgress = () => {},
     onCaptureReady,
-    captureMode = () => FACE_MASK_CAPTURE_MODE,
+    captureMode = () => 'detected',
     onError = () => {},
     captureTrack = () => undefined,
   }: FaceMaskOptions = {},
@@ -363,17 +359,10 @@ export async function createFaceMask(
               })),
             }));
             if (!captured && (!outlineMode() || !onCaptureReady)) {
-              if (onCaptureReady) {
-                // The timeout bounds startup, not the user's adjustment time.
-                if (faces[0]) clearTimeout(timer);
-                onCaptureReady(faces[0] ? capture : undefined);
-                const next = faces[0]
-                  ? 'Adjust face, then capture'
-                  : 'Waiting for a face';
-                if (stage !== next) progress(next);
-              } else if (faces[0]) {
-                capture();
-              }
+              onCaptureReady?.(undefined);
+              if (faces[0]) capture();
+              else if (stage !== 'Waiting for a face')
+                progress('Waiting for a face');
             }
           });
         };

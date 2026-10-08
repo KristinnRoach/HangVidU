@@ -285,10 +285,10 @@ it.each([
       env.detect([]);
       expect(env.capture).toBeUndefined();
       env.detect([testFace()]);
-      expect(env.capture).toBeTypeOf('function');
+      expect(env.capture).toBeUndefined();
     }
     const captureVideo = mesh.detectStart.mock.calls.at(-1)[0];
-    env.capture();
+    if (!switchToDetection) env.capture();
     if (remoteCapture) {
       expect(mesh.detectStart.mock.calls.at(-1)[0]).toBe(
         mesh.detectStart.mock.calls[0][0],
@@ -337,6 +337,21 @@ it.each([
     expect(container.isConnected).toBe(false);
   },
 );
+
+it('automatically captures the first detected face even with a readiness callback', async () => {
+  const env = await setupFaceMask({ mode: 'detected' });
+  await vi.waitFor(() => expect(env.sketch).toBeDefined());
+  env.detect([]);
+  expect(env.drawImage).not.toHaveBeenCalled();
+  env.detect([testFace()]);
+  expect(env.drawImage).toHaveBeenCalledOnce();
+  expect(env.capture).toBeUndefined();
+  env.sketch.draw();
+  const mask = await env.pending;
+  env.detect([testFace()]);
+  expect(env.drawImage).toHaveBeenCalledOnce();
+  mask.dispose();
+});
 
 it.each([false, true])(
   'switches to manual capture without detection results (remote: %s)',
