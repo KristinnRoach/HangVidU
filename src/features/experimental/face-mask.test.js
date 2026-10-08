@@ -5,6 +5,26 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+it('requires canvas capture and WebGL APIs without allocating a context', async () => {
+  const { isFaceMaskSupported } = await import('./face-mask');
+  const getContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext');
+  vi.stubGlobal('WebGLRenderingContext', class {});
+  vi.stubGlobal('WebGL2RenderingContext', undefined);
+  vi.stubGlobal(
+    'HTMLCanvasElement',
+    class {
+      captureStream() {}
+    },
+  );
+  expect(isFaceMaskSupported()).toBe(true);
+  vi.stubGlobal('WebGLRenderingContext', undefined);
+  expect(isFaceMaskSupported()).toBe(false);
+  vi.stubGlobal('WebGLRenderingContext', class {});
+  vi.stubGlobal('HTMLCanvasElement', class {});
+  expect(isFaceMaskSupported()).toBe(false);
+  expect(getContext).not.toHaveBeenCalled();
+});
+
 it('shares preloading and reuses the ready model after detection stops', async () => {
   vi.resetModules();
   const mesh = { ready: Promise.resolve(), detectStop: vi.fn() };

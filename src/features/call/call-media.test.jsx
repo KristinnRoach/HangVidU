@@ -9,10 +9,12 @@ import {
 } from './call-media';
 
 const maskMocks = vi.hoisted(() => ({
+  isFaceMaskSupported: vi.fn(() => true),
   createFaceMask: vi.fn(),
   preloadFaceMask: vi.fn(async () => {}),
 }));
 vi.mock('../experimental/face-mask', () => ({
+  isFaceMaskSupported: maskMocks.isFaceMaskSupported,
   createFaceMask: maskMocks.createFaceMask,
   preloadFaceMask: maskMocks.preloadFaceMask,
 }));
@@ -493,7 +495,16 @@ describe('experimental face mask lifecycle', () => {
       },
     });
   });
-  function setup(channelState = 'open', initialRemotes = []) {
+  function setup(
+    channelState = 'open',
+    initialRemotes = [
+      {
+        memberId: 'remote',
+        stream: createStream([createTrack('audio')]),
+        data: {},
+      },
+    ],
+  ) {
     const [remotes, setRemotes] = createSignal(initialRemotes);
     const camera = createTrack('video');
     const filtered = createTrack('video');
@@ -532,6 +543,8 @@ describe('experimental face mask lifecycle', () => {
       media,
       dispose,
       channel,
+      stream,
+      tracks,
       setRemotes,
     };
   }
@@ -631,6 +644,77 @@ describe('experimental face mask lifecycle', () => {
     expect(maskMocks.createFaceMask).toHaveBeenCalledOnce();
     dispose();
   });
+
+  it('waits for remote media to arrive and unmute', () => {
+    const { media, dispose, setRemotes } = setup('open', []);
+    expect(media.faceMaskReady()).toBe(false);
+    expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
+    const remote = createTrack('audio');
+    remote.muted = true;
+    setRemotes([
+      { memberId: 'remote', stream: createStream([remote]), data: {} },
+    ]);
+    expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
+    remote.muted = false;
+    remote.dispatch('unmute');
+    expect(media.faceMaskReady()).toBe(true);
+    expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
+    remote.muted = true;
+    remote.dispatch('mute');
+    expect(media.faceMaskReady()).toBe(false);
+    remote.muted = false;
+    remote.dispatch('unmute');
+    expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
+    dispose();
+  });
+
+  it('waits for a live local camera before preloading', () => {
+    const { media, channel, stream, tracks, camera, dispose } =
+      setup('connecting');
+    tracks.length = 0;
+    stream.dispatch('removetrack');
+    channel.readyState = 'open';
+    channel.dispatch('open');
+    expect(media.faceMaskReady()).toBe(false);
+    expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
+    tracks.push(camera);
+    stream.dispatch('addtrack');
+    expect(media.faceMaskReady()).toBe(true);
+    expect(maskMocks.preloadFaceMask).toHaveBeenCalledOnce();
+    camera.readyState = 'ended';
+    camera.dispatch('ended');
+    expect(media.faceMaskReady()).toBe(false);
+    dispose();
+  });
+
+  it('skips the feature in unsupported environments', async () => {
+    maskMocks.isFaceMaskSupported.mockReturnValueOnce(false);
+    const { media, room, camera, dispose } = setup();
+    expect(media.faceMaskAvailable()).toBe(false);
+    expect(maskMocks.preloadFaceMask).not.toHaveBeenCalled();
+    await media.toggleFaceMask();
+    expect(maskMocks.createFaceMask).not.toHaveBeenCalled();
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+    expect(camera.stop).not.toHaveBeenCalled();
+    dispose();
+  });
+
+  it.each(['sync', 'async'])(
+    'contains %s preload failures without changing call tracks',
+    async (mode) => {
+      maskMocks.preloadFaceMask.mockImplementationOnce(() => {
+        if (mode === 'sync') throw new Error('Model unavailable');
+        return Promise.reject(new Error('Model unavailable'));
+      });
+      const { media, room, camera, dispose } = setup();
+      await Promise.resolve();
+      expect(media.faceMaskError()).toBe('Model unavailable');
+      expect(media.cameraOn()).toBe(true);
+      expect(room.setLocalTrack).not.toHaveBeenCalled();
+      expect(camera.stop).not.toHaveBeenCalled();
+      dispose();
+    },
+  );
 
   it('keeps the camera live until capture and allows cancellation', async () => {
     const { camera, mask, room, media, dispose } = setup();

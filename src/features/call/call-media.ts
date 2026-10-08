@@ -6,6 +6,7 @@ import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import {
   createFaceMask,
   preloadFaceMask,
+  isFaceMaskSupported,
   type FaceMask,
 } from '../experimental/face-mask';
 
@@ -87,22 +88,52 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const screenShareAvailable = () =>
     !isMobile && typeof navigator.mediaDevices?.getDisplayMedia === 'function';
   const [faceMaskAvailable, setFaceMaskAvailable] = createSignal(false);
-  // Room presence precedes the WebRTC handshake. Wait for an open channel
-  // before loading mask libraries/model or starting detection.
+  // An open data channel alone does not mean media has arrived. Defer the
+  // optional model until both the local camera and remote media are live.
   const [faceMaskReady, setFaceMaskReady] = createSignal(false);
   createEffect(() => {
     if (!faceMaskAvailable()) return;
     const channels = [...p2p.dataChannels().values()];
+    const local = localStream();
+    const remotes = p2p.remoteMemberStreams().map(({ stream }) => stream);
+    const streams = [...(local ? [local] : []), ...remotes];
+    const live = (track: MediaStreamTrack) =>
+      track.readyState === 'live' && track.enabled && !track.muted;
     const update = () =>
       setFaceMaskReady(
-        channels.some((channel) => channel.readyState === 'open'),
+        channels.some((channel) => channel.readyState === 'open') &&
+          !!local?.getVideoTracks().some(live) &&
+          remotes.some((stream) => stream.getTracks().some(live)),
       );
-    update();
+    let tracks: MediaStreamTrack[] = [];
+    const trackEvents = ['ended', 'mute', 'unmute'];
+    const removeTracks = () => {
+      for (const track of tracks)
+        for (const event of trackEvents)
+          track.removeEventListener(event, update);
+    };
+    const observeTracks = () => {
+      removeTracks();
+      tracks = streams.flatMap((stream) => stream.getTracks());
+      for (const track of tracks)
+        for (const event of trackEvents) track.addEventListener(event, update);
+      update();
+    };
+    observeTracks();
+    for (const stream of streams) {
+      stream.addEventListener('addtrack', observeTracks);
+      stream.addEventListener('removetrack', observeTracks);
+    }
     for (const channel of channels) {
       channel.addEventListener('open', update);
       channel.addEventListener('close', update);
     }
     onCleanup(() => {
+      removeTracks();
+      for (const stream of streams) {
+        stream.removeEventListener('addtrack', observeTracks);
+        stream.removeEventListener('removetrack', observeTracks);
+      }
       for (const channel of channels) {
         channel.removeEventListener('open', update);
         channel.removeEventListener('close', update);
@@ -111,18 +142,25 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   });
   const [faceMaskOn, setFaceMaskOn] = createSignal(false);
   const [faceMaskError, setFaceMaskError] = createSignal('');
+  const maskAbort = new AbortController();
+  let preloadStarted = false;
   createEffect(() => {
-    if (!faceMaskReady()) return;
-    void preloadFaceMask().catch((error) => {
-      if (!maskAbort.signal.aborted) {
-        setFaceMaskError(
-          error instanceof Error ? error.message : 'Face mask failed',
-        );
+    if (!faceMaskReady() || preloadStarted) return;
+    preloadStarted = true;
+    // Also contain synchronous initialization failures in this optional feature.
+    void (async () => {
+      try {
+        await preloadFaceMask();
+      } catch (error) {
+        if (!maskAbort.signal.aborted) {
+          setFaceMaskError(
+            error instanceof Error ? error.message : 'Face mask failed',
+          );
+        }
       }
-    });
+    })();
   });
   const [faceMaskStatus, setFaceMaskStatus] = createSignal('');
-  const maskAbort = new AbortController();
   const [faceMaskOutline, setFaceMaskOutline] = createSignal(
     FACE_MASK_CAPTURE_MODE === 'outline',
   );
@@ -705,8 +743,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     faceMaskAvailable,
     faceMaskReady,
     enableFaceMask: () => {
-      setFaceMaskAvailable(true);
       setFaceMaskError('');
+      setFaceMaskAvailable(isFaceMaskSupported());
     },
     faceMaskOn,
     faceMaskError,

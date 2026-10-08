@@ -63,6 +63,17 @@ type Libraries = {
   p5: new (sketch: (p: Sketch) => void, container: HTMLElement) => Sketch;
   ml5: { faceMesh: (options: { maxFaces: number }) => Mesh | Promise<Mesh> };
 };
+// Check APIs without allocating a WebGL context during call setup. Actual
+// renderer/model failures are handled separately and leave the camera intact.
+export function isFaceMaskSupported() {
+  return (
+    typeof HTMLCanvasElement !== 'undefined' &&
+    typeof HTMLCanvasElement.prototype.captureStream === 'function' &&
+    (typeof WebGLRenderingContext !== 'undefined' ||
+      typeof WebGL2RenderingContext !== 'undefined')
+  );
+}
+
 let libraries: Promise<Libraries> | undefined;
 
 function loadScript(src: string, integrity: string) {
