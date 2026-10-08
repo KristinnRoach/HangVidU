@@ -1,6 +1,14 @@
+import { FACE_MASK_CAPTURE_MODE } from '../experimental/capture-template';
 import { createEffect, createSignal, onCleanup, type Accessor } from 'solid-js';
 import type { LocalTrackSlot } from '@kidlib/p2p';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
+
+import {
+  createFaceMask,
+  preloadFaceMask,
+  isFaceMaskSupported,
+  type FaceMask,
+} from '../experimental/face-mask';
 
 import { getVideoConstraints } from './media-constraints.js';
 
@@ -20,6 +28,20 @@ function uniqueCameras(devices: MediaDeviceInfo[]) {
 }
 
 export type CallMedia = {
+  faceMaskSupported: Accessor<boolean>;
+  mediaFlowing: Accessor<boolean>;
+  faceMaskOn: Accessor<boolean>;
+  faceMaskError: Accessor<string>;
+  toggleFaceMask: () => Promise<void>;
+  faceMaskCapturing: Accessor<boolean>;
+  faceMaskOutline: Accessor<boolean>;
+  detectFaceMask: () => void;
+  faceMaskCaptureTrack: Accessor<MediaStreamTrack | undefined>;
+  remoteCaptureAvailable: Accessor<boolean>;
+  setFaceMaskSource: (remote: boolean) => void;
+  faceMaskCaptureReady: Accessor<boolean>;
+  captureFaceMask: () => void;
+  cancelFaceMaskCapture: () => void;
   micOn: Accessor<boolean>;
   cameraOn: Accessor<boolean>;
   cameraPending: Accessor<boolean>;
@@ -63,6 +85,207 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
   const screenShareAvailable = () =>
     !isMobile && typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+  const faceMaskSupported = isFaceMaskSupported();
+  // An open data channel alone does not mean media has arrived. True once the
+  // channel is open and both the local camera and remote media are live.
+  const [mediaFlowing, setMediaFlowing] = createSignal(false);
+  createEffect(() => {
+    const channels = [...p2p.dataChannels().values()];
+    const local = localStream();
+    const remotes = p2p.remoteMemberStreams().map(({ stream }) => stream);
+    const streams = [...(local ? [local] : []), ...remotes];
+    const live = (track: MediaStreamTrack) =>
+      track.readyState === 'live' && track.enabled && !track.muted;
+    const update = () =>
+      setMediaFlowing(
+        channels.some((channel) => channel.readyState === 'open') &&
+          !!local?.getVideoTracks().some(live) &&
+          remotes.some((stream) => stream.getTracks().some(live)),
+      );
+    let tracks: MediaStreamTrack[] = [];
+    const trackEvents = ['ended', 'mute', 'unmute'];
+    const removeTracks = () => {
+      for (const track of tracks)
+        for (const event of trackEvents)
+          track.removeEventListener(event, update);
+    };
+    const observeTracks = () => {
+      removeTracks();
+      tracks = streams.flatMap((stream) => stream.getTracks());
+      for (const track of tracks)
+        for (const event of trackEvents) track.addEventListener(event, update);
+      update();
+    };
+    observeTracks();
+    for (const stream of streams) {
+      stream.addEventListener('addtrack', observeTracks);
+      stream.addEventListener('removetrack', observeTracks);
+    }
+    for (const channel of channels) {
+      channel.addEventListener('open', update);
+      channel.addEventListener('close', update);
+    }
+    onCleanup(() => {
+      removeTracks();
+      for (const stream of streams) {
+        stream.removeEventListener('addtrack', observeTracks);
+        stream.removeEventListener('removetrack', observeTracks);
+      }
+      for (const channel of channels) {
+        channel.removeEventListener('open', update);
+        channel.removeEventListener('close', update);
+      }
+    });
+  });
+  const [faceMaskOn, setFaceMaskOn] = createSignal(false);
+  const [faceMaskError, setFaceMaskError] = createSignal('');
+  const maskAbort = new AbortController();
+  let preloadStarted = false;
+  createEffect(() => {
+    // Defer the optional model until media is flowing.
+    if (!faceMaskSupported || !mediaFlowing() || preloadStarted) return;
+    preloadStarted = true;
+    // Also contain synchronous initialization failures in this optional feature.
+    void (async () => {
+      try {
+        await preloadFaceMask();
+      } catch (error) {
+        if (!maskAbort.signal.aborted) {
+          setFaceMaskError(
+            error instanceof Error ? error.message : 'Face mask failed',
+          );
+        }
+      }
+    })();
+  });
+  const [faceMaskOutline, setFaceMaskOutline] = createSignal(
+    FACE_MASK_CAPTURE_MODE === 'outline',
+  );
+  const [faceMaskCapturing, setFaceMaskCapturing] = createSignal(false);
+  const [captureAction, setCaptureAction] = createSignal<
+    (() => void) | undefined
+  >();
+  const [captureTrack, setCaptureTrack] = createSignal<MediaStreamTrack>();
+  const remoteCaptureTrack = () => {
+    const candidates = p2p.remoteMemberStreams().filter(({ memberId }) => {
+      const data = p2p
+        .memberPresence()
+        .find((member) => member.memberId === memberId)?.data;
+      return data?.cameraOn === true && data?.screenShare !== true;
+    });
+    if (candidates.length !== 1) return undefined;
+    return candidates[0]?.stream
+      .getVideoTracks()
+      .find(
+        (track) => track.readyState === 'live' && track.enabled && !track.muted,
+      );
+  };
+  let captureAbort: AbortController | undefined;
+  createEffect(() => {
+    const track = captureTrack();
+    if (!track) return;
+    if (remoteCaptureTrack() !== track) captureAbort?.abort();
+    const cancel = () => captureAbort?.abort();
+    track.addEventListener('ended', cancel);
+    track.addEventListener('mute', cancel);
+    onCleanup(() => {
+      track.removeEventListener('ended', cancel);
+      track.removeEventListener('mute', cancel);
+    });
+  });
+  let mask: FaceMask | undefined;
+  let maskCamera: MediaStreamTrack | undefined;
+
+  function disposeMask() {
+    mask?.dispose();
+    mask = undefined;
+    maskCamera = undefined;
+    setFaceMaskOn(false);
+  }
+
+  async function restoreMaskCamera() {
+    if (!mask) return;
+    const room = p2p.room();
+    const camera = maskCamera;
+    if (room && camera?.readyState === 'live') {
+      await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, camera);
+    }
+    disposeMask();
+    syncTrackState();
+  }
+
+  async function toggleFaceMask() {
+    if (
+      !faceMaskSupported ||
+      (!mask && !mediaFlowing()) ||
+      cameraPending() ||
+      screenSharing() ||
+      !cameraOn()
+    )
+      return;
+    const room = p2p.room();
+    if (!room) return;
+    setCameraPending(true);
+    setFaceMaskError('');
+    try {
+      if (mask) {
+        await restoreMaskCamera();
+        return;
+      }
+      const camera = localStream()?.getVideoTracks()[0];
+      if (!camera) return;
+      captureAbort = new AbortController();
+      const cancelCapture = () => captureAbort?.abort();
+      maskAbort.signal.addEventListener('abort', cancelCapture, { once: true });
+      setCaptureTrack(undefined);
+      setFaceMaskOutline(FACE_MASK_CAPTURE_MODE === 'outline');
+      setFaceMaskCapturing(true);
+      let nextMask: FaceMask;
+      try {
+        nextMask = await createFaceMask(camera, captureAbort.signal, {
+          onCaptureReady: (capture) => setCaptureAction(() => capture),
+          captureMode: () => (faceMaskOutline() ? 'outline' : 'detected'),
+          onError: (error) => {
+            setFaceMaskError(error.message);
+            void restoreMaskCamera().catch((restoreError) => {
+              console.error(
+                '[FaceMask] Could not restore camera',
+                restoreError,
+              );
+            });
+          },
+          captureTrack,
+        });
+      } finally {
+        maskAbort.signal.removeEventListener('abort', cancelCapture);
+      }
+      if (maskAbort.signal.aborted) {
+        nextMask.dispose();
+        return;
+      }
+      mask = nextMask;
+      maskCamera = camera;
+      // Retain ownership of the raw camera even while it is outside localStream.
+      ownedCameraTracks.add(camera);
+      setFaceMaskOn(true);
+      await room.setLocalTrack(PRIMARY_VIDEO_SLOT_ID, nextMask.track);
+      console.info('[FaceMask] Filtered track published');
+      syncTrackState();
+    } catch (error) {
+      if (!maskAbort.signal.aborted && !captureAbort?.signal.aborted) {
+        setFaceMaskError(
+          error instanceof Error ? error.message : 'Face mask failed',
+        );
+      }
+    } finally {
+      setCaptureTrack(undefined);
+      setFaceMaskCapturing(false);
+      setCaptureAction(undefined);
+      captureAbort = undefined;
+      setCameraPending(false);
+    }
+  }
+
   let screenTrack: MediaStreamTrack | undefined;
   let cameraBeforeScreenShare: MediaStreamTrack | null = null;
   let screenStopRequested = false;
@@ -165,6 +388,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       'devicechange',
       onDeviceChange,
     );
+    maskAbort.abort();
+    disposeMask();
     screenTrack?.stop();
     ownedCameraTracks.forEach((track) => track.stop());
     ownedCameraTracks.clear();
@@ -220,6 +445,17 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
     setCameraPending(true);
     try {
+      if (enabled) {
+        await restoreMaskCamera();
+      } else {
+        await restoreMaskCamera().catch((error) => {
+          console.error(
+            '[CallMedia] Mask restore failed during camera off',
+            error,
+          );
+          disposeMask();
+        });
+      }
       const currentTracks = localStream()?.getVideoTracks() ?? [];
 
       if (!enabled) {
@@ -303,13 +539,16 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     const room = p2p.room();
     if (!room) throw new Error('Cannot switch camera without an active room');
 
-    const currentTrack = localStream()
-      ?.getVideoTracks()
-      .find((track) => track.readyState === 'live');
+    const currentTrack =
+      maskCamera ??
+      localStream()
+        ?.getVideoTracks()
+        .find((track) => track.readyState === 'live');
     if (!currentTrack) throw new Error('Cannot switch an inactive camera');
 
     setCameraPending(true);
     try {
+      await restoreMaskCamera();
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cameras = uniqueCameras(devices);
       const currentDeviceId = currentTrack.getSettings?.().deviceId;
@@ -429,11 +668,9 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     if (!room) throw new Error('Cannot share screen without an active room');
 
     setCameraPending(true);
-    cameraBeforeScreenShare =
-      localStream()
-        ?.getVideoTracks()
-        .find((track) => track.readyState === 'live') ?? null;
     try {
+      await restoreMaskCamera();
+      cameraBeforeScreenShare = localStream()?.getVideoTracks()[0] ?? null;
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
       });
@@ -496,6 +733,30 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   }
 
   return {
+    faceMaskSupported: () => faceMaskSupported,
+    mediaFlowing,
+    faceMaskOn,
+    faceMaskError,
+    toggleFaceMask,
+    faceMaskCapturing,
+    faceMaskOutline,
+    detectFaceMask: () => {
+      if (!faceMaskCapturing()) return;
+      setCaptureAction(undefined);
+      setFaceMaskOutline(false);
+    },
+    faceMaskCaptureTrack: captureTrack,
+    remoteCaptureAvailable: () => !!remoteCaptureTrack(),
+    setFaceMaskSource: (remote) => {
+      if (!faceMaskCapturing()) return;
+      const track = remote ? remoteCaptureTrack() : undefined;
+      if ((remote && !track) || track === captureTrack()) return;
+      setCaptureAction(undefined);
+      setCaptureTrack(track);
+    },
+    faceMaskCaptureReady: () => !!captureAction(),
+    captureFaceMask: () => captureAction()?.(),
+    cancelFaceMaskCapture: () => captureAbort?.abort(),
     micOn,
     cameraOn,
     cameraPending,

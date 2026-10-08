@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   hangUp: vi.fn(),
   startCall: vi.fn(),
   media: {
+    faceMaskSupported: () => false,
     micOn: () => true,
     cameraOn: () => true,
     cameraPending: () => false,
@@ -83,6 +84,47 @@ describe('StartCallButton', () => {
 });
 
 describe('ActiveCallControls', () => {
+  it('keeps the face mask disabled until the call is ready', () => {
+    const toggleFaceMask = vi.fn();
+    let setReady;
+    let setMaskOn;
+    const { getByRole } = render(() => {
+      const [ready, updateReady] = createSignal(false);
+      const [maskOn, updateMaskOn] = createSignal(false);
+      setReady = updateReady;
+      setMaskOn = updateMaskOn;
+      return (
+        <ActiveCallControls
+          media={{
+            ...mocks.media,
+            faceMaskSupported: () => true,
+            mediaFlowing: ready,
+            faceMaskOn: maskOn,
+            toggleFaceMask,
+          }}
+        />
+      );
+    });
+    const button = getByRole('button', { name: 'Experimental face mask' });
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(toggleFaceMask).not.toHaveBeenCalled();
+
+    setReady(true);
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    expect(toggleFaceMask).toHaveBeenCalledOnce();
+
+    setMaskOn(true);
+    setReady(false);
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    expect(toggleFaceMask).toHaveBeenCalledTimes(2);
+
+    setMaskOn(false);
+    expect(button.disabled).toBe(true);
+  });
+
   it('lets the user mute remote audio locally', () => {
     const onRemoteAudioMutedChange = vi.fn();
     const { getByRole } = render(() => (

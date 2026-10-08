@@ -7,6 +7,7 @@ import {
   Switch,
   Match,
   Show,
+  type JSX,
 } from 'solid-js';
 import { createMediaPlayback } from '@kidlib/p2p/solid';
 import { t } from '@shared/i18n';
@@ -18,6 +19,9 @@ import { Spinner } from '@components/Spinner';
 
 type ParticipantMediaProps = {
   stream: MediaStream;
+  children?: JSX.Element;
+  overlay?: (aspect: number) => JSX.Element;
+  previewUncropped?: boolean;
   variant?: 'remote' | 'self-preview';
   videoEnabled?: boolean;
   audioEnabled?: boolean;
@@ -59,6 +63,7 @@ function isReceivingStreamData(
 export function ParticipantMedia(props: ParticipantMediaProps) {
   // oxlint-disable-next-line no-unassigned-vars
   let video!: HTMLVideoElement;
+  const [videoAspect, setVideoAspect] = createSignal(4 / 3);
   const variant = () => props.variant ?? 'remote';
   const shouldMutePlayback = () =>
     variant() === 'self-preview' || props.remoteAudioMuted === true;
@@ -223,6 +228,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       });
 
     const replay = () => {
+      if (video.videoWidth && video.videoHeight)
+        setVideoAspect(video.videoWidth / video.videoHeight);
       if (video.paused) void playback.resumePlayback();
     };
 
@@ -254,6 +261,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       <video
         ref={video}
         class={styles.media}
+        style={props.previewUncropped ? { 'object-fit': 'contain' } : undefined}
         hidden={status().video !== 'connected'}
         autoplay
         muted={shouldMutePlayback()}
@@ -310,6 +318,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
         </Switch>
       </Show>
 
+      {props.children}
+      {props.overlay?.(videoAspect())}
       <Show
         when={
           playback.playbackBlocked() &&

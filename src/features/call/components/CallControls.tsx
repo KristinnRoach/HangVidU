@@ -1,4 +1,5 @@
 import {
+  ScanFace,
   Mic,
   MicOff,
   Phone,
@@ -98,7 +99,9 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
   return (
     <div
       class={styles.callControls}
-      classList={{ [styles.hidden!]: !visible() }}
+      classList={{
+        [styles.hidden!]: !visible(),
+      }}
     >
       <button
         type='button'
@@ -119,6 +122,25 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
       >
         {media.cameraOn() ? <Video /> : <VideoOff />}
       </button>
+      <Show when={media.faceMaskSupported()}>
+        <button
+          type='button'
+          onClick={() => void media.toggleFaceMask()}
+          disabled={
+            (!media.mediaFlowing() && !media.faceMaskOn()) ||
+            media.cameraPending() ||
+            media.screenSharing() ||
+            !media.cameraOn()
+          }
+          aria-pressed={media.faceMaskOn()}
+          title={
+            media.faceMaskOn() ? 'Turn face mask off' : 'Experimental face mask'
+          }
+          aria-label='Experimental face mask'
+        >
+          <ScanFace />
+        </button>
+      </Show>
       <Show when={media.cameraSwitchAvailable()}>
         <button
           type='button'
