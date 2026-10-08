@@ -221,7 +221,12 @@ function FaceMaskControls(props: { media: CallMedia }) {
             type='button'
             title='Retry'
             aria-label='Retry mask'
-            disabled={props.media.cameraPending()}
+            disabled={
+              (!props.media.mediaFlowing() && !props.media.faceMaskOn()) ||
+              props.media.cameraPending() ||
+              props.media.screenSharing() ||
+              !props.media.cameraOn()
+            }
             onClick={() => void props.media.toggleFaceMask()}
           >
             <RotateCcw />
