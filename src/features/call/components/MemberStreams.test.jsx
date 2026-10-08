@@ -86,6 +86,8 @@ describe('MemberStreams', () => {
     const remote = new FakeStream([new FakeTrack('video')]);
     const [source, setSource] = createSignal();
     const [preview, setPreview] = createSignal();
+    const [outline, setOutline] = createSignal(false);
+    const [ready, setReady] = createSignal(false);
     mocks.p2p = {
       localStream: () => local,
       memberCount: () => 2,
@@ -93,15 +95,19 @@ describe('MemberStreams', () => {
       remoteMemberStreams: () => [{ memberId: 'remote', stream: remote }],
     };
     const apply = vi.fn();
-    const { getByRole, queryByRole, container } = render(() => (
+    const capture = vi.fn();
+    const retake = vi.fn(() => setPreview(undefined));
+    const { getByRole, container } = render(() => (
       <MemberStreams
         media={{
           ...fakeMedia,
           faceMaskCapturing: () => true,
           faceMaskCaptureTrack: source,
           faceMaskPreview: preview,
-          faceMaskOutline: () => false,
-          faceMaskCaptureReady: () => true,
+          faceMaskOutline: outline,
+          faceMaskCaptureReady: ready,
+          captureFaceMask: capture,
+          retakeFaceMask: retake,
           remoteCaptureAvailable: () => true,
           setFaceMaskSource: (useRemote) =>
             setSource(useRemote ? remote.getVideoTracks()[0] : undefined),
@@ -111,24 +117,39 @@ describe('MemberStreams', () => {
       />
     ));
     const videos = container.querySelectorAll('video');
-    const toolbar = getByRole('button', {
-      name: 'Looking for a face',
-    }).parentElement;
+    const applyButton = getByRole('button', { name: 'Apply mask' });
+    const toolbar = applyButton.parentElement;
+    expect(applyButton.disabled).toBe(true);
     const sourceButton = getByRole('button', { name: 'Use other camera' });
     expect(toolbar.parentElement).toBe(videos[0].parentElement);
     fireEvent.click(getByRole('button', { name: 'Use other camera' }));
     expect(getByRole('button', { name: 'Use my camera' })).toBe(sourceButton);
     expect(sourceButton.parentElement).toBe(toolbar);
-    expect(getByRole('button', { name: 'Retake' }).disabled).toBe(true);
+    const captureButton = getByRole('button', { name: 'Capture face' });
+    expect(captureButton.disabled).toBe(true);
+    setOutline(true);
+    expect(captureButton.disabled).toBe(true);
+    setReady(true);
+    expect(captureButton.disabled).toBe(false);
+    expect(applyButton.disabled).toBe(true);
+    fireEvent.click(captureButton);
+    expect(capture).toHaveBeenCalledOnce();
+    expect(apply).not.toHaveBeenCalled();
     setPreview(new FakeStream([new FakeTrack('video')]));
-    expect(queryByRole('button', { name: 'Looking for a face' })).toBeNull();
     expect(getByRole('button', { name: 'Retake' }).disabled).toBe(false);
     expect(getByRole('button', { name: 'Manual alignment' })).toBeDefined();
     expect(getByRole('button', { name: 'Use my camera' })).toBeDefined();
-    const applyButton = getByRole('button', { name: 'Apply mask' });
+    expect(getByRole('button', { name: 'Apply mask' })).toBe(applyButton);
+    expect(applyButton.disabled).toBe(false);
     expect(applyButton.parentElement).toBe(toolbar);
+    expect(getByRole('button', { name: 'Retake' })).toBe(captureButton);
     fireEvent.click(applyButton);
     expect(apply).toHaveBeenCalledOnce();
+    fireEvent.click(captureButton);
+    expect(retake).toHaveBeenCalledOnce();
+    expect(capture).toHaveBeenCalledOnce();
+    expect(applyButton.disabled).toBe(true);
+    expect(getByRole('button', { name: 'Capture face' })).toBe(captureButton);
   });
 
   it('shows local countdown and flash, with no flash for remote capture', () => {

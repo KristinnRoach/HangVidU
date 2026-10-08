@@ -3,15 +3,7 @@ import {
   captureFeatureContours,
 } from '../../experimental/capture-template';
 import { For, Show } from 'solid-js';
-import {
-  Camera,
-  Check,
-  Frame,
-  RotateCcw,
-  ScanFace,
-  SwitchCamera,
-  X,
-} from 'lucide-solid';
+import { Camera, Check, Frame, RotateCcw, SwitchCamera, X } from 'lucide-solid';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { ParticipantMedia } from './ParticipantMedia';
 import type { CallMedia } from '../call-media';
@@ -82,7 +74,6 @@ export function MemberStreams(props: MemberStreamsProps) {
                   aspect={aspect}
                   stream={stream.stream}
                 />
-                <FaceMaskFeedback media={props.media} stream={stream.stream} />
               </>
             )}
           />
@@ -147,12 +138,7 @@ function FaceMaskControls(props: { media: CallMedia }) {
     if (typeof status === 'number') return 'Hold still';
     return status === 'preparing' ? 'Preparing…' : 'Looking for a face';
   };
-  const primaryLabel = () =>
-    preview()
-      ? 'Apply mask'
-      : props.media.faceMaskOutline()
-        ? 'Capture face'
-        : statusLabel();
+  const captureLabel = () => (preview() ? 'Retake' : 'Capture face');
   return (
     <>
       <Show when={props.media.faceMaskCapturing?.()}>
@@ -163,35 +149,29 @@ function FaceMaskControls(props: { media: CallMedia }) {
           <button
             type='button'
             class={styles.primary}
+            disabled={!preview()}
+            title='Apply mask'
+            aria-label='Apply mask'
+            onClick={props.media.applyFaceMask}
+          >
+            <Check />
+          </button>
+          <button
+            type='button'
+            title={captureLabel()}
+            aria-label={captureLabel()}
             disabled={
               !preview() &&
               (!props.media.faceMaskOutline() ||
                 !props.media.faceMaskCaptureReady())
             }
-            title={primaryLabel()}
-            aria-label={primaryLabel()}
             onClick={() =>
               preview()
-                ? props.media.applyFaceMask()
+                ? props.media.retakeFaceMask()
                 : props.media.captureFaceMask()
             }
           >
-            {preview() ? (
-              <Check />
-            ) : props.media.faceMaskOutline() ? (
-              <Camera />
-            ) : (
-              <ScanFace />
-            )}
-          </button>
-          <button
-            type='button'
-            title='Retake'
-            aria-label='Retake'
-            disabled={!preview()}
-            onClick={props.media.retakeFaceMask}
-          >
-            <RotateCcw />
+            {preview() ? <RotateCcw /> : <Camera />}
           </button>
           <button
             type='button'
@@ -260,10 +240,10 @@ function FaceMaskControls(props: { media: CallMedia }) {
   );
 }
 
-function FaceMaskFeedback(props: { media: CallMedia; stream?: MediaStream }) {
+function FaceMaskFeedback(props: { media: CallMedia }) {
   const status = () => props.media.faceMaskCaptureStatus?.();
   return (
-    <Show when={capturingFrom(props.media, props.stream)}>
+    <Show when={capturingFrom(props.media)}>
       <Show when={typeof status() === 'number'}>
         <span
           class={styles.captureCountdown}
@@ -273,7 +253,7 @@ function FaceMaskFeedback(props: { media: CallMedia; stream?: MediaStream }) {
           {status()}
         </span>
       </Show>
-      <Show when={!props.stream && status() === 'captured'}>
+      <Show when={status() === 'captured'}>
         <div class={styles.captureFlash} aria-hidden='true' />
       </Show>
     </Show>

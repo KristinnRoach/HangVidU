@@ -49,7 +49,7 @@
 
 .selfPreview .media {
   border-radius: inherit;
-  transform: scaleX(-1);
+  transform: none;
   overflow: hidden;
 }
 
@@ -58,15 +58,6 @@
    clone in ParticipantMedia, which drops the reactive class binding. */
 .screenShare .media {
   object-fit: contain;
-}
-
-.screenShare.selfPreview.uncropped {
-  width: min(300px, calc(100% - 2 * var(--gap)));
-  height: min(240px, 40%);
-}
-
-.selfPreview .media {
-  transform: none;
 }
 
 /* The top bar overlays calls. Keep the preview below it while visible. */
