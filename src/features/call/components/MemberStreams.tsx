@@ -1,4 +1,7 @@
-import { captureOutline } from '../../experimental/capture-template';
+import {
+  captureOutline,
+  captureFeatureContours,
+} from '../../experimental/capture-template';
 import { For, Show } from 'solid-js';
 import {
   Camera,
@@ -123,6 +126,11 @@ function FaceMaskOutline(props: {
         aria-hidden='true'
       >
         <polygon points={captureOutline(props.aspect)} />
+        <For each={captureFeatureContours}>
+          {(contour) => (
+            <polygon points={captureOutline(props.aspect, contour)} />
+          )}
+        </For>
       </svg>
     </Show>
   );
