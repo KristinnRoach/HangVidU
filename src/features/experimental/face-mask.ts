@@ -3,6 +3,7 @@ import { capturePoints, faceBoundary } from './capture-template';
 import { faceMaskStyle } from './face-mask-style';
 
 const FRAME_WIDTH = 960; // Output width; height follows the source aspect ratio.
+const FACE_MASK_AUTO_CAPTURE_HOLD_MS = 300; // Set 0 for immediate capture without the local countdown.
 const FACE_MASK_LOCAL_COUNTDOWN = true; // Set false for immediate local capture too.
 const FACE_MASK_FEATHER = false;
 // Skip triangles that fold over when the head turns (their winding flips).
@@ -10,7 +11,7 @@ const FACE_MASK_CULL_FOLDED = true;
 // Set false to restore the original full-frame filtered video.
 const FACE_MASK_AUTO_FRAME = true;
 const FACE_MASK_MIN_HEIGHT = 0.5; // Minimum frame-height fraction.
-const FACE_MASK_MAX_ZOOM = 4; // Magnification cap, >= 1; may limit minimum size.
+const FACE_MASK_MAX_ZOOM = 5; // Magnification cap, >= 1; may limit minimum size.
 const FACE_MASK_CENTER_STRENGTH = 0.5; // 0 = original position, 1 = fully centered.
 const FACE_MASK_TARGET_Y = 0.5; // 0 = top, 0.5 = middle, 1 = bottom.
 const FACE_MASK_FOLLOW_SPEED = 1; // 0–1 per frame: 1 = instant; lower = smoother.
@@ -381,6 +382,7 @@ export async function createFaceMask(
           // Discard the first result after switching so source coordinates agree.
           let skipFirstResult = detectionGeneration > 0;
           const generation = ++detectionGeneration;
+          let firstFaceSeenAt: number | undefined;
           mesh!.detectStart(video, (results) => {
             if (
               disposed ||
@@ -399,11 +401,18 @@ export async function createFaceMask(
                 y: (point.y * height) / video.videoHeight,
               })),
             }));
+            if (outlineMode() || !faces[0]) firstFaceSeenAt = undefined;
             if (!captured && (!outlineMode() || !onCaptureReady)) {
               onCaptureReady?.(undefined);
               if (faces[0]) {
                 if (selectedTrack || !FACE_MASK_LOCAL_COUNTDOWN) {
-                  capture();
+                  const now = performance.now();
+                  firstFaceSeenAt ??= now;
+                  if (
+                    outlineMode() ||
+                    now - firstFaceSeenAt >= FACE_MASK_AUTO_CAPTURE_HOLD_MS
+                  )
+                    capture();
                 } else if (!countdown) {
                   // Give a full three seconds even near the acquisition timeout.
                   startTimeout();

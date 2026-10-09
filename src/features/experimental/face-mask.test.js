@@ -292,6 +292,9 @@ it.each([
       env.detect([testFace()]);
       expect(env.capture).toBeUndefined();
       if (remoteCapture) {
+        expect(env.drawImage).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(300);
+        env.detect([testFace()]);
         expect(env.drawImage).toHaveBeenCalledOnce();
         expect(env.onCaptureStatus).toHaveBeenLastCalledWith('captured');
         expect(
@@ -355,6 +358,45 @@ it.each([
     expect(container.isConnected).toBe(false);
   },
 );
+
+it('requires persistent remote detection and a fresh result before capture', async () => {
+  const env = await setupFaceMask({ mode: 'detected' });
+  await vi.waitFor(() => expect(env.sketch).toBeDefined());
+  env.useRemote();
+  env.sketch.draw();
+  await Promise.resolve();
+  env.sketch.draw();
+  env.detect([]); // Discard the first result after changing source.
+  let now = 100;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  env.detect([testFace()]);
+  now = 399;
+  env.detect([testFace()]);
+  expect(env.drawImage).not.toHaveBeenCalled();
+  now = 400;
+  env.sketch.draw(); // Time and render frames alone cannot trigger capture.
+  expect(env.drawImage).not.toHaveBeenCalled();
+  env.detect([]); // Losing the face resets the hold window.
+  now = 450;
+  env.detect([testFace()]);
+  now = 749;
+  env.detect([testFace()]);
+  expect(env.drawImage).not.toHaveBeenCalled();
+  now = 750;
+  const latest = testFace();
+  latest.keypoints[0].x = 64;
+  env.detect([latest]);
+  expect(env.drawImage).toHaveBeenCalledOnce();
+  expect(env.onCaptureStatus).toHaveBeenLastCalledWith('captured');
+  await Promise.resolve();
+  env.sketch.draw();
+  const mask = await env.pending;
+  env.detect([]); // Discard the first result after returning to the local camera.
+  env.detect([testFace()]);
+  env.sketch.draw();
+  expect(env.vertex.mock.calls[0][2]).toBeCloseTo(64 / 1280);
+  mask.dispose();
+});
 
 it('counts down before automatically capturing, even with a readiness callback', async () => {
   const env = await setupFaceMask({ mode: 'detected' });

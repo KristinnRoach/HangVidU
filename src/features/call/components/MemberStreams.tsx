@@ -130,22 +130,24 @@ function FaceMaskOutline(props: {
 function FaceMaskControls(props: { media: CallMedia }) {
   const preview = () => props.media.faceMaskPreview?.();
   const statusLabel = () => {
-    if (preview()) return 'Ready to apply';
+    if (preview()) return undefined;
     const status = props.media.faceMaskCaptureStatus?.() ?? 'searching';
     if (status === 'captured') return 'Preparing preview…';
     if (props.media.faceMaskOutline())
-      return props.media.faceMaskCaptureReady() ? 'Align face' : 'Preparing…';
-    if (typeof status === 'number') return 'Hold still';
-    return status === 'preparing' ? 'Preparing…' : 'Looking for a face';
+      return props.media.faceMaskCaptureReady() ? 'Align image' : 'Preparing…';
+    if (typeof status === 'number') return 'About to capture…';
+    return status === 'preparing' ? 'Preparing…' : 'Detecting face';
   };
   const captureLabel = () => (preview() ? 'Retake' : 'Capture face');
   return (
     <>
       <Show when={props.media.faceMaskCapturing?.()}>
         <div class={styles.captureOverlay}>
-          <span class={styles.hint} role='status'>
-            {statusLabel()}
-          </span>
+          <Show when={statusLabel()}>
+            <span class={styles.hint} role='status'>
+              {statusLabel()}
+            </span>
+          </Show>
           <button
             type='button'
             class={styles.primary}

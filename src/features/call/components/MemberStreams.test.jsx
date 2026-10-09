@@ -185,12 +185,12 @@ describe('MemberStreams', () => {
       videos[0].parentElement,
     );
     setStatus('searching');
-    expect(getByText('Looking for a face', { selector: 'span' })).toBeDefined();
+    expect(getByText('Detecting face', { selector: 'span' })).toBeDefined();
     setStatus('captured');
     expect(container.querySelector('div[aria-hidden="true"]')).toBeNull();
     setSource(undefined);
     setStatus(3);
-    expect(getByText('Hold still')).toBeDefined();
+    expect(getByText('About to capture…')).toBeDefined();
     expect(getByRole('status', { name: 'Capture in 3' }).parentElement).toBe(
       videos[0].parentElement,
     );
@@ -204,7 +204,7 @@ describe('MemberStreams', () => {
       videos[1].parentElement.querySelector('div[aria-hidden="true"]'),
     ).toBeNull();
     setPreview(new FakeStream([new FakeTrack('video')]));
-    expect(getByText('Ready to apply')).toBeDefined();
+    expect(queryByRole('status')).toBeNull();
     expect(
       videos[0].parentElement.querySelector('div[aria-hidden="true"]'),
     ).toBe(flash);
