@@ -10,7 +10,11 @@ Manual alignment shows a fixed frontal face guide with eye and outer-lip contour
 
 Errors appear on the local preview with Retry and Dismiss. Source-video startup and face detection can take time. Startup and detection have a 30-second timeout, and capture starts a fresh timeout to prepare the output. Waiting for Apply has no timeout. Libraries and the model are reused until page reload.
 
-On mobile, the source video must have drawable pixels before capture. It plays in a nearly transparent 1px viewport area rather than being fully invisible. Canvas pixel density is fixed at 1. With `faceMaskStyle.outside.globalAlpha` set to `0`, losing face tracking can produce a black frame. The pinned ml5 loop does not propagate asynchronous inference failures, so stalled tracking remains a known limitation.
+On mobile, the source video must have drawable pixels before capture. It plays in a nearly transparent 1px viewport area rather than being fully invisible. Canvas pixel density is fixed at 1. With `faceMaskStyle.outside.globalAlpha` set to `0`, losing face tracking can produce a black frame.
+
+Detection uses paced single-shot inference (at most 20 calls per second), catches inference failures, and never overlaps calls on the reused model, including across cancellation and source changes. Hidden pages and unavailable video input skip inference. Context loss and tracking/rendering stalls use the existing failure cleanup and camera-restoration path; preview failures cancel setup. A one-second watchdog applies the existing 30-second tolerance only while the page is visible and source video time advances. Source changes and visibility changes reset that tolerance. Retry is explicit; an unresolved inference cannot be cancelled and a retry waits for it rather than starting overlapping work.
+
+Deferred under [issue #688](https://github.com/KristinnRoach/HangVidU/issues/688): physical-device validation and threshold tuning, sustained low-FPS cutoffs, adaptive quality, and broader performance telemetry. The watchdog detects stalls; it does not establish a minimum usable frame rate or guarantee recovery from browser/GPU-process crashes.
 
 For browser and physical-device review, try both sources and modes, Retake, Cancel, and source/mode changes during preview. Confirm the receiving device sees the raw camera until Apply, then test head movement, blinking, mask removal, and app background/foreground. Further UX refinement remains open, especially first-face capture quality and small-screen toolbar fit.
 

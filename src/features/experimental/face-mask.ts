@@ -1,7 +1,10 @@
 import { capturePoints, faceBoundary } from './capture-template';
 
+import { faceMaskDetection } from './face-mask-detection';
+
 import { faceMaskStyle } from './face-mask-style';
 
+const FACE_MASK_TIMEOUT_MS = 30000;
 const FRAME_WIDTH = 960; // Output width; height follows the source aspect ratio.
 const FACE_MASK_AUTO_CAPTURE_HOLD_MS = 300; // Set 0 for immediate capture without the local countdown.
 const FACE_MASK_LOCAL_COUNTDOWN = true; // Set false for immediate local capture too.
@@ -21,11 +24,7 @@ type Graphics = { canvas: HTMLCanvasElement };
 type Face = { keypoints: { x: number; y: number }[] };
 type Mesh = {
   ready: Promise<unknown>;
-  detectStart: (
-    video: HTMLVideoElement,
-    callback: (faces: Face[]) => void,
-  ) => void;
-  detectStop: () => void;
+  detect: (video: HTMLVideoElement) => Promise<Face[]>;
   getTriangles: () => number[][];
 };
 // Only the small p5 surface used by this experiment.
@@ -172,6 +171,10 @@ export async function createFaceMask(
   let detectionGeneration = 0;
   let sketch: Sketch | undefined;
   let mesh: Mesh | undefined;
+  let detection: ReturnType<typeof faceMaskDetection<Face[]>> | undefined;
+  let healthTimer: ReturnType<typeof setInterval> | undefined;
+  let removeHealthListener: (() => void) | undefined;
+  let removeContextListener: (() => void) | undefined;
   let liveTexture: Graphics | undefined;
   let styledMaskTexture: Graphics | undefined;
   let output: MediaStreamTrack | undefined;
@@ -193,11 +196,14 @@ export async function createFaceMask(
     disposed = true;
     clearTimeout(timer);
     clearTimeout(countdownTimer);
+    clearInterval(healthTimer);
+    removeContextListener?.();
+    removeHealthListener?.();
     cancelVideoWait?.();
     signal.removeEventListener('abort', abort);
     onCaptureReady?.(undefined);
     detectionGeneration++;
-    mesh?.detectStop();
+    detection?.detectStop();
     // The sketch owns buffer cleanup; Graphics.remove() breaks in p5 1.11.13.
     sketch?.remove();
     sketch = undefined;
@@ -240,7 +246,7 @@ export async function createFaceMask(
               `Face mask timed out: ${stage.toLowerCase()}. Try again.`,
             ),
           );
-        }, 30000);
+        }, FACE_MASK_TIMEOUT_MS);
       };
       startTimeout();
       if (signal.aborted) {
@@ -286,6 +292,7 @@ export async function createFaceMask(
         const { libs, mesh: readyMesh } = await preloadFaceMask();
         if (disposed) return;
         mesh = readyMesh;
+        detection = faceMaskDetection(mesh);
         const width = FRAME_WIDTH;
         const height = Math.round(
           width * (video.videoHeight / video.videoWidth || 0.75),
@@ -295,6 +302,13 @@ export async function createFaceMask(
         let liveContext: CanvasRenderingContext2D;
         let maskContext: CanvasRenderingContext2D;
         let faces: Face[] = [];
+        let lastDetection = performance.now();
+        let lastDraw = lastDetection;
+        let inputTime = video.currentTime;
+        const resetHealth = () => {
+          lastDetection = lastDraw = performance.now();
+          inputTime = video.currentTime;
+        };
         let captured: Face | undefined;
         let centerX = width / 2;
         let centerY = height / 2;
@@ -378,18 +392,19 @@ export async function createFaceMask(
           // Give every input the same dimensions as the working camera path.
           video.width = video.videoWidth;
           video.height = video.videoHeight;
-          // ml5 can deliver an in-flight result to the newly installed callback.
-          // Discard the first result after switching so source coordinates agree.
+          // Keep the first-result source-coordinate guard when switching input.
           let skipFirstResult = detectionGeneration > 0;
           const generation = ++detectionGeneration;
           let firstFaceSeenAt: number | undefined;
-          mesh!.detectStart(video, (results) => {
+          resetHealth();
+          const receiveResults = (results: Face[]) => {
             if (
               disposed ||
               generation !== detectionGeneration ||
               (!captured && captureTrack() !== selectedTrack)
             )
               return;
+            lastDetection = performance.now();
             if (skipFirstResult) {
               skipFirstResult = false;
               return;
@@ -427,7 +442,8 @@ export async function createFaceMask(
                   progress('Waiting for a face');
               }
             }
-          });
+          };
+          detection!.detectStart(video, receiveResults, fail);
         };
 
         // Capture can use any video track; animation always follows the camera.
@@ -438,7 +454,8 @@ export async function createFaceMask(
           resetCountdown();
           if (!captured) onCaptureStatus('preparing');
           const generation = ++detectionGeneration;
-          mesh!.detectStop();
+          detection!.detectStop();
+          resetHealth();
           faces = [];
           onCaptureReady?.(undefined);
           switchingSource = true;
@@ -534,6 +551,11 @@ export async function createFaceMask(
             // At density 3, every buffer otherwise contains nine times as many pixels.
             p.pixelDensity(1);
             canvas = p.createCanvas(width, height, p.WEBGL).elt;
+            const contextLost = () =>
+              fail(new Error('Face mask rendering context lost. Try again.'));
+            canvas.addEventListener('webglcontextlost', contextLost);
+            removeContextListener = () =>
+              canvas.removeEventListener('webglcontextlost', contextLost);
             image = p.createGraphics(width, height);
             context = image.canvas.getContext('2d')!;
             liveTexture = p.createGraphics(width, height);
@@ -552,8 +574,33 @@ export async function createFaceMask(
               onCaptureStatus('searching');
             }
             startDetection();
+            document.addEventListener('visibilitychange', resetHealth);
+            removeHealthListener = () =>
+              document.removeEventListener('visibilitychange', resetHealth);
+            healthTimer = setInterval(() => {
+              // Source switches, hidden pages and stopped input are not mask lag.
+              if (
+                document.hidden ||
+                switchingSource ||
+                video.readyState < 2 ||
+                video.currentTime === inputTime
+              ) {
+                resetHealth();
+                return;
+              }
+              inputTime = video.currentTime;
+              const now = performance.now();
+              // Reuse the existing startup tolerance; low-FPS policy needs device evidence.
+              if (now - lastDetection >= FACE_MASK_TIMEOUT_MS) {
+                faces = [];
+                fail(new Error('Face mask tracking stopped. Try again.'));
+              } else if (now - lastDraw >= FACE_MASK_TIMEOUT_MS) {
+                fail(new Error('Face mask rendering stopped. Try again.'));
+              }
+            }, 1000);
           });
           p.draw = guard(() => {
+            lastDraw = performance.now();
             syncCaptureSource();
             if (
               switchingSource &&

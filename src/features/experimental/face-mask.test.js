@@ -1,5 +1,8 @@
 import { afterEach, expect, it, vi } from 'vite-plus/test';
 
+// Renderer tests drive results directly; the real scheduler is tested separately.
+vi.mock('./face-mask-detection', () => ({ faceMaskDetection: (mesh) => mesh }));
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -594,4 +597,99 @@ it('keeps the outline proportions independent of camera aspect ratio', async () 
   expect(landscape.width).toBeCloseTo(portrait.width);
   expect(landscape.height).toBeCloseTo(portrait.height);
   expect(landscape.height).toBeGreaterThan(landscape.width);
+});
+
+it.each([false, true])(
+  'handles context loss before/after preview (preview: %s)',
+  async (preview) => {
+    const env = await setupFaceMask();
+    await waitForCapture(env);
+    let rejected;
+    if (preview) {
+      env.capture();
+      env.sketch.draw();
+      await env.pending;
+    } else {
+      rejected = expect(env.pending).rejects.toThrow('rendering context lost');
+    }
+    env.outputCanvas.dispatchEvent(new Event('webglcontextlost'));
+    if (rejected) await rejected;
+    else expect(env.onError).toHaveBeenCalledOnce();
+    expect(env.sketch.remove).toHaveBeenCalledOnce();
+    env.outputCanvas.dispatchEvent(new Event('webglcontextlost'));
+    expect(env.sketch.remove).toHaveBeenCalledOnce();
+  },
+);
+
+async function monitoredPreview() {
+  vi.useFakeTimers();
+  vi.spyOn(performance, 'now').mockImplementation(() => Date.now());
+  vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
+  vi.spyOn(HTMLMediaElement.prototype, 'currentTime', 'get').mockImplementation(
+    () => Date.now() / 1000,
+  );
+  const env = await setupFaceMask();
+  await waitForCapture(env);
+  env.useRemote();
+  env.sketch.draw();
+  await Promise.resolve();
+  env.sketch.draw();
+  env.capture();
+  await Promise.resolve();
+  env.sketch.draw();
+  env.sketch.draw();
+  await env.pending;
+  return env;
+}
+
+it('stops a preview when detection stalls while input and drawing continue', async () => {
+  const env = await monitoredPreview();
+  for (let i = 0; i < 31; i++) {
+    env.sketch.draw();
+    await vi.advanceTimersByTimeAsync(1000);
+  }
+  expect(env.onError).toHaveBeenCalledWith(
+    expect.objectContaining({
+      message: 'Face mask tracking stopped. Try again.',
+    }),
+  );
+  expect(env.track.stop).toHaveBeenCalledOnce();
+});
+
+it('stops a preview when drawing stalls while detection continues', async () => {
+  const env = await monitoredPreview();
+  for (let i = 0; i < 31; i++) {
+    env.detect([]);
+    await vi.advanceTimersByTimeAsync(1000);
+  }
+  expect(env.onError).toHaveBeenCalledWith(
+    expect.objectContaining({
+      message: 'Face mask rendering stopped. Try again.',
+    }),
+  );
+});
+
+it('does not treat empty detections, stopped input or background/resume as a stall', async () => {
+  const env = await monitoredPreview();
+  for (let i = 0; i < 35; i++) {
+    env.detect([]);
+    env.sketch.draw();
+    await vi.advanceTimersByTimeAsync(1000);
+  }
+  const input = vi
+    .spyOn(HTMLMediaElement.prototype, 'currentTime', 'get')
+    .mockReturnValue(0);
+  await vi.advanceTimersByTimeAsync(35000);
+  input.mockImplementation(() => Date.now() / 1000);
+  const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+  await vi.advanceTimersByTimeAsync(35000);
+  hidden.mockReturnValue(false);
+  // Simulate timers being suspended while the page was hidden.
+  vi.setSystemTime(Date.now() + 35000);
+  document.dispatchEvent(new Event('visibilitychange'));
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(env.onError).not.toHaveBeenCalled();
+  env.controller.abort();
+  await vi.advanceTimersByTimeAsync(35000);
+  expect(env.onError).not.toHaveBeenCalled();
 });
