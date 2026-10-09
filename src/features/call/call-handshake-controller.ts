@@ -701,6 +701,7 @@ export class CallHandshakeController {
       );
     }
     const { signal } = abortController;
+    const acceptanceStartedAt = Date.now();
     this.enterRoom(
       state.call.roomId,
       localUID,
@@ -733,11 +734,23 @@ export class CallHandshakeController {
                 ? 'cancelled-during-acceptance'
                 : null;
           if (stopReason) {
-            console.log('[call] incoming acceptance stopped', {
+            const details = {
               reason: stopReason,
               roomId: state.call.roomId,
               callInviteId: state.call.callInviteId,
-            });
+            };
+            if (stopReason === 'expired-during-acceptance') {
+              console.warn('[call] incoming acceptance stopped', {
+                ...details,
+                acceptanceElapsedMs: Date.now() - acceptanceStartedAt,
+                remainingAtAcceptMs:
+                  state.call.expiresAt == null
+                    ? undefined
+                    : state.call.expiresAt - acceptanceStartedAt,
+              });
+            } else {
+              console.log('[call] incoming acceptance stopped', details);
+            }
           }
           return;
         }
