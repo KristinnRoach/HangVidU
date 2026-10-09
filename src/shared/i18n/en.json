@@ -200,6 +200,8 @@
   "auth.logout_failed": "Logout failed. Please try again.",
   "a11y.add_contact": "Add contact",
   "nav.app_title": "HangVidU",
+  "nav.reload": "Reload HangVidU",
+  "nav.reload_blocked": "Reload unavailable while a call is in progress",
   "nav.privacy": "View Privacy Policy",
   "nav.privacy.short": "Privacy",
   "nav.terms": "View Terms of Service",

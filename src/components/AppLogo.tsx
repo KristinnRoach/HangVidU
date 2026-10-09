@@ -1,13 +1,11 @@
-import { useI18n } from '@shared/i18n/index.js';
+import AppReloadButton from './AppReloadButton';
 
 export default function AppLogo() {
-  const { t } = useI18n();
-
   return (
-    <h1 id='app-title-h1' class='app-title'>
-      <a id='app-title-a' title={t('nav.app_title')}>
-        <span id='app-title-span'>HvU</span>
-      </a>
+    <h1 class="block select-none text-[1.8rem] font-medium tracking-[-0.15em] whitespace-nowrap [font-family:Futura,'Trebuchet_MS',sans-serif] max-sm:hidden">
+      <AppReloadButton class='border-b-2 border-transparent pr-[0.15em] text-[length:inherit] leading-none tracking-[inherit] text-primary hover:border-current hover:[text-shadow:0_0_5px_#00000033]'>
+        HvU
+      </AppReloadButton>
     </h1>
   );
 }
