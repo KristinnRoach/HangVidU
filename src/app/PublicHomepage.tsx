@@ -8,7 +8,7 @@ export default function PublicHomepage() {
 
   return (
     <section class='flex h-full flex-col items-center overflow-y-auto px-6 pt-8 pb-16 text-center text-neutral-200'>
-      <AppReloadButton class='text-4xl font-medium text-primary underline decoration-primary-subtle underline-offset-2'>
+      <AppReloadButton class='text-4xl font-medium text-primary decoration-primary-subtle hover:underline underline-offset-2'>
         HangVidU
       </AppReloadButton>
 
