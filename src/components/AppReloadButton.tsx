@@ -4,7 +4,7 @@ import { subscribe } from '@shared/events';
 import { useI18n } from '@shared/i18n/index.js';
 
 export default function AppReloadButton(
-  props: ParentProps<{ id?: string; class?: string }>,
+  props: ParentProps<{ class?: string }>,
 ) {
   const { t } = useI18n();
   const [reloadAllowed, setReloadAllowed] = createSignal(getAppReloadAllowed());
@@ -20,7 +20,6 @@ export default function AppReloadButton(
 
   return (
     <button
-      id={props.id}
       type='button'
       class={`rounded-none bg-transparent p-0 hover:bg-transparent focus-visible:outline-2 focus-visible:outline-current focus-visible:outline-offset-4 ${props.class ?? ''}`}
       title={t(reloadAllowed() ? 'nav.reload' : 'nav.reload_blocked')}
