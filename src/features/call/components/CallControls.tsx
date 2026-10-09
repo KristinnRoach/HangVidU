@@ -66,7 +66,7 @@ type ActiveCallControlsProps = {
 
 export function ActiveCallControls(props: ActiveCallControlsProps) {
   const media = props.media;
-  const visible = createAutoHide(5000);
+  const { visible } = createAutoHide(5000);
 
   function toggleMic() {
     void Promise.resolve(media.setMicEnabled(!media.micOn())).catch((error) => {

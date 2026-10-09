@@ -27,7 +27,7 @@ vi.mock('../call-handshake', () => ({
   }),
 }));
 vi.mock('@shared/createAutoHide', () => ({
-  createAutoHide: () => () => true,
+  createAutoHide: () => ({ visible: () => true }),
 }));
 vi.mock('../../../shared/i18n', () => ({
   useI18n: () => ({
