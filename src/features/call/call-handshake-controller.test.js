@@ -302,7 +302,12 @@ describe('CallHandshakeController', () => {
       const localStream = createMediaStream({ audio: true, video: true });
       const pendingMedia = deferred();
       mocks.getUserMedia.mockReturnValue(pendingMedia.promise);
-      const onStateChange = vi.fn();
+      const onStateChange = vi.fn((state) => {
+        if (state?.direction === 'accepting') {
+          // Acceptance timing includes synchronous work caused by the state update.
+          vi.setSystemTime(Date.now() + 200);
+        }
+      });
       const p2p = createP2PMock();
       const controller = createController(p2p, { onStateChange });
 
@@ -320,20 +325,23 @@ describe('CallHandshakeController', () => {
       });
       controller.acceptIncoming();
 
-      await vi.advanceTimersByTimeAsync(1_000);
+      await vi.advanceTimersByTimeAsync(800);
       await flushPromises();
 
       expect(onStateChange).toHaveBeenLastCalledWith(null);
       expect(p2p.join).not.toHaveBeenCalled();
       expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledOnce();
-      expect(warn).toHaveBeenCalledWith('[call] incoming acceptance stopped', {
-        reason: 'expired-during-acceptance',
-        roomId: 'room-1',
-        callInviteId: CALL_INVITE_ID,
-        acceptanceElapsedMs: 1_000,
-        remainingAtAcceptMs: 1_000,
-      });
+      expect(warn).toHaveBeenCalledWith(
+        {
+          reason: 'expired-during-acceptance',
+          roomId: 'room-1',
+          callInviteId: CALL_INVITE_ID,
+          acceptanceElapsedMs: 1_000,
+          remainingAtAcceptMs: 1_000,
+        },
+        '[call] incoming acceptance stopped',
+      );
 
       pendingMedia.resolve(localStream);
       await flushPromises();
@@ -384,13 +392,16 @@ describe('CallHandshakeController', () => {
       expect(joinOptions.signal.aborted).toBe(true);
       expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledOnce();
-      expect(warn).toHaveBeenCalledWith('[call] incoming acceptance stopped', {
-        reason: 'expired-during-acceptance',
-        roomId: 'room-1',
-        callInviteId: CALL_INVITE_ID,
-        acceptanceElapsedMs: 1_000,
-        remainingAtAcceptMs: 1_000,
-      });
+      expect(warn).toHaveBeenCalledWith(
+        {
+          reason: 'expired-during-acceptance',
+          roomId: 'room-1',
+          callInviteId: CALL_INVITE_ID,
+          acceptanceElapsedMs: 1_000,
+          remainingAtAcceptMs: 1_000,
+        },
+        '[call] incoming acceptance stopped',
+      );
     } finally {
       vi.useRealTimers();
     }

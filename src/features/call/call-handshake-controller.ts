@@ -688,6 +688,7 @@ export class CallHandshakeController {
     this.incomingAcceptanceAbortController?.abort();
     const abortController = new AbortController();
     this.incomingAcceptanceAbortController = abortController;
+    const acceptanceStartedAt = Date.now();
     this.setHandshakeState({ direction: 'accepting', call: state.call });
     if (state.call.expiresAt != null) {
       this.incomingCallTimeoutId = setTimeout(
@@ -701,7 +702,6 @@ export class CallHandshakeController {
       );
     }
     const { signal } = abortController;
-    const acceptanceStartedAt = Date.now();
     this.enterRoom(
       state.call.roomId,
       localUID,
@@ -740,14 +740,17 @@ export class CallHandshakeController {
               callInviteId: state.call.callInviteId,
             };
             if (stopReason === 'expired-during-acceptance') {
-              console.warn('[call] incoming acceptance stopped', {
-                ...details,
-                acceptanceElapsedMs: Date.now() - acceptanceStartedAt,
-                remainingAtAcceptMs:
-                  state.call.expiresAt == null
-                    ? undefined
-                    : state.call.expiresAt - acceptanceStartedAt,
-              });
+              console.warn(
+                {
+                  ...details,
+                  acceptanceElapsedMs: Date.now() - acceptanceStartedAt,
+                  remainingAtAcceptMs:
+                    state.call.expiresAt == null
+                      ? undefined
+                      : state.call.expiresAt - acceptanceStartedAt,
+                },
+                '[call] incoming acceptance stopped',
+              );
             } else {
               console.log('[call] incoming acceptance stopped', details);
             }
