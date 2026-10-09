@@ -298,10 +298,16 @@ describe('CallHandshakeController', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-14T12:00:00Z'));
     try {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const localStream = createMediaStream({ audio: true, video: true });
       const pendingMedia = deferred();
       mocks.getUserMedia.mockReturnValue(pendingMedia.promise);
-      const onStateChange = vi.fn();
+      const onStateChange = vi.fn((state) => {
+        if (state?.direction === 'accepting') {
+          // Acceptance timing includes synchronous work caused by the state update.
+          vi.setSystemTime(Date.now() + 200);
+        }
+      });
       const p2p = createP2PMock();
       const controller = createController(p2p, { onStateChange });
 
@@ -319,18 +325,30 @@ describe('CallHandshakeController', () => {
       });
       controller.acceptIncoming();
 
-      await vi.advanceTimersByTimeAsync(1_000);
+      await vi.advanceTimersByTimeAsync(800);
       await flushPromises();
 
       expect(onStateChange).toHaveBeenLastCalledWith(null);
       expect(p2p.join).not.toHaveBeenCalled();
       expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledOnce();
+      expect(warn).toHaveBeenCalledWith(
+        {
+          reason: 'expired-during-acceptance',
+          roomId: 'room-1',
+          callInviteId: CALL_INVITE_ID,
+          acceptanceElapsedMs: 1_000,
+          remainingAtAcceptMs: 1_000,
+        },
+        '[call] incoming acceptance stopped',
+      );
 
       pendingMedia.resolve(localStream);
       await flushPromises();
       localStream
         .getTracks()
         .forEach((track) => expect(track.stop).toHaveBeenCalledOnce());
+      expect(warn).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();
     }
@@ -340,7 +358,7 @@ describe('CallHandshakeController', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-14T12:00:00Z'));
     try {
-      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const join = deferred();
       let joinOptions;
       const p2p = createP2PMock({
@@ -373,11 +391,17 @@ describe('CallHandshakeController', () => {
 
       expect(joinOptions.signal.aborted).toBe(true);
       expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
-      expect(log).toHaveBeenCalledWith('[call] incoming acceptance stopped', {
-        reason: 'expired-during-acceptance',
-        roomId: 'room-1',
-        callInviteId: CALL_INVITE_ID,
-      });
+      expect(warn).toHaveBeenCalledOnce();
+      expect(warn).toHaveBeenCalledWith(
+        {
+          reason: 'expired-during-acceptance',
+          roomId: 'room-1',
+          callInviteId: CALL_INVITE_ID,
+          acceptanceElapsedMs: 1_000,
+          remainingAtAcceptMs: 1_000,
+        },
+        '[call] incoming acceptance stopped',
+      );
     } finally {
       vi.useRealTimers();
     }
@@ -385,6 +409,7 @@ describe('CallHandshakeController', () => {
 
   it('aborts an active acceptance when the invite is dismissed', async () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const join = deferred();
     let joinOptions;
     const onStateChange = vi.fn();
@@ -428,6 +453,7 @@ describe('CallHandshakeController', () => {
       roomId: 'room-1',
       callInviteId: CALL_INVITE_ID,
     });
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it('keeps accepting when the responding callee receives its handled echo', async () => {
