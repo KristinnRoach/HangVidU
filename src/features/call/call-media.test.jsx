@@ -925,6 +925,25 @@ describe('experimental face mask lifecycle', () => {
     dispose();
   });
 
+  it('cancels a failed private preview without publishing it', async () => {
+    const { camera, mask, room, media, dispose } = setup();
+    const pending = media.toggleFaceMask();
+    await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
+    maskMocks.createFaceMask.mock.calls[0][2].onError(
+      new Error('Face mask tracking stopped. Try again.'),
+    );
+    await pending;
+    expect(media.faceMaskPreview()).toBeUndefined();
+    expect(media.faceMaskCapturing()).toBe(false);
+    expect(media.faceMaskError()).toBe(
+      'Face mask tracking stopped. Try again.',
+    );
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+    expect(mask.dispose).toHaveBeenCalledOnce();
+    expect(camera.stop).not.toHaveBeenCalled();
+    dispose();
+  });
+
   it('restores the camera and reports a renderer failure after publishing', async () => {
     const { camera, mask, room, media, dispose } = setup();
     await toggleAndApply(media);
