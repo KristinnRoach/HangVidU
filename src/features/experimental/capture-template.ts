@@ -2,8 +2,6 @@
 // Source: https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/modules/face_geometry/data/canonical_face_model.obj
 // Copyright Google LLC. Licensed under Apache-2.0:
 // https://www.apache.org/licenses/LICENSE-2.0
-export const FACE_MASK_CAPTURE_MODE: 'outline' | 'detected' = 'outline';
-
 export const capturePoints: [number, number][] = [
   [0.5, 0.636442],
   [0.5, 0.526756],
@@ -480,8 +478,21 @@ export const faceBoundary = [
   400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21,
   54, 103, 67, 109,
 ];
-export function captureOutline(aspect: number) {
-  return faceBoundary
+// Fixed eye and outer-lip contours, using the same landmarks as manual capture.
+export const captureFeatureContours = [
+  [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246],
+  [
+    263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388,
+    466,
+  ],
+  [
+    61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 409, 270, 269, 267, 0,
+    37, 39, 40, 185,
+  ],
+];
+
+export function captureOutline(aspect: number, contour = faceBoundary) {
+  return contour
     .map((index) => {
       const [x, y] = capturePoints[index]!;
       return `${aspect / 2 + x - 0.5},${y}`;

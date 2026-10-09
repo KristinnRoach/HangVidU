@@ -105,7 +105,7 @@ describe('ActiveCallControls', () => {
         />
       );
     });
-    const button = getByRole('button', { name: 'Experimental face mask' });
+    const button = getByRole('button', { name: 'Face mask' });
     expect(button.disabled).toBe(true);
     fireEvent.click(button);
     expect(toggleFaceMask).not.toHaveBeenCalled();

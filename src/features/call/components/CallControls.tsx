@@ -105,6 +105,16 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
     >
       <button
         type='button'
+        onClick={toggleCam}
+        disabled={media.cameraPending() || media.screenSharing()}
+        classList={{ [styles.off!]: !media.cameraOn() }}
+        title={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
+        aria-label={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
+      >
+        {media.cameraOn() ? <Video /> : <VideoOff />}
+      </button>
+      <button
+        type='button'
         onClick={toggleMic}
         classList={{ [styles.off!]: !media.micOn() }}
         title={media.micOn() ? 'Mute mic' : 'Unmute mic'}
@@ -114,33 +124,17 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
       </button>
       <button
         type='button'
-        onClick={toggleCam}
-        disabled={media.cameraPending() || media.screenSharing()}
-        classList={{ [styles.off!]: !media.cameraOn() }}
-        title={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
-        aria-label={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
+        onClick={() => props.onRemoteAudioMutedChange(!props.remoteAudioMuted)}
+        classList={{ [styles.off!]: props.remoteAudioMuted }}
+        title={
+          props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
+        }
+        aria-label={
+          props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
+        }
       >
-        {media.cameraOn() ? <Video /> : <VideoOff />}
+        {props.remoteAudioMuted ? <VolumeX /> : <Volume2 />}
       </button>
-      <Show when={media.faceMaskSupported()}>
-        <button
-          type='button'
-          onClick={() => void media.toggleFaceMask()}
-          disabled={
-            (!media.mediaFlowing() && !media.faceMaskOn()) ||
-            media.cameraPending() ||
-            media.screenSharing() ||
-            !media.cameraOn()
-          }
-          aria-pressed={media.faceMaskOn()}
-          title={
-            media.faceMaskOn() ? 'Turn face mask off' : 'Experimental face mask'
-          }
-          aria-label='Experimental face mask'
-        >
-          <ScanFace />
-        </button>
-      </Show>
       <Show when={media.cameraSwitchAvailable()}>
         <button
           type='button'
@@ -168,19 +162,26 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
           {media.screenSharing() ? <ScreenShareOff /> : <ScreenShare />}
         </button>
       </Show>
-      <button
-        type='button'
-        onClick={() => props.onRemoteAudioMutedChange(!props.remoteAudioMuted)}
-        classList={{ [styles.off!]: props.remoteAudioMuted }}
-        title={
-          props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
-        }
-        aria-label={
-          props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
-        }
-      >
-        {props.remoteAudioMuted ? <VolumeX /> : <Volume2 />}
-      </button>
+
+      <Show when={media.faceMaskSupported()}>
+        <button
+          type='button'
+          onClick={() => void media.toggleFaceMask()}
+          disabled={
+            (!media.mediaFlowing() && !media.faceMaskOn()) ||
+            media.cameraPending() ||
+            media.screenSharing() ||
+            !media.cameraOn()
+          }
+          aria-pressed={media.faceMaskOn()}
+          title={media.faceMaskOn() ? 'Remove mask' : 'Face mask'}
+          aria-label={media.faceMaskOn() ? 'Remove mask' : 'Face mask'}
+          classList={{ [styles.active!]: media.faceMaskOn() }}
+        >
+          <ScanFace />
+        </button>
+      </Show>
+
       <EndCallButton />
     </div>
   );
