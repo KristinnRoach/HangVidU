@@ -1,0 +1,11 @@
+.reload {
+  color: var(--color-primary);
+  font: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+}
+
+.reload:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}

@@ -200,6 +200,8 @@
   "auth.logout_failed": "Útskráning mistókst. Reyndu aftur.",
   "a11y.add_contact": "Bæta tengilið",
   "nav.app_title": "HangVidU",
+  "nav.reload": "Endurhlaða HangVidU",
+  "nav.reload_blocked": "Ekki hægt að endurhlaða á meðan símtal er í gangi",
   "nav.privacy": "Skoða persónuverndarstefnu",
   "nav.privacy.short": "Persónuvernd",
   "nav.terms": "Skoða skilmála",
