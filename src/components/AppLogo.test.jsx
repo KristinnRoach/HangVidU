@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render } from '@solidjs/testing-library';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { holdAppReload } from '@shared/app-reload';
 import AppLogo from './AppLogo';
+import AppReloadButton from './AppReloadButton';
 
 vi.mock('@shared/i18n/index.js', () => ({
   useI18n: () => ({ t: (key) => key }),
@@ -15,11 +16,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('AppLogo', () => {
+describe.each([
+  ['AppLogo', AppLogo],
+  ['homepage title button', () => <AppReloadButton>HangVidU</AppReloadButton>],
+])('%s', (_name, Component) => {
   it('reloads the current page when allowed', () => {
     const reload = vi.fn();
     vi.stubGlobal('window', { location: { reload } });
-    const { getByRole } = render(() => <AppLogo />);
+    const { getByRole } = render(() => <Component />);
 
     fireEvent.click(getByRole('button', { name: 'nav.reload' }));
 
@@ -29,7 +33,7 @@ describe('AppLogo', () => {
   it('blocks clicks during calls without scheduling a reload for later', () => {
     const reload = vi.fn();
     vi.stubGlobal('window', { location: { reload } });
-    const { getByRole } = render(() => <AppLogo />);
+    const { getByRole } = render(() => <Component />);
     const button = getByRole('button', { name: 'nav.reload' });
     const releaseIncomingCall = holdAppReload();
     const releaseActiveCall = holdAppReload();

@@ -10,8 +10,9 @@ Current uses:
   the P2P session is not idle, releasing it when the call ends or on cleanup.
 - PWA updates wait for the gate before reloading; the PWA wrapper also deduplicates
   pending reload requests.
-- AppLogo disables its reload button while the gate is held and checks it again
-  on click. Blocked clicks are discarded, not queued.
+- AppLogo and the public homepage title share AppReloadButton, which disables
+  reload while the gate is held and checks it again on click. Blocked clicks
+  are discarded, not queued.
 
 ## API
 
