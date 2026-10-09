@@ -1,4 +1,5 @@
-import { Show, createSignal } from 'solid-js';
+import { Show, createSignal, createEffect, onCleanup } from 'solid-js';
+import type { AutoHideController } from '@shared/createAutoHide';
 
 import { MemberStreams } from './MemberStreams';
 import { ActiveCallControls } from './CallControls';
@@ -9,11 +10,16 @@ import { t } from '@shared/i18n';
 
 import styles from './ActiveCallRoom.module.css';
 
-export function ActiveCallRoom() {
+export function ActiveCallRoom(props: {
+  holdTopBar: AutoHideController['hold'];
+}) {
   const p2p = useP2PContext();
   const { reconnectStatus } = useCallHandshake();
   // createCallMedia owns local imperative track state (camera tracks, screen-share track)
   const media = createCallMedia(p2p);
+  createEffect(() => {
+    if (media.faceMaskCapturing()) onCleanup(props.holdTopBar('hidden'));
+  });
 
   // Room-link (guest) calls carry ?publicRoom= in the URL; contact calls don't.
   // Only those can re-share the page URL as an invite.

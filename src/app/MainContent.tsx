@@ -140,7 +140,7 @@ export default function MainContent() {
           selectedConversation={selectedConversation() ?? undefined}
           isInCall={p2p.state() !== 'idle'}
           showAuthenticatedUi={showAuthenticatedUi()}
-          visible={headerVisible()}
+          visible={headerVisible.visible()}
         />
 
         <main id='main-content' class={mainStyles.mainContent}>
@@ -166,7 +166,7 @@ export default function MainContent() {
                   </div>
                 }
               >
-                <ActiveCallRoom />
+                <ActiveCallRoom holdTopBar={headerVisible.hold} />
               </LoadBoundary>
             </div>
           </Show>
