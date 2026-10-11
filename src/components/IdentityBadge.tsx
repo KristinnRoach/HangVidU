@@ -53,7 +53,7 @@ export default function IdentityBadge(props: IdentityBadgeProps) {
         />
       </Show>
 
-      <span class='overflow-hidden text-ellipsis whitespace-nowrap'>
+      <span class='max-sm:hidden overflow-hidden text-ellipsis whitespace-nowrap'>
         {displayName()}
       </span>
     </div>
