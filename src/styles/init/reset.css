@@ -27,6 +27,19 @@ body {
   background: var(--bg-primary);
 }
 
+/* Native refresh is available except while a call cannot survive reload. */
+html[data-call-active],
+html[data-call-active] body {
+  overflow: hidden;
+  overscroll-behavior-y: none;
+}
+
+html[data-call-active] #root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
 a {
   color: rgb(255, 255, 255);
 }

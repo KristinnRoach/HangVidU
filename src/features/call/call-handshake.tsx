@@ -12,7 +12,10 @@ import { getAuthProviderProfileSeed, useAuth } from '@auth';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { createRoomSignaling } from '@realtime';
 import { subscribe } from '@shared/events/index.js';
-import { holdAppReload } from '@shared/app-reload/index.js';
+import {
+  getAppReloadAllowed,
+  holdAppReload,
+} from '@shared/app-reload/index.js';
 import { createScreenWakeLock } from '@shared/createScreenWakeLock';
 import { getLoggedInUserProfile } from '../../stores/user-profile-store.js';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
@@ -147,6 +150,14 @@ export function CallHandshakeProvider(props: ParentProps) {
 
   onCleanup(() => releaseReloadHold?.());
 
+  createEffect(() => {
+    document.documentElement.toggleAttribute(
+      'data-call-active',
+      p2p.state() !== 'idle',
+    );
+  });
+  onCleanup(() => document.documentElement.removeAttribute('data-call-active'));
+
   const controller = new CallHandshakeController({
     p2p,
     createSignaling: createRoomSignaling,
@@ -277,10 +288,22 @@ export function CallHandshakeProvider(props: ParentProps) {
   });
 
   if (typeof window !== 'undefined') {
-    const handleBeforeUnload = () => controller.cleanup();
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (p2p.state() === 'idle' || getAppReloadAllowed()) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    const handlePageHide = () => controller.cleanup();
+    createEffect(() => {
+      if (p2p.state() === 'idle') return;
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      onCleanup(() =>
+        window.removeEventListener('beforeunload', handleBeforeUnload),
+      );
+    });
+    window.addEventListener('pagehide', handlePageHide);
     onCleanup(() => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
       controller.cleanup();
     });
   } else {
