@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => {
       printWidth: 80,
     },
     lint: {
-      plugins: ['oxc', 'typescript', 'unicorn', 'react', 'import'],
+      plugins: ['oxc', 'typescript', 'unicorn', 'import'],
 
       categories: {
         correctness: 'error',
@@ -205,8 +205,6 @@ export default defineConfig(({ mode }) => {
       rules: {
         'vite-plus/prefer-vite-plus-imports': 'error',
         'local/event-name-format': 'error',
-        // Solid JSX has no key prop; the React rule is noise here.
-        'react/jsx-key': 'off',
       },
     },
     base: basePath,
