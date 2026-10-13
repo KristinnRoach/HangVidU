@@ -1,17 +1,29 @@
 import { describe, it, expect, vi } from 'vite-plus/test';
 
-// Mock dependencies so the module can load — only t() matters for getBlockedMessage
+vi.mock('../../../components/base-legacy/notification.js', () => ({
+  createNotification: vi.fn((options) => options),
+  buildTemplate: vi.fn((template) => template),
+}));
+
+vi.mock('../../../components/base-legacy/toast.js', () => ({
+  showErrorToast: vi.fn(),
+  showSuccessToast: vi.fn(),
+  showWarningToast: vi.fn(),
+}));
+
 vi.mock('@push/index.js', () => ({
   getPushNotifications: vi.fn(() => ({})),
   pushNotifications: {},
 }));
 
-vi.mock('../index.js', () => ({
+vi.mock('../in-app-notification-manager.js', () => ({
   inAppNotificationManager: { has: vi.fn(), add: vi.fn(), remove: vi.fn() },
 }));
 
 // Mock i18n with a fake t() that returns known values for known keys
 const fakeTranslations = {
+  'notification.enable.failed_push_setup': 'Generic push setup guidance',
+  'notification.enable.failed_push_setup.brave': 'Brave push setup guidance',
   'notification.enable.blocked':
     'Notifications blocked. Check browser settings.',
   'notification.enable.blocked.chrome':
@@ -31,14 +43,44 @@ vi.mock('../../../shared/i18n/index.js', () => ({
   onLocaleChange: vi.fn(),
 }));
 
-const { getBlockedMessage } =
+import { getPushNotifications } from '@push';
+import { showErrorToast } from '../../../components/base-legacy/toast.js';
+
+const { getBlockedMessage, showEnableNotificationsPrompt } =
   await import('../components/enable-notifications-prompt.js');
 
+it.each(['Brave', 'Chromium'])(
+  'shows the appropriate push setup guidance for %s',
+  async (browser) => {
+    getPushNotifications.mockReturnValue({
+      requestPermission: vi.fn().mockResolvedValue({
+        state: 'error',
+        reason: 'enable-failed',
+        browser,
+      }),
+    });
+    const notification = showEnableNotificationsPrompt();
+    const button = { disabled: false, textContent: 'Enable' };
+
+    await notification.handlers.handleEnable({ target: button });
+
+    const key =
+      browser === 'Brave'
+        ? 'notification.enable.failed_push_setup.brave'
+        : 'notification.enable.failed_push_setup';
+    expect(showErrorToast).toHaveBeenLastCalledWith(fakeTranslations[key]);
+    expect(button.disabled).toBe(false);
+  },
+);
+
 describe('getBlockedMessage', () => {
-  it('should return Chrome-specific message for Chrome', () => {
-    const msg = getBlockedMessage('Chrome', 'already-denied');
-    expect(msg).toBe(fakeTranslations['notification.enable.blocked.chrome']);
-  });
+  it.each(['Chrome', 'Chromium', 'Edge', 'Brave'])(
+    'returns site-permission guidance for %s',
+    (browser) => {
+      const msg = getBlockedMessage(browser, 'already-denied');
+      expect(msg).toBe(fakeTranslations['notification.enable.blocked.chrome']);
+    },
+  );
 
   it('should return Firefox-specific message for Firefox', () => {
     const msg = getBlockedMessage('Firefox', 'already-denied');
