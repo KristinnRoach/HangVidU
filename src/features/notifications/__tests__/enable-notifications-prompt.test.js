@@ -74,10 +74,13 @@ it.each(['Brave', 'Chromium'])(
 );
 
 describe('getBlockedMessage', () => {
-  it('should return Chrome-specific message for Chrome', () => {
-    const msg = getBlockedMessage('Chrome', 'already-denied');
-    expect(msg).toBe(fakeTranslations['notification.enable.blocked.chrome']);
-  });
+  it.each(['Chrome', 'Chromium', 'Edge', 'Brave'])(
+    'returns site-permission guidance for %s',
+    (browser) => {
+      const msg = getBlockedMessage(browser, 'already-denied');
+      expect(msg).toBe(fakeTranslations['notification.enable.blocked.chrome']);
+    },
+  );
 
   it('should return Firefox-specific message for Firefox', () => {
     const msg = getBlockedMessage('Firefox', 'already-denied');

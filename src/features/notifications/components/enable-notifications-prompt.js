@@ -31,7 +31,7 @@ export function getBlockedMessage(browser, reason) {
   }
 
   const browserKey = browser?.toLowerCase();
-  if (browserKey === 'chrome') {
+  if (['chrome', 'chromium', 'edge', 'brave'].includes(browserKey)) {
     const msg = t('notification.enable.blocked.chrome');
     if (msg && msg !== 'notification.enable.blocked.chrome') return msg;
     return 'Notifications blocked. Click the icon in the address bar to allow.';

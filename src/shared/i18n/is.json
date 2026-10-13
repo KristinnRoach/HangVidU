@@ -158,7 +158,7 @@
   "notification.invite.accepting": "Tekið á móti...",
   "notification.invite.declining": "Hafnar...",
   "notification.push.unsupported.title": "Push tilkynningar ekki studdar",
-  "notification.push.unsupported.body": "Vafrinn þinn styður ekki push tilkynningar.\nTil að fá tilkynningar um símtöl þegar appið er ekki í forgrunni, settu upp í gegnum Chrome, Edge eða Firefox.",
+  "notification.push.unsupported.body": "Push-tilkynningar eru ekki tiltækar hér.\nÁ iPhone eða iPad skaltu bæta HangVidU við heimaskjáinn og opna það þaðan. Á öðrum tækjum skaltu prófa Chrome, Edge eða Firefox.",
   "notification.push.got_it": "Allt í lagi",
   "notification.referral.title": "Þér hefur verið boðið",
   "notification.referral.suffix": "býður þér að tengjast",

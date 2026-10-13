@@ -158,7 +158,7 @@
   "notification.invite.accepting": "Accepting...",
   "notification.invite.declining": "Declining...",
   "notification.push.unsupported.title": "Push notifications unavailable",
-  "notification.push.unsupported.body": "Your browser doesn't support push notifications.\nTo receive call alerts when the app isn't focused, install via Chrome, Edge, or Firefox.",
+  "notification.push.unsupported.body": "Push notifications aren't available here.\nOn iPhone or iPad, add HangVidU to your Home Screen and open it there. On other devices, try Chrome, Edge, or Firefox.",
   "notification.push.got_it": "Got it",
   "notification.referral.title": "You've been invited",
   "notification.referral.suffix": "invited you to connect",
