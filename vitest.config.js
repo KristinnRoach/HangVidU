@@ -37,7 +37,6 @@ export default defineConfig({
       // Default: runs in Node with jsdom (no Playwright RPC overhead)
       // Convention: *.test.js / *.test.jsx
       {
-        plugins: [solid()],
         resolve: {
           tsconfigPaths: true,
           dedupe: ['solid-js'],
@@ -76,7 +75,6 @@ export default defineConfig({
       // needing real WebRTC, OPFS, ServiceWorker, or other APIs jsdom can't
       // provide
       {
-        plugins: [solid()],
         resolve: {
           tsconfigPaths: true,
           dedupe: ['solid-js'],
