@@ -48,7 +48,7 @@ export const placeInSmallFrame = (element) => {
     toggle.classList.add('small-frame-toggle-div');
     const icon = document.createElement('span');
     icon.classList.add('small-frame-toggle-icon');
-    icon.textContent = '❮'; // ❮ | ⟨
+    icon.textContent = '❮'; // ❮ | ⟨
     toggle.appendChild(icon);
     element.appendChild(toggle);
     toggle.addEventListener('click', () => {

@@ -39,6 +39,8 @@ export function MemberStreams(props: MemberStreamsProps) {
       }}
     >
       <Show when={p2p.localStream()}>
+        {/* Solid uses callback arity to identify render functions. */}
+        {/* oxlint-disable-next-line no-unused-vars */}
         {(_) => (
           <ParticipantMedia
             stream={props.media.faceMaskPreview?.() ?? p2p.localStream()!}

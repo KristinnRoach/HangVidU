@@ -14,11 +14,11 @@
  *   rooms-expired       Delete rooms whose meta.expiresAt is in the past.
  *                       Catches abandoned new-flow rooms not cleaned by
  *                       their owner.
- *   convo-members       Delete conversations/*​/members. Orphan data from
+ *   convo-members       Delete conversations/{id}/members. Orphan data from
  *                       the reverted membership-index rollout (commits
  *                       36fe7b3c / 1fa8130c). Rule still works via the
  *                       substring fallback.
- *   user-convo-index    Delete users/*​/conversations. Same abandoned
+ *   user-convo-index    Delete users/{uid}/conversations. Same abandoned
  *                       reverse-index rollout.
  *   notifications       Delete all notifications/*. The path is dead —
  *                       no client reads or writes it.
