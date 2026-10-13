@@ -13,6 +13,8 @@ Current uses:
 - AppLogo and the public homepage title share AppReloadButton, which disables
   reload while the gate is held and checks it again on click. Blocked clicks
   are discarded, not queued.
+- Active call sessions suppress native pull-to-refresh and request a browser
+  unload confirmation where supported; cancelled reloads preserve the call.
 
 ## API
 

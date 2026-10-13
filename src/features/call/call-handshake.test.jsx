@@ -54,6 +54,35 @@ vi.mock('@shared/events/index.js', () => ({
 }));
 
 describe('CallHandshakeProvider', () => {
+  it('guards browser reload only during a call and preserves it when reload is cancelled', () => {
+    const [state, setState] = createSignal('idle');
+    mocks.p2pState = state;
+    render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
+    const unload = () => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    mocks.controllerOptions.onStateChange({
+      direction: 'incoming',
+      call: { roomId: 'room-1' },
+    });
+    expect(unload()).toBe(false);
+    setState('joined');
+    expect(document.documentElement.hasAttribute('data-call-active')).toBe(
+      true,
+    );
+    mocks.cleanup.mockClear();
+    expect(unload()).toBe(true);
+    expect(mocks.cleanup).not.toHaveBeenCalled();
+    window.dispatchEvent(new Event('pagehide'));
+    expect(mocks.cleanup).toHaveBeenCalledOnce();
+    setState('idle');
+    expect(unload()).toBe(false);
+    expect(document.documentElement.hasAttribute('data-call-active')).toBe(
+      false,
+    );
+  });
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
