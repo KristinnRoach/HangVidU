@@ -1,4 +1,4 @@
-import type { D1Migration } from '@cloudflare/vitest-pool-workers';
+import type { D1Migration } from '@cloudflare/vitest-plugin';
 
 // Type the bindings the test pool exposes via `cloudflare:test`. `DB` mirrors the
 // worker's binding; `TEST_MIGRATIONS` is injected by vitest.config.ts.
