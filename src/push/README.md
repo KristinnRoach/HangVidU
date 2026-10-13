@@ -26,3 +26,8 @@ Extension rules:
 - add new notification kinds through the shared/backend/service-worker path together, not by adding ad hoc client APIs
 - keep [index.js](./index.js) as the only public import boundary
 - avoid introducing debug-only endpoints or window globals into the production path
+
+Troubleshooting:
+
+- In Brave, enable “Use Google services for push messaging” in browser settings and restart Brave if push setup fails.
+- If setup succeeds but notifications do not appear on macOS, check System Settings → Notifications for Brave or the installed app, and check Focus settings.

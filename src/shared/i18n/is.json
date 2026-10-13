@@ -145,6 +145,7 @@
   "notification.enable.blocked.firefox": "Tilkynningar blokkaðar. Smelltu á lástáknið í veffangastikunni, síðan Heimildir.",
   "notification.enable.silent_block": "Tilkynningar voru sjálfkrafa blokkaðar af {browser}. Opnaðu vefstillingar í veffangastikunni til að leyfa.",
   "notification.enable.failed_push_setup": "Tilkynningar leyfðar, en uppsetning mistókst.",
+  "notification.enable.failed_push_setup.brave": "Uppsetning tilkynninga mistókst. Athugaðu hvort ‘Use Google services for push messaging’ sé virkt í stillingum Brave, endurræstu síðan Brave og reyndu aftur.",
   "notification.enable.timeout": "Beiðni um tilkynningaheimild kláraðist ekki. Athugaðu vafragluggann eða reyndu aftur.",
   "notification.missed.title": "Missað símtal",
   "notification.missed.suffix": "reyndi að hringja í þig",

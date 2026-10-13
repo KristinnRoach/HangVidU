@@ -135,6 +135,22 @@ describe('PushNotifications', () => {
     expect(controller.getPermissionState()).toBe('granted');
   });
 
+  it.each([
+    [{ isBrave: () => Promise.resolve(true) }, 'Brave'],
+    [undefined, 'Chromium'],
+  ])('detects Brave before the Chromium brand', (brave, expected) => {
+    const originalNavigator = navigator;
+    vi.stubGlobal('navigator', {
+      brave,
+      userAgentData: { brands: [{ brand: 'Chromium' }] },
+    });
+    try {
+      expect(controller.detectBrowser()).toBe(expected);
+    } finally {
+      vi.stubGlobal('navigator', originalNavigator);
+    }
+  });
+
   it('rejects message notifications without sender and conversation ids', async () => {
     await expect(
       controller.sendMessageNotification({ recipientIds: ['user-a'] }),

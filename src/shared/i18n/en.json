@@ -145,6 +145,7 @@
   "notification.enable.blocked.firefox": "Notifications blocked. Click the lock icon in the address bar, then Permissions.",
   "notification.enable.silent_block": "Notifications were automatically blocked by {browser}. Open site settings in the address bar to allow.",
   "notification.enable.failed_push_setup": "Notifications allowed, but push setup failed.",
+  "notification.enable.failed_push_setup.brave": "Push setup failed. Check that ‘Use Google services for push messaging’ is enabled in Brave settings, then restart Brave and try again.",
   "notification.enable.timeout": "Notification permission did not complete. Check the browser prompt or try again.",
   "notification.missed.title": "Missed Call",
   "notification.missed.suffix": "tried to call you",

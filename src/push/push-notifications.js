@@ -574,6 +574,8 @@ export class PushNotifications {
   }
 
   detectBrowser() {
+    if (navigator.brave?.isBrave) return 'Brave';
+
     if (navigator.userAgentData && navigator.userAgentData.brands) {
       const brands = navigator.userAgentData.brands.map((brand) => brand.brand);
       if (brands.some((brand) => brand.includes('Microsoft Edge')))

@@ -108,8 +108,11 @@ export function showEnableNotificationsPrompt() {
                 result.error || result,
               );
               showErrorToast(
-                t('notification.enable.failed_push_setup') ||
-                  'Notifications allowed, but push setup failed. Try reloading or check browser support.',
+                t(
+                  result.browser === 'Brave'
+                    ? 'notification.enable.failed_push_setup.brave'
+                    : 'notification.enable.failed_push_setup',
+                ),
               );
               btn.disabled = false;
               btn.textContent = t('shared.enable');
