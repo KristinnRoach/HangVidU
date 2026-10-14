@@ -1,0 +1,8 @@
+# HangVidU
+
+> HangVidU is a messaging app for peer-to-peer video calls and chat.
+
+## Legal
+
+- [Privacy Policy](https://hangvidu.com/privacy-policy.html)
+- [Terms of Service](https://hangvidu.com/terms-of-service.html)
