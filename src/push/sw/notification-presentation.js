@@ -84,8 +84,8 @@ export function buildNotificationPresentation(payload, baseUrl) {
       badge: iconUrl,
       data,
       ...(tag ? { tag } : {}),
-      requireInteraction:
-        isIncomingCallType(data.type) || data.type === 'message', // ! TEMP requireInteraction on 'message' until Android issues resolved // TODO: Reconsider when working
+      requireInteraction: false,
+      // isIncomingCallType(data.type) || data.type === 'message', // TEMP requireInteraction on 'message' until Android issues resolved - Reconsider when working
       // Re-alert (sound/vibrate/heads-up) when a tagged notification is replaced.
       // Without this, the 2nd+ message from the same sender (same tag) updates
       // silently on Android even on an Alerting channel.

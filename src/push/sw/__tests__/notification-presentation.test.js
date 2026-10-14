@@ -70,7 +70,6 @@ describe('notification presentation', () => {
     expect(presentation.title).toBe('Incoming call from Alice');
     expect(presentation.tag).toBe('call_notif-1');
     expect(presentation.options.tag).toBe('call_notif-1');
-    expect(presentation.options.requireInteraction).toBe(true);
     expect(presentation.options.actions).toEqual([
       { action: 'accept', title: 'Accept' },
     ]);

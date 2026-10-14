@@ -47,7 +47,6 @@ describe('handlePushEvent', () => {
           type: 'incoming_call',
           roomId: 'room-1',
         }),
-        requireInteraction: true,
       }),
     );
     expect(postMessage).toHaveBeenCalledWith({
