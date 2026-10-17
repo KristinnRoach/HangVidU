@@ -31,6 +31,7 @@ interface SdpEnvelope {
 interface RelaySubscription {
   from: string;
   channel: RelayChannel;
+  sdpKind?: SdpEnvelope['kind'];
   handler: (data: unknown) => void;
 }
 
@@ -57,6 +58,26 @@ export function createDoRoomSignaling({
   let localData: P2PRoomPresenceData | undefined;
   const peersHandlers = new Set<(snapshot: P2PRoomPresenceSnapshot) => void>();
   const relaySubs = new Set<RelaySubscription>();
+  const startedAt = Date.now();
+
+  function traceSdp(
+    event: string,
+    remotePeerId: string,
+    kind: unknown,
+    listenerCount?: number,
+  ) {
+    const now = Date.now();
+    console.info('[signaling]', {
+      event,
+      timestamp: new Date(now).toISOString(),
+      elapsedMs: now - startedAt,
+      roomId,
+      localPeerId: joinedPeerId,
+      remotePeerId,
+      kind,
+      listenerCount,
+    });
+  }
 
   // Build the join message, omitting `data` when absent so the no-presence
   // wire stays minimal.
@@ -88,6 +109,21 @@ export function createDoRoomSignaling({
         return;
       }
       case 'relay':
+        if (message.channel === 'sdp') {
+          const kind = (message.data as SdpEnvelope | null)?.kind;
+          const listenerCount = [...relaySubs].filter(
+            (sub) =>
+              sub.from === message.from &&
+              sub.channel === 'sdp' &&
+              sub.sdpKind === kind,
+          ).length;
+          if (kind === 'offer') {
+            traceSdp('offer-arrived', message.from, kind, listenerCount);
+          }
+          if (listenerCount === 0) {
+            traceSdp('sdp-unmatched', message.from, kind, listenerCount);
+          }
+        }
         for (const sub of relaySubs) {
           if (sub.from === message.from && sub.channel === message.channel) {
             sub.handler(message.data);
@@ -109,9 +145,14 @@ export function createDoRoomSignaling({
     from: string,
     channel: RelayChannel,
     handler: (data: unknown) => void,
+    sdpKind?: SdpEnvelope['kind'],
   ): () => void {
-    const sub: RelaySubscription = { from, channel, handler };
+    // Kind metadata is diagnostic only; relay dispatch stays unchanged.
+    const sub: RelaySubscription = { from, channel, handler, sdpKind };
     relaySubs.add(sub);
+    if (sdpKind === 'offer') {
+      traceSdp('offer-listener-registered', from, sdpKind);
+    }
     return () => relaySubs.delete(sub);
   }
 
@@ -175,16 +216,26 @@ export function createDoRoomSignaling({
           sendRelay('sdp', { kind: 'answer', payload: answer } as SdpEnvelope),
 
         onOffer(callback) {
-          return subscribeRelay(remotePeerId, 'sdp', (data) => {
-            const env = data as SdpEnvelope;
-            if (env?.kind === 'offer') callback(env.payload);
-          });
+          return subscribeRelay(
+            remotePeerId,
+            'sdp',
+            (data) => {
+              const env = data as SdpEnvelope;
+              if (env?.kind === 'offer') callback(env.payload);
+            },
+            'offer',
+          );
         },
         onAnswer(callback) {
-          return subscribeRelay(remotePeerId, 'sdp', (data) => {
-            const env = data as SdpEnvelope;
-            if (env?.kind === 'answer') callback(env.payload);
-          });
+          return subscribeRelay(
+            remotePeerId,
+            'sdp',
+            (data) => {
+              const env = data as SdpEnvelope;
+              if (env?.kind === 'answer') callback(env.payload);
+            },
+            'answer',
+          );
         },
 
         sendCandidate: (candidate) => sendRelay('ice', candidate),
