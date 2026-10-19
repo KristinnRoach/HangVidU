@@ -1,8 +1,13 @@
 /**
  * Forward user-pasted images as File[]; callers decide when they own paste.
  * Returns a cleanup function, matching onFileDrop.
+ * @param {Document} target
+ * @param {(files: File[]) => void} onFiles
+ * @param {(event: ClipboardEvent) => boolean} shouldHandle
+ * @returns {() => void}
  */
 export function onImagePaste(target, onFiles, shouldHandle) {
+  /** @param {ClipboardEvent} event */
   function handlePaste(event) {
     if (event.defaultPrevented || !shouldHandle(event)) return;
     const files = Array.from(event.clipboardData?.files || []).filter((file) =>
@@ -18,7 +23,13 @@ export function onImagePaste(target, onFiles, shouldHandle) {
   return () => target.removeEventListener('paste', handlePaste);
 }
 
-/** Keep document-level paste out of dialogs and unrelated editors. */
+/**
+ * Keep document-level paste out of dialogs and unrelated editors.
+ * @param {ClipboardEvent} event
+ * @param {HTMLElement | undefined} panel
+ * @param {HTMLTextAreaElement | undefined} composer
+ * @returns {boolean}
+ */
 export function acceptsConversationPaste(event, panel, composer) {
   const target = event.composedPath()[0];
   if (document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]'))
