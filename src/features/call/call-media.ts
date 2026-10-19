@@ -10,7 +10,10 @@ import {
   type FaceMaskCaptureStatus,
 } from '../experimental/face-mask';
 
-import { getVideoConstraints } from './media-constraints.js';
+import {
+  getAudioConstraints,
+  getVideoConstraints,
+} from './media-constraints.js';
 
 export const MICROPHONE_SLOT_ID = 'microphone';
 export const PRIMARY_VIDEO_SLOT_ID = 'primary-video';
@@ -80,6 +83,14 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const localStream = () => p2p.localStream();
   const ownedCameraTracks = new Set<MediaStreamTrack>();
   const [micOn, setMicOn] = createSignal(false);
+  // Keep user intent separate from a track ending when its device disappears.
+  let microphoneEnabled =
+    localStream()
+      ?.getAudioTracks()
+      .some((track) => track.enabled) ?? true;
+  let microphoneRecovery: Promise<void> | undefined;
+  let recoveredMicrophone: MediaStreamTrack | undefined;
+  let disposed = false;
   const [cameraOn, setCameraOn] = createSignal(false);
   const [cameraPending, setCameraPending] = createSignal(false);
   const [cameraSwitchAvailable, setCameraSwitchAvailable] = createSignal(false);
@@ -390,7 +401,25 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     }
   }
 
-  const onDeviceChange = () => void refreshCameraSwitchAvailability(true);
+  function recoverMicrophone() {
+    if (
+      disposed ||
+      !microphoneEnabled ||
+      !p2p.room() ||
+      localStream()
+        ?.getAudioTracks()
+        .some((track) => track.readyState === 'live')
+    )
+      return;
+    void setMicEnabled(true).catch((error) => {
+      console.error('[CallMedia] Failed to recover microphone', error);
+    });
+  }
+
+  const onDeviceChange = () => {
+    void refreshCameraSwitchAvailability(true);
+    recoverMicrophone();
+  };
   void refreshCameraSwitchAvailability();
   navigator.mediaDevices?.addEventListener?.('devicechange', onDeviceChange);
 
@@ -416,9 +445,15 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       removeTrackListeners();
       const tracks = stream.getTracks();
       const update = () => syncTrackState();
-      tracks.forEach((track) => track.addEventListener?.('ended', update));
+      const onEnded = () => {
+        update();
+        recoverMicrophone();
+      };
+      tracks.forEach((track) => track.addEventListener?.('ended', onEnded));
       removeTrackListeners = () => {
-        tracks.forEach((track) => track.removeEventListener?.('ended', update));
+        tracks.forEach((track) =>
+          track.removeEventListener?.('ended', onEnded),
+        );
       };
       update();
     };
@@ -435,6 +470,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   });
 
   onCleanup(() => {
+    disposed = true;
+    recoveredMicrophone?.stop();
     navigator.mediaDevices?.removeEventListener?.(
       'devicechange',
       onDeviceChange,
@@ -447,17 +484,65 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   });
 
   async function setMicEnabled(enabled: boolean) {
+    const room = p2p.room();
+    if (!room || disposed)
+      throw new Error('Cannot change microphone without an active room');
+
+    microphoneEnabled = enabled;
+    if (
+      enabled &&
+      !localStream()
+        ?.getAudioTracks()
+        .some((track) => track.readyState === 'live')
+    ) {
+      syncTrackState();
+      microphoneRecovery ??= replaceMicrophone(room).finally(() => {
+        microphoneRecovery = undefined;
+      });
+      await microphoneRecovery;
+    }
+    if (disposed || p2p.room() !== room) return;
     const tracks = localStream()?.getAudioTracks() ?? [];
     tracks.forEach((track) => {
-      track.enabled = enabled;
+      track.enabled = microphoneEnabled;
     });
     syncTrackState();
 
-    const room = p2p.room();
-    if (!room)
-      throw new Error('Cannot change microphone without an active room');
-
     await enqueuePresenceUpdate(room, { micOn: micOn() });
+  }
+
+  async function replaceMicrophone(
+    room: NonNullable<ReturnType<SolidP2PRoom['room']>>,
+  ) {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: getAudioConstraints(),
+    });
+    const track = stream.getAudioTracks()[0];
+    stream
+      .getTracks()
+      .filter((other) => other !== track)
+      .forEach((other) => other.stop());
+    if (!track)
+      throw new Error('Microphone acquisition returned no audio track');
+    if (disposed || p2p.room() !== room) {
+      track.stop();
+      return;
+    }
+    track.enabled = microphoneEnabled;
+    const previousTracks = localStream()?.getAudioTracks() ?? [];
+    try {
+      await room.setLocalTrack(MICROPHONE_SLOT_ID, track);
+    } finally {
+      // A replacement can commit locally even if updating a peer fails.
+      if (room.localStream?.getTracks().includes(track)) {
+        previousTracks.forEach((previous) => previous.stop());
+        if (disposed || p2p.room() !== room) track.stop();
+        else recoveredMicrophone = track;
+      } else {
+        track.stop();
+      }
+      syncTrackState();
+    }
   }
 
   // Broadcasts our cameraOn flag to other members via the room's member data

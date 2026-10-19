@@ -108,6 +108,155 @@ describe('call media', () => {
     ]);
   });
 
+  describe('microphone recovery', () => {
+    let dispose;
+    afterEach(() => dispose?.());
+
+    function setup() {
+      const microphone = createTrack('audio');
+      const camera = createTrack('video');
+      const tracks = [microphone, camera];
+      const localStream = createStream(tracks);
+      const deviceEvents = new EventTarget();
+      navigator.mediaDevices.addEventListener =
+        deviceEvents.addEventListener.bind(deviceEvents);
+      navigator.mediaDevices.removeEventListener =
+        deviceEvents.removeEventListener.bind(deviceEvents);
+      const room = {
+        localStream,
+        setPresenceData: vi.fn(async () => {}),
+        setLocalTrack: vi.fn(async (_slot, track) => {
+          tracks.splice(0, 1, track);
+          localStream.dispatch('addtrack');
+        }),
+      };
+      let media;
+      createRoot((cleanup) => {
+        dispose = cleanup;
+        media = createCallMedia({
+          localStream: () => localStream,
+          room: () => room,
+          dataChannels: () => new Map(),
+          remoteMemberStreams: () => [],
+        });
+      });
+      return { media, microphone, camera, room, deviceEvents };
+    }
+
+    it('replaces an ended Bluetooth microphone once despite overlapping device events', async () => {
+      const { media, microphone, camera, room, deviceEvents } = setup();
+      const replacement = createTrack('audio');
+      getUserMedia.mockResolvedValue(createStream([replacement]));
+      microphone.readyState = 'ended';
+      microphone.dispatch('ended');
+      deviceEvents.dispatchEvent(new Event('devicechange'));
+
+      await vi.waitFor(() => expect(room.setPresenceData).toHaveBeenCalled());
+      expect(getUserMedia).toHaveBeenCalledExactlyOnceWith({
+        audio: expect.any(Object),
+      });
+      expect(room.setLocalTrack).toHaveBeenCalledExactlyOnceWith(
+        MICROPHONE_SLOT_ID,
+        replacement,
+      );
+      expect(media.micOn()).toBe(true);
+      expect(room.setPresenceData).toHaveBeenLastCalledWith({
+        micOn: true,
+        cameraOn: true,
+      });
+      expect(camera.stop).not.toHaveBeenCalled();
+      dispose();
+      expect(replacement.stop).toHaveBeenCalledOnce();
+    });
+
+    it('keeps a lost microphone muted until the user unmutes', async () => {
+      const { media, microphone, room, deviceEvents } = setup();
+      await media.setMicEnabled(false);
+      microphone.readyState = 'ended';
+      microphone.dispatch('ended');
+      deviceEvents.dispatchEvent(new Event('devicechange'));
+      expect(getUserMedia).not.toHaveBeenCalled();
+
+      const replacement = createTrack('audio');
+      getUserMedia.mockResolvedValue(createStream([replacement]));
+      await media.setMicEnabled(true);
+      expect(room.setLocalTrack).toHaveBeenCalledWith(
+        MICROPHONE_SLOT_ID,
+        replacement,
+      );
+      expect(media.micOn()).toBe(true);
+    });
+
+    it.each(['mute', 'dispose'])(
+      'handles %s while microphone acquisition is pending',
+      async (action) => {
+        const { media, microphone, room } = setup();
+        microphone.readyState = 'ended';
+        let resolveCapture;
+        getUserMedia.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveCapture = resolve;
+            }),
+        );
+        const pending = media.setMicEnabled(true);
+        if (action === 'mute') await media.setMicEnabled(false);
+        else dispose();
+        const replacement = createTrack('audio');
+        resolveCapture(createStream([replacement]));
+        await pending;
+
+        expect(media.micOn()).toBe(false);
+        if (action === 'mute') expect(replacement.enabled).toBe(false);
+        else {
+          expect(replacement.stop).toHaveBeenCalledOnce();
+          expect(room.setLocalTrack).not.toHaveBeenCalled();
+        }
+      },
+    );
+
+    it('allows unmute to retry after acquisition fails', async () => {
+      const { media, microphone } = setup();
+      microphone.readyState = 'ended';
+      getUserMedia.mockRejectedValueOnce(new Error('device unavailable'));
+      await expect(media.setMicEnabled(true)).rejects.toThrow(
+        'device unavailable',
+      );
+      expect(media.micOn()).toBe(false);
+      getUserMedia.mockResolvedValueOnce(createStream([createTrack('audio')]));
+      await media.setMicEnabled(true);
+      expect(media.micOn()).toBe(true);
+    });
+
+    it('stops the replacement if the call ends while peers are updating', async () => {
+      const { media, microphone, room } = setup();
+      microphone.readyState = 'ended';
+      const replacement = createTrack('audio');
+      getUserMedia.mockResolvedValueOnce(createStream([replacement]));
+      const commit = room.setLocalTrack.getMockImplementation();
+      let finishReplacement;
+      room.setLocalTrack.mockImplementationOnce(async (...args) => {
+        await commit(...args);
+        await new Promise((resolve) => {
+          finishReplacement = resolve;
+        });
+      });
+      const pending = media.setMicEnabled(true);
+      await vi.waitFor(() => expect(finishReplacement).toBeDefined());
+      dispose();
+      finishReplacement();
+      await pending;
+      expect(replacement.stop).toHaveBeenCalledOnce();
+    });
+
+    it('leaves a live microphone alone on devicechange', () => {
+      const { deviceEvents, room } = setup();
+      deviceEvents.dispatchEvent(new Event('devicechange'));
+      expect(getUserMedia).not.toHaveBeenCalled();
+      expect(room.setLocalTrack).not.toHaveBeenCalled();
+    });
+  });
+
   it('does not offer camera switching for duplicate entries from one camera', async () => {
     navigator.mediaDevices.enumerateDevices = vi.fn(async () => [
       { kind: 'videoinput', deviceId: 'default', groupId: 'camera-1' },
