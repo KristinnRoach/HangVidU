@@ -1,5 +1,8 @@
 import { Show, createEffect, on, onMount, onCleanup } from 'solid-js';
-import { onImagePaste, acceptsConversationPaste } from '../utils/on-image-paste.js';
+import {
+  onImagePaste,
+  acceptsConversationPaste,
+} from '../utils/on-image-paste.js';
 import { useI18n } from '@shared/i18n';
 import { LoadBoundary } from '../../../components/LoadBoundary';
 // eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:fileDrop` directive
