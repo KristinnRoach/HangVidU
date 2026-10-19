@@ -30,12 +30,16 @@ describe('onImagePaste', () => {
     const received = vi.fn();
     cleanups.push(onImagePaste(document, received, () => true));
     expect(paste(document.body).defaultPrevented).toBe(false);
-    expect(paste(document.body, [
-      new File(['text'], 'note.txt', { type: 'text/plain' }),
-    ]).defaultPrevented).toBe(false);
-    paste(document.body, [
-      new File(['photo'], 'photo.png', { type: 'image/png' }),
-    ], true);
+    expect(
+      paste(document.body, [
+        new File(['text'], 'note.txt', { type: 'text/plain' }),
+      ]).defaultPrevented,
+    ).toBe(false);
+    paste(
+      document.body,
+      [new File(['photo'], 'photo.png', { type: 'image/png' })],
+      true,
+    );
     expect(received).not.toHaveBeenCalled();
   });
 
@@ -65,9 +69,11 @@ describe('conversation paste ownership', () => {
     panel.append(composer, message, editor);
     document.body.append(panel, search);
     const received = vi.fn();
-    cleanups.push(onImagePaste(document, received, (event) =>
-      acceptsConversationPaste(event, panel, composer),
-    ));
+    cleanups.push(
+      onImagePaste(document, received, (event) =>
+        acceptsConversationPaste(event, panel, composer),
+      ),
+    );
     const files = [new File(['photo'], 'photo.png', { type: 'image/png' })];
     for (const target of [composer, message, document.body])
       expect(paste(target, files).defaultPrevented).toBe(true);
@@ -82,9 +88,11 @@ describe('conversation paste ownership', () => {
     dialog.setAttribute('open', '');
     document.body.append(composer, dialog);
     const received = vi.fn();
-    cleanups.push(onImagePaste(document, received, (event) =>
-      acceptsConversationPaste(event, document.body, composer),
-    ));
+    cleanups.push(
+      onImagePaste(document, received, (event) =>
+        acceptsConversationPaste(event, document.body, composer),
+      ),
+    );
     const files = [new File(['photo'], 'photo.png', { type: 'image/png' })];
     expect(paste(composer, files).defaultPrevented).toBe(false);
     expect(received).not.toHaveBeenCalled();
