@@ -32,10 +32,18 @@ export function onImagePaste(target, onFiles, shouldHandle) {
  */
 export function acceptsConversationPaste(event, panel, composer) {
   const target = event.composedPath()[0];
-  if (document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]'))
+  if (
+    document.querySelector(
+      'dialog[open], [role="dialog"], [role="alertdialog"]',
+    )
+  )
     return false;
   if (!(target instanceof Element)) return target === document;
-  if (target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])'))
+  if (
+    target.closest(
+      'input, textarea, [contenteditable]:not([contenteditable="false"])',
+    )
+  )
     return target === composer;
   return (
     target === document.body ||
