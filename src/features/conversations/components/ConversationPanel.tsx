@@ -1,4 +1,8 @@
-import { Show, createEffect, on } from 'solid-js';
+import { Show, createEffect, on, onMount, onCleanup } from 'solid-js';
+import {
+  onFilePaste,
+  acceptsFilePasteTarget,
+} from '@shared/utils/ui-utils/onFilePaste.js';
 import { useI18n } from '@shared/i18n';
 import { LoadBoundary } from '../../../components/LoadBoundary';
 // eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:fileDrop` directive
@@ -46,7 +50,23 @@ export function ConversationPanel(props: ConversationPanelProps) {
   const state = getConversationState();
   const { t } = useI18n();
 
+  let panelEl: HTMLDivElement | undefined;
   let inputEl: HTMLTextAreaElement | undefined;
+
+  onMount(() => {
+    onCleanup(
+      onFilePaste(
+        document,
+        (files) => void submitFiles(files),
+        (event) =>
+          props.visible &&
+          !!state.conversationId &&
+          !state.sending &&
+          !state.preparingFile &&
+          acceptsFilePasteTarget(event, panelEl, inputEl),
+      ),
+    );
+  });
 
   // Tracks the store's read candidate through the call, so this re-runs as
   // new messages land — but only marks read while this view is on screen.
@@ -74,19 +94,24 @@ export function ConversationPanel(props: ConversationPanelProps) {
   // single-file behavior.
   // TODO: switch to a single message carrying a MessageAttachment[] (Option B).
   async function submitFiles(files: File[]) {
+    const conversationId = state.conversationId;
+    if (!props.visible || !conversationId) return;
     for (const file of files) {
+      if (!props.visible || state.conversationId !== conversationId) break;
       const result = await sendFileMessage(file);
       if (result === 'empty-file') window.alert(t('conversation.file_empty'));
       else if (result === 'too-large')
         window.alert(t('conversation.file_too_large'));
       else if (result === 'failed')
         window.alert(t('conversation.file_send_failed'));
+      if (!props.visible || state.conversationId !== conversationId) break;
       inputEl?.focus();
     }
   }
 
   return (
     <div
+      ref={panelEl}
       class={styles.panel}
       use:fileDrop={{
         onDrop: (files) => void submitFiles(files),
