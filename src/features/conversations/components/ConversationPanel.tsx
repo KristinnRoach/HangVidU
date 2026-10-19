@@ -1,8 +1,8 @@
 import { Show, createEffect, on, onMount, onCleanup } from 'solid-js';
 import {
-  onImagePaste,
-  acceptsConversationPaste,
-} from '../utils/on-image-paste.js';
+  onFilePaste,
+  acceptsFilePasteTarget,
+} from '@shared/utils/ui-utils/onFilePaste.js';
 import { useI18n } from '@shared/i18n';
 import { LoadBoundary } from '../../../components/LoadBoundary';
 // eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:fileDrop` directive
@@ -55,7 +55,7 @@ export function ConversationPanel(props: ConversationPanelProps) {
 
   onMount(() => {
     onCleanup(
-      onImagePaste(
+      onFilePaste(
         document,
         (files) => void submitFiles(files),
         (event) =>
@@ -63,7 +63,7 @@ export function ConversationPanel(props: ConversationPanelProps) {
           !!state.conversationId &&
           !state.sending &&
           !state.preparingFile &&
-          acceptsConversationPaste(event, panelEl, inputEl),
+          acceptsFilePasteTarget(event, panelEl, inputEl),
       ),
     );
   });
