@@ -18,6 +18,8 @@
   },
   "type": "module",
   "scripts": {
+    "check": "vp check --fix",
+    "last": "vpr --last-details",
     "build": "pnpm p2p:prod && vp check && VITE_HANGVIDU_API_URL=https://api.hangvidu.com vp build",
     "dev": "pnpm kill:silent && VITE_HANGVIDU_API_URL=https://localhost:8788 concurrently -k -n vite,cloudflare \"vp dev\" \"pnpm dev:cf\"",
     "dev:mobile": "pnpm kill:silent && VITE_HANGVIDU_API_URL=https://api.hangvidu.com concurrently -k -n vite,tunnel \"vp dev\" \"cloudflared --no-autoupdate tunnel --config /dev/null --url https://localhost:5173 --no-tls-verify run vidu-dev\"",
