@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   media: {
     faceMaskSupported: () => false,
     micOn: () => true,
+    micRecoveryPending: () => false,
     cameraOn: () => true,
     cameraPending: () => false,
     cameraSwitchAvailable: () => false,
@@ -123,6 +124,36 @@ describe('ActiveCallControls', () => {
 
     setMaskOn(false);
     expect(button.disabled).toBe(true);
+  });
+
+  it('lets the user cancel pending microphone recovery from the existing button', () => {
+    const [pending, setPending] = createSignal(false);
+    const setMicEnabled = vi.fn(async (enabled) => {
+      if (!enabled) setPending(false);
+    });
+    const { getByRole, queryByRole } = render(() => (
+      <ActiveCallControls
+        media={{
+          ...mocks.media,
+          micOn: () => false,
+          micRecoveryPending: pending,
+          setMicEnabled,
+        }}
+        remoteAudioMuted={false}
+        onRemoteAudioMutedChange={() => {}}
+      />
+    ));
+    // Device loss occurs after mounting (dev mode mutes on mount).
+    setMicEnabled.mockClear();
+    setPending(true);
+    expect(getByRole('status', { name: 'Recovering microphone' })).toBeTruthy();
+    fireEvent.click(
+      getByRole('button', { name: 'Cancel microphone recovery' }),
+    );
+    expect(setMicEnabled).toHaveBeenCalledWith(false);
+    expect(queryByRole('status', { name: 'Recovering microphone' })).toBeNull();
+    fireEvent.click(getByRole('button', { name: 'Unmute mic' }));
+    expect(setMicEnabled).toHaveBeenLastCalledWith(true);
   });
 
   it('lets the user mute remote audio locally', () => {

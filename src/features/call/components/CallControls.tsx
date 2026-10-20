@@ -14,6 +14,7 @@ import {
 } from 'lucide-solid';
 
 import { useCallHandshake } from '../call-handshake';
+import { Spinner } from '@components/Spinner';
 import { createAutoHide } from '@shared/createAutoHide';
 import type { CallMedia } from '../call-media';
 
@@ -68,8 +69,17 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
   const media = props.media;
   const { visible } = createAutoHide(5000);
 
+  const micAction = () =>
+    media.micRecoveryPending()
+      ? 'Cancel microphone recovery'
+      : media.micOn()
+        ? 'Mute mic'
+        : 'Unmute mic';
+
   function toggleMic() {
-    void Promise.resolve(media.setMicEnabled(!media.micOn())).catch((error) => {
+    void Promise.resolve(
+      media.setMicEnabled(!(media.micOn() || media.micRecoveryPending())),
+    ).catch((error) => {
       console.error('[CallMedia] Failed to change microphone state', error);
     });
   }
@@ -117,10 +127,15 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
         type='button'
         onClick={toggleMic}
         classList={{ [styles.off!]: !media.micOn() }}
-        title={media.micOn() ? 'Mute mic' : 'Unmute mic'}
-        aria-label={media.micOn() ? 'Mute mic' : 'Unmute mic'}
+        title={micAction()}
+        aria-label={micAction()}
       >
-        {media.micOn() ? <Mic /> : <MicOff />}
+        <Show
+          when={media.micRecoveryPending()}
+          fallback={media.micOn() ? <Mic /> : <MicOff />}
+        >
+          <Spinner label='Recovering microphone' />
+        </Show>
       </button>
       <button
         type='button'
