@@ -7,6 +7,7 @@ import mkcert from 'vite-plugin-mkcert';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { headSha, sentryRelease } from './scripts/sentry-release.js';
 import solid from 'vite-plugin-solid';
+import { playwright } from 'vite-plus/test/browser-playwright';
 import tailwindcss from '@tailwindcss/vite';
 import boundariesConfig from './eslint.boundaries.config.js';
 
@@ -21,6 +22,18 @@ const boundariesOverrides = boundariesConfig
     rules,
     jsPlugins: ['eslint-plugin-boundaries'],
   }));
+
+// Test dirs shared by both projects. *.browser.test.* runs in Chromium,
+// everything else in jsdom.
+const testDirs = [
+  'src/**/',
+  'tests/unit/**/',
+  'tests/smoke/**/',
+  'tests/integration/**/',
+  'tests/investigation/**/',
+];
+const testFiles = (suffix) =>
+  testDirs.map((d) => `${d}*${suffix}.{js,jsx,ts,tsx}`);
 
 const publicModuleImportPatterns = [
   {
@@ -208,6 +221,67 @@ export default defineConfig(({ mode }) => {
       },
     },
     base: basePath,
+
+    test: {
+      globals: true,
+      // Firebase config throws without these.
+      env: {
+        VITE_FIREBASE_API_KEY: 'dummy',
+        VITE_FIREBASE_AUTH_DOMAIN: 'dummy',
+        VITE_FIREBASE_PROJECT_ID: 'dummy',
+        VITE_APP_GOOGLE_CLIENT_ID: 'dummy',
+      },
+      // Projects inherit everything above (Vitest 5 `extends: true` default).
+      projects: [
+        {
+          // Solid ships a DOM and a server build behind package conditions;
+          // jsdom needs the DOM build.
+          resolve: { conditions: ['solid', 'development', 'browser'] },
+          test: {
+            name: 'node',
+            environment: 'jsdom',
+            // jsdom is built once per worker; each file still gets a fresh window.
+            pool: 'vmThreads',
+            // Files share module mocks and stubbed globals within a worker and
+            // flake in parallel. A different maxWorkers than browser forces a
+            // separate group.
+            fileParallelism: false,
+            sequence: { groupOrder: 0 },
+            environmentOptions: { jsdom: { url: 'http://localhost/' } },
+            // Inline so the conditions above apply to hoisted modules too.
+            server: {
+              deps: { inline: [/solid-js/, /@solidjs\/testing-library/] },
+            },
+            include: testFiles('.test'),
+            exclude: testFiles('.browser.test'),
+          },
+        },
+        {
+          // For APIs jsdom lacks: WebRTC, OPFS, ServiceWorker.
+          // Dev's https relies on mkcert, which only loads in development.
+          server: { https: false },
+          test: {
+            name: 'browser',
+            sequence: { groupOrder: 1 },
+            browser: {
+              enabled: true,
+              provider: playwright(),
+              headless: true,
+              // COMPAT=true runs all engines.
+              instances: (process.env.COMPAT === 'true'
+                ? ['chromium', 'firefox', 'webkit']
+                : ['chromium']
+              ).map((browser) => ({ browser })),
+            },
+            include: testFiles('.browser.test'),
+          },
+        },
+      ],
+      coverage: {
+        reporter: ['text', 'html', 'lcov'],
+        exclude: ['node_modules/', 'tests/e2e/', 'dist/', '*.config.js'],
+      },
+    },
 
     resolve: {
       tsconfigPaths: true,

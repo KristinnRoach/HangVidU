@@ -1,5 +1,5 @@
 import { createSignal, onCleanup, type ParentProps } from 'solid-js';
-import { getAppReloadAllowed } from '@shared/app-reload';
+import { getAppReloadAllowed, reloadApp } from '@shared/app-reload';
 import { subscribe } from '@shared/events';
 import { useI18n } from '@shared/i18n/index.js';
 
@@ -15,7 +15,7 @@ export default function AppReloadButton(
 
   function reloadPage() {
     // Check the current gate too, so a stale UI cannot interrupt a call.
-    if (getAppReloadAllowed()) window.location.reload();
+    if (getAppReloadAllowed()) reloadApp();
   }
 
   return (

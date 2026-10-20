@@ -43,17 +43,19 @@ describe('push-notifications setup', () => {
     mocks.handlers.clear();
     mocks.serviceWorkerMessageHandler = undefined;
     mocks.visibilityChangeHandler = undefined;
-    Object.defineProperty(globalThis, 'document', {
-      value: {
-        visibilityState: 'visible',
-        addEventListener: vi.fn((eventName, handler) => {
-          if (eventName === 'visibilitychange') {
-            mocks.visibilityChangeHandler = handler;
-          }
-        }),
-      },
+    // Own writable prop shadows jsdom's getter so tests can flip it.
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      writable: true,
       configurable: true,
     });
+    vi.spyOn(document, 'addEventListener').mockImplementation(
+      (eventName, handler) => {
+        if (eventName === 'visibilitychange') {
+          mocks.visibilityChangeHandler = handler;
+        }
+      },
+    );
     Object.defineProperty(globalThis, 'navigator', {
       value: {
         serviceWorker: {

@@ -118,15 +118,10 @@ describe('call media', () => {
         userAgent: '',
       },
     });
-    Object.defineProperty(globalThis, 'window', {
-      configurable: true,
-      value: {
-        innerHeight: 720,
-        innerWidth: 1280,
-        matchMedia: () => ({ matches: false }),
-        screen: {},
-      },
-    });
+    vi.stubGlobal('innerHeight', 720);
+    vi.stubGlobal('innerWidth', 1280);
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    vi.stubGlobal('screen', {});
   });
 
   it('reserves a null video slot for an audio-only stream', () => {

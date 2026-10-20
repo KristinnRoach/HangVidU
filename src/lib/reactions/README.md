@@ -82,7 +82,7 @@ Importing `index.js` does not import Solid; framework adapters remain separate.
 ## Tests
 
 ```sh
-pnpm vitest --run src/lib/reactions
+vp test src/lib/reactions
 ```
 
 ## Gesture edge cases

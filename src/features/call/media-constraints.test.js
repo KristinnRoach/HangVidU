@@ -21,15 +21,13 @@ describe('call media constraints', () => {
       },
       configurable: true,
     });
-    Object.defineProperty(globalThis, 'window', {
-      value: {
-        matchMedia: vi.fn(() => ({ matches: true })),
-        screen: { orientation: { type: 'portrait-primary' } },
-        innerHeight: 844,
-        innerWidth: 390,
-      },
-      configurable: true,
-    });
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: true })),
+    );
+    vi.stubGlobal('screen', { orientation: { type: 'portrait-primary' } });
+    vi.stubGlobal('innerHeight', 844);
+    vi.stubGlobal('innerWidth', 390);
   });
 
   afterEach(() => {

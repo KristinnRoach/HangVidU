@@ -1,5 +1,4 @@
-// Shared VitePWA config for the app build (vite.config.js) and tests
-// (vitest.config.js). Single source so the two configs can't drift.
+// VitePWA config, kept out of vite.config.js for size.
 import { VitePWA } from 'vite-plugin-pwa';
 
 export function pwaPlugin(basePath = '/') {
