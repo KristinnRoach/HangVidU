@@ -201,6 +201,7 @@ describe('call media', () => {
             }),
         );
         const pending = media.setMicEnabled(true);
+        expect(media.micRecoveryPending()).toBe(true);
         if (action === 'mute') await media.setMicEnabled(false);
         else dispose();
         const replacement = createTrack('audio');
@@ -208,6 +209,7 @@ describe('call media', () => {
         await pending;
 
         expect(media.micOn()).toBe(false);
+        expect(media.micRecoveryPending()).toBe(false);
         if (action === 'mute') expect(replacement.enabled).toBe(false);
         else {
           expect(replacement.stop).toHaveBeenCalledOnce();
@@ -224,6 +226,7 @@ describe('call media', () => {
         'device unavailable',
       );
       expect(media.micOn()).toBe(false);
+      expect(media.micRecoveryPending()).toBe(false);
       expect(room.setPresenceData).toHaveBeenLastCalledWith(
         expect.objectContaining({ micOn: false }),
       );
@@ -315,6 +318,7 @@ describe('call media', () => {
       resolveOldCapture(createStream([staleTrack]));
       await oldPending;
       expect(staleTrack.stop).toHaveBeenCalledOnce();
+      expect(media.micRecoveryPending()).toBe(true);
       expect(room.setLocalTrack).not.toHaveBeenCalled();
       // Finishing the old attempt must not clear the new room's pending attempt.
       const overlapping = media.setMicEnabled(true);
@@ -322,6 +326,7 @@ describe('call media', () => {
       const replacement = createTrack('audio');
       resolveNewCapture(createStream([replacement]));
       await Promise.all([newPending, overlapping]);
+      expect(media.micRecoveryPending()).toBe(false);
       expect(newRoom.setLocalTrack).toHaveBeenCalledExactlyOnceWith(
         MICROPHONE_SLOT_ID,
         replacement,
@@ -396,6 +401,7 @@ describe('call media', () => {
       expect(media.cameraOn()).toBe(false);
       await media.setMicEnabled(false);
       expect(media.micOn()).toBe(false);
+      expect(media.micRecoveryPending()).toBe(false);
       expect(room.setPresenceData).toHaveBeenCalledWith({
         cameraOn: false,
         micOn: false,

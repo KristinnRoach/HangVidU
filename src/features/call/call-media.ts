@@ -51,6 +51,7 @@ export type CallMedia = {
   captureFaceMask: () => void;
   cancelFaceMaskCapture: () => void;
   micOn: Accessor<boolean>;
+  micRecoveryPending: Accessor<boolean>;
   cameraOn: Accessor<boolean>;
   cameraPending: Accessor<boolean>;
   cameraSwitchAvailable: Accessor<boolean>;
@@ -83,12 +84,13 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const localStream = () => p2p.localStream();
   const ownedCameraTracks = new Set<MediaStreamTrack>();
   const [micOn, setMicOn] = createSignal(false);
+  const [micRecoveryPending, setMicRecoveryPending] = createSignal(false);
   // Keep user intent separate from a track ending when its device disappears.
   let microphoneEnabled =
     localStream()
       ?.getAudioTracks()
       .some((track) => track.enabled) ?? true;
-  let microphoneRecovery:
+  let activeMicRecovery:
     | {
         room: NonNullable<ReturnType<SolidP2PRoom['room']>>;
         promise: Promise<void>;
@@ -495,20 +497,25 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       throw new Error('Cannot change microphone without an active room');
 
     microphoneEnabled = enabled;
+    if (!enabled) setMicRecoveryPending(false);
     let recoveryError: unknown;
     if (enabled && (!hasLiveMic() || microphonePublicationFailed)) {
+      setMicRecoveryPending(true);
       syncTrackState();
-      if (microphoneRecovery?.room !== room) {
-        const recovery = {
+      if (activeMicRecovery?.room !== room) {
+        const thisAttempt = {
           room,
           promise: replaceMicrophone(room).finally(() => {
-            if (microphoneRecovery === recovery) microphoneRecovery = undefined;
+            // An older attempt must not clear a newer room's recovery.
+            if (activeMicRecovery !== thisAttempt) return;
+            activeMicRecovery = undefined;
+            setMicRecoveryPending(false);
           }),
         };
-        microphoneRecovery = recovery;
+        activeMicRecovery = thisAttempt;
       }
       try {
-        await microphoneRecovery.promise;
+        await activeMicRecovery.promise;
       } catch (error) {
         recoveryError = error;
       }
@@ -927,6 +934,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     captureFaceMask: () => captureAction()?.(),
     cancelFaceMaskCapture: () => captureAbort?.abort(),
     micOn,
+    micRecoveryPending,
     cameraOn,
     cameraPending,
     cameraSwitchAvailable,
