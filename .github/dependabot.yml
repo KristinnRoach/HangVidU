@@ -7,3 +7,12 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - 'dependencies'
+  - package-ecosystem: 'npm'
+    directory: '/backend/firebase'
+    schedule:
+      interval: 'weekly'
+    groups:
+      firebase-functions:
+        patterns: ['*']
+    labels:
+      - 'dependencies'
