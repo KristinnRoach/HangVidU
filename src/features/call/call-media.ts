@@ -88,7 +88,12 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     localStream()
       ?.getAudioTracks()
       .some((track) => track.enabled) ?? true;
-  let microphoneRecovery: Promise<void> | undefined;
+  let microphoneRecovery:
+    | {
+        room: NonNullable<ReturnType<SolidP2PRoom['room']>>;
+        promise: Promise<void>;
+      }
+    | undefined;
   let microphonePublicationFailed = false;
   let recoveredMicrophone: MediaStreamTrack | undefined;
   let disposed = false;
@@ -493,11 +498,17 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     let recoveryError: unknown;
     if (enabled && (!hasLiveMic() || microphonePublicationFailed)) {
       syncTrackState();
-      microphoneRecovery ??= replaceMicrophone(room).finally(() => {
-        microphoneRecovery = undefined;
-      });
+      if (microphoneRecovery?.room !== room) {
+        const recovery = {
+          room,
+          promise: replaceMicrophone(room).finally(() => {
+            if (microphoneRecovery === recovery) microphoneRecovery = undefined;
+          }),
+        };
+        microphoneRecovery = recovery;
+      }
       try {
-        await microphoneRecovery;
+        await microphoneRecovery.promise;
       } catch (error) {
         recoveryError = error;
       }

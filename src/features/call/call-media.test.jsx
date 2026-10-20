@@ -130,17 +130,18 @@ describe('call media', () => {
           localStream.dispatch('addtrack');
         }),
       };
+      const [currentRoom, setRoom] = createSignal(room);
       let media;
       createRoot((cleanup) => {
         dispose = cleanup;
         media = createCallMedia({
-          localStream: () => localStream,
-          room: () => room,
+          localStream: () => currentRoom().localStream,
+          room: currentRoom,
           dataChannels: () => new Map(),
           remoteMemberStreams: () => [],
         });
       });
-      return { media, microphone, camera, room, deviceEvents };
+      return { media, microphone, camera, room, deviceEvents, setRoom };
     }
 
     it('replaces an ended Bluetooth microphone once despite overlapping device events', async () => {
@@ -279,6 +280,54 @@ describe('call media', () => {
       expect(media.micOn()).toBe(true);
       await media.setMicEnabled(true);
       expect(room.setLocalTrack).toHaveBeenCalledTimes(2);
+    });
+
+    it('starts recovery for a new room without reusing the old pending recovery', async () => {
+      const { media, microphone, room, setRoom } = setup();
+      microphone.readyState = 'ended';
+      let resolveOldCapture;
+      getUserMedia.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveOldCapture = resolve;
+          }),
+      );
+      const oldPending = media.setMicEnabled(true);
+      const newTracks = [];
+      const newRoom = {
+        localStream: createStream(newTracks),
+        setPresenceData: vi.fn(async () => {}),
+        setLocalTrack: vi.fn(async (_slot, track) => {
+          newTracks.push(track);
+        }),
+      };
+      setRoom(newRoom);
+      let resolveNewCapture;
+      getUserMedia.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveNewCapture = resolve;
+          }),
+      );
+      const newPending = media.setMicEnabled(true);
+      expect(getUserMedia).toHaveBeenCalledTimes(2);
+      const staleTrack = createTrack('audio');
+      resolveOldCapture(createStream([staleTrack]));
+      await oldPending;
+      expect(staleTrack.stop).toHaveBeenCalledOnce();
+      expect(room.setLocalTrack).not.toHaveBeenCalled();
+      // Finishing the old attempt must not clear the new room's pending attempt.
+      const overlapping = media.setMicEnabled(true);
+      expect(getUserMedia).toHaveBeenCalledTimes(2);
+      const replacement = createTrack('audio');
+      resolveNewCapture(createStream([replacement]));
+      await Promise.all([newPending, overlapping]);
+      expect(newRoom.setLocalTrack).toHaveBeenCalledExactlyOnceWith(
+        MICROPHONE_SLOT_ID,
+        replacement,
+      );
+      expect(replacement.stop).not.toHaveBeenCalled();
+      expect(media.micOn()).toBe(true);
     });
 
     it('leaves a live microphone alone on devicechange', () => {
