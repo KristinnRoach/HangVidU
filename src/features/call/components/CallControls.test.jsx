@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
   hangUp: vi.fn(),
+  showErrorToast: vi.fn(),
   startCall: vi.fn(),
   media: {
     faceMaskSupported: () => false,
@@ -37,6 +38,10 @@ vi.mock('../../../shared/i18n', () => ({
       return key;
     },
   }),
+}));
+
+vi.mock('../../../components/base-legacy/toast.js', () => ({
+  showErrorToast: mocks.showErrorToast,
 }));
 
 const { ActiveCallControls, StartCallButton } = await import('./CallControls');
@@ -138,5 +143,26 @@ describe('ActiveCallControls', () => {
     fireEvent.click(getByRole('button', { name: 'Mute remote audio' }));
 
     expect(onRemoteAudioMutedChange).toHaveBeenCalledWith(true);
+  });
+
+  it('shows a toast when the camera cannot start', async () => {
+    mocks.media.setCameraEnabled.mockRejectedValueOnce(
+      new DOMException('Could not start video source', 'NotReadableError'),
+    );
+    const { getByRole } = render(() => (
+      <ActiveCallControls
+        media={mocks.media}
+        remoteAudioMuted={false}
+        onRemoteAudioMutedChange={() => {}}
+      />
+    ));
+
+    fireEvent.click(getByRole('button', { name: 'Turn camera off' }));
+
+    await vi.waitFor(() =>
+      expect(mocks.showErrorToast).toHaveBeenCalledWith(
+        'call.media_error.in_use',
+      ),
+    );
   });
 });

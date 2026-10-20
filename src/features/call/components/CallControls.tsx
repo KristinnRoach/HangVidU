@@ -19,7 +19,14 @@ import type { CallMedia } from '../call-media';
 
 import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
+import { showErrorToast } from '../../../components/base-legacy/toast.js';
 import { onMount, Show } from 'solid-js';
+
+const MEDIA_ERROR_KEYS: Record<string, string> = {
+  NotAllowedError: 'call.media_error.blocked',
+  NotFoundError: 'call.media_error.not_found',
+  NotReadableError: 'call.media_error.in_use',
+};
 
 type StartCallButtonProps = {
   calleeId: string;
@@ -67,25 +74,33 @@ type ActiveCallControlsProps = {
 export function ActiveCallControls(props: ActiveCallControlsProps) {
   const media = props.media;
   const { visible } = createAutoHide(5000);
+  const { t } = useI18n();
+
+  function reportMediaError(label: string, error: unknown) {
+    console.error(`[CallMedia] Failed to ${label}`, error);
+    const name = (error as Error | undefined)?.name ?? '';
+    showErrorToast(t(MEDIA_ERROR_KEYS[name] ?? 'call.media_error.generic'));
+  }
 
   function toggleMic() {
-    void Promise.resolve(media.setMicEnabled(!media.micOn())).catch((error) => {
-      console.error('[CallMedia] Failed to change microphone state', error);
-    });
+    void Promise.resolve(media.setMicEnabled(!media.micOn())).catch((error) =>
+      reportMediaError('change microphone state', error),
+    );
   }
 
   function toggleCam() {
-    void media.setCameraEnabled(!media.cameraOn()).catch((error) => {
-      console.error('[CallMedia] Failed to change camera state', error);
-    });
+    void media
+      .setCameraEnabled(!media.cameraOn())
+      .catch((error) => reportMediaError('change camera state', error));
   }
 
   function switchCamera() {
-    void media.switchCamera().catch((error) => {
-      console.error('[CallMedia] Failed to switch camera', error);
-    });
+    void media
+      .switchCamera()
+      .catch((error) => reportMediaError('switch camera', error));
   }
 
+  // No toast: cancelling the screen picker also rejects with NotAllowedError.
   function toggleScreenShare() {
     void media.toggleScreenShare().catch((error) => {
       console.error('[CallMedia] Failed to change screen-share state', error);
