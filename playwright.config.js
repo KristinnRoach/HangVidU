@@ -59,6 +59,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'pnpm preview:local',
+    env: { SKIP_SENTRY_UPLOAD: 'true' },
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
