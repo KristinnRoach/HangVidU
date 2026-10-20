@@ -37,9 +37,7 @@ tests/
 ├── unit/           # Unit tests
 ├── smoke/          # Quick smoke tests
 ├── integration/    # Integration tests
-├── e2e/            # Playwright end-to-end (separate runner)
-├── env-setup.js     # Runs inside each test environment before every file (env stubs)
-└── process-setup.js # Runs once in the Node orchestrator process (birpc suppression)
+└── e2e/            # Playwright end-to-end (separate runner)
 
 src/**/*.test.{ts,tsx} # Co-located component/module tests
 ```
@@ -49,3 +47,4 @@ src/**/*.test.{ts,tsx} # Co-located component/module tests
 1. Create `my-feature.test.ts` or `.test.tsx` for JSX (defaults to node/jsdom)
 2. If it needs real browser APIs, name it `my-feature.browser.test.ts` or `.browser.test.tsx` instead
 3. No config changes needed — the filename pattern handles routing
+4. jsdom tests run on `pool: 'vmThreads'`, where `window` and `document` can't be replaced. Stub individual globals (`vi.stubGlobal('innerWidth', 390)`) or properties instead.
