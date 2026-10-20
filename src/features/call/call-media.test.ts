@@ -13,11 +13,15 @@ import {
   PRIMARY_VIDEO_SLOT_ID,
   createCallLocalTrackSlots,
   createCallMedia,
+  type CallMedia,
 } from './call-media';
+import type { SolidP2PRoom } from '@kidlib/p2p/solid';
+import type { createFaceMask } from '../experimental/face-mask';
+import type { Mock } from 'vite-plus/test';
 
 const maskMocks = vi.hoisted(() => ({
   isFaceMaskSupported: vi.fn(() => true),
-  createFaceMask: vi.fn(),
+  createFaceMask: vi.fn<typeof createFaceMask>(),
   preloadFaceMask: vi.fn(async () => {}),
 }));
 vi.mock('../experimental/face-mask', () => ({
@@ -26,52 +30,79 @@ vi.mock('../experimental/face-mask', () => ({
   preloadFaceMask: maskMocks.preloadFaceMask,
 }));
 
-function createTrack(kind) {
-  const listeners = new Map();
+type TestTrack = MediaStreamTrack & {
+  readyState: MediaStreamTrackState;
+  muted: boolean;
+  dispatch: (type: string) => void;
+  stop: Mock<() => void>;
+};
+type TestStream = MediaStream & { dispatch: (type: string) => void };
+
+function createEventSource() {
+  const listeners = new Map<string, Set<() => void>>();
   return {
+    addEventListener(type: string, listener: () => void) {
+      const callbacks = listeners.get(type) ?? new Set();
+      callbacks.add(listener);
+      listeners.set(type, callbacks);
+    },
+    removeEventListener(type: string, listener: () => void) {
+      listeners.get(type)?.delete(listener);
+    },
+    dispatch(type: string) {
+      listeners.get(type)?.forEach((listener) => listener());
+    },
+  };
+}
+
+function createTrack(kind: string): TestTrack {
+  const track = {
+    ...createEventSource(),
     enabled: true,
     kind,
     muted: false,
-    readyState: 'live',
-    addEventListener(type, listener) {
-      const callbacks = listeners.get(type) ?? new Set();
-      callbacks.add(listener);
-      listeners.set(type, callbacks);
-    },
-    removeEventListener(type, listener) {
-      listeners.get(type)?.delete(listener);
-    },
-    dispatch(type) {
-      listeners.get(type)?.forEach((listener) => listener());
-    },
-    stop: vi.fn(function () {
-      this.readyState = 'ended';
+    readyState: 'live' as MediaStreamTrackState,
+    getSettings: (): MediaTrackSettings => ({}),
+    stop: vi.fn(() => {
+      track.readyState = 'ended';
     }),
   };
+  // Only the MediaStreamTrack surface exercised by call media is simulated.
+  return track as unknown as TestTrack;
 }
 
-function createStream(tracks) {
-  const listeners = new Map();
+function createStream(tracks: MediaStreamTrack[]): TestStream {
   return {
-    addEventListener(type, listener) {
-      const callbacks = listeners.get(type) ?? new Set();
-      callbacks.add(listener);
-      listeners.set(type, callbacks);
-    },
-    removeEventListener(type, listener) {
-      listeners.get(type)?.delete(listener);
-    },
-    dispatch(type) {
-      listeners.get(type)?.forEach((listener) => listener());
-    },
+    ...createEventSource(),
     getTracks: () => tracks,
     getAudioTracks: () => tracks.filter((track) => track.kind === 'audio'),
     getVideoTracks: () => tracks.filter((track) => track.kind === 'video'),
+  } as unknown as TestStream;
+}
+
+function createVideoDevice(deviceId: string, groupId: string): MediaDeviceInfo {
+  return {
+    kind: 'videoinput',
+    deviceId,
+    groupId,
+    label: '',
+    toJSON: () => ({}),
   };
 }
 
+// The SDK exposes many unrelated fields; these fixtures supply only call media's inputs.
+function createTestCallMedia(p2p: {
+  localStream: () => MediaStream | undefined;
+  room: () => object | undefined;
+  dataChannels: () => Map<string, unknown>;
+  remoteMemberStreams: () => { memberId?: string; stream: MediaStream }[];
+  memberPresence?: () => unknown;
+}) {
+  return createCallMedia(p2p as unknown as SolidP2PRoom);
+}
+
 describe('call media', () => {
-  const getUserMedia = vi.fn();
+  const getUserMedia = vi.fn<MediaDevices['getUserMedia']>();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -109,13 +140,13 @@ describe('call media', () => {
   });
 
   describe('microphone recovery', () => {
-    let dispose;
+    let dispose!: () => void;
     afterEach(() => dispose?.());
 
     function setup() {
       const microphone = createTrack('audio');
       const camera = createTrack('video');
-      const tracks = [microphone, camera];
+      const tracks: MediaStreamTrack[] = [microphone, camera];
       const localStream = createStream(tracks);
       const deviceEvents = new EventTarget();
       navigator.mediaDevices.addEventListener =
@@ -125,16 +156,18 @@ describe('call media', () => {
       const room = {
         localStream,
         setPresenceData: vi.fn(async () => {}),
-        setLocalTrack: vi.fn(async (_slot, track) => {
-          tracks.splice(0, 1, track);
-          localStream.dispatch('addtrack');
-        }),
+        setLocalTrack: vi.fn(
+          async (_slot: string, track: MediaStreamTrack | null) => {
+            if (track) tracks.splice(0, 1, track);
+            localStream.dispatch('addtrack');
+          },
+        ),
       };
       const [currentRoom, setRoom] = createSignal(room);
-      let media;
+      let media!: CallMedia;
       createRoot((cleanup) => {
         dispose = cleanup;
-        media = createCallMedia({
+        media = createTestCallMedia({
           localStream: () => currentRoom().localStream,
           room: currentRoom,
           dataChannels: () => new Map(),
@@ -193,10 +226,10 @@ describe('call media', () => {
       async (action) => {
         const { media, microphone, room } = setup();
         microphone.readyState = 'ended';
-        let resolveCapture;
+        let resolveCapture!: (stream: MediaStream) => void;
         getUserMedia.mockImplementationOnce(
           () =>
-            new Promise((resolve) => {
+            new Promise<MediaStream>((resolve) => {
               resolveCapture = resolve;
             }),
         );
@@ -240,11 +273,11 @@ describe('call media', () => {
       microphone.readyState = 'ended';
       const replacement = createTrack('audio');
       getUserMedia.mockResolvedValueOnce(createStream([replacement]));
-      const commit = room.setLocalTrack.getMockImplementation();
-      let finishReplacement;
+      const commit = room.setLocalTrack.getMockImplementation()!;
+      let finishReplacement!: () => void;
       room.setLocalTrack.mockImplementationOnce(async (...args) => {
         await commit(...args);
-        await new Promise((resolve) => {
+        await new Promise<void>((resolve) => {
           finishReplacement = resolve;
         });
       });
@@ -261,7 +294,7 @@ describe('call media', () => {
       microphone.readyState = 'ended';
       const replacement = createTrack('audio');
       getUserMedia.mockResolvedValueOnce(createStream([replacement]));
-      const commit = room.setLocalTrack.getMockImplementation();
+      const commit = room.setLocalTrack.getMockImplementation()!;
       room.setLocalTrack.mockImplementationOnce(async (...args) => {
         await commit(...args);
         throw new Error('peer replacement failed');
@@ -288,27 +321,29 @@ describe('call media', () => {
     it('starts recovery for a new room without reusing the old pending recovery', async () => {
       const { media, microphone, room, setRoom } = setup();
       microphone.readyState = 'ended';
-      let resolveOldCapture;
+      let resolveOldCapture!: (stream: MediaStream) => void;
       getUserMedia.mockImplementationOnce(
         () =>
-          new Promise((resolve) => {
+          new Promise<MediaStream>((resolve) => {
             resolveOldCapture = resolve;
           }),
       );
       const oldPending = media.setMicEnabled(true);
-      const newTracks = [];
+      const newTracks: MediaStreamTrack[] = [];
       const newRoom = {
         localStream: createStream(newTracks),
         setPresenceData: vi.fn(async () => {}),
-        setLocalTrack: vi.fn(async (_slot, track) => {
-          newTracks.push(track);
-        }),
+        setLocalTrack: vi.fn(
+          async (_slot: string, track: MediaStreamTrack | null) => {
+            if (track) newTracks.push(track);
+          },
+        ),
       };
       setRoom(newRoom);
-      let resolveNewCapture;
+      let resolveNewCapture!: (stream: MediaStream) => void;
       getUserMedia.mockImplementationOnce(
         () =>
-          new Promise((resolve) => {
+          new Promise<MediaStream>((resolve) => {
             resolveNewCapture = resolve;
           }),
       );
@@ -345,8 +380,8 @@ describe('call media', () => {
 
   it('does not offer camera switching for duplicate entries from one camera', async () => {
     navigator.mediaDevices.enumerateDevices = vi.fn(async () => [
-      { kind: 'videoinput', deviceId: 'default', groupId: 'camera-1' },
-      { kind: 'videoinput', deviceId: 'camera-1', groupId: 'camera-1' },
+      createVideoDevice('default', 'camera-1'),
+      createVideoDevice('camera-1', 'camera-1'),
     ]);
     const p2p = {
       dataChannels: () => new Map(),
@@ -354,11 +389,11 @@ describe('call media', () => {
       localStream: () => undefined,
       room: () => undefined,
     };
-    let media;
-    let dispose;
+    let media!: CallMedia;
+    let dispose!: () => void;
     createRoot((rootDispose) => {
       dispose = rootDispose;
-      media = createCallMedia(p2p);
+      media = createTestCallMedia(p2p);
     });
 
     await Promise.resolve();
@@ -371,7 +406,7 @@ describe('call media', () => {
   it('acquires, publishes, and switches video for an audio-only call', async () => {
     const microphone = createTrack('audio');
     const camera = createTrack('video');
-    const localTracks = [microphone];
+    const localTracks: MediaStreamTrack[] = [microphone];
     const localStream = createStream(localTracks);
     const cameraStream = createStream([camera]);
     getUserMedia.mockResolvedValue(cameraStream);
@@ -381,12 +416,14 @@ describe('call media', () => {
       memberPresence: [{ memberId: 'local', data: { cameraOn: true } }],
       peerId: 'local',
       setPresenceData: vi.fn(async () => {}),
-      setLocalTrack: vi.fn(async (_slotId, track) => {
-        if (track) {
-          localTracks.push(track);
-          localStream.dispatch('addtrack');
-        }
-      }),
+      setLocalTrack: vi.fn(
+        async (_slotId: string, track: MediaStreamTrack | null) => {
+          if (track) {
+            if (track) localTracks.push(track);
+            localStream.dispatch('addtrack');
+          }
+        },
+      ),
     };
     const p2p = {
       dataChannels: () => new Map(),
@@ -396,7 +433,7 @@ describe('call media', () => {
     };
 
     await createRoot(async (dispose) => {
-      const media = createCallMedia(p2p);
+      const media = createTestCallMedia(p2p);
 
       expect(media.cameraOn()).toBe(false);
       await media.setMicEnabled(false);
@@ -424,16 +461,8 @@ describe('call media', () => {
       const backCamera = createTrack('video');
       camera.getSettings = () => ({ deviceId: 'facetime-camera' });
       navigator.mediaDevices.enumerateDevices = vi.fn(async () => [
-        {
-          kind: 'videoinput',
-          deviceId: 'facetime-camera',
-          groupId: 'facetime-group',
-        },
-        {
-          kind: 'videoinput',
-          deviceId: 'iphone-camera',
-          groupId: 'iphone-group',
-        },
+        createVideoDevice('facetime-camera', 'facetime-group'),
+        createVideoDevice('iphone-camera', 'iphone-group'),
       ]);
       getUserMedia.mockResolvedValue(createStream([backCamera]));
 
@@ -475,8 +504,8 @@ describe('call media', () => {
     const camera = createTrack('video');
     camera.enabled = false;
     const localStream = createStream([microphone, camera]);
-    let releaseFirstUpdate;
-    const firstUpdate = new Promise((resolve) => {
+    let releaseFirstUpdate!: () => void;
+    const firstUpdate = new Promise<void>((resolve) => {
       releaseFirstUpdate = resolve;
     });
     const room = {
@@ -488,12 +517,14 @@ describe('call media', () => {
         },
       ],
       peerId: 'local',
-      setPresenceData: vi.fn(async (data) => {
-        if (room.setPresenceData.mock.calls.length === 1) {
-          await firstUpdate;
-        }
-        room.memberPresence[0].data = data;
-      }),
+      setPresenceData: vi.fn(
+        async (data: { cameraOn: boolean; micOn: boolean }) => {
+          if (room.setPresenceData.mock.calls.length === 1) {
+            await firstUpdate;
+          }
+          room.memberPresence[0]!.data = data;
+        },
+      ),
       setLocalTrack: vi.fn(async () => {}),
     };
     const p2p = {
@@ -504,7 +535,7 @@ describe('call media', () => {
     };
 
     await createRoot(async (dispose) => {
-      const media = createCallMedia(p2p);
+      const media = createTestCallMedia(p2p);
       const microphoneUpdate = media.setMicEnabled(false);
       const cameraUpdate = media.setCameraEnabled(true);
 
@@ -545,7 +576,7 @@ describe('call media', () => {
     };
 
     await createRoot(async (dispose) => {
-      const media = createCallMedia(p2p);
+      const media = createTestCallMedia(p2p);
 
       await expect(media.setCameraEnabled(true)).rejects.toBe(publishError);
 
@@ -558,7 +589,7 @@ describe('call media', () => {
   it('updates camera state when a dynamically acquired track ends', async () => {
     const microphone = createTrack('audio');
     const camera = createTrack('video');
-    const localTracks = [microphone];
+    const localTracks: MediaStreamTrack[] = [microphone];
     const localStream = createStream(localTracks);
     getUserMedia.mockResolvedValue(createStream([camera]));
 
@@ -567,10 +598,12 @@ describe('call media', () => {
       memberPresence: [],
       peerId: 'local',
       setPresenceData: vi.fn(async () => {}),
-      setLocalTrack: vi.fn(async (_slotId, track) => {
-        localTracks.push(track);
-        localStream.dispatch('addtrack');
-      }),
+      setLocalTrack: vi.fn(
+        async (_slotId: string, track: MediaStreamTrack | null) => {
+          if (track) localTracks.push(track);
+          localStream.dispatch('addtrack');
+        },
+      ),
     };
     const p2p = {
       dataChannels: () => new Map(),
@@ -580,7 +613,7 @@ describe('call media', () => {
     };
 
     await createRoot(async (dispose) => {
-      const media = createCallMedia(p2p);
+      const media = createTestCallMedia(p2p);
       await media.setCameraEnabled(true);
 
       camera.readyState = 'ended';
@@ -594,16 +627,19 @@ describe('call media', () => {
   it('unpublishes and stops the camera when video is disabled', async () => {
     const microphone = createTrack('audio');
     const camera = createTrack('video');
-    const localTracks = [microphone, camera];
+    const localTracks: MediaStreamTrack[] = [microphone, camera];
     const localStream = createStream(localTracks);
     const room = {
       localStream,
       memberPresence: [],
       peerId: 'local',
       setPresenceData: vi.fn(async () => {}),
-      setLocalTrack: vi.fn(async (_slotId, track) => {
-        if (track === null) localTracks.splice(localTracks.indexOf(camera), 1);
-      }),
+      setLocalTrack: vi.fn(
+        async (_slotId: string, track: MediaStreamTrack | null) => {
+          if (track === null)
+            localTracks.splice(localTracks.indexOf(camera), 1);
+        },
+      ),
     };
     const p2p = {
       dataChannels: () => new Map(),
@@ -613,7 +649,7 @@ describe('call media', () => {
     };
 
     await createRoot(async (dispose) => {
-      const media = createCallMedia(p2p);
+      const media = createTestCallMedia(p2p);
 
       await media.setCameraEnabled(false);
 
@@ -634,7 +670,7 @@ describe('call media', () => {
   it('publishes camera-off presence after a partially failed replacement', async () => {
     const microphone = createTrack('audio');
     const camera = createTrack('video');
-    const localTracks = [microphone, camera];
+    const localTracks: MediaStreamTrack[] = [microphone, camera];
     const localStream = createStream(localTracks);
     const replacementError = new Error('remote replacement failed');
     const room = {
@@ -655,7 +691,7 @@ describe('call media', () => {
     };
 
     await createRoot(async (dispose) => {
-      const media = createCallMedia(p2p);
+      const media = createTestCallMedia(p2p);
 
       await expect(media.setCameraEnabled(false)).rejects.toBe(
         replacementError,
@@ -673,7 +709,7 @@ describe('call media', () => {
   it('publishes camera-on presence after a partially failed replacement', async () => {
     const microphone = createTrack('audio');
     const camera = createTrack('video');
-    const localTracks = [microphone];
+    const localTracks: MediaStreamTrack[] = [microphone];
     const localStream = createStream(localTracks);
     getUserMedia.mockResolvedValue(createStream([camera]));
     const replacementError = new Error('remote replacement failed');
@@ -695,7 +731,7 @@ describe('call media', () => {
     };
 
     await createRoot(async (dispose) => {
-      const media = createCallMedia(p2p);
+      const media = createTestCallMedia(p2p);
 
       await expect(media.setCameraEnabled(true)).rejects.toBe(replacementError);
 
@@ -711,7 +747,7 @@ describe('call media', () => {
   it('stops a dynamically acquired camera when the call controls dispose', async () => {
     const microphone = createTrack('audio');
     const camera = createTrack('video');
-    const localTracks = [microphone];
+    const localTracks: MediaStreamTrack[] = [microphone];
     const localStream = createStream(localTracks);
     getUserMedia.mockResolvedValue(createStream([camera]));
 
@@ -720,12 +756,14 @@ describe('call media', () => {
       memberPresence: [],
       peerId: 'local',
       setPresenceData: vi.fn(async () => {}),
-      setLocalTrack: vi.fn(async (_slotId, track) => {
-        if (track) {
-          localTracks.push(track);
-          localStream.dispatch('addtrack');
-        }
-      }),
+      setLocalTrack: vi.fn(
+        async (_slotId: string, track: MediaStreamTrack | null) => {
+          if (track) {
+            if (track) localTracks.push(track);
+            localStream.dispatch('addtrack');
+          }
+        },
+      ),
     };
     const p2p = {
       dataChannels: () => new Map(),
@@ -734,11 +772,11 @@ describe('call media', () => {
       room: () => room,
     };
 
-    let media;
-    let dispose;
+    let media!: CallMedia;
+    let dispose!: () => void;
     createRoot((rootDispose) => {
       dispose = rootDispose;
-      media = createCallMedia(p2p);
+      media = createTestCallMedia(p2p);
     });
 
     await media.setCameraEnabled(true);
@@ -751,7 +789,7 @@ describe('call media', () => {
 
 describe('experimental face mask lifecycle', () => {
   afterEach(() => vi.unstubAllGlobals());
-  async function toggleAndApply(media) {
+  async function toggleAndApply(media: CallMedia) {
     const pending = media.toggleFaceMask();
     await Promise.resolve();
     if (media.faceMaskPreview()) media.applyFaceMask();
@@ -761,7 +799,7 @@ describe('experimental face mask lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     maskMocks.isFaceMaskSupported.mockReturnValue(true);
-    vi.stubGlobal('MediaStream', function (tracks) {
+    vi.stubGlobal('MediaStream', function (tracks: MediaStreamTrack[]) {
       return createStream(tracks);
     });
     Object.defineProperty(globalThis, 'navigator', {
@@ -773,8 +811,12 @@ describe('experimental face mask lifecycle', () => {
     });
   });
   function setup(
-    channelState = 'open',
-    initialRemotes = [
+    channelState: RTCDataChannelState = 'open',
+    initialRemotes: {
+      memberId: string;
+      stream: MediaStream;
+      data: { cameraOn?: boolean; screenShare?: boolean };
+    }[] = [
       {
         memberId: 'remote',
         stream: createStream([createTrack('audio')]),
@@ -785,23 +827,25 @@ describe('experimental face mask lifecycle', () => {
     const [remotes, setRemotes] = createSignal(initialRemotes);
     const camera = createTrack('video');
     const filtered = createTrack('video');
-    const tracks = [camera];
+    const tracks: MediaStreamTrack[] = [camera];
     const stream = createStream(tracks);
     const mask = { track: filtered, dispose: vi.fn(() => filtered.stop()) };
     maskMocks.createFaceMask.mockResolvedValue(mask);
     const room = {
       localStream: stream,
       setPresenceData: vi.fn(async () => {}),
-      setLocalTrack: vi.fn(async (_slot, track) => {
-        tracks.splice(0, tracks.length, ...(track ? [track] : []));
-      }),
+      setLocalTrack: vi.fn(
+        async (_slot: string, track: MediaStreamTrack | null) => {
+          tracks.splice(0, tracks.length, ...(track ? [track] : []));
+        },
+      ),
     };
-    let media;
-    let dispose;
-    const channel = { ...createTrack('channel'), readyState: channelState };
+    let media!: CallMedia;
+    let dispose!: () => void;
+    const channel = { ...createEventSource(), readyState: channelState };
     createRoot((cleanup) => {
       dispose = cleanup;
-      media = createCallMedia({
+      media = createTestCallMedia({
         localStream: () => stream,
         room: () => room,
         dataChannels: () => new Map([['remote', channel]]),
@@ -836,12 +880,12 @@ describe('experimental face mask lifecycle', () => {
           data: { cameraOn: true },
         },
       ]);
-      let ready;
+      let ready!: () => void;
       maskMocks.createFaceMask.mockImplementation(
-        (_camera, signal, { onCaptureReady }) =>
+        (_camera, signal, { onCaptureReady } = {}) =>
           new Promise((resolve, reject) => {
-            ready = () => onCaptureReady(() => resolve(mask));
-            signal.addEventListener(
+            ready = () => onCaptureReady!(() => resolve(mask));
+            signal!.addEventListener(
               'abort',
               () => reject(new Error('cancelled')),
               { once: true },
@@ -852,7 +896,7 @@ describe('experimental face mask lifecycle', () => {
       const pending = media.toggleFaceMask();
       expect(media.faceMaskCaptureTrack()).toBe(remote);
       expect(media.faceMaskOutline()).toBe(false);
-      expect(maskMocks.createFaceMask.mock.calls[0][2].captureTrack()).toBe(
+      expect(maskMocks.createFaceMask.mock.calls[0]![2]!.captureTrack!()).toBe(
         remote,
       );
       expect(room.setLocalTrack).not.toHaveBeenCalled();
@@ -870,7 +914,7 @@ describe('experimental face mask lifecycle', () => {
       expect(media.faceMaskOn()).toBe(action === 'capture');
       expect(media.faceMaskError()).toBe('');
       expect(
-        maskMocks.createFaceMask.mock.calls[0][2].captureTrack(),
+        maskMocks.createFaceMask.mock.calls[0]![2]!.captureTrack!(),
       ).toBeUndefined();
       dispose();
       expect(remote.stop).not.toHaveBeenCalled();
@@ -1000,10 +1044,10 @@ describe('experimental face mask lifecycle', () => {
   it('keeps the camera live until capture and allows cancellation', async () => {
     const { camera, mask, room, media, dispose } = setup();
     maskMocks.createFaceMask.mockImplementation(
-      (_camera, signal, { onCaptureReady }) =>
+      (_camera, signal, { onCaptureReady } = {}) =>
         new Promise((resolve, reject) => {
-          onCaptureReady(() => resolve(mask));
-          signal.addEventListener(
+          onCaptureReady!(() => resolve(mask));
+          signal!.addEventListener(
             'abort',
             () => reject(new Error('cancelled')),
             { once: true },
@@ -1064,7 +1108,7 @@ describe('experimental face mask lifecycle', () => {
       ]);
       const pending = media.toggleFaceMask();
       await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
-      maskMocks.createFaceMask.mock.calls[0][2].onCaptureStatus(2);
+      maskMocks.createFaceMask.mock.calls[0]![2]!.onCaptureStatus!(2);
       expect(media.faceMaskCaptureStatus()).toBe(2);
       if (change === 'source') media.setFaceMaskSource(false);
       else media.toggleFaceMaskOutline();
@@ -1074,11 +1118,11 @@ describe('experimental face mask lifecycle', () => {
         expect(maskMocks.createFaceMask).toHaveBeenCalledTimes(2),
       );
       expect(mask.dispose).toHaveBeenCalledOnce();
-      const options = maskMocks.createFaceMask.mock.calls[1][2];
-      expect(options.captureMode()).toBe(
+      const options = maskMocks.createFaceMask.mock.calls[1]![2]!;
+      expect(options.captureMode!()).toBe(
         change === 'mode' ? 'outline' : 'detected',
       );
-      expect(options.captureTrack()).toBe(
+      expect(options.captureTrack!()).toBe(
         change === 'source' ? undefined : remote,
       );
       await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
@@ -1094,7 +1138,7 @@ describe('experimental face mask lifecycle', () => {
     maskMocks.createFaceMask.mockImplementationOnce(
       (_camera, signal) =>
         new Promise((_resolve, reject) => {
-          signal.addEventListener(
+          signal!.addEventListener(
             'abort',
             () => reject(new Error('cancelled')),
             { once: true },
@@ -1165,7 +1209,7 @@ describe('experimental face mask lifecycle', () => {
     const { camera, mask, room, media, dispose } = setup();
     const pending = media.toggleFaceMask();
     await vi.waitFor(() => expect(media.faceMaskPreview()).toBeDefined());
-    maskMocks.createFaceMask.mock.calls[0][2].onError(
+    maskMocks.createFaceMask.mock.calls[0]![2]!.onError!(
       new Error('Face mask tracking stopped. Try again.'),
     );
     await pending;
@@ -1183,8 +1227,8 @@ describe('experimental face mask lifecycle', () => {
   it('restores the camera and reports a renderer failure after publishing', async () => {
     const { camera, mask, room, media, dispose } = setup();
     await toggleAndApply(media);
-    const { onError } = maskMocks.createFaceMask.mock.calls[0][2];
-    onError(new Error('Renderer stopped'));
+    const { onError } = maskMocks.createFaceMask.mock.calls[0]![2]!;
+    onError!(new Error('Renderer stopped'));
     await vi.waitFor(() => expect(media.faceMaskOn()).toBe(false));
     expect(room.setLocalTrack).toHaveBeenLastCalledWith(
       PRIMARY_VIDEO_SLOT_ID,
@@ -1213,7 +1257,7 @@ describe('experimental face mask lifecycle', () => {
   it('completes camera off when restoring the raw camera fails', async () => {
     const { camera, filtered, mask, room, media, dispose } = setup();
     await toggleAndApply(media);
-    const replaceTrack = room.setLocalTrack.getMockImplementation();
+    const replaceTrack = room.setLocalTrack.getMockImplementation()!;
     room.setLocalTrack.mockImplementationOnce(async (slot, track) => {
       await replaceTrack(slot, track);
       throw new Error('Peer track replacement failed');
@@ -1247,10 +1291,10 @@ describe('experimental face mask lifecycle', () => {
 
   it('does not publish a processor that completes after hangup', async () => {
     const { mask, room, media, dispose } = setup();
-    let finish;
+    let finish!: (mask: Awaited<ReturnType<typeof createFaceMask>>) => void;
     maskMocks.createFaceMask.mockImplementation(
       () =>
-        new Promise((resolve) => {
+        new Promise<Awaited<ReturnType<typeof createFaceMask>>>((resolve) => {
           finish = resolve;
         }),
     );

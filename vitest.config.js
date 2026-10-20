@@ -35,7 +35,7 @@ export default defineConfig({
   test: {
     projects: [
       // Default: runs in Node with jsdom (no Playwright RPC overhead)
-      // Convention: *.test.js / *.test.jsx
+      // Convention: *.test.{js,jsx,ts,tsx}
       {
         resolve: {
           tsconfigPaths: true,
@@ -63,15 +63,12 @@ export default defineConfig({
               inline: [/solid-js/, /@solidjs\/testing-library/],
             },
           },
-          include: testDirs.flatMap((d) => [`${d}*.test.js`, `${d}*.test.jsx`]),
-          exclude: testDirs.flatMap((d) => [
-            `${d}*.browser.test.js`,
-            `${d}*.browser.test.jsx`,
-          ]),
+          include: testDirs.map((d) => `${d}*.test.{js,jsx,ts,tsx}`),
+          exclude: testDirs.map((d) => `${d}*.browser.test.{js,jsx,ts,tsx}`),
         },
       },
       // Browser: runs in real Chromium via Playwright
-      // Convention: *.browser.test.js / *.browser.test.jsx — use for tests
+      // Convention: *.browser.test.{js,jsx,ts,tsx} — use for tests
       // needing real WebRTC, OPFS, ServiceWorker, or other APIs jsdom can't
       // provide
       {
@@ -95,10 +92,7 @@ export default defineConfig({
                 ]
               : [{ browser: 'chromium' }],
           },
-          include: testDirs.flatMap((d) => [
-            `${d}*.browser.test.js`,
-            `${d}*.browser.test.jsx`,
-          ]),
+          include: testDirs.map((d) => `${d}*.browser.test.{js,jsx,ts,tsx}`),
         },
       },
     ],
