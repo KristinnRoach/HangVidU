@@ -145,24 +145,62 @@ describe('ActiveCallControls', () => {
     expect(onRemoteAudioMutedChange).toHaveBeenCalledWith(true);
   });
 
-  it('shows a toast when the camera cannot start', async () => {
-    mocks.media.setCameraEnabled.mockRejectedValueOnce(
-      new DOMException('Could not start video source', 'NotReadableError'),
-    );
-    const { getByRole } = render(() => (
-      <ActiveCallControls
-        media={mocks.media}
-        remoteAudioMuted={false}
-        onRemoteAudioMutedChange={() => {}}
-      />
-    ));
+  it.each([
+    ['microphone', 'Unmute mic', 'setMicEnabled', 'NotAllowedError', 'blocked'],
+    ['microphone', 'Unmute mic', 'setMicEnabled', 'NotFoundError', 'not_found'],
+    ['microphone', 'Unmute mic', 'setMicEnabled', 'NotReadableError', 'in_use'],
+    ['microphone', 'Unmute mic', 'setMicEnabled', 'UnknownError', 'generic'],
+    [
+      'camera',
+      'Turn camera on',
+      'setCameraEnabled',
+      'NotAllowedError',
+      'blocked',
+    ],
+    [
+      'camera',
+      'Turn camera on',
+      'setCameraEnabled',
+      'NotFoundError',
+      'not_found',
+    ],
+    [
+      'camera',
+      'Turn camera on',
+      'setCameraEnabled',
+      'NotReadableError',
+      'in_use',
+    ],
+    ['camera', 'Turn camera on', 'setCameraEnabled', 'UnknownError', 'generic'],
+    ['camera', 'Switch camera', 'switchCamera', 'NotReadableError', 'in_use'],
+  ])(
+    'reports %s %s failure (%s: %s)',
+    async (device, button, method, errorName, reason) => {
+      mocks.media[method].mockRejectedValueOnce(
+        new DOMException('Capture failed', errorName),
+      );
+      const { getByRole } = render(() => (
+        <ActiveCallControls
+          media={{
+            ...mocks.media,
+            micOn: () => false,
+            cameraOn: () => method === 'switchCamera',
+            cameraSwitchAvailable: () => true,
+          }}
+          remoteAudioMuted={false}
+          onRemoteAudioMutedChange={() => {}}
+        />
+      ));
 
-    fireEvent.click(getByRole('button', { name: 'Turn camera off' }));
+      fireEvent.click(getByRole('button', { name: button }));
 
-    await vi.waitFor(() =>
-      expect(mocks.showErrorToast).toHaveBeenCalledWith(
-        'call.media_error.in_use',
-      ),
-    );
-  });
+      await vi.waitFor(() =>
+        expect(mocks.showErrorToast).toHaveBeenCalledExactlyOnceWith(
+          `call.media_error.${device}.${reason}`,
+        ),
+      );
+      if (method !== 'switchCamera')
+        expect(mocks.media[method]).toHaveBeenCalledWith(true);
+    },
+  );
 });

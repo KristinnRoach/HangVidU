@@ -23,9 +23,9 @@ import { showErrorToast } from '../../../components/base-legacy/toast.js';
 import { onMount, Show } from 'solid-js';
 
 const MEDIA_ERROR_KEYS: Record<string, string> = {
-  NotAllowedError: 'call.media_error.blocked',
-  NotFoundError: 'call.media_error.not_found',
-  NotReadableError: 'call.media_error.in_use',
+  NotAllowedError: 'blocked',
+  NotFoundError: 'not_found',
+  NotReadableError: 'in_use',
 };
 
 type StartCallButtonProps = {
@@ -76,28 +76,37 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
   const { visible } = createAutoHide(5000);
   const { t } = useI18n();
 
-  function reportMediaError(label: string, error: unknown) {
+  function reportMediaError(
+    device: 'microphone' | 'camera',
+    label: string,
+    error: unknown,
+  ) {
     console.error(`[CallMedia] Failed to ${label}`, error);
     const name = (error as Error | undefined)?.name ?? '';
-    showErrorToast(t(MEDIA_ERROR_KEYS[name] ?? 'call.media_error.generic'));
+    const reason = Object.hasOwn(MEDIA_ERROR_KEYS, name)
+      ? MEDIA_ERROR_KEYS[name]
+      : 'generic';
+    showErrorToast(t(`call.media_error.${device}.${reason}`));
   }
 
   function toggleMic() {
     void Promise.resolve(media.setMicEnabled(!media.micOn())).catch((error) =>
-      reportMediaError('change microphone state', error),
+      reportMediaError('microphone', 'change microphone state', error),
     );
   }
 
   function toggleCam() {
     void media
       .setCameraEnabled(!media.cameraOn())
-      .catch((error) => reportMediaError('change camera state', error));
+      .catch((error) =>
+        reportMediaError('camera', 'change camera state', error),
+      );
   }
 
   function switchCamera() {
     void media
       .switchCamera()
-      .catch((error) => reportMediaError('switch camera', error));
+      .catch((error) => reportMediaError('camera', 'switch camera', error));
   }
 
   // No toast: cancelling the screen picker also rejects with NotAllowedError.
