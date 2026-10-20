@@ -1,6 +1,9 @@
 import { cleanup, fireEvent, render } from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import type { CallMedia } from '../call-media';
+import type { MessageParams } from '@shared/i18n';
+import { ActiveCallControls, StartCallButton } from './CallControls';
 
 const mocks = vi.hoisted(() => ({
   hangUp: vi.fn(),
@@ -8,17 +11,35 @@ const mocks = vi.hoisted(() => ({
   startCall: vi.fn(),
   media: {
     faceMaskSupported: () => false,
+    mediaFlowing: () => false,
+    faceMaskOn: () => false,
+    faceMaskError: () => '',
+    toggleFaceMask: vi.fn<CallMedia['toggleFaceMask']>(async () => {}),
+    faceMaskCapturing: () => false,
+    faceMaskCaptureStatus: () => 'preparing',
+    faceMaskOutline: () => false,
+    toggleFaceMaskOutline: vi.fn(),
+    faceMaskPreview: () => undefined,
+    applyFaceMask: vi.fn(),
+    retakeFaceMask: vi.fn(),
+    dismissFaceMaskError: vi.fn(),
+    faceMaskCaptureTrack: () => undefined,
+    remoteCaptureAvailable: () => false,
+    setFaceMaskSource: vi.fn(),
+    faceMaskCaptureReady: () => false,
+    captureFaceMask: vi.fn(),
+    cancelFaceMaskCapture: vi.fn(),
     micOn: () => true,
     cameraOn: () => true,
     cameraPending: () => false,
     cameraSwitchAvailable: () => false,
     screenShareAvailable: () => false,
     screenSharing: () => false,
-    setMicEnabled: vi.fn(),
-    setCameraEnabled: vi.fn(async () => {}),
-    switchCamera: vi.fn(async () => {}),
-    toggleScreenShare: vi.fn(async () => {}),
-  },
+    setMicEnabled: vi.fn<CallMedia['setMicEnabled']>(async () => {}),
+    setCameraEnabled: vi.fn<CallMedia['setCameraEnabled']>(async () => {}),
+    switchCamera: vi.fn<CallMedia['switchCamera']>(async () => {}),
+    toggleScreenShare: vi.fn<CallMedia['toggleScreenShare']>(async () => {}),
+  } satisfies CallMedia,
 }));
 
 vi.mock('../call-handshake', () => ({
@@ -32,7 +53,7 @@ vi.mock('@shared/createAutoHide', () => ({
 }));
 vi.mock('../../../shared/i18n', () => ({
   useI18n: () => ({
-    t: (key, params) => {
+    t: (key: string, params?: MessageParams) => {
       if (key === 'call.unknown_caller') return 'Unknown Caller';
       if (params?.name) return `${key}:${params.name}`;
       return key;
@@ -44,8 +65,6 @@ vi.mock('../../../components/base-legacy/toast.js', () => ({
   showErrorToast: mocks.showErrorToast,
 }));
 
-const { ActiveCallControls, StartCallButton } = await import('./CallControls');
-
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -53,32 +72,15 @@ afterEach(() => {
 
 describe('StartCallButton', () => {
   it('uses the latest reactive call target when clicked', () => {
-    const { container, getByText } = render(() => {
-      const [calleeId, setCalleeId] = createSignal('contact-1');
-      const [calleeName, setCalleeName] = createSignal('Alice');
+    const [calleeId, setCalleeId] = createSignal('contact-1');
+    const [calleeName, setCalleeName] = createSignal('Alice');
+    const { getByRole } = render(() => (
+      <StartCallButton calleeId={calleeId()} calleeName={calleeName()} />
+    ));
 
-      return (
-        <>
-          <button
-            type='button'
-            onClick={() => {
-              setCalleeId('contact-2');
-              setCalleeName('Bob');
-            }}
-          >
-            update target
-          </button>
-          <StartCallButton
-            calleeId={calleeId()}
-            calleeName={calleeName()}
-            audioOnly={false}
-          />
-        </>
-      );
-    });
-
-    fireEvent.click(getByText('update target'));
-    fireEvent.click(container.querySelector('.contact-call-btn'));
+    setCalleeId('contact-2');
+    setCalleeName('Bob');
+    fireEvent.click(getByRole('button', { name: 'contact.action.call:Bob' }));
 
     expect(mocks.startCall).toHaveBeenCalledWith({
       calleeId: 'contact-2',
@@ -90,27 +92,25 @@ describe('StartCallButton', () => {
 
 describe('ActiveCallControls', () => {
   it('keeps the face mask disabled until the call is ready', () => {
-    const toggleFaceMask = vi.fn();
-    let setReady;
-    let setMaskOn;
-    const { getByRole } = render(() => {
-      const [ready, updateReady] = createSignal(false);
-      const [maskOn, updateMaskOn] = createSignal(false);
-      setReady = updateReady;
-      setMaskOn = updateMaskOn;
-      return (
-        <ActiveCallControls
-          media={{
-            ...mocks.media,
-            faceMaskSupported: () => true,
-            mediaFlowing: ready,
-            faceMaskOn: maskOn,
-            toggleFaceMask,
-          }}
-        />
-      );
+    const toggleFaceMask = vi.fn<CallMedia['toggleFaceMask']>(async () => {});
+    const [ready, setReady] = createSignal(false);
+    const [maskOn, setMaskOn] = createSignal(false);
+    const { getByRole } = render(() => (
+      <ActiveCallControls
+        media={{
+          ...mocks.media,
+          faceMaskSupported: () => true,
+          mediaFlowing: ready,
+          faceMaskOn: maskOn,
+          toggleFaceMask,
+        }}
+        remoteAudioMuted={false}
+        onRemoteAudioMutedChange={() => {}}
+      />
+    ));
+    const button = getByRole<HTMLButtonElement>('button', {
+      name: 'Face mask',
     });
-    const button = getByRole('button', { name: 'Face mask' });
     expect(button.disabled).toBe(true);
     fireEvent.click(button);
     expect(toggleFaceMask).not.toHaveBeenCalled();
@@ -173,7 +173,7 @@ describe('ActiveCallControls', () => {
     ],
     ['camera', 'Turn camera on', 'setCameraEnabled', 'UnknownError', 'generic'],
     ['camera', 'Switch camera', 'switchCamera', 'NotReadableError', 'in_use'],
-  ])(
+  ] as const)(
     'reports %s %s failure (%s: %s)',
     async (device, button, method, errorName, reason) => {
       mocks.media[method].mockRejectedValueOnce(

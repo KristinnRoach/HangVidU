@@ -4,10 +4,10 @@
 
 Tests run in two vitest projects, split by filename suffix:
 
-- **`*.test.js`** — runs in Node with jsdom (default, fast, no Playwright overhead)
-- **`*.browser.test.js`** — runs in real Chromium via Playwright
+- **`*.test.{js,jsx,ts,tsx}`** — runs in Node with jsdom (default, fast, no Playwright overhead)
+- **`*.browser.test.{js,jsx,ts,tsx}`** — runs in real Chromium via Playwright
 
-Use `.browser.test.js` only when the test needs real browser APIs that jsdom can't provide (WebRTC, OPFS, ServiceWorker, Canvas, etc.). Everything else should be `.test.js`.
+Use `.browser.test.ts` (or `.tsx` for JSX) only when the test needs real browser APIs that jsdom can't provide (WebRTC, OPFS, ServiceWorker, Canvas, etc.). Everything else should be `.test.ts` or `.test.tsx`. Existing JS/JSX tests remain supported.
 
 ## Scripts
 
@@ -41,11 +41,11 @@ tests/
 ├── env-setup.js     # Runs inside each test environment before every file (env stubs)
 └── process-setup.js # Runs once in the Node orchestrator process (birpc suppression)
 
-src/**/*.test.js    # Co-located component/module tests
+src/**/*.test.{ts,tsx} # Co-located component/module tests
 ```
 
 ## Adding a New Test
 
-1. Create `my-feature.test.js` (defaults to node/jsdom)
-2. If it needs real browser APIs, name it `my-feature.browser.test.js` instead
+1. Create `my-feature.test.ts` or `.test.tsx` for JSX (defaults to node/jsdom)
+2. If it needs real browser APIs, name it `my-feature.browser.test.ts` or `.browser.test.tsx` instead
 3. No config changes needed — the filename pattern handles routing
