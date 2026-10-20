@@ -86,7 +86,7 @@
     "@sentry/browser": "^11.7.0",
     "firebase": "^13.0.0",
     "lucide-solid": "^1.55.0",
-    "mediabunny": "^1.61.3",
+    "mediabunny": "^1.61.6",
     "solid-js": "^1.9.17",
     "workbox-window": "^7.4.1",
     "zod": "^4.6.7"
