@@ -216,13 +216,16 @@ describe('call media', () => {
     );
 
     it('allows unmute to retry after acquisition fails', async () => {
-      const { media, microphone } = setup();
+      const { media, microphone, room } = setup();
       microphone.readyState = 'ended';
       getUserMedia.mockRejectedValueOnce(new Error('device unavailable'));
       await expect(media.setMicEnabled(true)).rejects.toThrow(
         'device unavailable',
       );
       expect(media.micOn()).toBe(false);
+      expect(room.setPresenceData).toHaveBeenLastCalledWith(
+        expect.objectContaining({ micOn: false }),
+      );
       getUserMedia.mockResolvedValueOnce(createStream([createTrack('audio')]));
       await media.setMicEnabled(true);
       expect(media.micOn()).toBe(true);

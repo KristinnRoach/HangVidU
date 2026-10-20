@@ -401,16 +401,16 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     }
   }
 
+  const hasLiveMic = () =>
+    !!localStream()
+      ?.getAudioTracks()
+      .some((track) => track.readyState === 'live');
+  // True once the call ended or switched rooms while an async step was pending.
+  const isStale = (room: ReturnType<SolidP2PRoom['room']>) =>
+    disposed || p2p.room() !== room;
+
   function recoverMicrophone() {
-    if (
-      disposed ||
-      !microphoneEnabled ||
-      !p2p.room() ||
-      localStream()
-        ?.getAudioTracks()
-        .some((track) => track.readyState === 'live')
-    )
-      return;
+    if (disposed || !microphoneEnabled || !p2p.room() || hasLiveMic()) return;
     void setMicEnabled(true).catch((error) => {
       console.error('[CallMedia] Failed to recover microphone', error);
     });
@@ -489,26 +489,30 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       throw new Error('Cannot change microphone without an active room');
 
     microphoneEnabled = enabled;
-    if (
-      enabled &&
-      !localStream()
-        ?.getAudioTracks()
-        .some((track) => track.readyState === 'live')
-    ) {
+    let recoveryError: unknown;
+    if (enabled && !hasLiveMic()) {
       syncTrackState();
       microphoneRecovery ??= replaceMicrophone(room).finally(() => {
         microphoneRecovery = undefined;
       });
-      await microphoneRecovery;
+      try {
+        await microphoneRecovery;
+      } catch (error) {
+        recoveryError = error;
+      }
     }
-    if (disposed || p2p.room() !== room) return;
-    const tracks = localStream()?.getAudioTracks() ?? [];
-    tracks.forEach((track) => {
-      track.enabled = microphoneEnabled;
-    });
-    syncTrackState();
+    // Publish even after a failed or partial recovery so peers never keep
+    // showing a mic that is no longer sending audio.
+    if (!isStale(room)) {
+      const tracks = localStream()?.getAudioTracks() ?? [];
+      tracks.forEach((track) => {
+        track.enabled = microphoneEnabled;
+      });
+      syncTrackState();
 
-    await enqueuePresenceUpdate(room, { micOn: micOn() });
+      await enqueuePresenceUpdate(room, { micOn: micOn() });
+    }
+    if (recoveryError) throw recoveryError;
   }
 
   async function replaceMicrophone(
@@ -524,7 +528,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       .forEach((other) => other.stop());
     if (!track)
       throw new Error('Microphone acquisition returned no audio track');
-    if (disposed || p2p.room() !== room) {
+    if (isStale(room)) {
       track.stop();
       return;
     }
@@ -536,7 +540,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       // A replacement can commit locally even if updating a peer fails.
       if (room.localStream?.getTracks().includes(track)) {
         previousTracks.forEach((previous) => previous.stop());
-        if (disposed || p2p.room() !== room) track.stop();
+        if (isStale(room)) track.stop();
         else recoveredMicrophone = track;
       } else {
         track.stop();
