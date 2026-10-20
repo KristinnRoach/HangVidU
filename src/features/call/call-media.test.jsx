@@ -252,6 +252,35 @@ describe('call media', () => {
       expect(replacement.stop).toHaveBeenCalledOnce();
     });
 
+    it('retries failed peer publication with the live replacement on unmute', async () => {
+      const { media, microphone, room } = setup();
+      microphone.readyState = 'ended';
+      const replacement = createTrack('audio');
+      getUserMedia.mockResolvedValueOnce(createStream([replacement]));
+      const commit = room.setLocalTrack.getMockImplementation();
+      room.setLocalTrack.mockImplementationOnce(async (...args) => {
+        await commit(...args);
+        throw new Error('peer replacement failed');
+      });
+      await expect(media.setMicEnabled(true)).rejects.toThrow(
+        'peer replacement failed',
+      );
+      await media.setMicEnabled(false);
+      expect(replacement.enabled).toBe(false);
+      expect(room.setLocalTrack).toHaveBeenCalledTimes(1);
+      await media.setMicEnabled(true);
+      expect(room.setLocalTrack).toHaveBeenCalledTimes(2);
+      expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+        MICROPHONE_SLOT_ID,
+        replacement,
+      );
+      expect(getUserMedia).toHaveBeenCalledOnce();
+      expect(replacement.stop).not.toHaveBeenCalled();
+      expect(media.micOn()).toBe(true);
+      await media.setMicEnabled(true);
+      expect(room.setLocalTrack).toHaveBeenCalledTimes(2);
+    });
+
     it('leaves a live microphone alone on devicechange', () => {
       const { deviceEvents, room } = setup();
       deviceEvents.dispatchEvent(new Event('devicechange'));

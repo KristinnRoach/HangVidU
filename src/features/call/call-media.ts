@@ -89,6 +89,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       ?.getAudioTracks()
       .some((track) => track.enabled) ?? true;
   let microphoneRecovery: Promise<void> | undefined;
+  let microphonePublicationFailed = false;
   let recoveredMicrophone: MediaStreamTrack | undefined;
   let disposed = false;
   const [cameraOn, setCameraOn] = createSignal(false);
@@ -490,7 +491,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
     microphoneEnabled = enabled;
     let recoveryError: unknown;
-    if (enabled && !hasLiveMic()) {
+    if (enabled && (!hasLiveMic() || microphonePublicationFailed)) {
       syncTrackState();
       microphoneRecovery ??= replaceMicrophone(room).finally(() => {
         microphoneRecovery = undefined;
@@ -518,16 +519,24 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   async function replaceMicrophone(
     room: NonNullable<ReturnType<SolidP2PRoom['room']>>,
   ) {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: getAudioConstraints(),
-    });
-    const track = stream.getAudioTracks()[0];
-    stream
-      .getTracks()
-      .filter((other) => other !== track)
-      .forEach((other) => other.stop());
-    if (!track)
-      throw new Error('Microphone acquisition returned no audio track');
+    // Retry a failed peer update with the already committed live track.
+    let track = microphonePublicationFailed
+      ? localStream()
+          ?.getAudioTracks()
+          .find((track) => track.readyState === 'live')
+      : undefined;
+    if (!track) {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: getAudioConstraints(),
+      });
+      track = stream.getAudioTracks()[0];
+      stream
+        .getTracks()
+        .filter((other) => other !== track)
+        .forEach((other) => other.stop());
+      if (!track)
+        throw new Error('Microphone acquisition returned no audio track');
+    }
     if (isStale(room)) {
       track.stop();
       return;
@@ -535,11 +544,15 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     track.enabled = microphoneEnabled;
     const previousTracks = localStream()?.getAudioTracks() ?? [];
     try {
+      microphonePublicationFailed = true;
       await room.setLocalTrack(MICROPHONE_SLOT_ID, track);
+      microphonePublicationFailed = false;
     } finally {
       // A replacement can commit locally even if updating a peer fails.
       if (room.localStream?.getTracks().includes(track)) {
-        previousTracks.forEach((previous) => previous.stop());
+        previousTracks
+          .filter((previous) => previous !== track)
+          .forEach((previous) => previous.stop());
         if (isStale(room)) track.stop();
         else recoveredMicrophone = track;
       } else {
