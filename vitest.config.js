@@ -46,10 +46,15 @@ export default defineConfig({
           ...sharedTestConfig,
           name: 'node',
           environment: 'jsdom',
+          // jsdom is built once per worker; each file still gets a fresh window.
+          pool: 'vmThreads',
           // Several jsdom specs stub shared browser globals and hoisted module
           // mocks. Keep these files sequential so the node suite remains
           // deterministic under the main multi-project test command.
           fileParallelism: false,
+          // vmThreads + no file parallelism gives this project a different
+          // maxWorkers than browser, which Vitest requires in its own group.
+          sequence: { groupOrder: 0 },
           environmentOptions: {
             jsdom: {
               url: 'http://localhost/',
@@ -79,6 +84,7 @@ export default defineConfig({
         test: {
           ...sharedTestConfig,
           name: 'browser',
+          sequence: { groupOrder: 1 },
           globalSetup: ['./tests/process-setup.js'],
           browser: {
             enabled: true,

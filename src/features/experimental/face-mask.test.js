@@ -3,6 +3,12 @@ import { afterEach, expect, it, vi } from 'vite-plus/test';
 // Renderer tests drive results directly; the real scheduler is tested separately.
 vi.mock('./face-mask-detection', () => ({ faceMaskDetection: (mesh) => mesh }));
 
+// globalThis is the jsdom window, so the libraries are stubbed as globals.
+function stubLibs({ p5, ml5 }) {
+  vi.stubGlobal('p5', p5);
+  vi.stubGlobal('ml5', ml5);
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -33,7 +39,7 @@ it('shares preloading and reuses the ready model after detection stops', async (
   vi.resetModules();
   const mesh = { ready: Promise.resolve(), detectStop: vi.fn() };
   const faceMesh = vi.fn(() => mesh);
-  vi.stubGlobal('window', { p5: class {}, ml5: { faceMesh } });
+  stubLibs({ p5: class {}, ml5: { faceMesh } });
   const scripts = [];
   vi.spyOn(document.head, 'append').mockImplementation((script) => {
     scripts.push(script.src);
@@ -61,7 +67,7 @@ it.each(['missing p5', 'invalid p5', 'missing ml5', 'missing faceMesh'])(
     if (scenario === 'invalid p5') invalid.p5 = {};
     if (scenario === 'missing ml5') delete invalid.ml5;
     if (scenario === 'missing faceMesh') invalid.ml5 = {};
-    vi.stubGlobal('window', invalid);
+    stubLibs(invalid);
     const append = vi
       .spyOn(document.head, 'append')
       .mockImplementation((script) => {
@@ -72,7 +78,7 @@ it.each(['missing p5', 'invalid p5', 'missing ml5', 'missing faceMesh'])(
       'Could not load face mask libraries',
     );
     expect(faceMesh).not.toHaveBeenCalled();
-    vi.stubGlobal('window', libs);
+    stubLibs(libs);
     expect((await preloadFaceMask()).mesh).toBe(mesh);
     expect(faceMesh).toHaveBeenCalledOnce();
     expect(append).toHaveBeenCalledTimes(4);
@@ -136,7 +142,7 @@ async function setupFaceMask({ waitForCamera = false, mode = 'outline' } = {}) {
       }
     },
   );
-  vi.stubGlobal('window', {
+  stubLibs({
     ml5: { faceMesh: () => mesh },
     p5: class {
       constructor(init) {

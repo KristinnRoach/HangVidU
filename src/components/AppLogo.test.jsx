@@ -8,12 +8,18 @@ vi.mock('@shared/i18n/index.js', () => ({
   useI18n: () => ({ t: (key) => key }),
 }));
 
+const { reload } = vi.hoisted(() => ({ reload: vi.fn() }));
+vi.mock('@shared/app-reload', async (importOriginal) => ({
+  ...(await importOriginal()),
+  reloadApp: reload,
+}));
+
 const releases = [];
 
 afterEach(() => {
   cleanup();
   for (const release of releases.splice(0)) release();
-  vi.unstubAllGlobals();
+  reload.mockClear();
 });
 
 describe.each([
@@ -21,8 +27,6 @@ describe.each([
   ['homepage title button', () => <AppReloadButton>HangVidU</AppReloadButton>],
 ])('%s', (_name, Component) => {
   it('reloads the current page when allowed', () => {
-    const reload = vi.fn();
-    vi.stubGlobal('window', { location: { reload } });
     const { getByRole } = render(() => <Component />);
 
     fireEvent.click(getByRole('button', { name: 'nav.reload' }));
@@ -31,8 +35,6 @@ describe.each([
   });
 
   it('blocks clicks during calls without scheduling a reload for later', () => {
-    const reload = vi.fn();
-    vi.stubGlobal('window', { location: { reload } });
     const { getByRole } = render(() => <Component />);
     const button = getByRole('button', { name: 'nav.reload' });
     const releaseIncomingCall = holdAppReload();
