@@ -720,29 +720,39 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     setCameraPending(true);
     try {
       await restoreMaskCamera();
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cameras = uniqueCameras(devices);
-      const currentDeviceId = currentTrack.getSettings?.().deviceId;
-      const currentDevice = devices.find(
-        (device) => device.deviceId === currentDeviceId,
-      );
-      const currentCameraKey = currentDevice && cameraKey(currentDevice);
-      const currentIndex = cameras.findIndex(
-        (camera) => cameraKey(camera) === currentCameraKey,
-      );
-      const nextCamera = cameras[(currentIndex + 1) % cameras.length];
+      const settings = currentTrack.getSettings();
+      let cameraConstraint: MediaTrackConstraints;
       if (
-        !nextCamera ||
-        (currentCameraKey && cameraKey(nextCamera) === currentCameraKey)
+        settings.facingMode === 'user' ||
+        settings.facingMode === 'environment'
       ) {
-        throw new Error('No alternate camera is available');
+        cameraConstraint = {
+          facingMode: {
+            exact: settings.facingMode === 'user' ? 'environment' : 'user',
+          },
+        };
+      } else {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = uniqueCameras(devices);
+        const currentDevice = devices.find(
+          (device) => device.deviceId === settings.deviceId,
+        );
+        const currentCameraKey = currentDevice && cameraKey(currentDevice);
+        const currentIndex = cameras.findIndex(
+          (camera) => cameraKey(camera) === currentCameraKey,
+        );
+        const nextCamera = cameras[(currentIndex + 1) % cameras.length];
+        if (
+          !nextCamera ||
+          (currentCameraKey && cameraKey(nextCamera) === currentCameraKey)
+        ) {
+          throw new Error('No alternate camera is available');
+        }
+        cameraConstraint = { deviceId: { exact: nextCamera.deviceId } };
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          ...getVideoConstraints(),
-          deviceId: { exact: nextCamera.deviceId },
-        },
+        video: { ...getVideoConstraints(), ...cameraConstraint },
       });
       const nextTrack = stream.getVideoTracks()[0];
       if (!nextTrack) {
