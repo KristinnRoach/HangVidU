@@ -751,8 +751,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
           : settings.facingMode === 'environment'
             ? 'user'
             : undefined;
-      // ponytail: no camera satisfies the opposite facing mode (e.g. two
-      // front-facing lenses) rejects, so fall back to cycling by device.
+      // An exact facing mode rejects when no camera reports the opposite
+      // direction (e.g. two front-facing lenses), so cycle by device instead.
       const stream = oppositeFacingMode
         ? await openCamera({
             facingMode: { exact: oppositeFacingMode },
