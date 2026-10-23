@@ -721,17 +721,11 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     try {
       await restoreMaskCamera();
       const settings = currentTrack.getSettings();
-      let cameraConstraint: MediaTrackConstraints;
-      if (
-        settings.facingMode === 'user' ||
-        settings.facingMode === 'environment'
-      ) {
-        cameraConstraint = {
-          facingMode: {
-            exact: settings.facingMode === 'user' ? 'environment' : 'user',
-          },
-        };
-      } else {
+      const openCamera = (cameraConstraint: MediaTrackConstraints) =>
+        navigator.mediaDevices.getUserMedia({
+          video: { ...getVideoConstraints(), ...cameraConstraint },
+        });
+      const openNextDevice = async () => {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const cameras = uniqueCameras(devices);
         const currentDevice = devices.find(
@@ -748,12 +742,22 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
         ) {
           throw new Error('No alternate camera is available');
         }
-        cameraConstraint = { deviceId: { exact: nextCamera.deviceId } };
-      }
+        return openCamera({ deviceId: { exact: nextCamera.deviceId } });
+      };
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { ...getVideoConstraints(), ...cameraConstraint },
-      });
+      const oppositeFacingMode =
+        settings.facingMode === 'user'
+          ? 'environment'
+          : settings.facingMode === 'environment'
+            ? 'user'
+            : undefined;
+      // ponytail: no camera satisfies the opposite facing mode (e.g. two
+      // front-facing lenses) rejects, so fall back to cycling by device.
+      const stream = oppositeFacingMode
+        ? await openCamera({
+            facingMode: { exact: oppositeFacingMode },
+          }).catch(openNextDevice)
+        : await openNextDevice();
       const nextTrack = stream.getVideoTracks()[0];
       if (!nextTrack) {
         stream.getTracks().forEach((track) => track.stop());

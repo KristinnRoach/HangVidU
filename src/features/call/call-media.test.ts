@@ -505,6 +505,30 @@ describe('call media', () => {
           frontCamera,
         );
         expect(backCamera.stop).toHaveBeenCalledOnce();
+
+        if (reportsFacingMode) {
+          // No camera satisfies the opposite facing mode: cycle by device.
+          const fallbackCamera = createTrack('video');
+          frontCamera.getSettings = () => ({
+            deviceId: 'facetime-camera',
+            facingMode: 'user',
+          });
+          getUserMedia.mockRejectedValueOnce(new Error('OverconstrainedError'));
+          getUserMedia.mockResolvedValue(createStream([fallbackCamera]));
+
+          await media.switchCamera();
+
+          expect(getUserMedia).toHaveBeenLastCalledWith({
+            video: expect.objectContaining({
+              deviceId: { exact: 'iphone-camera' },
+            }),
+          });
+          expect(room.setLocalTrack).toHaveBeenLastCalledWith(
+            PRIMARY_VIDEO_SLOT_ID,
+            fallbackCamera,
+          );
+          expect(frontCamera.stop).toHaveBeenCalledOnce();
+        }
         dispose();
       });
     },
