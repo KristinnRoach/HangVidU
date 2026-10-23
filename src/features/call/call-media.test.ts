@@ -513,7 +513,19 @@ describe('call media', () => {
             deviceId: 'facetime-camera',
             facingMode: 'user',
           });
-          getUserMedia.mockRejectedValueOnce(new Error('OverconstrainedError'));
+          for (const name of ['NotAllowedError', 'NotReadableError']) {
+            const error = new DOMException('Camera unavailable', name);
+            const requestsBefore = getUserMedia.mock.calls.length;
+            getUserMedia.mockRejectedValueOnce(error);
+
+            await expect(media.switchCamera()).rejects.toBe(error);
+
+            expect(getUserMedia).toHaveBeenCalledTimes(requestsBefore + 1);
+            expect(frontCamera.stop).not.toHaveBeenCalled();
+          }
+          getUserMedia.mockRejectedValueOnce(
+            new DOMException('No opposite camera', 'OverconstrainedError'),
+          );
           getUserMedia.mockResolvedValue(createStream([fallbackCamera]));
 
           await media.switchCamera();

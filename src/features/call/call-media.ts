@@ -756,7 +756,15 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       const stream = oppositeFacingMode
         ? await openCamera({
             facingMode: { exact: oppositeFacingMode },
-          }).catch(openNextDevice)
+          }).catch((error: unknown) => {
+            if (
+              (error as { name?: string } | null)?.name !==
+              'OverconstrainedError'
+            ) {
+              throw error;
+            }
+            return openNextDevice();
+          })
         : await openNextDevice();
       const nextTrack = stream.getVideoTracks()[0];
       if (!nextTrack) {
