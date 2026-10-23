@@ -720,30 +720,52 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     setCameraPending(true);
     try {
       await restoreMaskCamera();
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cameras = uniqueCameras(devices);
-      const currentDeviceId = currentTrack.getSettings?.().deviceId;
-      const currentDevice = devices.find(
-        (device) => device.deviceId === currentDeviceId,
-      );
-      const currentCameraKey = currentDevice && cameraKey(currentDevice);
-      const currentIndex = cameras.findIndex(
-        (camera) => cameraKey(camera) === currentCameraKey,
-      );
-      const nextCamera = cameras[(currentIndex + 1) % cameras.length];
-      if (
-        !nextCamera ||
-        (currentCameraKey && cameraKey(nextCamera) === currentCameraKey)
-      ) {
-        throw new Error('No alternate camera is available');
-      }
+      const settings = currentTrack.getSettings();
+      const openCamera = (cameraConstraint: MediaTrackConstraints) =>
+        navigator.mediaDevices.getUserMedia({
+          video: { ...getVideoConstraints(), ...cameraConstraint },
+        });
+      const openNextDevice = async () => {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = uniqueCameras(devices);
+        const currentDevice = devices.find(
+          (device) => device.deviceId === settings.deviceId,
+        );
+        const currentCameraKey = currentDevice && cameraKey(currentDevice);
+        const currentIndex = cameras.findIndex(
+          (camera) => cameraKey(camera) === currentCameraKey,
+        );
+        const nextCamera = cameras[(currentIndex + 1) % cameras.length];
+        if (
+          !nextCamera ||
+          (currentCameraKey && cameraKey(nextCamera) === currentCameraKey)
+        ) {
+          throw new Error('No alternate camera is available');
+        }
+        return openCamera({ deviceId: { exact: nextCamera.deviceId } });
+      };
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          ...getVideoConstraints(),
-          deviceId: { exact: nextCamera.deviceId },
-        },
-      });
+      const oppositeFacingMode =
+        settings.facingMode === 'user'
+          ? 'environment'
+          : settings.facingMode === 'environment'
+            ? 'user'
+            : undefined;
+      // An exact facing mode rejects when no camera reports the opposite
+      // direction (e.g. two front-facing lenses), so cycle by device instead.
+      const stream = oppositeFacingMode
+        ? await openCamera({
+            facingMode: { exact: oppositeFacingMode },
+          }).catch((error: unknown) => {
+            if (
+              (error as { name?: string } | null)?.name !==
+              'OverconstrainedError'
+            ) {
+              throw error;
+            }
+            return openNextDevice();
+          })
+        : await openNextDevice();
       const nextTrack = stream.getVideoTracks()[0];
       if (!nextTrack) {
         stream.getTracks().forEach((track) => track.stop());
