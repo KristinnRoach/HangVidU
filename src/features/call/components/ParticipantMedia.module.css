@@ -22,8 +22,12 @@
 
 .media,
 .selfPreview {
-  object-fit: cover;
+  object-fit: contain;
   object-position: center center;
+}
+
+.media {
+  transform: scale(var(--video-scale, 1));
 }
 
 .selfPreview {

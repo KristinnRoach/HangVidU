@@ -157,7 +157,9 @@ export default function MainContent() {
 
           {/* Call room renders for guests too (room-link calls). */}
           <Show when={p2p.state() !== 'idle'}>
-            <div class={mainStyles.activeViewContainer}>
+            <div
+              class={`${mainStyles.activeViewContainer} ${mainStyles.callView}`}
+            >
               <LoadBoundary
                 loading={isConnecting()}
                 fallback={

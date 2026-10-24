@@ -68,3 +68,8 @@
   -webkit-user-select: none;
   user-select: none;
 }
+
+.callView {
+  min-height: 0;
+  overflow: hidden;
+}
