@@ -4,6 +4,7 @@ import {
   createSignal,
   on,
   onCleanup,
+  onMount,
   Switch,
   Match,
   Show,
@@ -31,6 +32,9 @@ type ParticipantMediaProps = {
 
 type MediaTrackStatus = 'off' | 'connecting' | 'interrupted' | 'connected';
 type MediaStatus = { audio: MediaTrackStatus; video: MediaTrackStatus };
+
+// Matches --gap, the preview's inset from the frame edge.
+const GAP = 12;
 
 // Only NotAllowedError means playback needs a user gesture; other
 // rejections (e.g. AbortError from re-attach/pause races) are transient
@@ -63,8 +67,64 @@ function isReceivingStreamData(
 export function ParticipantMedia(props: ParticipantMediaProps) {
   // oxlint-disable-next-line no-unassigned-vars
   let video!: HTMLVideoElement;
-  const [videoAspect, setVideoAspect] = createSignal(4 / 3);
+  let surface!: HTMLDivElement;
+  const [bounds, setBounds] = createSignal({ width: 0, height: 0 });
   const variant = () => props.variant ?? 'remote';
+  // Remote surfaces fill their own grid cell, which is what videoScale needs.
+  // The self-preview is sized from these bounds, so it must measure the parent
+  // instead or it would feed back. Either way this relies on the call container
+  // being height-bounded (MainContent's .callView min-height: 0).
+  onMount(() => {
+    const target =
+      variant() === 'self-preview' ? surface.parentElement : surface;
+    if (!target || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry)
+        setBounds({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+    });
+    observer.observe(target);
+    onCleanup(() => observer.disconnect());
+  });
+  const [videoAspect, setVideoAspect] = createSignal(4 / 3);
+  // Fit the preview box to the source aspect so it has no empty bands. Mirrors
+  // the .selfPreview clamps, which stay as the fallback until first measurement.
+  const previewSize = createMemo(() => {
+    const { width, height } = bounds();
+    if (!width || !height) return undefined;
+    const maxWidth = props.previewUncropped
+      ? 300
+      : Math.min(300, Math.max(120, width * 0.25));
+    const maxHeight = props.previewUncropped
+      ? height * 0.4
+      : Math.min(200, height * 0.3);
+    const w = Math.min(maxWidth, width - 2 * GAP, maxHeight * videoAspect());
+    return { width: `${w}px`, height: `${w / videoAspect()}px` };
+  });
+  // The video is always object-fit: contain, then scaled up toward a full
+  // fill. max(r, 1/r) is exactly the scale that makes contain cover the frame;
+  // capping it at 1.35 (~26% source cropping) keeps the remainder letterboxed
+  // instead of chopping the sides off a landscape source on a portrait screen.
+  // ponytail: 1.35 is the one tuning knob, adjust from real-device feedback.
+  const videoScale = createMemo(() => {
+    if (
+      props.screenShare ||
+      props.previewUncropped ||
+      variant() === 'self-preview'
+    )
+      return 1;
+    const { width, height } = bounds();
+    if (!width || !height) return 1;
+    const frameAspect = width / height;
+    const scale = Math.min(
+      1.35,
+      Math.max(frameAspect / videoAspect(), videoAspect() / frameAspect),
+    );
+    // Rounded: raw floats rewrite the inline style on every resize pixel.
+    return Math.round(scale * 100) / 100;
+  });
   const shouldMutePlayback = () =>
     variant() === 'self-preview' || props.remoteAudioMuted === true;
 
@@ -191,7 +251,17 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     }
 
     const shouldMute = shouldMutePlayback();
+    // One signal covers the original element and the iOS replacement below.
+    const listeners = new AbortController();
+    const replay = () => {
+      if (video.videoWidth && video.videoHeight)
+        setVideoAspect(video.videoWidth / video.videoHeight);
+      if (video.paused) void playback.resumePlayback();
+    };
     const configureVideo = (element: HTMLVideoElement) => {
+      // 'resize' fires when the source dimensions change, e.g. on rotation.
+      for (const event of ['loadedmetadata', 'canplay', 'pause', 'resize'])
+        element.addEventListener(event, replay, { signal: listeners.signal });
       element.defaultMuted = shouldMute;
       if (shouldMute) element.setAttribute('muted', '');
       else element.removeAttribute('muted');
@@ -227,16 +297,6 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
         void playback.attach(replacement, stream, { muted: shouldMute });
       });
 
-    const replay = () => {
-      if (video.videoWidth && video.videoHeight)
-        setVideoAspect(video.videoWidth / video.videoHeight);
-      if (video.paused) void playback.resumePlayback();
-    };
-
-    video.addEventListener('loadedmetadata', replay);
-    video.addEventListener('canplay', replay);
-    video.addEventListener('pause', replay);
-
     onCleanup(() => {
       disposed = true;
       playback.detach();
@@ -244,15 +304,18 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
         sourceStream.removeEventListener('addtrack', syncAudioTracks);
         sourceStream.removeEventListener('removetrack', syncAudioTracks);
       }
-      video.removeEventListener('loadedmetadata', replay);
-      video.removeEventListener('canplay', replay);
-      video.removeEventListener('pause', replay);
+      listeners.abort();
     });
   });
 
   return (
     <div
+      ref={surface}
       class={styles.surface}
+      style={{
+        ...(variant() === 'self-preview' ? previewSize() : {}),
+        '--video-scale': videoScale(),
+      }}
       classList={{
         [styles.selfPreview!]: variant() === 'self-preview',
         [styles.screenShare!]: props.screenShare,
@@ -262,7 +325,6 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       <video
         ref={video}
         class={styles.media}
-        style={props.previewUncropped ? { 'object-fit': 'contain' } : undefined}
         hidden={status().video !== 'connected'}
         autoplay
         muted={shouldMutePlayback()}

@@ -58,6 +58,130 @@ describe('ParticipantMedia', () => {
     vi.restoreAllMocks();
   });
 
+  it('scales remote framing toward a full fill, capped', () => {
+    let resized;
+    let observed;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback) {
+          resized = callback;
+        }
+        observe(target) {
+          observed = target;
+        }
+        disconnect() {}
+      },
+    );
+    const setSource = (video, width, height) => {
+      Object.defineProperty(video, 'videoWidth', {
+        configurable: true,
+        value: width,
+      });
+      Object.defineProperty(video, 'videoHeight', {
+        configurable: true,
+        value: height,
+      });
+      video.dispatchEvent(new Event('resize'));
+    };
+    try {
+      const stream = new FakeStream([new FakeTrack('video')]);
+      const { container } = render(() => <ParticipantMedia stream={stream} />);
+      const surface = container.firstElementChild;
+      const video = container.querySelector('video');
+      const scale = () => surface.style.getPropertyValue('--video-scale');
+      expect(observed).toBe(surface);
+
+      resized([{ contentRect: { width: 400, height: 800 } }]);
+      // Landscape source in a portrait frame: capped, still letterboxed.
+      setSource(video, 1920, 1080);
+      expect(scale()).toBe('1.35');
+
+      // Portrait source, mild mismatch: scaled to an exact fill.
+      setSource(video, 1080, 1920);
+      expect(scale()).toBe('1.13');
+
+      // Frame matches the source: untouched.
+      resized([{ contentRect: { width: 450, height: 800 } }]);
+      expect(scale()).toBe('1');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('never scales screen shares or the self preview', () => {
+    let resized;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback) {
+          resized = callback;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    try {
+      const stream = new FakeStream([new FakeTrack('video')]);
+      const { container } = render(() => (
+        <ParticipantMedia stream={stream} screenShare />
+      ));
+      const surface = container.firstElementChild;
+      resized([{ contentRect: { width: 400, height: 800 } }]);
+      expect(surface.style.getPropertyValue('--video-scale')).toBe('1');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('reshapes the preview after source dimensions change without empty bands', () => {
+    let resized;
+    let observed;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback) {
+          resized = callback;
+        }
+        observe(target) {
+          observed = target;
+        }
+        disconnect() {}
+      },
+    );
+    try {
+      const stream = new FakeStream([new FakeTrack('video')]);
+      const { container } = render(() => (
+        <ParticipantMedia stream={stream} variant='self-preview' />
+      ));
+      const surface = container.firstElementChild;
+      const video = container.querySelector('video');
+      expect(observed).toBe(surface.parentElement);
+      resized([{ contentRect: { width: 400, height: 800 } }]);
+      for (const [width, height] of [
+        [1080, 1920],
+        [1920, 1080],
+      ]) {
+        Object.defineProperty(video, 'videoWidth', {
+          configurable: true,
+          value: width,
+        });
+        Object.defineProperty(video, 'videoHeight', {
+          configurable: true,
+          value: height,
+        });
+        video.dispatchEvent(new Event('resize'));
+        expect(
+          parseFloat(surface.style.width) / parseFloat(surface.style.height),
+        ).toBeCloseTo(width / height);
+        expect(parseFloat(surface.style.width)).toBeLessThanOrEqual(120);
+        expect(parseFloat(surface.style.height)).toBeLessThanOrEqual(200);
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('keeps remote audio attached while showing the audio fallback', () => {
     const stream = new FakeStream([new FakeTrack('audio')]);
     const { container } = render(() => <ParticipantMedia stream={stream} />);
