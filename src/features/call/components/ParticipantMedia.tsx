@@ -69,12 +69,15 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
   let video!: HTMLVideoElement;
   let surface!: HTMLDivElement;
   const [bounds, setBounds] = createSignal({ width: 0, height: 0 });
-  // Measure the parent, not the surface: the self-preview surface is sized
-  // from these bounds, so observing itself would feed back. This relies on the
-  // call container being height-bounded (MainContent's .callView min-height:0).
+  const variant = () => props.variant ?? 'remote';
+  // Remote surfaces fill their own grid cell, which is what videoScale needs.
+  // The self-preview is sized from these bounds, so it must measure the parent
+  // instead or it would feed back. Either way this relies on the call container
+  // being height-bounded (MainContent's .callView min-height: 0).
   onMount(() => {
-    const parent = surface.parentElement;
-    if (!parent || typeof ResizeObserver === 'undefined') return;
+    const target =
+      variant() === 'self-preview' ? surface.parentElement : surface;
+    if (!target || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) => {
       if (entry)
         setBounds({
@@ -82,11 +85,10 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
           height: entry.contentRect.height,
         });
     });
-    observer.observe(parent);
+    observer.observe(target);
     onCleanup(() => observer.disconnect());
   });
   const [videoAspect, setVideoAspect] = createSignal(4 / 3);
-  const variant = () => props.variant ?? 'remote';
   // Fit the preview box to the source aspect so it has no empty bands. Mirrors
   // the .selfPreview clamps, which stay as the fallback until first measurement.
   const previewSize = createMemo(() => {

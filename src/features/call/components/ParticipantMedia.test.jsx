@@ -60,13 +60,16 @@ describe('ParticipantMedia', () => {
 
   it('scales remote framing toward a full fill, capped', () => {
     let resized;
+    let observed;
     vi.stubGlobal(
       'ResizeObserver',
       class {
         constructor(callback) {
           resized = callback;
         }
-        observe() {}
+        observe(target) {
+          observed = target;
+        }
         disconnect() {}
       },
     );
@@ -87,6 +90,7 @@ describe('ParticipantMedia', () => {
       const surface = container.firstElementChild;
       const video = container.querySelector('video');
       const scale = () => surface.style.getPropertyValue('--video-scale');
+      expect(observed).toBe(surface);
 
       resized([{ contentRect: { width: 400, height: 800 } }]);
       // Landscape source in a portrait frame: capped, still letterboxed.
@@ -132,13 +136,16 @@ describe('ParticipantMedia', () => {
 
   it('reshapes the preview after source dimensions change without empty bands', () => {
     let resized;
+    let observed;
     vi.stubGlobal(
       'ResizeObserver',
       class {
         constructor(callback) {
           resized = callback;
         }
-        observe() {}
+        observe(target) {
+          observed = target;
+        }
         disconnect() {}
       },
     );
@@ -149,6 +156,7 @@ describe('ParticipantMedia', () => {
       ));
       const surface = container.firstElementChild;
       const video = container.querySelector('video');
+      expect(observed).toBe(surface.parentElement);
       resized([{ contentRect: { width: 400, height: 800 } }]);
       for (const [width, height] of [
         [1080, 1920],
