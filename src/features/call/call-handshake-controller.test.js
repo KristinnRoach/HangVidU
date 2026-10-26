@@ -30,6 +30,11 @@ const mocks = vi.hoisted(() => ({
   publish: vi.fn(),
   resolveDirectConversationId: vi.fn(),
   getUserMedia: vi.fn(),
+  sentryInfo: vi.fn(),
+}));
+
+vi.mock('@sentry/browser', () => ({
+  logger: { info: mocks.sentryInfo },
 }));
 
 vi.mock('./call-service.js', () => ({
@@ -606,7 +611,11 @@ describe('CallHandshakeController', () => {
         .spyOn(AbortSignal, 'timeout')
         .mockImplementation((ms) => {
           const controller = new AbortController();
-          setTimeout(() => controller.abort(new DOMException('Timed out')), ms);
+          setTimeout(
+            () =>
+              controller.abort(new DOMException('Timed out', 'TimeoutError')),
+            ms,
+          );
           return controller.signal;
         });
       vi.spyOn(globalThis, 'fetch').mockImplementation(
@@ -617,7 +626,7 @@ describe('CallHandshakeController', () => {
             });
           }),
       );
-      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const p2p = createP2PMock({
         join: vi.fn(async () => ({
           roomId: 'room-1',
@@ -644,6 +653,14 @@ describe('CallHandshakeController', () => {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
       });
       expect(timeout).toHaveBeenCalledWith(4_000);
+      expect(warn).toHaveBeenCalledWith(
+        '[call] TURN credentials unavailable; using STUN fallback',
+        {
+          reason: 'initial',
+          responseStatus: undefined,
+          errorName: 'TimeoutError',
+        },
+      );
     } finally {
       vi.useRealTimers();
     }
@@ -679,6 +696,33 @@ describe('CallHandshakeController', () => {
     });
     expect(warn).toHaveBeenCalledWith(
       '[call] TURN credentials unavailable; using STUN fallback',
+      { reason: 'initial', responseStatus: undefined, errorName: 'Error' },
+    );
+
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(
+      new Response('unavailable', { status: 503 }),
+    );
+    await expect(
+      provider({ reason: 'initial', signal: new AbortController().signal }),
+    ).resolves.toEqual({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+    expect(warn).toHaveBeenLastCalledWith(
+      '[call] TURN credentials unavailable; using STUN fallback',
+      { reason: 'initial', responseStatus: 503, errorName: 'Error' },
+    );
+
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(
+      new Response('invalid json'),
+    );
+    await expect(
+      provider({ reason: 'initial', signal: new AbortController().signal }),
+    ).resolves.toEqual({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+    expect(warn).toHaveBeenLastCalledWith(
+      '[call] TURN credentials unavailable; using STUN fallback',
+      { reason: 'initial', responseStatus: 200, errorName: 'SyntaxError' },
     );
 
     const controllerForAbort = new AbortController();
@@ -735,6 +779,74 @@ describe('CallHandshakeController', () => {
     await expect(joinOptions.getLocalStream()).resolves.toBe(stream);
   });
 
+  it('logs media recovery independently of room presence without ending the call', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const p2p = createP2PMock({
+      join: vi.fn(async () => ({
+        roomId: 'room-1',
+        members: ['callee-id', 'caller-id'],
+      })),
+    });
+    const controller = createController(p2p);
+    controller.showIncomingCallFromNotification({
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      callerId: 'caller-id',
+      startedAt: Date.now(),
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+    const options = p2p.join.mock.calls[0][0];
+
+    options.onIceReconnecting({
+      attempt: 1,
+      maxAttempts: 3,
+      reason: 'disconnected',
+      nextDelayMs: 0,
+    });
+    expect(warn).toHaveBeenCalledWith(
+      '[call] media connection interrupted; recovering',
+      {
+        roomId: 'room-1',
+        attempt: 1,
+        maxAttempts: 3,
+        reason: 'disconnected',
+        nextDelayMs: 0,
+      },
+    );
+    options.onIceReconnected({ attempt: 1, durationMs: 1200 });
+    expect(log).toHaveBeenCalledWith('[call] media connection recovered', {
+      roomId: 'room-1',
+      attempt: 1,
+      durationMs: 1200,
+    });
+    expect(mocks.sentryInfo).toHaveBeenCalledWith(
+      '[call] media connection recovered',
+      {
+        roomId: 'room-1',
+        attempt: 1,
+        durationMs: 1200,
+      },
+    );
+    options.onIceReconnectFailed({
+      attempts: 3,
+      reason: 'failed',
+      error: new Error('Recovery timed out'),
+    });
+    expect(warn).toHaveBeenCalledWith(
+      '[call] media connection recovery failed',
+      {
+        roomId: 'room-1',
+        attempts: 3,
+        reason: 'failed',
+        message: 'Recovery timed out',
+      },
+    );
+    expect(p2p.dispose).not.toHaveBeenCalled();
+    controller.cleanup();
+  });
+
   it('holds a reconnect grace window when the remote peer drops silently, then tears down', async () => {
     vi.useFakeTimers();
     try {
@@ -786,6 +898,7 @@ describe('CallHandshakeController', () => {
   it('fails the call on initial peer/session errors, ignoring other room errors', async () => {
     vi.useFakeTimers();
     try {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       let joinOptions;
       mocks.respondToIncomingCallInvite.mockReturnValue(deferred().promise);
       const p2p = createP2PMock({
@@ -809,14 +922,22 @@ describe('CallHandshakeController', () => {
       await flushPromises();
 
       expect(joinOptions?.connectedTimeoutMs).toBe(20_000);
+      expect(joinOptions?.startTimeoutMs).toBe(20_000);
 
       joinOptions?.onError?.({ error: new Error('presence refresh failed') });
       expect(onReconnectStatus).not.toHaveBeenCalledWith('connect-failed');
+      expect(warn).not.toHaveBeenCalled();
 
       joinOptions?.onError?.({
-        error: new Error('Peer.start: connection failed'),
+        error: new Error('Peer.start: timed out after 20000ms'),
       });
       expect(onReconnectStatus).toHaveBeenLastCalledWith('connect-failed');
+      expect(warn).toHaveBeenCalledWith('[call] connection failed', {
+        message: 'Peer.start: timed out after 20000ms',
+        roomId: undefined,
+        memberCount: 0,
+        state: 'idle',
+      });
 
       joinOptions?.onError?.({
         error: new Error(
