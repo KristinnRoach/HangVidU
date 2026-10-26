@@ -4,6 +4,7 @@ import {
   getCallService,
 } from './call-service.js';
 import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
+import { logger } from '@sentry/browser';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import type {
   CreateRoomSignalingOptions,
@@ -35,7 +36,8 @@ import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
 const DATA_URL = getHangViduApiBaseUrl();
 const TURN_FETCH_TIMEOUT_MS = 4_000;
 
-const provideIceServers: IceServersProvider = async ({ signal }) => {
+const provideIceServers: IceServersProvider = async ({ signal, reason }) => {
+  let responseStatus: number | undefined;
   try {
     const token = await getLoggedInUserToken();
     const response = await fetch(`${DATA_URL}/turn-credentials`, {
@@ -46,11 +48,49 @@ const provideIceServers: IceServersProvider = async ({ signal }) => {
         AbortSignal.timeout(TURN_FETCH_TIMEOUT_MS),
       ]),
     });
+    responseStatus = response.status;
     if (!response.ok) throw new Error('TURN credential request failed');
-    return response.json();
+    const credentials = await response.json();
+    if (
+      !Array.isArray(credentials?.iceServers) ||
+      credentials.iceServers.length === 0 ||
+      !credentials.iceServers.every(
+        (server: RTCIceServer) =>
+          server &&
+          ((typeof server.urls === 'string' && server.urls.trim().length > 0) ||
+            (Array.isArray(server.urls) &&
+              server.urls.length > 0 &&
+              server.urls.every(
+                (url) => typeof url === 'string' && url.trim().length > 0,
+              ))) &&
+          (server.username === undefined ||
+            typeof server.username === 'string') &&
+          (server.credential === undefined ||
+            typeof server.credential === 'string'),
+      ) ||
+      (credentials.expiresAt !== undefined &&
+        (!Number.isFinite(credentials.expiresAt) ||
+          credentials.expiresAt <= Date.now()))
+    ) {
+      throw new TypeError('TURN credential response was invalid');
+    }
+    return credentials;
   } catch (error) {
     if (signal.aborted) throw error;
-    console.warn('[call] TURN credentials unavailable; using STUN fallback');
+    console.warn(
+      {
+        reason,
+        responseStatus,
+        errorName:
+          error &&
+          typeof error === 'object' &&
+          'name' in error &&
+          typeof error.name === 'string'
+            ? error.name
+            : 'UnknownError',
+      },
+      '[call] TURN credentials unavailable; using STUN fallback',
+    );
     // ponytail: STUN remains fixed for this room; retry TURN only if credential outages prove common.
     return {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -86,6 +126,8 @@ const RECONNECT_FAILED_DISPLAY_MS = 2_500;
  * connection sits on "Waiting for the other person to connect…" forever.
  */
 const CONNECTED_TIMEOUT_MS = 20_000;
+/** Allow signaling and TURN setup to recover after waking or changing networks. */
+const START_TIMEOUT_MS = 20_000;
 /** How long "Could not connect" is shown before the call exits to the lobby. */
 const CONNECT_FAILED_DISPLAY_MS = 4_000;
 
@@ -527,9 +569,45 @@ export class CallHandshakeController {
         dataChannel: true,
         iceServersProvider: provideIceServers,
         iceRecovery: {},
+        startTimeoutMs: START_TIMEOUT_MS,
         connectedTimeoutMs: CONNECTED_TIMEOUT_MS,
         signal,
-        onError: ({ error }) => this.handleRoomError(error),
+        onError: ({ error }) => this.handleRoomError(error, roomId),
+        onIceReconnecting: ({ attempt, maxAttempts, reason, nextDelayMs }) => {
+          console.warn(
+            {
+              roomId,
+              attempt,
+              maxAttempts,
+              reason,
+              nextDelayMs,
+            },
+            '[call] media connection interrupted; recovering',
+          );
+        },
+        onIceReconnected: ({ attempt, durationMs }) => {
+          logger.info('[call] media connection recovered', {
+            roomId,
+            attempt,
+            durationMs,
+          });
+          console.log('[call] media connection recovered', {
+            roomId,
+            attempt,
+            durationMs,
+          });
+        },
+        onIceReconnectFailed: ({ attempts, reason, error }) => {
+          console.warn(
+            {
+              roomId,
+              attempts,
+              reason,
+              message: error instanceof Error ? error.message : String(error),
+            },
+            '[call] media connection recovery failed',
+          );
+        },
         onMemberJoined: () => {
           // A (re)join cancels any in-progress reconnect grace; the peer's back.
           if (autoExitOnEmpty) this.cancelReconnectGrace();
@@ -841,10 +919,19 @@ export class CallHandshakeController {
    * ponytail: matched on the message prefix — @kidlib/p2p 0.5.1 throws plain
    * Errors with no code/name. Ask upstream for a structured error to key off.
    */
-  private handleRoomError(error: unknown): void {
+  private handleRoomError(error: unknown, roomId: string): void {
     const message = error instanceof Error ? error.message : String(error);
     console.log('[call] room error', { message });
     if (!/^(?:Peer\.start|P2PSession):/.test(message)) return;
+    console.warn(
+      {
+        message,
+        roomId,
+        memberCount: this.p2p.members().length,
+        state: this.p2p.state(),
+      },
+      '[call] connection failed',
+    );
     this.clearReconnectTimers();
     this.clearConnectFailureTimeout();
     this.onReconnectStatus('connect-failed');
