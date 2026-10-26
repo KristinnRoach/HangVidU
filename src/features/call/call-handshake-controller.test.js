@@ -654,12 +654,12 @@ describe('CallHandshakeController', () => {
       });
       expect(timeout).toHaveBeenCalledWith(4_000);
       expect(warn).toHaveBeenCalledWith(
-        '[call] TURN credentials unavailable; using STUN fallback',
         {
           reason: 'initial',
           responseStatus: undefined,
           errorName: 'TimeoutError',
         },
+        '[call] TURN credentials unavailable; using STUN fallback',
       );
     } finally {
       vi.useRealTimers();
@@ -695,8 +695,8 @@ describe('CallHandshakeController', () => {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
     expect(warn).toHaveBeenCalledWith(
-      '[call] TURN credentials unavailable; using STUN fallback',
       { reason: 'initial', responseStatus: undefined, errorName: 'Error' },
+      '[call] TURN credentials unavailable; using STUN fallback',
     );
 
     vi.mocked(globalThis.fetch).mockResolvedValueOnce(
@@ -708,8 +708,8 @@ describe('CallHandshakeController', () => {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
     expect(warn).toHaveBeenLastCalledWith(
-      '[call] TURN credentials unavailable; using STUN fallback',
       { reason: 'initial', responseStatus: 503, errorName: 'Error' },
+      '[call] TURN credentials unavailable; using STUN fallback',
     );
 
     vi.mocked(globalThis.fetch).mockResolvedValueOnce(
@@ -721,8 +721,8 @@ describe('CallHandshakeController', () => {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
     expect(warn).toHaveBeenLastCalledWith(
-      '[call] TURN credentials unavailable; using STUN fallback',
       { reason: 'initial', responseStatus: 200, errorName: 'SyntaxError' },
+      '[call] TURN credentials unavailable; using STUN fallback',
     );
 
     const controllerForAbort = new AbortController();
@@ -731,6 +731,49 @@ describe('CallHandshakeController', () => {
       provider({ reason: 'manual', signal: controllerForAbort.signal }),
     ).rejects.toBe(networkError);
   });
+
+  it.each([
+    null,
+    {},
+    { iceServers: [] },
+    { iceServers: [null] },
+    { iceServers: [{}] },
+    { iceServers: [{ urls: [] }] },
+    { iceServers: [{ urls: ['stun:example.org', 42] }] },
+    { iceServers: [{ urls: 'stun:example.org', credential: 42 }] },
+    { iceServers: [{ urls: 'stun:example.org' }], expiresAt: 0 },
+    { iceServers: [{ urls: 'stun:example.org' }], expiresAt: 'tomorrow' },
+  ])(
+    'falls back to STUN for invalid TURN credentials: %j',
+    async (credentials) => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        Response.json(credentials),
+      );
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const p2p = createP2PMock({
+        join: vi.fn(async () => ({ roomId: 'room-1', members: ['callee-id'] })),
+      });
+      const controller = createController(p2p);
+      controller.showIncomingCallFromNotification({
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-1',
+        callerId: 'caller-id',
+      });
+      controller.acceptIncoming();
+      await flushPromises();
+      const provider = p2p.join.mock.calls[0][0].iceServersProvider;
+      await expect(
+        provider({ reason: 'initial', signal: new AbortController().signal }),
+      ).resolves.toEqual({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+      });
+      expect(warn).toHaveBeenCalledWith(
+        { reason: 'initial', responseStatus: 200, errorName: 'TypeError' },
+        '[call] TURN credentials unavailable; using STUN fallback',
+      );
+      controller.cleanup();
+    },
+  );
 
   it('reserves a video slot when joining an audio-only call', async () => {
     const stream = createMediaStream({ audio: true, video: false });
@@ -806,7 +849,6 @@ describe('CallHandshakeController', () => {
       nextDelayMs: 0,
     });
     expect(warn).toHaveBeenCalledWith(
-      '[call] media connection interrupted; recovering',
       {
         roomId: 'room-1',
         attempt: 1,
@@ -814,6 +856,7 @@ describe('CallHandshakeController', () => {
         reason: 'disconnected',
         nextDelayMs: 0,
       },
+      '[call] media connection interrupted; recovering',
     );
     options.onIceReconnected({ attempt: 1, durationMs: 1200 });
     expect(log).toHaveBeenCalledWith('[call] media connection recovered', {
@@ -835,13 +878,13 @@ describe('CallHandshakeController', () => {
       error: new Error('Recovery timed out'),
     });
     expect(warn).toHaveBeenCalledWith(
-      '[call] media connection recovery failed',
       {
         roomId: 'room-1',
         attempts: 3,
         reason: 'failed',
         message: 'Recovery timed out',
       },
+      '[call] media connection recovery failed',
     );
     expect(p2p.dispose).not.toHaveBeenCalled();
     controller.cleanup();
@@ -932,12 +975,15 @@ describe('CallHandshakeController', () => {
         error: new Error('Peer.start: timed out after 20000ms'),
       });
       expect(onReconnectStatus).toHaveBeenLastCalledWith('connect-failed');
-      expect(warn).toHaveBeenCalledWith('[call] connection failed', {
-        message: 'Peer.start: timed out after 20000ms',
-        roomId: undefined,
-        memberCount: 0,
-        state: 'idle',
-      });
+      expect(warn).toHaveBeenCalledWith(
+        {
+          message: 'Peer.start: timed out after 20000ms',
+          roomId: 'room-1',
+          memberCount: 0,
+          state: 'idle',
+        },
+        '[call] connection failed',
+      );
 
       joinOptions?.onError?.({
         error: new Error(
