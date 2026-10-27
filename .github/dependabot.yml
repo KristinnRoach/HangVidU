@@ -5,6 +5,20 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 5
+    # Vite+ aligns these packages through vp upgrade and vp migrate.
+    ignore:
+      - dependency-name: 'vite-plus'
+      - dependency-name: 'vite'
+      - dependency-name: 'vitest'
+      - dependency-name: '@vitest/browser'
+      - dependency-name: '@vitest/browser-preview'
+      - dependency-name: '@vitest/browser-playwright'
+      - dependency-name: '@vitest/coverage-v8'
+    groups:
+      playwright:
+        patterns: ['playwright', '@playwright/test']
+      mediabunny:
+        patterns: ['mediabunny', '@mediabunny/*']
     labels:
       - 'dependencies'
   - package-ecosystem: 'npm'
