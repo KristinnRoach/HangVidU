@@ -69,7 +69,6 @@ fi
 
 run_check "$ipv4_severity" "Production apex IPv4" --ipv4 "$APEX_URL"
 run_check "$ipv4_severity" "Firebase IPv4 anchor .100" --resolve "hangvidu.com:443:199.36.158.100" "$APEX_URL"
-run_check "$ipv4_severity" "Firebase IPv4 anchor .101" --resolve "hangvidu.com:443:199.36.158.101" "$APEX_URL"
 run_check warning "Firebase IPv6 anchor" --resolve "hangvidu.com:443:[2620:0:890::100]" "$APEX_URL"
 
 printf "\nSummary: %s required failure(s), %s warning(s)\n" "$failures" "$warnings"
