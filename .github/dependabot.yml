@@ -5,15 +5,43 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 5
-    # Vite+ aligns these packages through vp upgrade and vp migrate.
+    # Vite+ handles routine upgrades; Dependabot still proposes security fixes.
     ignore:
       - dependency-name: 'vite-plus'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+          - 'version-update:semver-patch'
       - dependency-name: 'vite'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+          - 'version-update:semver-patch'
       - dependency-name: 'vitest'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+          - 'version-update:semver-patch'
       - dependency-name: '@vitest/browser'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+          - 'version-update:semver-patch'
       - dependency-name: '@vitest/browser-preview'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+          - 'version-update:semver-patch'
       - dependency-name: '@vitest/browser-playwright'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+          - 'version-update:semver-patch'
       - dependency-name: '@vitest/coverage-v8'
+        update-types:
+          - 'version-update:semver-major'
+          - 'version-update:semver-minor'
+          - 'version-update:semver-patch'
     groups:
       playwright:
         patterns: ['playwright', '@playwright/test']
