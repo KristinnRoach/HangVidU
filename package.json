@@ -81,7 +81,7 @@
   },
   "dependencies": {
     "@kidlib/create-component": "^0.1.5",
-    "@kidlib/p2p": "^0.5.1",
+    "@kidlib/p2p": "^0.5.2",
     "@mediabunny/ac3": "^1.62.1",
     "@sentry/browser": "^11.9.0",
     "firebase": "^13.1.0",
