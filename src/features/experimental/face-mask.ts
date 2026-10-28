@@ -56,7 +56,10 @@ type Sketch = {
 };
 type Libraries = {
   p5: new (sketch: (p: Sketch) => void, container: HTMLElement) => Sketch;
-  ml5: { faceMesh: (options: { maxFaces: number }) => Mesh | Promise<Mesh> };
+  ml5: {
+    tf: { setBackend: (backend: 'webgl') => Promise<boolean> };
+    faceMesh: (options: { maxFaces: number }) => Mesh | Promise<Mesh>;
+  };
 };
 // Check APIs without allocating a WebGL context during call setup. Actual
 // renderer/model failures are handled separately and leave the camera intact.
@@ -112,9 +115,21 @@ function loadLibraries() {
 
 let faceModel: Promise<{ libs: Libraries; mesh: Mesh }> | undefined;
 
+export class FaceMaskInitializationError extends Error {}
+
 export function preloadFaceMask() {
   faceModel ??= (async () => {
     const libs = await loadLibraries();
+    // ml5 prefers WebGPU; tfjs's WebGPU upload throws RangeError on iOS Safari.
+    try {
+      if (!(await libs.ml5.tf.setBackend('webgl')))
+        throw new Error('WebGL backend unavailable');
+    } catch (cause) {
+      throw new FaceMaskInitializationError(
+        'Could not initialize face mask WebGL backend',
+        { cause },
+      );
+    }
     // Without a global p5 at ml5 load time, ml5 returns a Promise<Mesh>.
     const mesh = await libs.ml5.faceMesh({ maxFaces: 1 });
     await mesh.ready;
