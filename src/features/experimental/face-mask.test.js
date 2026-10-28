@@ -39,7 +39,8 @@ it('shares preloading and reuses the ready model after detection stops', async (
   vi.resetModules();
   const mesh = { ready: Promise.resolve(), detectStop: vi.fn() };
   const faceMesh = vi.fn(() => mesh);
-  stubLibs({ p5: class {}, ml5: { faceMesh } });
+  const setBackend = vi.fn();
+  stubLibs({ p5: class {}, ml5: { faceMesh, setBackend } });
   const scripts = [];
   vi.spyOn(document.head, 'append').mockImplementation((script) => {
     scripts.push(script.src);
@@ -52,6 +53,7 @@ it('shares preloading and reuses the ready model after detection stops', async (
   mesh.detectStop();
   expect((await preloadFaceMask()).mesh).toBe(mesh);
   expect(faceMesh).toHaveBeenCalledOnce();
+  expect(setBackend).toHaveBeenCalledWith('webgl');
   expect(scripts).toHaveLength(2);
 });
 
@@ -61,7 +63,7 @@ it.each(['missing p5', 'invalid p5', 'missing ml5', 'missing faceMesh'])(
     vi.resetModules();
     const mesh = { ready: Promise.resolve() };
     const faceMesh = vi.fn(() => mesh);
-    const libs = { p5: class {}, ml5: { faceMesh } };
+    const libs = { p5: class {}, ml5: { faceMesh, setBackend() {} } };
     const invalid = { ...libs };
     if (scenario === 'missing p5') delete invalid.p5;
     if (scenario === 'invalid p5') invalid.p5 = {};
@@ -143,7 +145,7 @@ async function setupFaceMask({ waitForCamera = false, mode = 'outline' } = {}) {
     },
   );
   stubLibs({
-    ml5: { faceMesh: () => mesh },
+    ml5: { faceMesh: () => mesh, setBackend() {} },
     p5: class {
       constructor(init) {
         sketch = {
