@@ -1081,12 +1081,24 @@ describe('experimental face mask lifecycle', () => {
       const { media, room, camera, dispose } = setup();
       await Promise.resolve();
       expect(media.faceMaskError()).toBe('Model unavailable');
+      expect(media.faceMaskSupported()).toBe(false);
       expect(media.cameraOn()).toBe(true);
       expect(room.setLocalTrack).not.toHaveBeenCalled();
       expect(camera.stop).not.toHaveBeenCalled();
       dispose();
     },
   );
+
+  it('keeps the feature after a library download failure', async () => {
+    maskMocks.preloadFaceMask.mockRejectedValueOnce(
+      new Error('Could not load face mask libraries'),
+    );
+    const { media, dispose } = setup();
+    await Promise.resolve();
+    expect(media.faceMaskError()).toBe('Could not load face mask libraries');
+    expect(media.faceMaskSupported()).toBe(true);
+    dispose();
+  });
 
   it('keeps the camera live until capture and allows cancellation', async () => {
     const { camera, mask, room, media, dispose } = setup();
