@@ -39,8 +39,8 @@ it('shares preloading and reuses the ready model after detection stops', async (
   vi.resetModules();
   const mesh = { ready: Promise.resolve(), detectStop: vi.fn() };
   const faceMesh = vi.fn(() => mesh);
-  const setBackend = vi.fn();
-  stubLibs({ p5: class {}, ml5: { faceMesh, setBackend } });
+  const setBackend = vi.fn().mockResolvedValue(true);
+  stubLibs({ p5: class {}, ml5: { faceMesh, tf: { setBackend } } });
   const scripts = [];
   vi.spyOn(document.head, 'append').mockImplementation((script) => {
     scripts.push(script.src);
@@ -57,13 +57,93 @@ it('shares preloading and reuses the ready model after detection stops', async (
   expect(scripts).toHaveLength(2);
 });
 
+it('waits for WebGL initialization before creating the model', async () => {
+  vi.resetModules();
+  let finishBackend;
+  const setBackend = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        finishBackend = resolve;
+      }),
+  );
+  const mesh = { ready: Promise.resolve() };
+  const faceMesh = vi.fn(() => mesh);
+  stubLibs({ p5: class {}, ml5: { faceMesh, tf: { setBackend } } });
+  vi.spyOn(document.head, 'append').mockImplementation((script) => {
+    queueMicrotask(() => script.onload());
+  });
+  const { preloadFaceMask } = await import('./face-mask');
+  const pending = preloadFaceMask();
+  await vi.waitFor(() => expect(setBackend).toHaveBeenCalledWith('webgl'));
+  expect(faceMesh).not.toHaveBeenCalled();
+  finishBackend(true);
+  expect((await pending).mesh).toBe(mesh);
+});
+
+it.each(['false', 'reject', 'throw'])(
+  'rejects preload when WebGL initialization returns %s',
+  async (failure) => {
+    vi.resetModules();
+    const cause = new Error('WebGL blocked');
+    const setBackend = vi.fn(() => {
+      if (failure === 'throw') throw cause;
+      if (failure === 'reject') return Promise.reject(cause);
+      return Promise.resolve(false);
+    });
+    const faceMesh = vi.fn();
+    stubLibs({ p5: class {}, ml5: { faceMesh, tf: { setBackend } } });
+    vi.spyOn(document.head, 'append').mockImplementation((script) => {
+      queueMicrotask(() => script.onload());
+    });
+    const { preloadFaceMask, FaceMaskInitializationError } =
+      await import('./face-mask');
+    await expect(preloadFaceMask()).rejects.toBeInstanceOf(
+      FaceMaskInitializationError,
+    );
+    expect(faceMesh).not.toHaveBeenCalled();
+  },
+);
+
+it.each(['faceMesh', 'mesh.ready'])(
+  'retries a model download failure from %s without reloading libraries',
+  async (stage) => {
+    vi.resetModules();
+    const error = new TypeError('Failed to fetch');
+    const mesh = { ready: Promise.resolve() };
+    const faceMesh = vi
+      .fn(() => mesh)
+      .mockImplementationOnce(() => {
+        if (stage === 'faceMesh') return Promise.reject(error);
+        return { ready: Promise.reject(error) };
+      });
+    const setBackend = vi.fn().mockResolvedValue(true);
+    stubLibs({ p5: class {}, ml5: { faceMesh, tf: { setBackend } } });
+    const append = vi
+      .spyOn(document.head, 'append')
+      .mockImplementation((script) => {
+        queueMicrotask(() => script.onload());
+      });
+    const { preloadFaceMask } = await import('./face-mask');
+    const first = preloadFaceMask();
+    await expect(first).rejects.toBe(error);
+    const retry = preloadFaceMask();
+    expect(retry).not.toBe(first);
+    expect((await retry).mesh).toBe(mesh);
+    expect(faceMesh).toHaveBeenCalledTimes(2);
+    expect(append).toHaveBeenCalledTimes(2);
+  },
+);
+
 it.each(['missing p5', 'invalid p5', 'missing ml5', 'missing faceMesh'])(
   'rejects %s after script loading and reloads libraries on retry',
   async (scenario) => {
     vi.resetModules();
     const mesh = { ready: Promise.resolve() };
     const faceMesh = vi.fn(() => mesh);
-    const libs = { p5: class {}, ml5: { faceMesh, setBackend() {} } };
+    const libs = {
+      p5: class {},
+      ml5: { faceMesh, tf: { setBackend: async () => true } },
+    };
     const invalid = { ...libs };
     if (scenario === 'missing p5') delete invalid.p5;
     if (scenario === 'invalid p5') invalid.p5 = {};
@@ -145,7 +225,7 @@ async function setupFaceMask({ waitForCamera = false, mode = 'outline' } = {}) {
     },
   );
   stubLibs({
-    ml5: { faceMesh: () => mesh, setBackend() {} },
+    ml5: { faceMesh: () => mesh, tf: { setBackend: async () => true } },
     p5: class {
       constructor(init) {
         sketch = {

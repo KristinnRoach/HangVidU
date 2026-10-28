@@ -6,6 +6,7 @@ import {
   createFaceMask,
   preloadFaceMask,
   isFaceMaskSupported,
+  FaceMaskInitializationError,
   type FaceMask,
   type FaceMaskCaptureStatus,
 } from '../experimental/face-mask';
@@ -179,11 +180,9 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
         await preloadFaceMask();
       } catch (error) {
         if (!maskAbort.signal.aborted) {
-          // ponytail: message match; a failed script download stays retryable.
-          if (
-            !(error instanceof Error) ||
-            error.message !== 'Could not load face mask libraries'
-          )
+          // Model loading can fail during a transient download. Only a
+          // confirmed initialization failure makes the feature unavailable.
+          if (error instanceof FaceMaskInitializationError)
             setFaceMaskBroken(true);
           setFaceMaskError(
             error instanceof Error ? error.message : 'Face mask failed',
@@ -350,6 +349,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       syncTrackState();
     } catch (error) {
       if (!maskAbort.signal.aborted && !captureAbort?.signal.aborted) {
+        if (error instanceof FaceMaskInitializationError)
+          setFaceMaskBroken(true);
         setFaceMaskError(
           error instanceof Error ? error.message : 'Face mask failed',
         );

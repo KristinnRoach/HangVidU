@@ -16,7 +16,10 @@ import {
   type CallMedia,
 } from './call-media';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
-import type { createFaceMask } from '../experimental/face-mask';
+import {
+  FaceMaskInitializationError,
+  type createFaceMask,
+} from '../experimental/face-mask';
 import type { Mock } from 'vite-plus/test';
 
 const maskMocks = vi.hoisted(() => ({
@@ -24,7 +27,8 @@ const maskMocks = vi.hoisted(() => ({
   createFaceMask: vi.fn<typeof createFaceMask>(),
   preloadFaceMask: vi.fn(async () => {}),
 }));
-vi.mock('../experimental/face-mask', () => ({
+vi.mock('../experimental/face-mask', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../experimental/face-mask')>()),
   isFaceMaskSupported: maskMocks.isFaceMaskSupported,
   createFaceMask: maskMocks.createFaceMask,
   preloadFaceMask: maskMocks.preloadFaceMask,
@@ -1075,8 +1079,9 @@ describe('experimental face mask lifecycle', () => {
     'contains %s preload failures without changing call tracks',
     async (mode) => {
       maskMocks.preloadFaceMask.mockImplementationOnce(() => {
-        if (mode === 'sync') throw new Error('Model unavailable');
-        return Promise.reject(new Error('Model unavailable'));
+        const error = new FaceMaskInitializationError('Model unavailable');
+        if (mode === 'sync') throw error;
+        return Promise.reject(error);
       });
       const { media, room, camera, dispose } = setup();
       await Promise.resolve();
@@ -1089,14 +1094,46 @@ describe('experimental face mask lifecycle', () => {
     },
   );
 
-  it('keeps the feature after a library download failure', async () => {
+  it.each([
+    new Error('Could not load face mask libraries'),
+    new TypeError('Failed to fetch'),
+    new Error('Request to model.json failed with status code 503'),
+    new Error('Model unavailable'),
+    'Unknown failure',
+  ])(
+    'keeps the feature retryable after preload rejects with %s',
+    async (error) => {
+      maskMocks.preloadFaceMask.mockRejectedValueOnce(error);
+      const { media, room, camera, dispose } = setup();
+      await Promise.resolve();
+      expect(media.faceMaskError()).toBe(
+        error instanceof Error ? error.message : 'Face mask failed',
+      );
+      expect(media.faceMaskSupported()).toBe(true);
+      expect(room.setLocalTrack).not.toHaveBeenCalled();
+      expect(camera.stop).not.toHaveBeenCalled();
+      await toggleAndApply(media);
+      expect(maskMocks.createFaceMask).toHaveBeenCalledOnce();
+      expect(media.faceMaskOn()).toBe(true);
+      expect(media.faceMaskError()).toBe('');
+      dispose();
+    },
+  );
+
+  it('hides the feature when backend initialization fails on a retry', async () => {
     maskMocks.preloadFaceMask.mockRejectedValueOnce(
-      new Error('Could not load face mask libraries'),
+      new TypeError('Failed to fetch'),
     );
-    const { media, dispose } = setup();
+    const { media, room, camera, dispose } = setup();
     await Promise.resolve();
-    expect(media.faceMaskError()).toBe('Could not load face mask libraries');
-    expect(media.faceMaskSupported()).toBe(true);
+    maskMocks.createFaceMask.mockRejectedValueOnce(
+      new FaceMaskInitializationError('WebGL backend unavailable'),
+    );
+    await toggleAndApply(media);
+    expect(media.faceMaskSupported()).toBe(false);
+    expect(media.faceMaskError()).toBe('WebGL backend unavailable');
+    expect(room.setLocalTrack).not.toHaveBeenCalled();
+    expect(camera.stop).not.toHaveBeenCalled();
     dispose();
   });
 
