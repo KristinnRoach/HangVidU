@@ -293,7 +293,7 @@ export default defineConfig(({ mode }) => {
       // emits the .map files without the sourceMappingURL comment, so
       // browsers never fetch them; sentryVitePlugin deletes them from dist
       // after upload so they are not served at all.
-      sourcemap: process.env.SKIP_SENTRY_UPLOAD === 'true' ? false : 'hidden',
+      sourcemap: process.env.SENTRY_UPLOAD === 'true' ? 'hidden' : false,
       // AC3 support is intentionally emitted as a large, on-demand chunk.
       // Keep warnings focused on regressions beyond the current expected ceiling.
       chunkSizeWarningLimit: 1200,
@@ -315,8 +315,9 @@ export default defineConfig(({ mode }) => {
       // lines. Reads SENTRY_AUTH_TOKEN from .env.sentry-build-plugin
       // (gitignored); without it the plugin logs a warning and skips upload.
       // The token embeds its own region URL, so no `url` option is needed.
-      // Playwright builds the production app without publishing a Sentry release.
-      ...(mode === 'production' && process.env.SKIP_SENTRY_UPLOAD !== 'true'
+      // Opt-in so only deploys publish a release; plain builds (local, Playwright)
+      // would otherwise leave one per built commit.
+      ...(mode === 'production' && process.env.SENTRY_UPLOAD === 'true'
         ? [
             sentryVitePlugin({
               org: 'kristinn-roach',
