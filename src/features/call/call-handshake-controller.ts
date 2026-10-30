@@ -4,7 +4,7 @@ import {
   getCallService,
 } from './call-service.js';
 import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
-import { logger } from '@sentry/browser';
+import { captureMessage, logger } from '@sentry/browser';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import type {
   CreateRoomSignalingOptions,
@@ -159,6 +159,33 @@ type HangUpReason =
   | 'connect-timeout'
   | 'enter-room-error'
   | 'accept-error';
+
+type CallFailureKind =
+  | 'connect-failed'
+  | 'ice-reconnect-failed'
+  | 'reconnect-timeout';
+
+/**
+ * Terminal call failures become Sentry issues, not just warn logs, so they
+ * alert and count per release/user. One issue per kind (and sub-kind, e.g.
+ * Peer.start vs P2PSession); the console.warn next to each call still feeds
+ * the same detail to Sentry logs and breadcrumbs.
+ */
+function reportCallFailure(
+  kind: CallFailureKind,
+  detail: Record<string, unknown>,
+  subKind?: string,
+): void {
+  captureMessage(`[call] ${kind}`, {
+    level: 'warning',
+    fingerprint: ['call-failure', kind, ...(subKind ? [subKind] : [])],
+    tags: {
+      'call.failure': kind,
+      ...(subKind && { 'call.failure.sub': subKind }),
+    },
+    extra: detail,
+  });
+}
 
 export class CallHandshakeController {
   private readonly p2p: SolidP2PRoom;
@@ -598,15 +625,14 @@ export class CallHandshakeController {
           });
         },
         onIceReconnectFailed: ({ attempts, reason, error }) => {
-          console.warn(
-            {
-              roomId,
-              attempts,
-              reason,
-              message: error instanceof Error ? error.message : String(error),
-            },
-            '[call] media connection recovery failed',
-          );
+          const detail = {
+            roomId,
+            attempts,
+            reason,
+            message: error instanceof Error ? error.message : String(error),
+          };
+          console.warn(detail, '[call] media connection recovery failed');
+          reportCallFailure('ice-reconnect-failed', detail, String(reason));
         },
         onMemberJoined: () => {
           // A (re)join cancels any in-progress reconnect grace; the peer's back.
@@ -922,16 +948,16 @@ export class CallHandshakeController {
   private handleRoomError(error: unknown, roomId: string): void {
     const message = error instanceof Error ? error.message : String(error);
     console.log('[call] room error', { message });
-    if (!/^(?:Peer\.start|P2PSession):/.test(message)) return;
-    console.warn(
-      {
-        message,
-        roomId,
-        memberCount: this.p2p.members().length,
-        state: this.p2p.state(),
-      },
-      '[call] connection failed',
-    );
+    const stage = /^(Peer\.start|P2PSession):/.exec(message)?.[1];
+    if (!stage) return;
+    const detail = {
+      message,
+      roomId,
+      memberCount: this.p2p.members().length,
+      state: this.p2p.state(),
+    };
+    console.warn(detail, '[call] connection failed');
+    reportCallFailure('connect-failed', detail, stage);
     this.clearReconnectTimers();
     this.clearConnectFailureTimeout();
     this.onReconnectStatus('connect-failed');
@@ -948,6 +974,10 @@ export class CallHandshakeController {
     this.reconnectTimeoutId = setTimeout(() => {
       this.reconnectTimeoutId = undefined;
       this.onReconnectStatus('failed');
+      reportCallFailure('reconnect-timeout', {
+        roomId: this.activeOutgoingCall?.roomId,
+        memberCount: this.p2p.members().length,
+      });
       this.reconnectFailedTimeoutId = setTimeout(() => {
         this.reconnectFailedTimeoutId = undefined;
         this.hangUp('reconnect-timeout');

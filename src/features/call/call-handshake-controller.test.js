@@ -31,10 +31,12 @@ const mocks = vi.hoisted(() => ({
   resolveDirectConversationId: vi.fn(),
   getUserMedia: vi.fn(),
   sentryInfo: vi.fn(),
+  captureMessage: vi.fn(),
 }));
 
 vi.mock('@sentry/browser', () => ({
   logger: { info: mocks.sentryInfo },
+  captureMessage: mocks.captureMessage,
 }));
 
 vi.mock('./call-service.js', () => ({
@@ -886,6 +888,12 @@ describe('CallHandshakeController', () => {
       },
       '[call] media connection recovery failed',
     );
+    expect(mocks.captureMessage).toHaveBeenCalledWith(
+      '[call] ice-reconnect-failed',
+      expect.objectContaining({
+        fingerprint: ['call-failure', 'ice-reconnect-failed', 'failed'],
+      }),
+    );
     expect(p2p.dispose).not.toHaveBeenCalled();
     controller.cleanup();
   });
@@ -929,6 +937,12 @@ describe('CallHandshakeController', () => {
       // Grace elapses → "failed" shown → final teardown after the display delay.
       vi.advanceTimersByTime(10_000);
       expect(onReconnectStatus).toHaveBeenLastCalledWith('failed');
+      expect(mocks.captureMessage).toHaveBeenCalledWith(
+        '[call] reconnect-timeout',
+        expect.objectContaining({
+          fingerprint: ['call-failure', 'reconnect-timeout'],
+        }),
+      );
       expect(p2p.dispose).not.toHaveBeenCalled();
 
       vi.advanceTimersByTime(2_500);
@@ -983,6 +997,13 @@ describe('CallHandshakeController', () => {
           state: 'idle',
         },
         '[call] connection failed',
+      );
+      expect(mocks.captureMessage).toHaveBeenCalledTimes(1);
+      expect(mocks.captureMessage).toHaveBeenCalledWith(
+        '[call] connect-failed',
+        expect.objectContaining({
+          fingerprint: ['call-failure', 'connect-failed', 'Peer.start'],
+        }),
       );
 
       joinOptions?.onError?.({
