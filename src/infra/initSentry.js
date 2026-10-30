@@ -1,5 +1,7 @@
 import * as Sentry from '@sentry/browser';
 
+import { subscribe } from '@shared/events/index.js';
+
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 const FILTER_EXTENSION_ASYNC_CHANNEL_ERRORS =
   import.meta.env.VITE_SENTRY_FILTER_EXTENSION_ASYNC_CHANNEL_ERRORS !== '0';
@@ -41,6 +43,25 @@ export function redactEmails(value) {
     : value;
 }
 
+// Covers where an address lands on an error event: the message, exception
+// values, and console breadcrumbs (message plus raw console arguments).
+export function redactEventEmails(event) {
+  if (event.message) event.message = redactEmails(event.message);
+  if (event.logentry?.message) {
+    event.logentry.message = redactEmails(event.logentry.message);
+  }
+  for (const exception of event.exception?.values ?? []) {
+    exception.value = redactEmails(exception.value);
+  }
+  for (const breadcrumb of event.breadcrumbs ?? []) {
+    breadcrumb.message = redactEmails(breadcrumb.message);
+    if (Array.isArray(breadcrumb.data?.arguments)) {
+      breadcrumb.data.arguments = breadcrumb.data.arguments.map(redactEmails);
+    }
+  }
+  return event;
+}
+
 function shouldDropKnownExternalNoise(event, hint) {
   if (!FILTER_EXTENSION_ASYNC_CHANNEL_ERRORS) {
     return false;
@@ -64,27 +85,21 @@ if (sentryDsn) {
     // attached to the same events, so an error arrives with the context that
     // led to it. Requires SDK >= 9.41.
     enableLogs: true,
+    // ponytail: 10% of page loads; raise if traces are too sparse to be useful.
+    tracesSampleRate: 0.1,
     // Merged with the SDK's default integrations, not a replacement for them.
-    // warn/error only: console.log/info would be mostly noise and count
-    // against the log quota.
+    // Replay was removed: with text and media masked (DM text, contact names,
+    // camera output) the recordings showed nothing useful. Breadcrumbs and
+    // logs already cover what led up to an error.
     integrations: [
+      // Page loads, navigations and fetch/XHR spans. tracePropagationTargets
+      // stays at the same-origin default: adding api.hangvidu.com would send
+      // sentry-trace/baggage headers that its CORS config does not allow.
+      Sentry.browserTracingIntegration(),
+      // warn/error only: console.log/info would be mostly noise and count
+      // against the log quota.
       Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
-      // Masking options match the SDK defaults, but are set explicitly: this
-      // app carries DM text, contact names, and camera output, so a future
-      // default flipping would leak. blockAllMedia covers video/audio, so no
-      // camera frames are ever recorded.
-      Sentry.replayIntegration({
-        maskAllText: true,
-        maskAllInputs: true,
-        blockAllMedia: true,
-      }),
     ],
-    // Buffer mode: replay records into a rolling ~60s in-memory buffer and
-    // only uploads when an error fires, so healthy sessions cost no quota.
-    // The buffer only exists once the integration is running, which is why
-    // replay is loaded up front rather than lazily.
-    replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: 1.0,
     // beforeSend only sees error events; logs need their own hook.
     beforeSendLog(log) {
       log.message = redactEmails(log.message);
@@ -101,8 +116,18 @@ if (sentryDsn) {
         return null;
       }
 
-      return event;
+      return redactEventEmails(event);
     },
+  });
+
+  // uid only: it is opaque, and the email stays out (see EMAIL_PATTERN above).
+  // 'loading' is skipped so an in-flight sign-out keeps attributing to the user.
+  subscribe('evt:auth:state:changed', ({ state }) => {
+    if (state.status === 'authenticated' && state.user) {
+      Sentry.setUser({ id: state.user.uid });
+    } else if (state.status === 'unauthenticated') {
+      Sentry.setUser(null);
+    }
   });
 } else {
   console.warn('Sentry DSN not provided; error reporting is disabled.');
