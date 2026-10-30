@@ -334,12 +334,10 @@ export default defineConfig(({ mode }) => {
                 // repo, which was left with no commits at all.
                 setCommits: {
                   repo: 'KristinnRoach/HangVidU',
+                  // Sentry's mirror of the repo can lag a fresh push. A
+                  // set-commits failure is logged, not thrown, so the build
+                  // still ships; v11 dropped ignoreMissing/ignoreEmpty.
                   commit: headSha(),
-                  // Sentry's mirror of the repo can lag a fresh push. Without
-                  // these, set-commits errors out on a commit it cannot see
-                  // yet; with them it degrades to a warning.
-                  ignoreMissing: true,
-                  ignoreEmpty: true,
                 },
               },
               sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
