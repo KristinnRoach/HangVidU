@@ -88,30 +88,18 @@ if (sentryDsn) {
     // ponytail: 10% of page loads; raise if traces are too sparse to be useful.
     tracesSampleRate: 0.1,
     // Merged with the SDK's default integrations, not a replacement for them.
-    // warn/error only: console.log/info would be mostly noise and count
-    // against the log quota.
+    // Replay was removed: with text and media masked (DM text, contact names,
+    // camera output) the recordings showed nothing useful. Breadcrumbs and
+    // logs already cover what led up to an error.
     integrations: [
       // Page loads, navigations and fetch/XHR spans. tracePropagationTargets
       // stays at the same-origin default: adding api.hangvidu.com would send
       // sentry-trace/baggage headers that its CORS config does not allow.
       Sentry.browserTracingIntegration(),
+      // warn/error only: console.log/info would be mostly noise and count
+      // against the log quota.
       Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
-      // Masking options match the SDK defaults, but are set explicitly: this
-      // app carries DM text, contact names, and camera output, so a future
-      // default flipping would leak. blockAllMedia covers video/audio, so no
-      // camera frames are ever recorded.
-      Sentry.replayIntegration({
-        maskAllText: true,
-        maskAllInputs: true,
-        blockAllMedia: true,
-      }),
     ],
-    // Buffer mode: replay records into a rolling ~60s in-memory buffer and
-    // only uploads when an error fires, so healthy sessions cost no quota.
-    // The buffer only exists once the integration is running, which is why
-    // replay is loaded up front rather than lazily.
-    replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: 1.0,
     // beforeSend only sees error events; logs need their own hook.
     beforeSendLog(log) {
       log.message = redactEmails(log.message);
