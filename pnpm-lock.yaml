@@ -213,8 +213,8 @@ importers:
         specifier: ^13.1.0
         version: 13.1.0
       lucide-solid:
-        specifier: ^1.61.0
-        version: 1.61.0(solid-js@1.9.17)
+        specifier: ^1.64.0
+        version: 1.64.0(solid-js@1.9.17)
       mediabunny:
         specifier: ^1.62.1
         version: 1.62.1
@@ -5503,8 +5503,8 @@ packages:
     resolution: {integrity: sha512-XTFlOBHeuXnUGuUQI0kBb4O4oQW7qCV7MRGQja1xNpxgrI/jptlly+/5126RiRold1zgyxY520qOZUZ31V0I2A==}
     engines: {node: '>=20.0.0'}
 
-  lucide-solid@1.61.0:
-    resolution: {integrity: sha512-2FzBQ7TvH6XS7Lgb5qQQ+oCGOK/FwDF8Y30xC2/zv1MvZR6uO0ijG4vAoF1Cq0qwGOg6LtpMPpzeZHCCFrfYmw==}
+  lucide-solid@1.64.0:
+    resolution: {integrity: sha512-xmSV5fzajjaL2woeMp3YRjzcTNxRl+rLf5eYbYX07epTCUhxiov6k3Ky70bOQSia3iTIMvs8uk2YFlbqmPLA2Q==}
     peerDependencies:
       solid-js: ^1.4.7
 
@@ -12493,7 +12493,7 @@ snapshots:
 
   lsofi@2.0.0: {}
 
-  lucide-solid@1.61.0(solid-js@1.9.17):
+  lucide-solid@1.64.0(solid-js@1.9.17):
     dependencies:
       solid-js: 1.9.17
 
