@@ -1411,6 +1411,40 @@ describe('CallHandshakeController', () => {
     expect(p2p.join).not.toHaveBeenCalled();
   });
 
+  it('reports caller media failure as a call failure grouped by error name', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.getUserMedia.mockRejectedValue(
+      Object.assign(new Error('Permission denied'), {
+        name: 'NotAllowedError',
+      }),
+    );
+    const controller = createController(createP2PMock(), {
+      getCallerName: () => 'Caller',
+    });
+
+    await controller.startCall({
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: true,
+    });
+
+    expect(mocks.captureMessage).toHaveBeenCalledWith(
+      '[call] caller-media-failed',
+      expect.objectContaining({
+        fingerprint: ['call-failure', 'caller-media-failed', 'NotAllowedError'],
+        tags: {
+          'call.failure': 'caller-media-failed',
+          'call.failure.sub': 'NotAllowedError',
+        },
+        extra: expect.objectContaining({
+          errorName: 'NotAllowedError',
+          message: 'Permission denied',
+          audioOnly: true,
+        }),
+      }),
+    );
+  });
+
   it('stops stale caller media when cleanup wins the permission race', async () => {
     const media = deferred();
     const stop = vi.fn();

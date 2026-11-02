@@ -167,6 +167,7 @@ type HangUpReason =
   | 'accept-error';
 
 type CallFailureKind =
+  | 'caller-media-failed'
   | 'connect-failed'
   | 'ice-reconnect-failed'
   | 'reconnect-timeout';
@@ -462,6 +463,21 @@ export class CallHandshakeController {
       this.pendingOutgoingLocalStream = localStream;
     } catch (err) {
       console.error('Error getting caller media before starting call:', err);
+      // An issue, not just a log: the reload below drops buffered logs, and
+      // field reports of this repeat until the PWA is fully relaunched.
+      const errorName = err instanceof Error ? err.name : 'unknown';
+      reportCallFailure(
+        'caller-media-failed',
+        {
+          errorName,
+          message: err instanceof Error ? err.message : String(err),
+          audioOnly,
+          standalone: globalThis.matchMedia?.('(display-mode: standalone)')
+            .matches,
+          visibilityState: globalThis.document?.visibilityState,
+        },
+        errorName,
+      );
       this.alertCallStartFailed('Error getting caller media. Try again.');
       return;
     }
