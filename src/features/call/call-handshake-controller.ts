@@ -4,7 +4,14 @@ import {
   getCallService,
 } from './call-service.js';
 import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
-import { captureMessage, logger } from '@sentry/browser';
+import {
+  captureMessage,
+  flush,
+  getIsolationScope,
+  logger,
+  metrics,
+  setTag,
+} from '@sentry/browser';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import type {
   CreateRoomSignalingOptions,
@@ -161,6 +168,11 @@ type HangUpReason =
   | 'accept-error';
 
 type CallFailureKind =
+  | 'room-resolve-failed'
+  | 'caller-media-failed'
+  | 'invite-send-failed'
+  | 'enter-room-failed'
+  | 'accept-failed'
   | 'connect-failed'
   | 'ice-reconnect-failed'
   | 'reconnect-timeout';
@@ -181,10 +193,73 @@ function reportCallFailure(
     fingerprint: ['call-failure', kind, ...(subKind ? [subKind] : [])],
     tags: {
       'call.failure': kind,
+      // Explicit, so a report captured after hangUp (or a newer join) still
+      // names the failing room; event tags win over the scope's call.room.
+      ...(typeof detail.roomId === 'string' && { 'call.room': detail.roomId }),
       ...(subKind && { 'call.failure.sub': subKind }),
     },
     extra: detail,
   });
+}
+
+/** Resolves within 500ms so a stalled query can't hold up the failure alert. */
+async function getMediaPermissions(): Promise<Record<string, string>> {
+  const query = async (name: string) => {
+    try {
+      const status = await navigator.permissions.query({
+        name: name as PermissionName,
+      });
+      return status.state;
+    } catch {
+      return 'unsupported';
+    }
+  };
+  const permissions = Promise.all([query('camera'), query('microphone')]).then(
+    ([camera, microphone]) => ({ camera, microphone }),
+  );
+  const timeout = new Promise<Record<string, string>>((resolve) =>
+    setTimeout(
+      () => resolve({ camera: 'timeout', microphone: 'timeout' }),
+      500,
+    ),
+  );
+  return Promise.race([permissions, timeout]);
+}
+
+/**
+ * A failed call attempt (before or while joining) as a Sentry issue, grouped
+ * by error name. Awaited before the reload in alertCallStartFailed, which
+ * would otherwise drop the buffered console log that was the only trace.
+ */
+async function reportCallStartFailure(
+  kind: CallFailureKind,
+  err: unknown,
+  detail: Record<string, unknown> = {},
+): Promise<void> {
+  const errorName = err instanceof Error ? err.name : 'unknown';
+  reportCallFailure(
+    kind,
+    {
+      errorName,
+      message: err instanceof Error ? err.message : String(err),
+      ...detail,
+      standalone: globalThis.matchMedia?.('(display-mode: standalone)').matches,
+      visibilityState: globalThis.document?.visibilityState,
+      permissions: await getMediaPermissions(),
+    },
+    errorName,
+  );
+}
+
+/**
+ * Tags only reach error events; logs and metrics read scope attributes.
+ * Set both so every signal from a call is searchable by room.
+ */
+function setCallRoomContext(roomId: string | undefined): void {
+  setTag('call.room', roomId);
+  const scope = getIsolationScope();
+  if (roomId) scope.setAttribute('call.room', roomId);
+  else scope.removeAttribute('call.room');
 }
 
 export class CallHandshakeController {
@@ -197,6 +272,10 @@ export class CallHandshakeController {
 
   private _handshakeState: CallHandshakeState = null;
   private incomingAcceptanceAbortController: AbortController | undefined;
+  // The join that last set the Sentry room context (its abort signal, or a
+  // fresh token when unsignalled). Room ids repeat per conversation, so
+  // ownership can't be keyed by room id.
+  private roomContextOwner: object | undefined;
   private incomingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -248,7 +327,9 @@ export class CallHandshakeController {
     if (typeof window !== 'undefined') {
       // window.alert(t('call.start_failed_reload'));
       window.alert(msg);
-      window.location.reload();
+      // keepalive isn't guaranteed (large payloads), so give the failure
+      // report a bounded chance to send before the reload drops it.
+      void flush(2_000).finally(() => window.location.reload());
     }
   }
 
@@ -410,6 +491,7 @@ export class CallHandshakeController {
         err,
       );
       void stopStreamWhenReady();
+      await reportCallStartFailure('room-resolve-failed', err);
       this.alertCallStartFailed(
         'Error: Failed to resolve conversationId. Try again.',
       );
@@ -441,6 +523,8 @@ export class CallHandshakeController {
       this.pendingOutgoingLocalStream = localStream;
     } catch (err) {
       console.error('Error getting caller media before starting call:', err);
+      // Field reports: repeats across reloads until the PWA is relaunched.
+      await reportCallStartFailure('caller-media-failed', err, { audioOnly });
       this.alertCallStartFailed('Error getting caller media. Try again.');
       return;
     }
@@ -489,6 +573,9 @@ export class CallHandshakeController {
         }
       } catch (err) {
         console.error('Error entering room on callee accept:', err);
+        void reportCallStartFailure('enter-room-failed', err, {
+          roomId: response.roomId,
+        });
         this.stopMediaStream(localStream);
         this.hangUp('enter-room-error');
       } finally {
@@ -517,6 +604,7 @@ export class CallHandshakeController {
       this.stopPendingOutgoingLocalStream();
       this.setHandshakeState(null);
       console.error('Error sending outgoing call invite:', err);
+      await reportCallStartFailure('invite-send-failed', err, { roomId });
       this.alertCallStartFailed('Error sending call invite. Try again.');
       return;
     }
@@ -574,6 +662,13 @@ export class CallHandshakeController {
       throw signal.reason;
     }
     this.resetReconnectState();
+    // Searchable on every event/log/metric until the call ends.
+    this.roomContextOwner = signal ?? {};
+    setCallRoomContext(roomId);
+    // Starts after media acquisition: the caller's media is acquired before
+    // ringing, so this keeps both sides measuring connection setup only.
+    const joinStartedAt = Date.now();
+    let connectRecorded = false;
     let room;
     try {
       room = await this.p2p.join({
@@ -601,6 +696,7 @@ export class CallHandshakeController {
         signal,
         onError: ({ error }) => this.handleRoomError(error, roomId),
         onIceReconnecting: ({ attempt, maxAttempts, reason, nextDelayMs }) => {
+          metrics.count('call.ice_reconnect_attempt', 1);
           console.warn(
             {
               roomId,
@@ -613,6 +709,7 @@ export class CallHandshakeController {
           );
         },
         onIceReconnected: ({ attempt, durationMs }) => {
+          metrics.count('call.ice_reconnected', 1);
           logger.info('[call] media connection recovered', {
             roomId,
             attempt,
@@ -639,6 +736,15 @@ export class CallHandshakeController {
           if (autoExitOnEmpty) this.cancelReconnectGrace();
         },
         onDataChannelOpen: () => {
+          // Per join, so callee setup counts too (it has no outgoing call).
+          if (!connectRecorded) {
+            connectRecorded = true;
+            metrics.distribution(
+              'call.time_to_connected',
+              Date.now() - joinStartedAt,
+              { unit: 'millisecond' },
+            );
+          }
           const call = this.activeOutgoingCall;
           if (!call || call.roomId !== roomId) return;
           call.connectedAt ??= Date.now();
@@ -699,6 +805,11 @@ export class CallHandshakeController {
       () => {},
     );
     return Promise.race([streamPromise, abortPromise]);
+  }
+
+  private clearRoomContext(): void {
+    this.roomContextOwner = undefined;
+    setCallRoomContext(undefined);
   }
 
   private stopMediaStream(stream: MediaStream): void {
@@ -862,11 +973,23 @@ export class CallHandshakeController {
           return;
         }
         console.error('Error accepting incoming call:', err);
+        // Callee media, join and accept-response failures all land here;
+        // the error name (e.g. NotAllowedError) tells them apart.
+        void reportCallStartFailure('accept-failed', err, {
+          roomId: state.call.roomId,
+          audioOnly: state.call.audioOnly ?? false,
+        });
         this.hangUp('accept-error');
       })
       .finally(() => {
         if (this.incomingAcceptanceAbortController === abortController) {
           this.incomingAcceptanceAbortController = undefined;
+        }
+        // An aborted acceptance never reaches hangUp, and its accept request
+        // can still settle either way. Clear the room context only if this
+        // join still owns it, so a newer call keeps its own.
+        if (signal.aborted && this.roomContextOwner === signal) {
+          this.clearRoomContext();
         }
         const current = this._handshakeState;
         if (
@@ -912,6 +1035,7 @@ export class CallHandshakeController {
     });
     this.publishCompletedCall();
     this.resetReconnectState();
+    this.clearRoomContext();
     // dispose() is async in @kidlib/p2p ≥0.4; hangUp stays sync (called from
     // click + timer callbacks). Surface teardown failures — a silently failed
     // dispose is the "call won't end / black screen" bug class we log for.
@@ -1048,6 +1172,7 @@ export class CallHandshakeController {
     this.resetReconnectState();
     this.stopPendingOutgoingLocalStream();
     this.publishCompletedCall();
+    this.clearRoomContext();
     this.setHandshakeState(null);
     this.onCalleeBusy(false);
     void this.p2p.dispose().catch((err) => {
