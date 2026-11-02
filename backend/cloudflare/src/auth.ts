@@ -2,6 +2,8 @@ import type { WorkerEnv } from './types';
 
 export interface Identity {
   userId: string;
+  /** Present only when the token's `email_verified` claim is true. */
+  verifiedEmail?: string;
   token: string;
 }
 
@@ -89,7 +91,11 @@ async function verifyFirebaseIdToken(
   );
   if (!valid) return null;
 
-  return { userId: claims.sub };
+  const verifiedEmail =
+    claims.email_verified === true && typeof claims.email === 'string'
+      ? claims.email
+      : undefined;
+  return { userId: claims.sub, verifiedEmail };
 }
 
 async function getSigningKey(kid: string): Promise<CryptoKey | null> {
@@ -200,10 +206,11 @@ function base64UrlToBase64(segment: string): string {
 
 function decodeJson(segment: string): Record<string, unknown> | null {
   try {
-    return JSON.parse(atob(base64UrlToBase64(segment))) as Record<
-      string,
-      unknown
-    >;
+    const bytes = base64UrlToBytes(segment);
+    if (!bytes) return null;
+    return JSON.parse(
+      new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(bytes),
+    ) as Record<string, unknown>;
   } catch {
     return null;
   }
