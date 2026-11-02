@@ -104,9 +104,9 @@ export function CallLobby() {
       const uid = await signInAsGuest();
       // peerId must be unique per tab, not per user: the anonymous session is
       // shared by all tabs of a browser profile, and the signaling DO keys
-      // peers by peerId (the verified identity is authn-only). Two tabs
-      // joining with the same uid would collide as one peer.
-      const peerId = `${uid.slice(0, 6)}-${crypto.randomUUID().slice(0, 8)}`;
+      // peers by peerId. The full UID binds the tab ID to its authenticated
+      // owner; the UUID lets tabs participate separately.
+      const peerId = `${uid}:${crypto.randomUUID()}`;
       const acquiredStream = await navigator.mediaDevices.getUserMedia({
         video: getVideoConstraints(),
         audio: getAudioConstraints(),

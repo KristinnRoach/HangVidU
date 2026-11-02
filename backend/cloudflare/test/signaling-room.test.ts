@@ -1,13 +1,17 @@
-import { env } from 'cloudflare:test';
+import { env, evictDurableObject, runInDurableObject } from 'cloudflare:test';
 import { describe, expect, it } from 'vite-plus/test';
 import type { ServerMessage } from '../../../shared/signaling/protocol';
 
 /** Open a hibernatable WS straight to the DO (bypasses the Worker auth layer). */
-async function connect(roomId: string) {
+async function connect(
+  roomId: string,
+  ownerUid = 'peer-a',
+  includeAcknowledgments = false,
+) {
   const stub = env.SIGNALING_ROOM.getByName(roomId);
   const res = await stub.fetch(
     new Request(`https://do/rooms/${roomId}/signal`, {
-      headers: { Upgrade: 'websocket' },
+      headers: { Upgrade: 'websocket', 'X-Hangvidu-Signaling-Uid': ownerUid },
     }),
   );
   const ws = res.webSocket as WebSocket;
@@ -17,6 +21,7 @@ async function connect(roomId: string) {
   const waiters: ((m: ServerMessage) => void)[] = [];
   ws.addEventListener('message', (e: MessageEvent) => {
     const msg = JSON.parse(e.data as string) as ServerMessage;
+    if (msg.t === 'joined' && !includeAcknowledgments) return;
     const w = waiters.shift();
     if (w) w(msg);
     else queue.push(msg);
@@ -51,10 +56,145 @@ async function nextMembers(
 }
 
 describe('SignalingRoom', () => {
+  it('rejects another owner claiming an occupied peer ID', async () => {
+    const victim = await connect('takeover', 'victim');
+    await victim.next();
+    victim.send({ t: 'join', peerId: 'victim' });
+    await victim.next();
+    const attacker = await connect('takeover', 'attacker');
+    await attacker.next();
+    attacker.send({ t: 'join', peerId: 'victim' });
+    expect(await attacker.next()).toEqual({
+      t: 'error',
+      message: 'unauthorized peerId',
+    });
+    attacker.send({ t: 'relay', to: 'victim', channel: 'ice', data: {} });
+    expect(await attacker.next()).toEqual({
+      t: 'error',
+      message: 'join before relaying',
+    });
+    victim.send({ t: 'presence', data: { alive: true } });
+    expect(await victim.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'victim', data: { alive: true } }],
+    });
+  });
+
+  it('rejects a vacant victim ID before allowing its owner to join', async () => {
+    const attacker = await connect('squatting', 'attacker');
+    await attacker.next();
+    attacker.send({ t: 'join', peerId: 'victim' });
+    expect(await attacker.next()).toEqual({
+      t: 'error',
+      message: 'unauthorized peerId',
+    });
+    const victim = await connect('squatting', 'victim');
+    expect(await victim.next()).toEqual({ t: 'peers', peers: [] });
+    victim.send({ t: 'join', peerId: 'victim' });
+    expect(memberIds(await victim.next())).toEqual(['victim']);
+  });
+
+  it('keeps two same-owner tabs separate and authorizes IDs after leave', async () => {
+    const first = 'owner:11111111-1111-4111-8111-111111111111';
+    const second = 'owner:22222222-2222-4222-8222-222222222222';
+    const a = await connect('tabs', 'owner');
+    await a.next();
+    a.send({ t: 'join', peerId: first });
+    await a.next();
+    a.send({ t: 'presence', data: { muted: true } });
+    await a.next();
+    const b = await connect('tabs', 'owner');
+    await b.next();
+    b.send({ t: 'join', peerId: second });
+    expect(memberIds(await b.next())).toEqual([first, second]);
+    await a.next();
+    a.send({ t: 'leave' });
+    expect(memberIds(await a.next())).toEqual([second]);
+    a.send({ t: 'join', peerId: first });
+    expect(memberIds(await a.next())).toEqual([first, second]);
+    a.send({ t: 'join', peerId: 'victim' });
+    expect(await a.next()).toEqual({
+      t: 'error',
+      message: 'unauthorized peerId',
+    });
+  });
+
+  it('requires a trusted owner on upgrade', async () => {
+    const response = await env.SIGNALING_ROOM.getByName('missing-owner').fetch(
+      new Request('https://do/rooms/missing-owner/signal', {
+        headers: { Upgrade: 'websocket' },
+      }),
+    );
+    expect(response.status).toBe(401);
+  });
+
+  it('retires silent ownerless sockets on wake before routing or admission', async () => {
+    const legacy = await connect('upgrade', 'victim');
+    await legacy.next();
+    legacy.send({ t: 'join', peerId: 'victim' });
+    await legacy.next();
+    const sender = await connect('upgrade', 'sender');
+    await sender.next();
+    sender.send({ t: 'join', peerId: 'sender' });
+    await sender.next();
+    await legacy.next();
+    await runInDurableObject(
+      env.SIGNALING_ROOM.getByName('upgrade'),
+      (_instance, state) => {
+        const old = state
+          .getWebSockets()
+          .find((ws) => ws.deserializeAttachment()?.peerId === 'victim')!;
+        // Model an attachment written by the pre-fix release.
+        old.serializeAttachment({ peerId: 'victim', joinedAt: 1 });
+      },
+    );
+    await evictDurableObject(env.SIGNALING_ROOM.getByName('upgrade'));
+    const victim = await connect('upgrade', 'victim');
+    expect(await victim.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'sender' }],
+    });
+    expect(await sender.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'sender' }],
+    });
+    victim.send({ t: 'join', peerId: 'victim' });
+    expect(memberIds(await victim.next())).toEqual(['sender', 'victim']);
+    await sender.next();
+    sender.send({ t: 'relay', to: 'victim', channel: 'sdp', data: 'private' });
+    expect(await victim.next()).toEqual({
+      t: 'relay',
+      from: 'sender',
+      channel: 'sdp',
+      data: 'private',
+    });
+  });
+
+  it('acknowledges this socket and request only after broadcasting current presence', async () => {
+    const peer = await connect('admission', 'owner', true);
+    await peer.next();
+    peer.send({ t: 'join', peerId: 'owner', requestId: 'attempt-1' });
+    expect(await peer.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'owner' }],
+    });
+    expect(await peer.next()).toEqual({
+      t: 'joined',
+      peerId: 'owner',
+      requestId: 'attempt-1',
+    });
+    peer.send({ t: 'join', peerId: 'victim', requestId: 'attempt-2' });
+    expect(await peer.next()).toEqual({
+      t: 'error',
+      message: 'unauthorized peerId',
+      requestId: 'attempt-2',
+    });
+  });
+
   it('tracks presence and relays signaling between peers', async () => {
     const a = await connect('room-1');
     expect(await a.next()).toEqual({ t: 'peers', peers: [] });
-    const b = await connect('room-1');
+    const b = await connect('room-1', 'peer-b');
     expect(await b.next()).toEqual({ t: 'peers', peers: [] });
 
     a.send({ t: 'join', peerId: 'peer-a' });
@@ -105,7 +245,7 @@ describe('SignalingRoom', () => {
       peers: [{ peerId: 'peer-a', data: { muted: false } }],
     });
 
-    const b = await connect('room-2');
+    const b = await connect('room-2', 'peer-b');
     expect(await b.next()).toEqual({
       t: 'peers',
       peers: [{ peerId: 'peer-a', data: { muted: false } }],
@@ -130,7 +270,7 @@ describe('SignalingRoom', () => {
       peers: [{ peerId: 'peer-a' }],
     });
 
-    const b = await connect('room-departed');
+    const b = await connect('room-departed', 'peer-b');
     expect(await b.next()).toEqual({
       t: 'peers',
       peers: [{ peerId: 'peer-a' }],
@@ -157,7 +297,7 @@ describe('SignalingRoom', () => {
       peers: [{ peerId: 'peer-a' }],
     });
 
-    const b = await connect('room-dropped');
+    const b = await connect('room-dropped', 'peer-b');
     expect(await b.next()).toEqual({
       t: 'peers',
       peers: [{ peerId: 'peer-a' }],
@@ -185,7 +325,7 @@ describe('SignalingRoom', () => {
   });
 
   it('routes relays to the newest socket when a peer rejoins after reload', async () => {
-    const oldB = await connect('room-4');
+    const oldB = await connect('room-4', 'peer-b');
     expect(await oldB.next()).toEqual({ t: 'peers', peers: [] });
     oldB.send({ t: 'join', peerId: 'peer-b' });
     expect(await oldB.next()).toEqual({
@@ -193,7 +333,7 @@ describe('SignalingRoom', () => {
       peers: [{ peerId: 'peer-b' }],
     });
 
-    const newB = await connect('room-4');
+    const newB = await connect('room-4', 'peer-b');
     expect(await newB.next()).toEqual({
       t: 'peers',
       peers: [{ peerId: 'peer-b' }],

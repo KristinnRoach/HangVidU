@@ -28,6 +28,12 @@ interface SdpEnvelope {
   payload: RTCSessionDescriptionInit;
 }
 
+interface RoomRegistration {
+  peerId: string;
+  requestId: string;
+  data?: P2PRoomPresenceData;
+}
+
 interface RelaySubscription {
   from: string;
   channel: RelayChannel;
@@ -53,20 +59,48 @@ export function createDoRoomSignaling({
     },
   });
 
-  let joinedPeerId: string | null = null;
-  let localData: P2PRoomPresenceData | undefined;
+  // Retained after admission so reconnects restore the same registration.
+  let registration: RoomRegistration | null = null;
+  let pendingJoin:
+    | {
+        resolve: () => void;
+        reject: (error: Error) => void;
+        timer: ReturnType<typeof setTimeout>;
+      }
+    | undefined;
+
+  function rejectJoin(error: Error) {
+    const pending = pendingJoin;
+    pendingJoin = undefined;
+    registration = null;
+    if (pending) {
+      clearTimeout(pending.timer);
+      pending.reject(error);
+    }
+  }
   const peersHandlers = new Set<(snapshot: P2PRoomPresenceSnapshot) => void>();
   const relaySubs = new Set<RelaySubscription>();
 
-  // Build the join message, omitting `data` when absent so the no-presence
-  // wire stays minimal.
-  const joinMessage = (peerId: string, data?: P2PRoomPresenceData) =>
-    data !== undefined
-      ? ({ t: 'join', peerId, data } as const)
-      : ({ t: 'join', peerId } as const);
+  const joinMessage = (current: RoomRegistration) => ({
+    t: 'join' as const,
+    ...current,
+  });
 
   socket.onMessage((message: ServerMessage) => {
     switch (message.t) {
+      case 'joined':
+        if (
+          registration &&
+          message.peerId === registration.peerId &&
+          message.requestId === registration.requestId &&
+          pendingJoin
+        ) {
+          const pending = pendingJoin;
+          pendingJoin = undefined;
+          clearTimeout(pending.timer);
+          pending.resolve();
+        }
+        return;
       case 'peers': {
         // Wire `{ peerId, data }` → port `{ memberId, data }`.
         const members: P2PRoomPresenceMember[] = message.peers.map((p) => ({
@@ -95,6 +129,8 @@ export function createDoRoomSignaling({
         }
         return;
       case 'error':
+        if (registration && message.requestId === registration.requestId)
+          rejectJoin(new Error(message.message));
         console.warn('[signaling] worker error:', message.message);
         return;
     }
@@ -102,7 +138,7 @@ export function createDoRoomSignaling({
 
   // Restore presence (peerId + latest data) after every (re)connect.
   socket.onOpen(() => {
-    if (joinedPeerId) socket.send(joinMessage(joinedPeerId, localData));
+    if (registration) socket.send(joinMessage(registration));
   });
 
   function subscribeRelay(
@@ -117,26 +153,27 @@ export function createDoRoomSignaling({
 
   return {
     join(peerId, data) {
-      joinedPeerId = peerId;
-      localData = data;
-      // Resolve once the server echoes a peers list containing us, so the
-      // room's post-join capacity check runs against current occupancy
-      // instead of a stale snapshot. Timeout fallback keeps a flaky server
-      // from hanging the join forever (degrades to pre-ack behavior).
-      const ack = new Promise<void>((resolve) => {
-        const handler = (snapshot: P2PRoomPresenceSnapshot) => {
-          if (!snapshot.members.some((m) => m.memberId === peerId)) return;
-          peersHandlers.delete(handler);
-          clearTimeout(timeoutId);
-          resolve();
+      if (pendingJoin) return Promise.reject(new Error('join already pending'));
+      registration = {
+        peerId,
+        requestId: crypto.randomUUID(),
+        ...(data !== undefined ? { data } : {}),
+      };
+      // Presence is room-wide and may describe a different socket with the
+      // same ID. Only this socket's admission acknowledgment proves success.
+      const ack = new Promise<void>((resolve, reject) => {
+        pendingJoin = {
+          resolve,
+          reject,
+          timer: setTimeout(() => {
+            socket.send({ t: 'leave' });
+            rejectJoin(new Error('signaling join timed out'));
+          }, 5_000),
         };
-        const timeoutId = setTimeout(() => {
-          peersHandlers.delete(handler);
-          resolve();
-        }, 5_000);
-        peersHandlers.add(handler);
       });
-      socket.send(joinMessage(peerId, data));
+      // Not queued: onOpen sends it from `registration`, so a cancelled join
+      // can't be replayed by a later connect.
+      if (socket.isOpen()) socket.send(joinMessage(registration));
       return ack;
     },
 
@@ -145,15 +182,14 @@ export function createDoRoomSignaling({
     // so a later reconnect doesn't re-assert presence we've already left.
     leave() {
       socket.send({ t: 'leave' });
-      joinedPeerId = null;
-      localData = undefined;
+      rejectJoin(new Error('signaling join cancelled'));
     },
 
     // Update our own presence data mid-session (e.g. mute toggle). The worker
     // derives identity from the socket, so peerId is unused on the wire; the
     // change round-trips back through `onPeers` to reach the local Accessor.
     updatePresenceData(_peerId, data) {
-      localData = data;
+      if (registration) registration.data = data;
       socket.send({ t: 'presence', data });
     },
 
@@ -211,10 +247,8 @@ export function createDoRoomSignaling({
     },
 
     cleanupSignaling() {
-      if (joinedPeerId) {
-        socket.send({ t: 'leave' });
-        joinedPeerId = null;
-      }
+      if (registration) socket.send({ t: 'leave' });
+      rejectJoin(new Error('signaling closed'));
       relaySubs.clear();
       peersHandlers.clear();
       socket.close();
