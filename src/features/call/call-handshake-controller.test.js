@@ -512,6 +512,51 @@ describe('CallHandshakeController', () => {
     expect(mocks.setTag).toHaveBeenLastCalledWith('call.room', undefined);
   });
 
+  it('keeps a newer call room context when a cancelled acceptance settles', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const respondA = deferred();
+    mocks.respondToIncomingCallInvite.mockReturnValueOnce(respondA.promise);
+    const p2p = createP2PMock({
+      join: vi.fn(async ({ roomId }) => ({ roomId, members: ['callee-id'] })),
+    });
+    const controller = createController(p2p);
+    const invite = (callInviteId, roomId) =>
+      mocks.incomingCallback?.({
+        type: 'invite',
+        invite: {
+          callInviteId,
+          roomId,
+          callerId: 'caller-id',
+          callerName: 'Caller',
+          expiresAt: Date.now() + 60_000,
+        },
+      });
+
+    controller.init();
+    invite(CALL_INVITE_ID, 'room-1');
+    controller.acceptIncoming();
+    await vi.waitFor(() =>
+      expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledTimes(1),
+    );
+    mocks.incomingCallback?.({
+      type: 'cancel',
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      by: 'caller-id',
+    });
+
+    invite('call-invite-2', 'room-2');
+    controller.acceptIncoming();
+    await vi.waitFor(() =>
+      expect(mocks.setTag).toHaveBeenLastCalledWith('call.room', 'room-2'),
+    );
+
+    respondA.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.scope.removeAttribute).not.toHaveBeenCalled();
+    expect(mocks.setTag).toHaveBeenLastCalledWith('call.room', 'room-2');
+  });
+
   it('keeps accepting when the responding callee receives its handled echo', async () => {
     const response = deferred();
     mocks.respondToIncomingCallInvite.mockReturnValue(response.promise);
