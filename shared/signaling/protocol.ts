@@ -30,7 +30,7 @@ export interface PresenceMember {
 
 /** Client → Durable Object. */
 export type ClientMessage =
-  | { t: 'join'; peerId: PeerId; data?: PresenceData }
+  | { t: 'join'; peerId: PeerId; data?: PresenceData; requestId?: string }
   | { t: 'leave' }
   | { t: 'presence'; data: PresenceData }
   | { t: 'relay'; to: PeerId; channel: RelayChannel; data: unknown };
@@ -44,9 +44,10 @@ export type ClientMessage =
  * client treats any absent member without a `departed` entry as a silent drop.
  */
 export type ServerMessage =
+  | { t: 'joined'; peerId: PeerId; requestId?: string }
   | { t: 'peers'; peers: PresenceMember[]; departed?: PeerId[] }
   | { t: 'relay'; from: PeerId; channel: RelayChannel; data: unknown }
-  | { t: 'error'; message: string };
+  | { t: 'error'; message: string; requestId?: string };
 
 export function isClientMessage(value: unknown): value is ClientMessage {
   if (!value || typeof value !== 'object') return false;
@@ -56,6 +57,10 @@ export function isClientMessage(value: unknown): value is ClientMessage {
       return (
         typeof m.peerId === 'string' &&
         m.peerId.length > 0 &&
+        (m.requestId === undefined ||
+          (typeof m.requestId === 'string' &&
+            m.requestId.length > 0 &&
+            m.requestId.length <= 128)) &&
         isPresenceDataOrAbsent(m.data)
       );
     case 'leave':

@@ -34,5 +34,8 @@ export async function handleSignalingRequest(
     return new Response('Invalid roomId', { status: 400 });
   }
   const stub = env.SIGNALING_ROOM.getByName(roomId);
-  return stub.fetch(request);
+  const headers = new Headers(request.headers);
+  // Only this authenticated handler may establish the socket's owner.
+  headers.set('X-Hangvidu-Signaling-Uid', identity.userId);
+  return stub.fetch(new Request(request, { headers }));
 }

@@ -11,6 +11,7 @@ import {
 
 /** Survives hibernation via ws.serializeAttachment(). */
 interface SocketState {
+  ownerUid?: string;
   peerId: PeerId | null;
   data?: PresenceData;
   joinedAt?: number;
@@ -27,10 +28,26 @@ interface SocketState {
 export class SignalingRoom extends DurableObject<Env> {
   private joinSequence = 0;
 
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Hibernating sockets can survive a code upgrade. Retire legacy sockets
+    // before any snapshot, routing lookup or ownership check can trust them.
+    let removedLegacyPeer = false;
+    for (const ws of this.ctx.getWebSockets()) {
+      if (this.getSocketState(ws).ownerUid) continue;
+      removedLegacyPeer = this.clearSocketPresence(ws) || removedLegacyPeer;
+      ws.close(4001, 'reconnect to authenticate');
+    }
+    if (removedLegacyPeer) this.broadcastPeers();
+  }
+
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket upgrade', { status: 426 });
     }
+
+    const ownerUid = request.headers.get('X-Hangvidu-Signaling-Uid');
+    if (!ownerUid) return new Response('Unauthorized', { status: 401 });
 
     const pair = new WebSocketPair();
     const client = pair[0];
@@ -39,7 +56,7 @@ export class SignalingRoom extends DurableObject<Env> {
     // Accept first, then attach state (serializeAttachment requires an
     // already-accepted hibernatable socket). peerId is unknown until `join`.
     this.ctx.acceptWebSocket(server);
-    this.setSocketState(server, { peerId: null });
+    this.setSocketState(server, { ownerUid, peerId: null });
 
     // Presence snapshot on connect. The P2PRoomSignaling contract requires
     // watchers (connected, not joined) to know current occupancy — the client
@@ -71,17 +88,44 @@ export class SignalingRoom extends DurableObject<Env> {
       return this.sendError(ws, 'unknown message');
     }
 
+    const state = this.getSocketState(ws);
+    // Pre-upgrade sockets have no verified owner. Do not infer one from an ID.
+    if (!state.ownerUid) {
+      this.setSocketState(ws, { peerId: null });
+      ws.close(4001, 'reconnect to authenticate');
+      return;
+    }
     const message = parsed as ClientMessage;
     switch (message.t) {
-      case 'join':
-        this.replaceExistingPeerSocket(ws, message.peerId);
+      case 'join': {
+        // Contact calls use the UID; guest tabs use UID:UUID. Check even when
+        // the ID is vacant, so first registration cannot squat another UID.
+        const suffix = message.peerId.slice(state.ownerUid.length + 1);
+        const ownsId =
+          message.peerId === state.ownerUid ||
+          (message.peerId.startsWith(`${state.ownerUid}:`) &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+              suffix,
+            ));
+        if (!ownsId)
+          return this.sendError(ws, 'unauthorized peerId', message.requestId);
+        if (!this.replaceExistingPeerSocket(ws, message.peerId)) {
+          return this.sendError(ws, 'peerId in use', message.requestId);
+        }
         this.setSocketState(ws, {
+          ownerUid: state.ownerUid,
           peerId: message.peerId,
           data: message.data,
           joinedAt: this.nextJoinOrder(),
         });
         this.broadcastPeers();
+        this.send(ws, {
+          t: 'joined',
+          peerId: message.peerId,
+          ...(message.requestId ? { requestId: message.requestId } : {}),
+        });
         return;
+      }
       case 'leave': {
         // Explicit leave: tag the departing peer as `left` on the same snapshot
         // where it drops out of presence, so the client can distinguish an
@@ -98,6 +142,7 @@ export class SignalingRoom extends DurableObject<Env> {
         const { peerId } = this.getSocketState(ws);
         if (!peerId) return this.sendError(ws, 'join before setting presence');
         this.setSocketState(ws, {
+          ownerUid: state.ownerUid,
           peerId,
           data: message.data,
           joinedAt: this.getSocketState(ws).joinedAt,
@@ -186,25 +231,38 @@ export class SignalingRoom extends DurableObject<Env> {
     return target;
   }
 
-  private replaceExistingPeerSocket(current: WebSocket, peerId: PeerId): void {
-    for (const ws of this.ctx.getWebSockets()) {
-      if (ws === current) continue;
-      if (this.getSocketState(ws).peerId !== peerId) continue;
-      this.setSocketState(ws, { peerId: null });
+  private replaceExistingPeerSocket(
+    current: WebSocket,
+    peerId: PeerId,
+  ): boolean {
+    const ownerUid = this.getSocketState(current).ownerUid;
+    const existing = this.ctx
+      .getWebSockets()
+      .filter(
+        (ws) => ws !== current && this.getSocketState(ws).peerId === peerId,
+      );
+    if (existing.some((ws) => this.getSocketState(ws).ownerUid !== ownerUid)) {
+      return false;
+    }
+    for (const ws of existing) {
+      this.clearSocketPresence(ws);
       try {
         ws.close(4000, 'replaced by newer connection');
       } catch {
-        // Socket is already closing; clearing attachment above is enough to
-        // keep subsequent relay routing away from the stale connection.
+        // Attachment is already detached from routing.
       }
     }
+    return true;
   }
 
   private clearPeerPresence(peerId: PeerId | null): void {
     if (!peerId) return;
     for (const ws of this.ctx.getWebSockets()) {
       if (this.getSocketState(ws).peerId === peerId) {
-        this.setSocketState(ws, { peerId: null });
+        this.setSocketState(ws, {
+          ownerUid: this.getSocketState(ws).ownerUid,
+          peerId: null,
+        });
       }
     }
   }
@@ -214,7 +272,10 @@ export class SignalingRoom extends DurableObject<Env> {
    * close/error callback arrives. */
   private clearSocketPresence(ws: WebSocket): boolean {
     if (!this.getSocketState(ws).peerId) return false;
-    this.setSocketState(ws, { peerId: null });
+    this.setSocketState(ws, {
+      ownerUid: this.getSocketState(ws).ownerUid,
+      peerId: null,
+    });
     return true;
   }
 
@@ -226,8 +287,8 @@ export class SignalingRoom extends DurableObject<Env> {
     }
   }
 
-  private sendError(ws: WebSocket, message: string): void {
-    this.send(ws, { t: 'error', message });
+  private sendError(ws: WebSocket, message: string, requestId?: string): void {
+    this.send(ws, { t: 'error', message, ...(requestId ? { requestId } : {}) });
   }
 
   private getSocketState(ws: WebSocket): SocketState {
