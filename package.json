@@ -85,7 +85,7 @@
     "@mediabunny/ac3": "^1.62.1",
     "@sentry/browser": "^11.9.0",
     "firebase": "^13.1.0",
-    "lucide-solid": "^1.61.0",
+    "lucide-solid": "^1.64.0",
     "mediabunny": "^1.62.1",
     "solid-js": "^1.9.17",
     "workbox-window": "^7.4.1",
