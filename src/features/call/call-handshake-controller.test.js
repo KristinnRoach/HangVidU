@@ -40,6 +40,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@sentry/browser', () => ({
   logger: { info: mocks.sentryInfo },
   captureMessage: mocks.captureMessage,
+  flush: vi.fn(async () => true),
   setTag: mocks.setTag,
   getIsolationScope: () => mocks.scope,
   metrics: mocks.metrics,
@@ -1281,6 +1282,7 @@ describe('CallHandshakeController', () => {
         '[call] accept-failed',
         expect.objectContaining({
           fingerprint: ['call-failure', 'accept-failed', 'Error'],
+          tags: expect.objectContaining({ 'call.room': 'room-1' }),
           extra: expect.objectContaining({
             message: 'camera blocked',
             roomId: 'room-1',

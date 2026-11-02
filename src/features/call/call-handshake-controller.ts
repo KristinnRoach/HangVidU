@@ -6,6 +6,7 @@ import {
 import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
 import {
   captureMessage,
+  flush,
   getIsolationScope,
   logger,
   metrics,
@@ -192,6 +193,9 @@ function reportCallFailure(
     fingerprint: ['call-failure', kind, ...(subKind ? [subKind] : [])],
     tags: {
       'call.failure': kind,
+      // Explicit, so a report captured after hangUp (or a newer join) still
+      // names the failing room; event tags win over the scope's call.room.
+      ...(typeof detail.roomId === 'string' && { 'call.room': detail.roomId }),
       ...(subKind && { 'call.failure.sub': subKind }),
     },
     extra: detail,
@@ -323,7 +327,9 @@ export class CallHandshakeController {
     if (typeof window !== 'undefined') {
       // window.alert(t('call.start_failed_reload'));
       window.alert(msg);
-      window.location.reload();
+      // keepalive isn't guaranteed (large payloads), so give the failure
+      // report a bounded chance to send before the reload drops it.
+      void flush(2_000).finally(() => window.location.reload());
     }
   }
 
