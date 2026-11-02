@@ -32,11 +32,17 @@ const mocks = vi.hoisted(() => ({
   getUserMedia: vi.fn(),
   sentryInfo: vi.fn(),
   captureMessage: vi.fn(),
+  setTag: vi.fn(),
+  scope: { setAttribute: vi.fn(), removeAttribute: vi.fn() },
+  metrics: { count: vi.fn(), distribution: vi.fn() },
 }));
 
 vi.mock('@sentry/browser', () => ({
   logger: { info: mocks.sentryInfo },
   captureMessage: mocks.captureMessage,
+  setTag: mocks.setTag,
+  getIsolationScope: () => mocks.scope,
+  metrics: mocks.metrics,
 }));
 
 vi.mock('./call-service.js', () => ({
@@ -461,6 +467,8 @@ describe('CallHandshakeController', () => {
       callInviteId: CALL_INVITE_ID,
     });
     expect(warn).not.toHaveBeenCalled();
+    expect(mocks.setTag).toHaveBeenLastCalledWith('call.room', undefined);
+    expect(mocks.scope.removeAttribute).toHaveBeenCalledWith('call.room');
   });
 
   it('keeps accepting when the responding callee receives its handled echo', async () => {
@@ -824,6 +832,50 @@ describe('CallHandshakeController', () => {
     await expect(joinOptions.getLocalStream()).resolves.toBe(stream);
   });
 
+  it('tags an incoming call with its room and records connect time once', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      const p2p = createP2PMock({
+        join: vi.fn(async () => ({
+          roomId: 'room-1',
+          members: ['callee-id', 'caller-id'],
+        })),
+      });
+      const controller = createController(p2p);
+      controller.showIncomingCallFromNotification({
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        startedAt: Date.now(),
+      });
+      controller.acceptIncoming();
+      await flushPromises();
+      expect(mocks.setTag).toHaveBeenCalledWith('call.room', 'room-1');
+      expect(mocks.scope.setAttribute).toHaveBeenCalledWith(
+        'call.room',
+        'room-1',
+      );
+
+      const options = p2p.join.mock.calls[0][0];
+      vi.advanceTimersByTime(1_500);
+      options.onDataChannelOpen();
+      options.onDataChannelOpen();
+      expect(mocks.metrics.distribution).toHaveBeenCalledOnce();
+      expect(mocks.metrics.distribution).toHaveBeenCalledWith(
+        'call.time_to_connected',
+        1_500,
+        { unit: 'millisecond' },
+      );
+
+      controller.hangUp();
+      expect(mocks.setTag).toHaveBeenLastCalledWith('call.room', undefined);
+      expect(mocks.scope.removeAttribute).toHaveBeenCalledWith('call.room');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('logs media recovery independently of room presence without ending the call', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -860,7 +912,12 @@ describe('CallHandshakeController', () => {
       },
       '[call] media connection interrupted; recovering',
     );
+    expect(mocks.metrics.count).toHaveBeenCalledWith(
+      'call.ice_reconnect_attempt',
+      1,
+    );
     options.onIceReconnected({ attempt: 1, durationMs: 1200 });
+    expect(mocks.metrics.count).toHaveBeenCalledWith('call.ice_reconnected', 1);
     expect(log).toHaveBeenCalledWith('[call] media connection recovered', {
       roomId: 'room-1',
       attempt: 1,

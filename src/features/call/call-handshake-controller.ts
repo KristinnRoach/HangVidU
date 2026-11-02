@@ -4,7 +4,13 @@ import {
   getCallService,
 } from './call-service.js';
 import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
-import { captureMessage, logger } from '@sentry/browser';
+import {
+  captureMessage,
+  getIsolationScope,
+  logger,
+  metrics,
+  setTag,
+} from '@sentry/browser';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import type {
   CreateRoomSignalingOptions,
@@ -185,6 +191,17 @@ function reportCallFailure(
     },
     extra: detail,
   });
+}
+
+/**
+ * Tags only reach error events; logs and metrics read scope attributes.
+ * Set both so every signal from a call is searchable by room.
+ */
+function setCallRoomContext(roomId: string | undefined): void {
+  setTag('call.room', roomId);
+  const scope = getIsolationScope();
+  if (roomId) scope.setAttribute('call.room', roomId);
+  else scope.removeAttribute('call.room');
 }
 
 export class CallHandshakeController {
@@ -574,6 +591,10 @@ export class CallHandshakeController {
       throw signal.reason;
     }
     this.resetReconnectState();
+    // Searchable on every event/log/metric until the call ends.
+    setCallRoomContext(roomId);
+    const joinStartedAt = Date.now();
+    let connectRecorded = false;
     let room;
     try {
       room = await this.p2p.join({
@@ -601,6 +622,7 @@ export class CallHandshakeController {
         signal,
         onError: ({ error }) => this.handleRoomError(error, roomId),
         onIceReconnecting: ({ attempt, maxAttempts, reason, nextDelayMs }) => {
+          metrics.count('call.ice_reconnect_attempt', 1);
           console.warn(
             {
               roomId,
@@ -613,6 +635,7 @@ export class CallHandshakeController {
           );
         },
         onIceReconnected: ({ attempt, durationMs }) => {
+          metrics.count('call.ice_reconnected', 1);
           logger.info('[call] media connection recovered', {
             roomId,
             attempt,
@@ -639,6 +662,15 @@ export class CallHandshakeController {
           if (autoExitOnEmpty) this.cancelReconnectGrace();
         },
         onDataChannelOpen: () => {
+          // Per join, so callee setup counts too (it has no outgoing call).
+          if (!connectRecorded) {
+            connectRecorded = true;
+            metrics.distribution(
+              'call.time_to_connected',
+              Date.now() - joinStartedAt,
+              { unit: 'millisecond' },
+            );
+          }
           const call = this.activeOutgoingCall;
           if (!call || call.roomId !== roomId) return;
           call.connectedAt ??= Date.now();
@@ -859,6 +891,14 @@ export class CallHandshakeController {
               console.log('[call] incoming acceptance stopped', details);
             }
           }
+          // No hangUp on this path, so drop the room context here unless a
+          // newer acceptance has already taken over.
+          if (
+            !this.incomingAcceptanceAbortController ||
+            this.incomingAcceptanceAbortController === abortController
+          ) {
+            setCallRoomContext(undefined);
+          }
           return;
         }
         console.error('Error accepting incoming call:', err);
@@ -912,6 +952,7 @@ export class CallHandshakeController {
     });
     this.publishCompletedCall();
     this.resetReconnectState();
+    setCallRoomContext(undefined);
     // dispose() is async in @kidlib/p2p ≥0.4; hangUp stays sync (called from
     // click + timer callbacks). Surface teardown failures — a silently failed
     // dispose is the "call won't end / black screen" bug class we log for.
@@ -1048,6 +1089,7 @@ export class CallHandshakeController {
     this.resetReconnectState();
     this.stopPendingOutgoingLocalStream();
     this.publishCompletedCall();
+    setCallRoomContext(undefined);
     this.setHandshakeState(null);
     this.onCalleeBusy(false);
     void this.p2p.dispose().catch((err) => {
