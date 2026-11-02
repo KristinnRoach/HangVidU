@@ -17,11 +17,16 @@ vi.mock('../signaling-socket', () => ({
     socket = {
       sent: [],
       emit: (m) => messageHandlers.forEach((h) => h(m)),
-      open: () => openHandlers.forEach((h) => h()),
+      isOpen: true,
+      open: () => {
+        socket.isOpen = true;
+        openHandlers.forEach((h) => h());
+      },
       closed: false,
     };
     return {
       send: (m) => socket.sent.push(m),
+      isOpen: () => socket.isOpen,
       onMessage: (h) => {
         messageHandlers.add(h);
         return () => messageHandlers.delete(h);
@@ -133,6 +138,32 @@ describe('createDoRoomSignaling', () => {
     socket.sent.length = 0;
     socket.open();
     expect(socket.sent).toEqual([]);
+  });
+
+  it('sends a join made before connect only once, from onOpen', async () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    socket.isOpen = false;
+    const joined = signaling.join('peer-a');
+    expect(socket.sent).toEqual([]);
+    socket.open();
+    expect(socket.sent).toEqual([
+      { t: 'join', peerId: 'peer-a', requestId: 'join-request' },
+    ]);
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+    await joined;
+  });
+
+  it('never sends a join that timed out before connect', async () => {
+    vi.useFakeTimers();
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    socket.isOpen = false;
+    const rejected = expect(signaling.join('peer-a')).rejects.toThrow(
+      'timed out',
+    );
+    await vi.advanceTimersByTimeAsync(5_000);
+    await rejected;
+    socket.open();
+    expect(socket.sent).toEqual([{ t: 'leave' }]);
   });
 
   it.each(['leave', 'cleanupSignaling'])(

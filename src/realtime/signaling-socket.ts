@@ -9,6 +9,7 @@ import { subscribeToWakeSignals } from './wake-signals';
  */
 export interface SignalingSocket {
   send(message: ClientMessage): void;
+  isOpen(): boolean;
   onMessage(handler: (message: ServerMessage) => void): () => void;
   onOpen(handler: () => void): () => void;
   close(): void;
@@ -101,6 +102,7 @@ export function createSignalingSocket(
       if (ws && ws.readyState === WebSocket.OPEN) ws.send(data);
       else sendQueue.push(data);
     },
+    isOpen: () => ws?.readyState === WebSocket.OPEN,
     onMessage(handler) {
       messageHandlers.add(handler);
       return () => messageHandlers.delete(handler);

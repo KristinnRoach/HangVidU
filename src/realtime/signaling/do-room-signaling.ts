@@ -171,7 +171,9 @@ export function createDoRoomSignaling({
           }, 5_000),
         };
       });
-      socket.send(joinMessage(registration));
+      // Not queued: onOpen sends it from `registration`, so a cancelled join
+      // can't be replayed by a later connect.
+      if (socket.isOpen()) socket.send(joinMessage(registration));
       return ack;
     },
 
