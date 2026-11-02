@@ -34,6 +34,10 @@ For source or config changes, run `vp check` and tests covering the changed beha
 
 `vpr test:compat` ensures the required Playwright browsers are installed, then runs Node tests and browser tests across Chromium, Firefox, and WebKit. Existing browser installations are reused; Playwright upgrades are handled on the next run. For other browser test commands on a fresh checkout or after a Playwright upgrade, run `vpr setup:browsers` first.
 
-`vpr deploy:fb` builds the client, runs `vp check` and compatibility tests, deploys Firebase Hosting, and marks the Sentry release. Run it from a clean commit with the production environment configured. Its checks do not need a separate full preflight run. Firebase Functions are deployed separately with `vpr deploy:fb:functions`.
+`vpr deploy:prod` prepares the published p2p dependency, checks and tests the Worker and client, and builds the client before deploying the Cloudflare Worker followed by Firebase Hosting. Use it for coordinated backend/frontend releases. It does not deploy Firebase Functions or database rules.
+
+`vpr deploy:fb` runs compatibility tests before the Sentry-uploading build, deploys Firebase Hosting, and marks the Sentry release. The release name is captured once and reused for the build and marker. If marking fails after Firebase succeeds, the command warns and prints an exact-release marker-only retry; do not redeploy just to retry Sentry. Missing Sentry credentials still warn and skip marking.
+
+Run deploys from a clean commit with the production environment configured. Their checks do not need a separate full preflight run. Firebase Functions are deployed separately with `vpr deploy:fb:functions`; `vpr deploy:all` retains its Firebase-only scope, including functions and rules, and does not deploy Cloudflare. Existing `:skip-tests` variants skip compatibility tests but still build and check the client.
 
 Dependabot opens weekly dependency update PRs. There is no separate outdated-dependency report to review. When adding CI, use `voidzero-dev/setup-vp` for Node.js, pnpm, and dependency caching, followed by `vp install --frozen-lockfile` and the checks needed by that job.

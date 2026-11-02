@@ -5,7 +5,8 @@
 // stamp the version into the bundle; `--deploy` marks that same release as
 // deployed after firebase deploy succeeds. If the two ever derive the name
 // differently, Sentry fails silently: a release with no events, events with no
-// release, and no suspect commits on either.
+// release, and no suspect commits on either. The deploy runner pins the name
+// with SENTRY_RELEASE so build and deploy marking cannot derive different names.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -30,6 +31,7 @@ function isWorkingTreeDirty() {
 }
 
 export function sentryRelease() {
+  if (process.env.SENTRY_RELEASE) return process.env.SENTRY_RELEASE;
   const pkg = JSON.parse(
     readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
   );
