@@ -1231,6 +1231,18 @@ describe('CallHandshakeController', () => {
     expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(p2p.dispose).toHaveBeenCalled());
     expect(p2p.error).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() =>
+      expect(mocks.captureMessage).toHaveBeenCalledWith(
+        '[call] accept-failed',
+        expect.objectContaining({
+          fingerprint: ['call-failure', 'accept-failed', 'Error'],
+          extra: expect.objectContaining({
+            message: 'camera blocked',
+            roomId: 'room-1',
+          }),
+        }),
+      ),
+    );
     stream
       .getTracks()
       .forEach((track) => expect(track.stop).toHaveBeenCalled());
@@ -1440,6 +1452,7 @@ describe('CallHandshakeController', () => {
           errorName: 'NotAllowedError',
           message: 'Permission denied',
           audioOnly: true,
+          permissions: { camera: 'unsupported', microphone: 'unsupported' },
         }),
       }),
     );

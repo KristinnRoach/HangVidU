@@ -167,7 +167,11 @@ type HangUpReason =
   | 'accept-error';
 
 type CallFailureKind =
+  | 'room-resolve-failed'
   | 'caller-media-failed'
+  | 'invite-send-failed'
+  | 'enter-room-failed'
+  | 'accept-failed'
   | 'connect-failed'
   | 'ice-reconnect-failed'
   | 'reconnect-timeout';
@@ -192,6 +196,55 @@ function reportCallFailure(
     },
     extra: detail,
   });
+}
+
+/** Resolves within 500ms so a stalled query can't hold up the failure alert. */
+async function getMediaPermissions(): Promise<Record<string, string>> {
+  const query = async (name: string) => {
+    try {
+      const status = await navigator.permissions.query({
+        name: name as PermissionName,
+      });
+      return status.state;
+    } catch {
+      return 'unsupported';
+    }
+  };
+  const permissions = Promise.all([query('camera'), query('microphone')]).then(
+    ([camera, microphone]) => ({ camera, microphone }),
+  );
+  const timeout = new Promise<Record<string, string>>((resolve) =>
+    setTimeout(
+      () => resolve({ camera: 'timeout', microphone: 'timeout' }),
+      500,
+    ),
+  );
+  return Promise.race([permissions, timeout]);
+}
+
+/**
+ * A failed call attempt (before or while joining) as a Sentry issue, grouped
+ * by error name. Awaited before the reload in alertCallStartFailed, which
+ * would otherwise drop the buffered console log that was the only trace.
+ */
+async function reportCallStartFailure(
+  kind: CallFailureKind,
+  err: unknown,
+  detail: Record<string, unknown> = {},
+): Promise<void> {
+  const errorName = err instanceof Error ? err.name : 'unknown';
+  reportCallFailure(
+    kind,
+    {
+      errorName,
+      message: err instanceof Error ? err.message : String(err),
+      ...detail,
+      standalone: globalThis.matchMedia?.('(display-mode: standalone)').matches,
+      visibilityState: globalThis.document?.visibilityState,
+      permissions: await getMediaPermissions(),
+    },
+    errorName,
+  );
 }
 
 /**
@@ -432,6 +485,7 @@ export class CallHandshakeController {
         err,
       );
       void stopStreamWhenReady();
+      await reportCallStartFailure('room-resolve-failed', err);
       this.alertCallStartFailed(
         'Error: Failed to resolve conversationId. Try again.',
       );
@@ -463,21 +517,8 @@ export class CallHandshakeController {
       this.pendingOutgoingLocalStream = localStream;
     } catch (err) {
       console.error('Error getting caller media before starting call:', err);
-      // An issue, not just a log: the reload below drops buffered logs, and
-      // field reports of this repeat until the PWA is fully relaunched.
-      const errorName = err instanceof Error ? err.name : 'unknown';
-      reportCallFailure(
-        'caller-media-failed',
-        {
-          errorName,
-          message: err instanceof Error ? err.message : String(err),
-          audioOnly,
-          standalone: globalThis.matchMedia?.('(display-mode: standalone)')
-            .matches,
-          visibilityState: globalThis.document?.visibilityState,
-        },
-        errorName,
-      );
+      // Field reports: repeats across reloads until the PWA is relaunched.
+      await reportCallStartFailure('caller-media-failed', err, { audioOnly });
       this.alertCallStartFailed('Error getting caller media. Try again.');
       return;
     }
@@ -526,6 +567,9 @@ export class CallHandshakeController {
         }
       } catch (err) {
         console.error('Error entering room on callee accept:', err);
+        void reportCallStartFailure('enter-room-failed', err, {
+          roomId: response.roomId,
+        });
         this.stopMediaStream(localStream);
         this.hangUp('enter-room-error');
       } finally {
@@ -554,6 +598,7 @@ export class CallHandshakeController {
       this.stopPendingOutgoingLocalStream();
       this.setHandshakeState(null);
       console.error('Error sending outgoing call invite:', err);
+      await reportCallStartFailure('invite-send-failed', err, { roomId });
       this.alertCallStartFailed('Error sending call invite. Try again.');
       return;
     }
@@ -922,6 +967,12 @@ export class CallHandshakeController {
           return;
         }
         console.error('Error accepting incoming call:', err);
+        // Callee media, join and accept-response failures all land here;
+        // the error name (e.g. NotAllowedError) tells them apart.
+        void reportCallStartFailure('accept-failed', err, {
+          roomId: state.call.roomId,
+          audioOnly: state.call.audioOnly ?? false,
+        });
         this.hangUp('accept-error');
       })
       .finally(() => {
