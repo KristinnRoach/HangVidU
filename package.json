@@ -101,7 +101,7 @@
     "@vitest/coverage-v8": "catalog:",
     "concurrently": "^10.0.6",
     "eslint-import-resolver-typescript": "^4.4.5",
-    "eslint-plugin-boundaries": "^7.3.0",
+    "eslint-plugin-boundaries": "^7.4.0",
     "fallow": "^3.36.0",
     "firebase-admin": "^14.5.0",
     "firebase-tools": "^15.34.1",
