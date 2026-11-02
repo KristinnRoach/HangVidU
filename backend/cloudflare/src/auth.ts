@@ -206,10 +206,11 @@ function base64UrlToBase64(segment: string): string {
 
 function decodeJson(segment: string): Record<string, unknown> | null {
   try {
-    return JSON.parse(atob(base64UrlToBase64(segment))) as Record<
-      string,
-      unknown
-    >;
+    const bytes = base64UrlToBytes(segment);
+    if (!bytes) return null;
+    return JSON.parse(
+      new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(bytes),
+    ) as Record<string, unknown>;
   } catch {
     return null;
   }

@@ -24,14 +24,17 @@ const originalFetch = globalThis.fetch;
 const NO_MESSAGE = Symbol('no message');
 
 function b64urlFromString(s: string): string {
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return b64urlFromBytes(new TextEncoder().encode(s).buffer);
 }
 function b64urlFromBytes(buf: ArrayBuffer): string {
   let binary = '';
   const bytes = new Uint8Array(buf);
   for (let i = 0; i < bytes.length; i++)
     binary += String.fromCharCode(bytes[i]);
-  return b64urlFromString(binary);
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 function validClaims(
   sub: string,
