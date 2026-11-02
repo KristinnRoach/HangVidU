@@ -28,6 +28,12 @@ interface SdpEnvelope {
   payload: RTCSessionDescriptionInit;
 }
 
+interface RoomRegistration {
+  peerId: string;
+  requestId: string;
+  data?: P2PRoomPresenceData;
+}
+
 interface RelaySubscription {
   from: string;
   channel: RelayChannel;
@@ -53,9 +59,8 @@ export function createDoRoomSignaling({
     },
   });
 
-  let joinedPeerId: string | null = null;
-  let joinRequestId: string | null = null;
-  let localData: P2PRoomPresenceData | undefined;
+  // Retained after admission so reconnects restore the same registration.
+  let registration: RoomRegistration | null = null;
   let pendingJoin:
     | {
         resolve: () => void;
@@ -67,9 +72,7 @@ export function createDoRoomSignaling({
   function rejectJoin(error: Error) {
     const pending = pendingJoin;
     pendingJoin = undefined;
-    joinedPeerId = null;
-    joinRequestId = null;
-    localData = undefined;
+    registration = null;
     if (pending) {
       clearTimeout(pending.timer);
       pending.reject(error);
@@ -78,23 +81,18 @@ export function createDoRoomSignaling({
   const peersHandlers = new Set<(snapshot: P2PRoomPresenceSnapshot) => void>();
   const relaySubs = new Set<RelaySubscription>();
 
-  const joinMessage = (
-    peerId: string,
-    requestId: string,
-    data?: P2PRoomPresenceData,
-  ) => ({
+  const joinMessage = (current: RoomRegistration) => ({
     t: 'join' as const,
-    peerId,
-    requestId,
-    ...(data !== undefined ? { data } : {}),
+    ...current,
   });
 
   socket.onMessage((message: ServerMessage) => {
     switch (message.t) {
       case 'joined':
         if (
-          message.peerId === joinedPeerId &&
-          message.requestId === joinRequestId &&
+          registration &&
+          message.peerId === registration.peerId &&
+          message.requestId === registration.requestId &&
           pendingJoin
         ) {
           const pending = pendingJoin;
@@ -131,7 +129,7 @@ export function createDoRoomSignaling({
         }
         return;
       case 'error':
-        if (message.requestId === joinRequestId)
+        if (registration && message.requestId === registration.requestId)
           rejectJoin(new Error(message.message));
         console.warn('[signaling] worker error:', message.message);
         return;
@@ -140,8 +138,7 @@ export function createDoRoomSignaling({
 
   // Restore presence (peerId + latest data) after every (re)connect.
   socket.onOpen(() => {
-    if (joinedPeerId && joinRequestId)
-      socket.send(joinMessage(joinedPeerId, joinRequestId, localData));
+    if (registration) socket.send(joinMessage(registration));
   });
 
   function subscribeRelay(
@@ -157,9 +154,11 @@ export function createDoRoomSignaling({
   return {
     join(peerId, data) {
       if (pendingJoin) return Promise.reject(new Error('join already pending'));
-      joinedPeerId = peerId;
-      joinRequestId = crypto.randomUUID();
-      localData = data;
+      registration = {
+        peerId,
+        requestId: crypto.randomUUID(),
+        ...(data !== undefined ? { data } : {}),
+      };
       // Presence is room-wide and may describe a different socket with the
       // same ID. Only this socket's admission acknowledgment proves success.
       const ack = new Promise<void>((resolve, reject) => {
@@ -172,7 +171,7 @@ export function createDoRoomSignaling({
           }, 5_000),
         };
       });
-      socket.send(joinMessage(peerId, joinRequestId, data));
+      socket.send(joinMessage(registration));
       return ack;
     },
 
@@ -188,7 +187,7 @@ export function createDoRoomSignaling({
     // derives identity from the socket, so peerId is unused on the wire; the
     // change round-trips back through `onPeers` to reach the local Accessor.
     updatePresenceData(_peerId, data) {
-      localData = data;
+      if (registration) registration.data = data;
       socket.send({ t: 'presence', data });
     },
 
@@ -246,10 +245,7 @@ export function createDoRoomSignaling({
     },
 
     cleanupSignaling() {
-      if (joinedPeerId) {
-        socket.send({ t: 'leave' });
-        joinedPeerId = null;
-      }
+      if (registration) socket.send({ t: 'leave' });
       rejectJoin(new Error('signaling closed'));
       relaySubs.clear();
       peersHandlers.clear();

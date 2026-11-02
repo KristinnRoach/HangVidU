@@ -56,7 +56,10 @@ export class SignalingRoom extends DurableObject<Env> {
     // Accept first, then attach state (serializeAttachment requires an
     // already-accepted hibernatable socket). peerId is unknown until `join`.
     this.ctx.acceptWebSocket(server);
-    this.setSocketState(server, { ownerUid, peerId: null });
+    server.serializeAttachment({
+      ownerUid,
+      peerId: null,
+    } satisfies SocketState);
 
     // Presence snapshot on connect. The P2PRoomSignaling contract requires
     // watchers (connected, not joined) to know current occupancy — the client
@@ -91,7 +94,7 @@ export class SignalingRoom extends DurableObject<Env> {
     const state = this.getSocketState(ws);
     // Pre-upgrade sockets have no verified owner. Do not infer one from an ID.
     if (!state.ownerUid) {
-      this.setSocketState(ws, { peerId: null });
+      this.setPeerState(ws, { peerId: null });
       ws.close(4001, 'reconnect to authenticate');
       return;
     }
@@ -112,8 +115,7 @@ export class SignalingRoom extends DurableObject<Env> {
         if (!this.replaceExistingPeerSocket(ws, message.peerId)) {
           return this.sendError(ws, 'peerId in use', message.requestId);
         }
-        this.setSocketState(ws, {
-          ownerUid: state.ownerUid,
+        this.setPeerState(ws, {
           peerId: message.peerId,
           data: message.data,
           joinedAt: this.nextJoinOrder(),
@@ -141,8 +143,7 @@ export class SignalingRoom extends DurableObject<Env> {
         // toggle) reaches every member, including the sender.
         const { peerId } = this.getSocketState(ws);
         if (!peerId) return this.sendError(ws, 'join before setting presence');
-        this.setSocketState(ws, {
-          ownerUid: state.ownerUid,
+        this.setPeerState(ws, {
           peerId,
           data: message.data,
           joinedAt: this.getSocketState(ws).joinedAt,
@@ -259,23 +260,17 @@ export class SignalingRoom extends DurableObject<Env> {
     if (!peerId) return;
     for (const ws of this.ctx.getWebSockets()) {
       if (this.getSocketState(ws).peerId === peerId) {
-        this.setSocketState(ws, {
-          ownerUid: this.getSocketState(ws).ownerUid,
-          peerId: null,
-        });
+        this.clearSocketPresence(ws);
       }
     }
   }
 
-  /** Clear only this socket's ownership. A replaced socket has already been
-   * detached and must not emit a stale presence snapshot when its delayed
-   * close/error callback arrives. */
+  /** Clear the peer registration while retaining the authenticated owner.
+   * A replaced socket is already detached and must not emit a stale presence
+   * snapshot when its delayed close/error callback arrives. */
   private clearSocketPresence(ws: WebSocket): boolean {
     if (!this.getSocketState(ws).peerId) return false;
-    this.setSocketState(ws, {
-      ownerUid: this.getSocketState(ws).ownerUid,
-      peerId: null,
-    });
+    this.setPeerState(ws, { peerId: null });
     return true;
   }
 
@@ -297,8 +292,16 @@ export class SignalingRoom extends DurableObject<Env> {
     );
   }
 
-  private setSocketState(ws: WebSocket, state: SocketState): void {
-    ws.serializeAttachment(state);
+  private setPeerState(
+    ws: WebSocket,
+    state: Omit<SocketState, 'ownerUid'>,
+  ): void {
+    // Authentication is immutable for this socket. Replace peer state entirely
+    // so leave/replacement cannot retain old presence data or join ordering.
+    ws.serializeAttachment({
+      ...state,
+      ownerUid: this.getSocketState(ws).ownerUid,
+    });
   }
 
   private nextJoinOrder(): number {
