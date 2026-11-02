@@ -214,6 +214,10 @@ export class CallHandshakeController {
 
   private _handshakeState: CallHandshakeState = null;
   private incomingAcceptanceAbortController: AbortController | undefined;
+  // The join that last set the Sentry room context (its abort signal, or a
+  // fresh token when unsignalled). Room ids repeat per conversation, so
+  // ownership can't be keyed by room id.
+  private roomContextOwner: object | undefined;
   private incomingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -592,7 +596,10 @@ export class CallHandshakeController {
     }
     this.resetReconnectState();
     // Searchable on every event/log/metric until the call ends.
+    this.roomContextOwner = signal ?? {};
     setCallRoomContext(roomId);
+    // Starts after media acquisition: the caller's media is acquired before
+    // ringing, so this keeps both sides measuring connection setup only.
     const joinStartedAt = Date.now();
     let connectRecorded = false;
     let room;
@@ -731,6 +738,11 @@ export class CallHandshakeController {
       () => {},
     );
     return Promise.race([streamPromise, abortPromise]);
+  }
+
+  private clearRoomContext(): void {
+    this.roomContextOwner = undefined;
+    setCallRoomContext(undefined);
   }
 
   private stopMediaStream(stream: MediaStream): void {
@@ -891,14 +903,6 @@ export class CallHandshakeController {
               console.log('[call] incoming acceptance stopped', details);
             }
           }
-          // No hangUp on this path, so drop the room context here unless a
-          // newer acceptance has already taken over.
-          if (
-            !this.incomingAcceptanceAbortController ||
-            this.incomingAcceptanceAbortController === abortController
-          ) {
-            setCallRoomContext(undefined);
-          }
           return;
         }
         console.error('Error accepting incoming call:', err);
@@ -907,6 +911,12 @@ export class CallHandshakeController {
       .finally(() => {
         if (this.incomingAcceptanceAbortController === abortController) {
           this.incomingAcceptanceAbortController = undefined;
+        }
+        // An aborted acceptance never reaches hangUp, and its accept request
+        // can still settle either way. Clear the room context only if this
+        // join still owns it, so a newer call keeps its own.
+        if (signal.aborted && this.roomContextOwner === signal) {
+          this.clearRoomContext();
         }
         const current = this._handshakeState;
         if (
@@ -952,7 +962,7 @@ export class CallHandshakeController {
     });
     this.publishCompletedCall();
     this.resetReconnectState();
-    setCallRoomContext(undefined);
+    this.clearRoomContext();
     // dispose() is async in @kidlib/p2p ≥0.4; hangUp stays sync (called from
     // click + timer callbacks). Surface teardown failures — a silently failed
     // dispose is the "call won't end / black screen" bug class we log for.
@@ -1089,7 +1099,7 @@ export class CallHandshakeController {
     this.resetReconnectState();
     this.stopPendingOutgoingLocalStream();
     this.publishCompletedCall();
-    setCallRoomContext(undefined);
+    this.clearRoomContext();
     this.setHandshakeState(null);
     this.onCalleeBusy(false);
     void this.p2p.dispose().catch((err) => {
