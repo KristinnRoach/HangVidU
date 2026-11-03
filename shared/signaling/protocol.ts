@@ -28,7 +28,14 @@ export interface PresenceMember {
   data?: PresenceData;
 }
 
-/** Client → Durable Object. */
+/**
+ * Client → Durable Object.
+ *
+ * `join.requestId` correlates this socket's admission: the DO echoes it on the
+ * `joined` ack or the `error` rejection, and sends `joined` after the current
+ * `peers` snapshot. Room-wide presence alone never acknowledges a join. It is
+ * optional so older clients that omit it are still accepted.
+ */
 export type ClientMessage =
   | { t: 'join'; peerId: PeerId; data?: PresenceData; requestId?: string }
   | { t: 'leave' }
