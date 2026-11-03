@@ -259,7 +259,7 @@ export class SignalingRoom extends DurableObject<Env> {
       );
       if (record) fresh.push([record, now]);
       const departures = fresh.slice(-MAX_RECENT_DEPARTURES);
-      if (record || clear || departures.length !== stored.length) {
+      if (record || departures.length !== stored.length) {
         if (departures.length) {
           await storage.put(DEPARTURES_KEY, departures);
           await storage.setAlarm(departures[0][1] + DEPARTURE_REPLAY_MS);
