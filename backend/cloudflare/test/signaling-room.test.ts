@@ -288,6 +288,36 @@ describe('SignalingRoom', () => {
     });
   });
 
+  it('replays a recent explicit leave to a socket that reconnects after missing it', async () => {
+    const a = await connect('room-missed-leave');
+    await a.next();
+    a.send({ t: 'join', peerId: 'peer-a' });
+    await nextMembers(a, ['peer-a']);
+    const b = await connect('room-missed-leave', 'peer-b');
+    await b.next();
+    b.send({ t: 'join', peerId: 'peer-b' });
+    await nextMembers(b, ['peer-a', 'peer-b']);
+
+    // peer-a's socket died unnoticed; it reconnects only after peer-b left.
+    b.send({ t: 'leave' });
+    a.close();
+    const reconnected = await connect('room-missed-leave');
+    expect(await reconnected.next()).toEqual({
+      t: 'peers',
+      peers: [],
+      departed: ['peer-b'],
+    });
+
+    // Rejoining clears the replay.
+    b.send({ t: 'join', peerId: 'peer-b' });
+    await nextMembers(b, ['peer-b']);
+    const later = await connect('room-missed-leave');
+    expect(await later.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-b' }],
+    });
+  });
+
   it('does not tag a silent socket drop as departed', async () => {
     const a = await connect('room-dropped');
     expect(await a.next()).toEqual({ t: 'peers', peers: [] });

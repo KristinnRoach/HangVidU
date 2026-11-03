@@ -25,8 +25,17 @@ interface SocketState {
  * State is derived from the live socket set, so nothing is persisted — an empty
  * room simply hibernates and evicts.
  */
+/** How long an explicit leave is replayed to sockets that connect afterwards. */
+const DEPARTURE_REPLAY_MS = 30_000;
+
 export class SignalingRoom extends DurableObject<Env> {
   private joinSequence = 0;
+  // A socket that was dead when a peer left (e.g. after a network switch)
+  // misses that `departed` broadcast. Replaying recent leaves on its reconnect
+  // snapshot lets the client end the call instead of waiting out a "dropped"
+  // grace. ponytail: in memory, so lost if the DO hibernates; persist to
+  // storage if missed hangups still show up after idle periods.
+  private recentDepartures = new Map<PeerId, number>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -64,7 +73,13 @@ export class SignalingRoom extends DurableObject<Env> {
     // Presence snapshot on connect. The P2PRoomSignaling contract requires
     // watchers (connected, not joined) to know current occupancy — the client
     // room checks capacity against it before and after joining.
-    this.send(server, { t: 'peers', peers: this.presenceMembers() });
+    const peers = this.presenceMembers();
+    const departed = this.recentlyDeparted(peers);
+    this.send(server, {
+      t: 'peers',
+      peers,
+      ...(departed.length ? { departed } : {}),
+    });
 
     // Echo the auth subprotocol; browsers abort the handshake if the server
     // does not confirm one of the offered subprotocols.
@@ -115,6 +130,7 @@ export class SignalingRoom extends DurableObject<Env> {
         if (!this.replaceExistingPeerSocket(ws, message.peerId)) {
           return this.sendError(ws, 'peerId in use', message.requestId);
         }
+        this.recentDepartures.delete(message.peerId);
         this.setPeerState(ws, {
           peerId: message.peerId,
           data: message.data,
@@ -134,6 +150,7 @@ export class SignalingRoom extends DurableObject<Env> {
         // intentional hangup from a silent drop (socket close/error → dropped).
         const { peerId } = this.getSocketState(ws);
         this.clearPeerPresence(peerId);
+        if (peerId) this.recentDepartures.set(peerId, Date.now());
         this.broadcastPeers(peerId ? [peerId] : undefined);
         return;
       }
@@ -216,6 +233,17 @@ export class SignalingRoom extends DurableObject<Env> {
       });
     }
     return [...byPeerId.values()].map(({ member }) => member);
+  }
+
+  /** Explicit leaves within the replay window whose peer has not rejoined. */
+  private recentlyDeparted(present: PresenceMember[]): PeerId[] {
+    const cutoff = Date.now() - DEPARTURE_REPLAY_MS;
+    const departed: PeerId[] = [];
+    for (const [peerId, leftAt] of this.recentDepartures) {
+      if (leftAt < cutoff) this.recentDepartures.delete(peerId);
+      else if (!present.some((m) => m.peerId === peerId)) departed.push(peerId);
+    }
+    return departed;
   }
 
   private findSocket(peerId: PeerId): WebSocket | null {
