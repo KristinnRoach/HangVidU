@@ -46,9 +46,10 @@ export type ClientMessage =
  * Durable Object → client.
  *
  * `departed` lists peers that left explicitly (`{t:'leave'}`) in the same
- * snapshot where they disappear from `peers`. It is populated ONLY on the
- * explicit-leave path — a socket close/error/eviction never sets it, so the
- * client treats any absent member without a `departed` entry as a silent drop.
+ * snapshot where they disappear from `peers`, or replays recent explicit
+ * leaves in the connect-time snapshot for clients that missed that removal.
+ * Socket close/error never records a departure. The client treats an absent
+ * member without a `departed` entry as a silent drop.
  */
 export type ServerMessage =
   | { t: 'joined'; peerId: PeerId; requestId?: string }
