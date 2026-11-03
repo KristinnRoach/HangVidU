@@ -231,9 +231,8 @@ describe('missed hangup through the DO adapter and call controller', () => {
         await vi.advanceTimersByTimeAsync(12_500);
         expect(hangUp).toHaveBeenCalledExactlyOnceWith('reconnect-timeout');
       }
-      await p2p.dispose();
-      expect(p2p.room()).toBeUndefined();
-      expect(p2p.state()).toBe('idle');
+      await expect.poll(() => p2p.room()).toBeUndefined();
+      await expect.poll(() => p2p.state()).toBe('idle');
     },
   );
 });
