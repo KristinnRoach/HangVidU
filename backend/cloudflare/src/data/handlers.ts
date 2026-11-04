@@ -381,7 +381,10 @@ export async function handleDataRequest(
             displayName: str(body?.displayName),
             photoUrl: str(body?.photoURL),
             username,
-            emailHash: str(body?.emailHash),
+            // Never trust a client-sent emailHash: derive it from the verified token.
+            emailHash: identity.verifiedEmail
+              ? hashEmail(identity.verifiedEmail)
+              : null,
           },
           now,
         );
@@ -1027,6 +1030,15 @@ async function readJson(
 }
 
 /** Non-empty trimmed string, or null. */
+// Must match src/lib/utils/email-hash.js (D1 email_hash / usersByEmail key).
+function hashEmail(email: string): string {
+  let binary = '';
+  for (const b of new TextEncoder().encode(email.toLowerCase().trim())) {
+    binary += String.fromCharCode(b);
+  }
+  return btoa(binary).replace(/\//g, '-');
+}
+
 function str(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }

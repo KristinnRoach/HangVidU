@@ -141,6 +141,46 @@ describe('signaling worker routing + auth', () => {
     ).toBe(401);
   });
 
+  it('overwrites a forged internal owner header with the verified UID', async () => {
+    const token = await signToken(validClaims());
+    const res = await SELF.fetch(
+      'https://signaling/rooms/forged-owner/signal',
+      {
+        headers: {
+          Upgrade: 'websocket',
+          Origin: 'https://hangvidu.com',
+          'Sec-WebSocket-Protocol': `bearer, ${token}`,
+          'X-Hangvidu-Signaling-Uid': 'victim',
+        },
+      },
+    );
+    const ws = res.webSocket!;
+    ws.accept();
+    const queue: unknown[] = [];
+    const waiters: ((message: unknown) => void)[] = [];
+    ws.addEventListener('message', (event) => {
+      const message: unknown = JSON.parse(event.data as string);
+      const waiter = waiters.shift();
+      if (waiter) waiter(message);
+      else queue.push(message);
+    });
+    const next = () =>
+      new Promise<unknown>((resolve) => {
+        if (queue.length) resolve(queue.shift());
+        else waiters.push(resolve);
+      });
+    expect(await next()).toEqual({ t: 'peers', peers: [] });
+    ws.send(JSON.stringify({ t: 'join', peerId: 'victim' }));
+    expect(await next()).toEqual({
+      t: 'error',
+      message: 'unauthorized peerId',
+    });
+    ws.send(JSON.stringify({ t: 'join', peerId: 'user-1' }));
+    expect(await next()).toEqual({ t: 'peers', peers: [{ peerId: 'user-1' }] });
+    expect(await next()).toEqual({ t: 'joined', peerId: 'user-1' });
+    ws.close();
+  });
+
   it('upgrades with a valid signed token', async () => {
     const token = await signToken(validClaims());
     const res = await upgrade('/rooms/r1/signal', `bearer, ${token}`);

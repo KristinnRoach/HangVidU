@@ -28,9 +28,16 @@ export interface PresenceMember {
   data?: PresenceData;
 }
 
-/** Client → Durable Object. */
+/**
+ * Client → Durable Object.
+ *
+ * `join.requestId` correlates this socket's admission: the DO echoes it on the
+ * `joined` ack or the `error` rejection, and sends `joined` after the current
+ * `peers` snapshot. Room-wide presence alone never acknowledges a join. It is
+ * optional so older clients that omit it are still accepted.
+ */
 export type ClientMessage =
-  | { t: 'join'; peerId: PeerId; data?: PresenceData }
+  | { t: 'join'; peerId: PeerId; data?: PresenceData; requestId?: string }
   | { t: 'leave' }
   | { t: 'presence'; data: PresenceData }
   | { t: 'relay'; to: PeerId; channel: RelayChannel; data: unknown };
@@ -39,14 +46,16 @@ export type ClientMessage =
  * Durable Object → client.
  *
  * `departed` lists peers that left explicitly (`{t:'leave'}`) in the same
- * snapshot where they disappear from `peers`. It is populated ONLY on the
- * explicit-leave path — a socket close/error/eviction never sets it, so the
- * client treats any absent member without a `departed` entry as a silent drop.
+ * snapshot where they disappear from `peers`, or replays recent explicit
+ * leaves in the connect-time snapshot for clients that missed that removal.
+ * Socket close/error never records a departure. The client treats an absent
+ * member without a `departed` entry as a silent drop.
  */
 export type ServerMessage =
+  | { t: 'joined'; peerId: PeerId; requestId?: string }
   | { t: 'peers'; peers: PresenceMember[]; departed?: PeerId[] }
   | { t: 'relay'; from: PeerId; channel: RelayChannel; data: unknown }
-  | { t: 'error'; message: string };
+  | { t: 'error'; message: string; requestId?: string };
 
 export function isClientMessage(value: unknown): value is ClientMessage {
   if (!value || typeof value !== 'object') return false;
@@ -56,6 +65,10 @@ export function isClientMessage(value: unknown): value is ClientMessage {
       return (
         typeof m.peerId === 'string' &&
         m.peerId.length > 0 &&
+        (m.requestId === undefined ||
+          (typeof m.requestId === 'string' &&
+            m.requestId.length > 0 &&
+            m.requestId.length <= 128)) &&
         isPresenceDataOrAbsent(m.data)
       );
     case 'leave':

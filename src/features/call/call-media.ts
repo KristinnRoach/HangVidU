@@ -6,6 +6,7 @@ import {
   createFaceMask,
   preloadFaceMask,
   isFaceMaskSupported,
+  FaceMaskInitializationError,
   type FaceMask,
   type FaceMaskCaptureStatus,
 } from '../experimental/face-mask';
@@ -109,7 +110,11 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
   const screenShareAvailable = () =>
     !isMobile && typeof navigator.mediaDevices?.getDisplayMedia === 'function';
-  const faceMaskSupported = isFaceMaskSupported();
+  const faceMaskApis = isFaceMaskSupported();
+  // Set when the model itself fails to initialize (e.g. WebGL blocked), which
+  // the API check above cannot detect without allocating a context.
+  const [faceMaskBroken, setFaceMaskBroken] = createSignal(false);
+  const faceMaskSupported = () => faceMaskApis && !faceMaskBroken();
   // An open data channel alone does not mean media has arrived. True once the
   // channel is open and both the local camera and remote media are live.
   const [mediaFlowing, setMediaFlowing] = createSignal(false);
@@ -167,7 +172,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   let preloadStarted = false;
   createEffect(() => {
     // Defer the optional model until media is flowing.
-    if (!faceMaskSupported || !mediaFlowing() || preloadStarted) return;
+    if (!faceMaskApis || !mediaFlowing() || preloadStarted) return;
     preloadStarted = true;
     // Also contain synchronous initialization failures in this optional feature.
     void (async () => {
@@ -175,6 +180,10 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
         await preloadFaceMask();
       } catch (error) {
         if (!maskAbort.signal.aborted) {
+          // Model loading can fail during a transient download. Only a
+          // confirmed initialization failure makes the feature unavailable.
+          if (error instanceof FaceMaskInitializationError)
+            setFaceMaskBroken(true);
           setFaceMaskError(
             error instanceof Error ? error.message : 'Face mask failed',
           );
@@ -249,7 +258,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
   async function toggleFaceMask() {
     if (
-      !faceMaskSupported ||
+      !faceMaskSupported() ||
       (!mask && !mediaFlowing()) ||
       cameraPending() ||
       screenSharing() ||
@@ -340,6 +349,8 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       syncTrackState();
     } catch (error) {
       if (!maskAbort.signal.aborted && !captureAbort?.signal.aborted) {
+        if (error instanceof FaceMaskInitializationError)
+          setFaceMaskBroken(true);
         setFaceMaskError(
           error instanceof Error ? error.message : 'Face mask failed',
         );
@@ -926,7 +937,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   }
 
   return {
-    faceMaskSupported: () => faceMaskSupported,
+    faceMaskSupported,
     mediaFlowing,
     faceMaskOn,
     faceMaskError,

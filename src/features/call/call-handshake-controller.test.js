@@ -31,10 +31,19 @@ const mocks = vi.hoisted(() => ({
   resolveDirectConversationId: vi.fn(),
   getUserMedia: vi.fn(),
   sentryInfo: vi.fn(),
+  captureMessage: vi.fn(),
+  setTag: vi.fn(),
+  scope: { setAttribute: vi.fn(), removeAttribute: vi.fn() },
+  metrics: { count: vi.fn(), distribution: vi.fn() },
 }));
 
 vi.mock('@sentry/browser', () => ({
   logger: { info: mocks.sentryInfo },
+  captureMessage: mocks.captureMessage,
+  flush: vi.fn(async () => true),
+  setTag: mocks.setTag,
+  getIsolationScope: () => mocks.scope,
+  metrics: mocks.metrics,
 }));
 
 vi.mock('./call-service.js', () => ({
@@ -459,6 +468,94 @@ describe('CallHandshakeController', () => {
       callInviteId: CALL_INVITE_ID,
     });
     expect(warn).not.toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(mocks.setTag).toHaveBeenLastCalledWith('call.room', undefined),
+    );
+    expect(mocks.scope.removeAttribute).toHaveBeenCalledWith('call.room');
+  });
+
+  it('clears room context when an accept request succeeds after cancellation', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const respond = deferred();
+    mocks.respondToIncomingCallInvite.mockReturnValueOnce(respond.promise);
+    const p2p = createP2PMock({
+      join: vi.fn(async () => ({ roomId: 'room-1', members: ['callee-id'] })),
+    });
+    const controller = createController(p2p);
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        callerName: 'Caller',
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+    controller.acceptIncoming();
+    await vi.waitFor(() =>
+      expect(mocks.respondToIncomingCallInvite).toHaveBeenCalled(),
+    );
+    mocks.incomingCallback?.({
+      type: 'cancel',
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      by: 'caller-id',
+    });
+    expect(mocks.scope.removeAttribute).not.toHaveBeenCalled();
+
+    respond.resolve();
+    await vi.waitFor(() =>
+      expect(mocks.scope.removeAttribute).toHaveBeenCalledWith('call.room'),
+    );
+    expect(mocks.setTag).toHaveBeenLastCalledWith('call.room', undefined);
+  });
+
+  it('keeps a newer call room context when a cancelled acceptance settles', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const respondA = deferred();
+    mocks.respondToIncomingCallInvite.mockReturnValueOnce(respondA.promise);
+    const p2p = createP2PMock({
+      join: vi.fn(async ({ roomId }) => ({ roomId, members: ['callee-id'] })),
+    });
+    const controller = createController(p2p);
+    const invite = (callInviteId, roomId) =>
+      mocks.incomingCallback?.({
+        type: 'invite',
+        invite: {
+          callInviteId,
+          roomId,
+          callerId: 'caller-id',
+          callerName: 'Caller',
+          expiresAt: Date.now() + 60_000,
+        },
+      });
+
+    controller.init();
+    invite(CALL_INVITE_ID, 'room-1');
+    controller.acceptIncoming();
+    await vi.waitFor(() =>
+      expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledTimes(1),
+    );
+    mocks.incomingCallback?.({
+      type: 'cancel',
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      by: 'caller-id',
+    });
+
+    invite('call-invite-2', 'room-2');
+    controller.acceptIncoming();
+    await vi.waitFor(() =>
+      expect(mocks.setTag).toHaveBeenLastCalledWith('call.room', 'room-2'),
+    );
+
+    respondA.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.scope.removeAttribute).not.toHaveBeenCalled();
+    expect(mocks.setTag).toHaveBeenLastCalledWith('call.room', 'room-2');
   });
 
   it('keeps accepting when the responding callee receives its handled echo', async () => {
@@ -822,6 +919,50 @@ describe('CallHandshakeController', () => {
     await expect(joinOptions.getLocalStream()).resolves.toBe(stream);
   });
 
+  it('tags an incoming call with its room and records connect time once', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      const p2p = createP2PMock({
+        join: vi.fn(async () => ({
+          roomId: 'room-1',
+          members: ['callee-id', 'caller-id'],
+        })),
+      });
+      const controller = createController(p2p);
+      controller.showIncomingCallFromNotification({
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        startedAt: Date.now(),
+      });
+      controller.acceptIncoming();
+      await flushPromises();
+      expect(mocks.setTag).toHaveBeenCalledWith('call.room', 'room-1');
+      expect(mocks.scope.setAttribute).toHaveBeenCalledWith(
+        'call.room',
+        'room-1',
+      );
+
+      const options = p2p.join.mock.calls[0][0];
+      vi.advanceTimersByTime(1_500);
+      options.onDataChannelOpen();
+      options.onDataChannelOpen();
+      expect(mocks.metrics.distribution).toHaveBeenCalledOnce();
+      expect(mocks.metrics.distribution).toHaveBeenCalledWith(
+        'call.time_to_connected',
+        1_500,
+        { unit: 'millisecond' },
+      );
+
+      controller.hangUp();
+      expect(mocks.setTag).toHaveBeenLastCalledWith('call.room', undefined);
+      expect(mocks.scope.removeAttribute).toHaveBeenCalledWith('call.room');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('logs media recovery independently of room presence without ending the call', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -858,7 +999,12 @@ describe('CallHandshakeController', () => {
       },
       '[call] media connection interrupted; recovering',
     );
+    expect(mocks.metrics.count).toHaveBeenCalledWith(
+      'call.ice_reconnect_attempt',
+      1,
+    );
     options.onIceReconnected({ attempt: 1, durationMs: 1200 });
+    expect(mocks.metrics.count).toHaveBeenCalledWith('call.ice_reconnected', 1);
     expect(log).toHaveBeenCalledWith('[call] media connection recovered', {
       roomId: 'room-1',
       attempt: 1,
@@ -885,6 +1031,12 @@ describe('CallHandshakeController', () => {
         message: 'Recovery timed out',
       },
       '[call] media connection recovery failed',
+    );
+    expect(mocks.captureMessage).toHaveBeenCalledWith(
+      '[call] ice-reconnect-failed',
+      expect.objectContaining({
+        fingerprint: ['call-failure', 'ice-reconnect-failed', 'failed'],
+      }),
     );
     expect(p2p.dispose).not.toHaveBeenCalled();
     controller.cleanup();
@@ -929,6 +1081,12 @@ describe('CallHandshakeController', () => {
       // Grace elapses → "failed" shown → final teardown after the display delay.
       vi.advanceTimersByTime(10_000);
       expect(onReconnectStatus).toHaveBeenLastCalledWith('failed');
+      expect(mocks.captureMessage).toHaveBeenCalledWith(
+        '[call] reconnect-timeout',
+        expect.objectContaining({
+          fingerprint: ['call-failure', 'reconnect-timeout'],
+        }),
+      );
       expect(p2p.dispose).not.toHaveBeenCalled();
 
       vi.advanceTimersByTime(2_500);
@@ -983,6 +1141,13 @@ describe('CallHandshakeController', () => {
           state: 'idle',
         },
         '[call] connection failed',
+      );
+      expect(mocks.captureMessage).toHaveBeenCalledTimes(1);
+      expect(mocks.captureMessage).toHaveBeenCalledWith(
+        '[call] connect-failed',
+        expect.objectContaining({
+          fingerprint: ['call-failure', 'connect-failed', 'Peer.start'],
+        }),
       );
 
       joinOptions?.onError?.({
@@ -1112,6 +1277,19 @@ describe('CallHandshakeController', () => {
     expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(p2p.dispose).toHaveBeenCalled());
     expect(p2p.error).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() =>
+      expect(mocks.captureMessage).toHaveBeenCalledWith(
+        '[call] accept-failed',
+        expect.objectContaining({
+          fingerprint: ['call-failure', 'accept-failed', 'Error'],
+          tags: expect.objectContaining({ 'call.room': 'room-1' }),
+          extra: expect.objectContaining({
+            message: 'camera blocked',
+            roomId: 'room-1',
+          }),
+        }),
+      ),
+    );
     stream
       .getTracks()
       .forEach((track) => expect(track.stop).toHaveBeenCalled());
@@ -1290,6 +1468,41 @@ describe('CallHandshakeController', () => {
     expect(mocks.sendOutgoingCallInvite).not.toHaveBeenCalled();
     expect(mocks.onCalleeResponse).not.toHaveBeenCalled();
     expect(p2p.join).not.toHaveBeenCalled();
+  });
+
+  it('reports caller media failure as a call failure grouped by error name', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.getUserMedia.mockRejectedValue(
+      Object.assign(new Error('Permission denied'), {
+        name: 'NotAllowedError',
+      }),
+    );
+    const controller = createController(createP2PMock(), {
+      getCallerName: () => 'Caller',
+    });
+
+    await controller.startCall({
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: true,
+    });
+
+    expect(mocks.captureMessage).toHaveBeenCalledWith(
+      '[call] caller-media-failed',
+      expect.objectContaining({
+        fingerprint: ['call-failure', 'caller-media-failed', 'NotAllowedError'],
+        tags: {
+          'call.failure': 'caller-media-failed',
+          'call.failure.sub': 'NotAllowedError',
+        },
+        extra: expect.objectContaining({
+          errorName: 'NotAllowedError',
+          message: 'Permission denied',
+          audioOnly: true,
+          permissions: { camera: 'unsupported', microphone: 'unsupported' },
+        }),
+      }),
+    );
   });
 
   it('stops stale caller media when cleanup wins the permission race', async () => {

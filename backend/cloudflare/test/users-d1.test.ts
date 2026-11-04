@@ -24,16 +24,22 @@ const originalFetch = globalThis.fetch;
 const NO_MESSAGE = Symbol('no message');
 
 function b64urlFromString(s: string): string {
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return b64urlFromBytes(new TextEncoder().encode(s).buffer);
 }
 function b64urlFromBytes(buf: ArrayBuffer): string {
   let binary = '';
   const bytes = new Uint8Array(buf);
   for (let i = 0; i < bytes.length; i++)
     binary += String.fromCharCode(bytes[i]);
-  return b64urlFromString(binary);
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
-function validClaims(sub: string): Record<string, unknown> {
+function validClaims(
+  sub: string,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
   const now = Math.floor(Date.now() / 1000);
   return {
     aud: PROJECT_ID,
@@ -41,13 +47,17 @@ function validClaims(sub: string): Record<string, unknown> {
     iat: now - 10,
     exp: now + 3600,
     sub,
+    ...extra,
   };
 }
-async function signToken(sub: string): Promise<string> {
+async function signToken(
+  sub: string,
+  extra: Record<string, unknown> = {},
+): Promise<string> {
   const headerB64 = b64urlFromString(
     JSON.stringify({ alg: 'RS256', kid: KID }),
   );
-  const payloadB64 = b64urlFromString(JSON.stringify(validClaims(sub)));
+  const payloadB64 = b64urlFromString(JSON.stringify(validClaims(sub, extra)));
   const data = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
   const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, data);
   return `${headerB64}.${payloadB64}.${b64urlFromBytes(sig)}`;
@@ -151,7 +161,6 @@ describe('profile + directory', () => {
     await req('PUT', '/users/me/profile', alice, {
       displayName: 'Alice',
       username: 'alice99',
-      emailHash: 'hash-alice',
     });
 
     // Bob finds Alice by handle.
@@ -218,6 +227,45 @@ describe('profile + directory', () => {
       username: 'shared',
     });
     expect(res.status).toBe(409);
+  });
+
+  it('ignores a client-sent emailHash and derives it from the verified token', async () => {
+    // HangVidU#18: claiming an email key must require proof of ownership.
+    const victimHash = 'YXR0YWNrZXItdGFyZ2V0QGV4YW1wbGUuY29t'; // attacker-target@example.com
+    const mallory = await signToken('mallory');
+    await req('PUT', '/users/me/profile', mallory, {
+      displayName: 'Mallory',
+      emailHash: victimHash,
+    });
+    const unverified = await signToken('eve', {
+      email: 'attacker-target@example.com',
+      email_verified: false,
+    });
+    await req('PUT', '/users/me/profile', unverified, { displayName: 'Eve' });
+
+    const bob = await signToken('bob');
+    const lookupVictim = () =>
+      req(
+        'GET',
+        `/users/lookup?emailHash=${encodeURIComponent(victimHash)}`,
+        bob,
+      ).then((r) => r.json());
+    expect((await lookupVictim()).users).toHaveLength(0);
+
+    // Verified email: normalized and hashed like src/lib/utils/email-hash.js.
+    const alice = await signToken('alice', {
+      email: '  Ölf+?@Example.COM ',
+      email_verified: true,
+    });
+    await req('PUT', '/users/me/profile', alice, {
+      displayName: 'Alice',
+      emailHash: victimHash,
+    });
+    expect((await lookupVictim()).users).toHaveLength(0);
+    const found = await (
+      await req('GET', '/users/lookup?emailHash=w7ZsZis-QGV4YW1wbGUuY29t', bob)
+    ).json();
+    expect(found.users).toEqual([expect.objectContaining({ uid: 'alice' })]);
   });
 
   it('lookup returns an array and excludes the caller', async () => {

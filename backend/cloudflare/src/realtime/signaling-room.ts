@@ -11,26 +11,49 @@ import {
 
 /** Survives hibernation via ws.serializeAttachment(). */
 interface SocketState {
+  ownerUid?: string;
   peerId: PeerId | null;
   data?: PresenceData;
   joinedAt?: number;
 }
+
+/** How long an explicit leave is replayed to sockets that connect afterwards. */
+const DEPARTURE_REPLAY_MS = 30_000;
+// Bound storage and snapshot size even under repeated guest-ID join/leave churn.
+const MAX_RECENT_DEPARTURES = 256;
+const DEPARTURES_KEY = 'recent-departures';
 
 /**
  * One instance per room (keyed by roomId). A dumb relay:
  *   - tracks presence (joined peers + their self-asserted presence data)
  *   - forwards `relay` messages to the addressed peer
  * It never inspects SDP/ICE contents, and treats presence `data` as opaque.
- * State is derived from the live socket set, so nothing is persisted — an empty
- * room simply hibernates and evicts.
+ * Presence is derived from live sockets. Only recent explicit departures are
+ * persisted, so a reconnect can distinguish a missed hangup from a drop.
  */
 export class SignalingRoom extends DurableObject<Env> {
   private joinSequence = 0;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Hibernating sockets can survive a code upgrade. Retire legacy sockets
+    // before any snapshot, routing lookup or ownership check can trust them.
+    let removedLegacyPeer = false;
+    for (const ws of this.ctx.getWebSockets()) {
+      if (this.getSocketState(ws).ownerUid) continue;
+      removedLegacyPeer = this.clearSocketPresence(ws) || removedLegacyPeer;
+      ws.close(4001, 'reconnect to authenticate');
+    }
+    if (removedLegacyPeer) this.broadcastPeers();
+  }
 
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket upgrade', { status: 426 });
     }
+
+    const ownerUid = request.headers.get('X-Hangvidu-Signaling-Uid');
+    if (!ownerUid) return new Response('Unauthorized', { status: 401 });
 
     const pair = new WebSocketPair();
     const client = pair[0];
@@ -39,12 +62,24 @@ export class SignalingRoom extends DurableObject<Env> {
     // Accept first, then attach state (serializeAttachment requires an
     // already-accepted hibernatable socket). peerId is unknown until `join`.
     this.ctx.acceptWebSocket(server);
-    this.setSocketState(server, { peerId: null });
+    server.serializeAttachment({
+      ownerUid,
+      peerId: null,
+    } satisfies SocketState);
 
     // Presence snapshot on connect. The P2PRoomSignaling contract requires
     // watchers (connected, not joined) to know current occupancy — the client
     // room checks capacity against it before and after joining.
-    this.send(server, { t: 'peers', peers: this.presenceMembers() });
+    const recentDepartures = await this.recentlyDeparted();
+    const peers = this.presenceMembers();
+    const departed = recentDepartures.filter(
+      (peerId) => !peers.some((member) => member.peerId === peerId),
+    );
+    this.send(server, {
+      t: 'peers',
+      peers,
+      ...(departed.length ? { departed } : {}),
+    });
 
     // Echo the auth subprotocol; browsers abort the handshake if the server
     // does not confirm one of the offered subprotocols.
@@ -71,22 +106,50 @@ export class SignalingRoom extends DurableObject<Env> {
       return this.sendError(ws, 'unknown message');
     }
 
+    const state = this.getSocketState(ws);
+    // Pre-upgrade sockets have no verified owner. Do not infer one from an ID.
+    if (!state.ownerUid) {
+      this.setPeerState(ws, { peerId: null });
+      ws.close(4001, 'reconnect to authenticate');
+      return;
+    }
     const message = parsed as ClientMessage;
     switch (message.t) {
-      case 'join':
-        this.replaceExistingPeerSocket(ws, message.peerId);
-        this.setSocketState(ws, {
+      case 'join': {
+        // Contact calls use the UID; guest tabs use UID:UUID. Check even when
+        // the ID is vacant, so first registration cannot squat another UID.
+        const suffix = message.peerId.slice(state.ownerUid.length + 1);
+        const ownsId =
+          message.peerId === state.ownerUid ||
+          (message.peerId.startsWith(`${state.ownerUid}:`) &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+              suffix,
+            ));
+        if (!ownsId)
+          return this.sendError(ws, 'unauthorized peerId', message.requestId);
+        if (!this.replaceExistingPeerSocket(ws, message.peerId)) {
+          return this.sendError(ws, 'peerId in use', message.requestId);
+        }
+        await this.recentlyDeparted({ clear: message.peerId });
+        this.setPeerState(ws, {
           peerId: message.peerId,
           data: message.data,
           joinedAt: this.nextJoinOrder(),
         });
         this.broadcastPeers();
+        this.send(ws, {
+          t: 'joined',
+          peerId: message.peerId,
+          ...(message.requestId ? { requestId: message.requestId } : {}),
+        });
         return;
+      }
       case 'leave': {
         // Explicit leave: tag the departing peer as `left` on the same snapshot
         // where it drops out of presence, so the client can distinguish an
         // intentional hangup from a silent drop (socket close/error → dropped).
         const { peerId } = this.getSocketState(ws);
+        if (peerId) await this.recentlyDeparted({ record: peerId });
         this.clearPeerPresence(peerId);
         this.broadcastPeers(peerId ? [peerId] : undefined);
         return;
@@ -97,7 +160,7 @@ export class SignalingRoom extends DurableObject<Env> {
         // toggle) reaches every member, including the sender.
         const { peerId } = this.getSocketState(ws);
         if (!peerId) return this.sendError(ws, 'join before setting presence');
-        this.setSocketState(ws, {
+        this.setPeerState(ws, {
           peerId,
           data: message.data,
           joinedAt: this.getSocketState(ws).joinedAt,
@@ -172,6 +235,43 @@ export class SignalingRoom extends DurableObject<Env> {
     return [...byPeerId.values()].map(({ member }) => member);
   }
 
+  /** Also cleans up rooms that receive no further sockets or messages. */
+  async alarm(): Promise<void> {
+    await this.recentlyDeparted();
+  }
+
+  /** Update the bounded history atomically, including its next expiry alarm.
+   * Storage survives hibernation; no socket or in-memory cache owns the history.
+   * A rejoin invalidates the previous departure for that ID. */
+  private async recentlyDeparted({
+    record,
+    clear,
+  }: { record?: PeerId; clear?: PeerId } = {}): Promise<PeerId[]> {
+    return this.ctx.storage.transaction(async (storage) => {
+      const stored =
+        (await storage.get<[PeerId, number][]>(DEPARTURES_KEY)) ?? [];
+      const now = Date.now();
+      const fresh = stored.filter(
+        ([peerId, leftAt]) =>
+          leftAt > now - DEPARTURE_REPLAY_MS &&
+          peerId !== clear &&
+          peerId !== record,
+      );
+      if (record) fresh.push([record, now]);
+      const departures = fresh.slice(-MAX_RECENT_DEPARTURES);
+      if (record || departures.length !== stored.length) {
+        if (departures.length) {
+          await storage.put(DEPARTURES_KEY, departures);
+          await storage.setAlarm(departures[0][1] + DEPARTURE_REPLAY_MS);
+        } else {
+          await storage.delete(DEPARTURES_KEY);
+          await storage.deleteAlarm();
+        }
+      }
+      return departures.map(([peerId]) => peerId);
+    });
+  }
+
   private findSocket(peerId: PeerId): WebSocket | null {
     let target: WebSocket | null = null;
     let targetJoinedAt = -1;
@@ -186,35 +286,45 @@ export class SignalingRoom extends DurableObject<Env> {
     return target;
   }
 
-  private replaceExistingPeerSocket(current: WebSocket, peerId: PeerId): void {
-    for (const ws of this.ctx.getWebSockets()) {
-      if (ws === current) continue;
-      if (this.getSocketState(ws).peerId !== peerId) continue;
-      this.setSocketState(ws, { peerId: null });
+  private replaceExistingPeerSocket(
+    current: WebSocket,
+    peerId: PeerId,
+  ): boolean {
+    const ownerUid = this.getSocketState(current).ownerUid;
+    const existing = this.ctx
+      .getWebSockets()
+      .filter(
+        (ws) => ws !== current && this.getSocketState(ws).peerId === peerId,
+      );
+    if (existing.some((ws) => this.getSocketState(ws).ownerUid !== ownerUid)) {
+      return false;
+    }
+    for (const ws of existing) {
+      this.clearSocketPresence(ws);
       try {
         ws.close(4000, 'replaced by newer connection');
       } catch {
-        // Socket is already closing; clearing attachment above is enough to
-        // keep subsequent relay routing away from the stale connection.
+        // Attachment is already detached from routing.
       }
     }
+    return true;
   }
 
   private clearPeerPresence(peerId: PeerId | null): void {
     if (!peerId) return;
     for (const ws of this.ctx.getWebSockets()) {
       if (this.getSocketState(ws).peerId === peerId) {
-        this.setSocketState(ws, { peerId: null });
+        this.clearSocketPresence(ws);
       }
     }
   }
 
-  /** Clear only this socket's ownership. A replaced socket has already been
-   * detached and must not emit a stale presence snapshot when its delayed
-   * close/error callback arrives. */
+  /** Clear the peer registration while retaining the authenticated owner.
+   * A replaced socket is already detached and must not emit a stale presence
+   * snapshot when its delayed close/error callback arrives. */
   private clearSocketPresence(ws: WebSocket): boolean {
     if (!this.getSocketState(ws).peerId) return false;
-    this.setSocketState(ws, { peerId: null });
+    this.setPeerState(ws, { peerId: null });
     return true;
   }
 
@@ -226,8 +336,8 @@ export class SignalingRoom extends DurableObject<Env> {
     }
   }
 
-  private sendError(ws: WebSocket, message: string): void {
-    this.send(ws, { t: 'error', message });
+  private sendError(ws: WebSocket, message: string, requestId?: string): void {
+    this.send(ws, { t: 'error', message, ...(requestId ? { requestId } : {}) });
   }
 
   private getSocketState(ws: WebSocket): SocketState {
@@ -236,8 +346,16 @@ export class SignalingRoom extends DurableObject<Env> {
     );
   }
 
-  private setSocketState(ws: WebSocket, state: SocketState): void {
-    ws.serializeAttachment(state);
+  private setPeerState(
+    ws: WebSocket,
+    state: Omit<SocketState, 'ownerUid'>,
+  ): void {
+    // Authentication is immutable for this socket. Replace peer state entirely
+    // so leave/replacement cannot retain old presence data or join ordering.
+    ws.serializeAttachment({
+      ...state,
+      ownerUid: this.getSocketState(ws).ownerUid,
+    });
   }
 
   private nextJoinOrder(): number {

@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 // --- mock the transport so no real WebSocket is opened ---
 let socket;
@@ -10,11 +17,16 @@ vi.mock('../signaling-socket', () => ({
     socket = {
       sent: [],
       emit: (m) => messageHandlers.forEach((h) => h(m)),
-      open: () => openHandlers.forEach((h) => h()),
+      isOpen: true,
+      open: () => {
+        socket.isOpen = true;
+        openHandlers.forEach((h) => h());
+      },
       closed: false,
     };
     return {
       send: (m) => socket.sent.push(m),
+      isOpen: () => socket.isOpen,
       onMessage: (h) => {
         messageHandlers.add(h);
         return () => messageHandlers.delete(h);
@@ -39,17 +51,136 @@ const { createDoRoomSignaling } = await import('./do-room-signaling.ts');
 describe('createDoRoomSignaling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('join-request');
   });
 
-  it('sends join and re-joins on reconnect', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('sends join and re-joins on reconnect', async () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
-    void signaling.join('peer-a');
-    expect(socket.sent).toEqual([{ t: 'join', peerId: 'peer-a' }]);
+    const joined = signaling.join('peer-a');
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+    await joined;
+    expect(socket.sent).toEqual([
+      { t: 'join', peerId: 'peer-a', requestId: 'join-request' },
+    ]);
 
     socket.sent.length = 0;
     socket.open(); // simulate (re)connect
-    expect(socket.sent).toEqual([{ t: 'join', peerId: 'peer-a' }]);
+    expect(socket.sent).toEqual([
+      { t: 'join', peerId: 'peer-a', requestId: 'join-request' },
+    ]);
   });
+
+  it('waits for socket admission instead of trusting another socket presence', async () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    let admitted = false;
+    const joined = signaling.join('peer-a').then(() => {
+      admitted = true;
+    });
+    socket.emit({ t: 'peers', peers: [{ peerId: 'peer-a' }] });
+    socket.emit({ t: 'joined', peerId: 'other' });
+    await Promise.resolve();
+    expect(admitted).toBe(false);
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+    await joined;
+    expect(admitted).toBe(true);
+  });
+
+  it('ignores a cancelled attempt acknowledgment when joining the same ID again', async () => {
+    vi.spyOn(crypto, 'randomUUID')
+      .mockReturnValueOnce('first')
+      .mockReturnValueOnce('second');
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    const cancelled = expect(signaling.join('peer-a')).rejects.toThrow();
+    await signaling.leave();
+    await cancelled;
+    let admitted = false;
+    const joined = signaling.join('peer-a').then(() => {
+      admitted = true;
+    });
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'first' });
+    socket.emit({ t: 'error', message: 'stale rejection', requestId: 'first' });
+    await Promise.resolve();
+    expect(admitted).toBe(false);
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'second' });
+    await joined;
+    expect(admitted).toBe(true);
+  });
+
+  it('rejects denied admissions and does not reassert them on reconnect', async () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    const joined = signaling.join('peer-a');
+    const rejected = expect(joined).rejects.toThrow('unauthorized peerId');
+    socket.emit({
+      t: 'error',
+      message: 'unauthorized peerId',
+      requestId: 'join-request',
+    });
+    await rejected;
+    socket.sent.length = 0;
+    socket.open();
+    expect(socket.sent).toEqual([]);
+  });
+
+  it('rejects an admission timeout and withdraws queued membership', async () => {
+    vi.useFakeTimers();
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    const rejected = expect(signaling.join('peer-a')).rejects.toThrow(
+      'timed out',
+    );
+    await vi.advanceTimersByTimeAsync(5_000);
+    await rejected;
+    expect(socket.sent.at(-1)).toEqual({ t: 'leave' });
+    socket.sent.length = 0;
+    socket.open();
+    expect(socket.sent).toEqual([]);
+  });
+
+  it('sends a join made before connect only once, from onOpen', async () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    socket.isOpen = false;
+    const joined = signaling.join('peer-a');
+    expect(socket.sent).toEqual([]);
+    socket.open();
+    expect(socket.sent).toEqual([
+      { t: 'join', peerId: 'peer-a', requestId: 'join-request' },
+    ]);
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+    await joined;
+  });
+
+  it('never sends a join that timed out before connect', async () => {
+    vi.useFakeTimers();
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    socket.isOpen = false;
+    const rejected = expect(signaling.join('peer-a')).rejects.toThrow(
+      'timed out',
+    );
+    await vi.advanceTimersByTimeAsync(5_000);
+    await rejected;
+    socket.open();
+    expect(socket.sent).toEqual([{ t: 'leave' }]);
+  });
+
+  it.each(['leave', 'cleanupSignaling'])(
+    'cancels a pending join on %s',
+    async (method) => {
+      vi.useFakeTimers();
+      const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+      const rejected = expect(signaling.join('peer-a')).rejects.toThrow();
+      signaling[method]();
+      await rejected;
+      socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+      expect(vi.getTimerCount()).toBe(0);
+      socket.sent.length = 0;
+      socket.open();
+      expect(socket.sent).toEqual([]);
+    },
+  );
 
   it('maps presence members onto onPeers subscribers', () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
@@ -93,23 +224,37 @@ describe('createDoRoomSignaling', () => {
     ]);
   });
 
-  it('sends presence data on join and restores it on reconnect', () => {
+  it('sends presence data on join and restores it on reconnect', async () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
-    void signaling.join('peer-a', { muted: true });
+    const joined = signaling.join('peer-a', { muted: true });
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+    await joined;
     expect(socket.sent).toEqual([
-      { t: 'join', peerId: 'peer-a', data: { muted: true } },
+      {
+        t: 'join',
+        peerId: 'peer-a',
+        requestId: 'join-request',
+        data: { muted: true },
+      },
     ]);
 
     socket.sent.length = 0;
     socket.open(); // reconnect re-asserts peerId + latest data
     expect(socket.sent).toEqual([
-      { t: 'join', peerId: 'peer-a', data: { muted: true } },
+      {
+        t: 'join',
+        peerId: 'peer-a',
+        requestId: 'join-request',
+        data: { muted: true },
+      },
     ]);
   });
 
-  it('updatePresenceData sends a presence message and is restored on reconnect', () => {
+  it('updatePresenceData sends a presence message and is restored on reconnect', async () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
-    void signaling.join('peer-a');
+    const joined = signaling.join('peer-a');
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+    await joined;
     socket.sent.length = 0;
 
     void signaling.updatePresenceData('peer-a', { muted: true });
@@ -118,7 +263,12 @@ describe('createDoRoomSignaling', () => {
     socket.sent.length = 0;
     socket.open(); // re-join carries the latest data set via updatePresenceData
     expect(socket.sent).toEqual([
-      { t: 'join', peerId: 'peer-a', data: { muted: true } },
+      {
+        t: 'join',
+        peerId: 'peer-a',
+        requestId: 'join-request',
+        data: { muted: true },
+      },
     ]);
   });
 
@@ -217,9 +367,11 @@ describe('createDoRoomSignaling', () => {
     expect(requests).toEqual([{ requestId: 'restart-2' }]);
   });
 
-  it('does not re-join on reconnect after leave', () => {
+  it('does not re-join on reconnect after leave', async () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
-    void signaling.join('peer-a');
+    const joined = signaling.join('peer-a');
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+    await joined;
     socket.sent.length = 0;
 
     void signaling.leave('peer-a');
@@ -231,9 +383,11 @@ describe('createDoRoomSignaling', () => {
     expect(socket.sent).toEqual([]);
   });
 
-  it('closes the socket on cleanup', () => {
+  it('closes the socket on cleanup', async () => {
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });
-    void signaling.join('peer-a');
+    const joined = signaling.join('peer-a');
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+    await joined;
     socket.sent.length = 0;
 
     void signaling.cleanupSignaling();
