@@ -1,4 +1,9 @@
-import { env, evictDurableObject, runInDurableObject } from 'cloudflare:test';
+import {
+  env,
+  evictDurableObject,
+  runDurableObjectAlarm,
+  runInDurableObject,
+} from 'cloudflare:test';
 import { describe, expect, it } from 'vite-plus/test';
 import type { ServerMessage } from '../../../shared/signaling/protocol';
 
@@ -285,6 +290,111 @@ describe('SignalingRoom', () => {
       t: 'peers',
       peers: [{ peerId: 'peer-a' }],
       departed: ['peer-b'],
+    });
+  });
+
+  it('replays a recent explicit leave to a socket that reconnects after missing it', async () => {
+    const a = await connect('room-missed-leave');
+    await a.next();
+    a.send({ t: 'join', peerId: 'peer-a' });
+    await nextMembers(a, ['peer-a']);
+    const b = await connect('room-missed-leave', 'peer-b');
+    await b.next();
+    b.send({ t: 'join', peerId: 'peer-b' });
+    await nextMembers(b, ['peer-a', 'peer-b']);
+
+    // peer-a's socket died unnoticed; it reconnects only after peer-b left.
+    b.send({ t: 'leave' });
+    expect(await b.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }],
+      departed: ['peer-b'],
+    });
+    a.close();
+    expect(await b.next()).toEqual({ t: 'peers', peers: [] });
+    await evictDurableObject(env.SIGNALING_ROOM.getByName('room-missed-leave'));
+    const reconnected = await connect('room-missed-leave');
+    expect(await reconnected.next()).toEqual({
+      t: 'peers',
+      peers: [],
+      departed: ['peer-b'],
+    });
+
+    // Rejoining clears the replay.
+    b.send({ t: 'join', peerId: 'peer-b' });
+    await nextMembers(b, ['peer-b']);
+    await evictDurableObject(env.SIGNALING_ROOM.getByName('room-missed-leave'));
+    const later = await connect('room-missed-leave');
+    expect(await later.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-b' }],
+    });
+  });
+
+  it.each(['connect', 'leave', 'alarm'])(
+    'prunes expired durable departures on %s',
+    async (trigger) => {
+      const roomId = `departure-expiry-${trigger}`;
+      const stub = env.SIGNALING_ROOM.getByName(roomId);
+      const b = await connect(roomId, 'peer-b');
+      await b.next();
+      b.send({ t: 'join', peerId: 'peer-b' });
+      await b.next();
+      // Model an expired departure while the current peer remains joined.
+      await runInDurableObject(stub, async (_instance, state) => {
+        await state.storage.put('recent-departures', [
+          ['old-peer', Date.now() - 30_000],
+        ]);
+        await state.storage.setAlarm(Date.now() + 30_000);
+      });
+      if (trigger === 'leave') {
+        b.send({ t: 'leave' });
+        expect(await b.next()).toEqual({
+          t: 'peers',
+          peers: [],
+          departed: ['peer-b'],
+        });
+      } else if (trigger === 'alarm') {
+        await runDurableObjectAlarm(stub);
+      } else {
+        const watcher = await connect(roomId);
+        expect(await watcher.next()).toEqual({
+          t: 'peers',
+          peers: [{ peerId: 'peer-b' }],
+        });
+      }
+      await runInDurableObject(stub, async (_instance, state) => {
+        const stored =
+          await state.storage.get<[string, number][]>('recent-departures');
+        expect(stored?.map(([id]) => id) ?? []).toEqual(
+          trigger === 'leave' ? ['peer-b'] : [],
+        );
+        expect(await state.storage.getAlarm()).toEqual(
+          trigger === 'leave' ? expect.any(Number) : null,
+        );
+      });
+    },
+  );
+
+  it('bounds durable replay history during join/leave churn without new sockets', async () => {
+    const roomId = 'departure-churn';
+    const peer = await connect(roomId, 'owner');
+    await peer.next();
+    const ids: string[] = [];
+    for (let i = 0; i < 257; i++) {
+      const peerId = `owner:${crypto.randomUUID()}`;
+      ids.push(peerId);
+      peer.send({ t: 'join', peerId });
+      await peer.next();
+      peer.send({ t: 'leave' });
+      await peer.next();
+    }
+    await evictDurableObject(env.SIGNALING_ROOM.getByName(roomId));
+    const watcher = await connect(roomId);
+    expect(await watcher.next()).toEqual({
+      t: 'peers',
+      peers: [],
+      departed: ids.slice(1),
     });
   });
 
