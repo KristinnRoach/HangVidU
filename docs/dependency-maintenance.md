@@ -16,6 +16,10 @@ The Monday Vite+ workflow uses the latest stable CLI and `vp migrate` to align
 Vite+, its Vite alias, Vitest, and browser/coverage packages in a separate PR.
 The toolchain PR runs the same required checks. Vite+ or Vitest major upgrades
 require review; for pre-1.0 Vite+, minor changes also require review.
+GitHub requires one **Approve and run** click before CI runs on these
+workflow-created PRs. This avoids storing an extra personal token. After that
+click, eligible toolchain updates merge when the checks pass. Ordinary Dependabot
+PRs do not need this workflow approval.
 
 No workflow deploys or has production credentials. CI uses dummy frontend config.
 Continue using the existing deploy scripts to release when convenient.
@@ -47,10 +51,9 @@ branch with required `Verify` checks and require the PR to be up to date before
 merging. No review approval is required for routine updates. Here, administrators
 retain direct-push access so solo development can continue normally.
 
-The toolchain workflow explicitly dispatches CI because PRs created with
-`GITHUB_TOKEN` do not automatically trigger PR workflows. Keep `workflow_dispatch`
-on CI. Auto-merge depends on the required check: do not remove branch protection
-while leaving auto-merge enabled.
+Auto-merge depends on the required PR check: do not remove branch protection
+while leaving auto-merge enabled. A manually dispatched CI run does not replace
+the PR workflow approval.
 
 To pause automatic merging, disable `Dependabot auto-merge` and `Update Vite+
 toolchain` in GitHub Actions, and disable auto-merge on already queued PRs.
