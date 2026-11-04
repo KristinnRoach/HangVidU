@@ -9,8 +9,6 @@ export function pwaPlugin(basePath = '/') {
     srcDir: 'src',
     filename: 'sw.js',
     injectManifest: {
-      // Large EAC3 WASM modules load on demand, so keep them out of precache.
-      globIgnores: ['**/assets/mediabunny-ac3-*.*'],
       // The sw build runs after sentryVitePlugin's delete hook, so its map
       // would ship to production. The sw isn't Sentry-instrumented anyway.
       sourcemap: false,

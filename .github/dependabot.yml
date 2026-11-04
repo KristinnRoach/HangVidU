@@ -45,8 +45,6 @@ updates:
     groups:
       playwright:
         patterns: ['playwright', '@playwright/test']
-      mediabunny:
-        patterns: ['mediabunny', '@mediabunny/*']
     labels:
       - 'dependencies'
   - package-ecosystem: 'npm'
