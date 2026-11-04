@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 5
-    # Vite+ handles routine upgrades; Dependabot still proposes security fixes.
+    # toolchain-update.yml runs vp migrate to keep these versions aligned.
     ignore:
       - dependency-name: 'vite-plus'
         update-types:
@@ -43,8 +43,15 @@ updates:
           - 'version-update:semver-minor'
           - 'version-update:semver-patch'
     groups:
-      playwright:
-        patterns: ['playwright', '@playwright/test']
+      routine:
+        patterns: ['*']
+        update-types: [minor, patch]
+      majors:
+        patterns: ['*']
+        update-types: [major]
+      security:
+        applies-to: security-updates
+        patterns: ['*']
     labels:
       - 'dependencies'
   - package-ecosystem: 'npm'
@@ -52,7 +59,27 @@ updates:
     schedule:
       interval: 'weekly'
     groups:
-      firebase-functions:
+      routine:
         patterns: ['*']
+        update-types: [minor, patch]
+      majors:
+        patterns: ['*']
+        update-types: [major]
+      security:
+        applies-to: security-updates
+        patterns: ['*']
+    labels:
+      - 'dependencies'
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    groups:
+      routine:
+        patterns: ['*']
+        update-types: [minor, patch]
+      majors:
+        patterns: ['*']
+        update-types: [major]
     labels:
       - 'dependencies'

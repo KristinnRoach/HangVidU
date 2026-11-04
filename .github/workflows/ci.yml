@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_HANGVIDU_API_URL: https://api.hangvidu.com
+      VITE_FIREBASE_API_KEY: dummy
+      VITE_FIREBASE_AUTH_DOMAIN: test.firebaseapp.com
+      VITE_FIREBASE_PROJECT_ID: test
+      VITE_FIREBASE_DATABASE_URL: https://test.firebaseio.com
+      VITE_APP_GOOGLE_CLIENT_ID: dummy
+      VITE_FIREBASE_APP_ID: 1:123:web:test
+      VITE_RECAPTCHA_ENTERPRISE_SITE_KEY: dummy
+      VITE_PUSH_VAPID_KEY: BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          node-version: '22'
+          cache: true
+      - run: vp check
+      - run: vp exec playwright install --with-deps chromium firefox webkit
+      - run: vp test --project node
+      # One worker avoids the browser interception race seen with concurrent engines.
+      - run: COMPAT=true vp test --project browser --maxWorkers 1
+      - run: vp run lint:cf
+      - run: vp run test:cf
+      - run: npm ci --prefix backend/firebase
+      - name: Load Firebase Functions
+        run: node -e "const f = require('./backend/firebase'); if (Object.keys(f).length !== 5) process.exit(1)"
+      - run: vp build

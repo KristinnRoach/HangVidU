@@ -1,0 +1,82 @@
+name: Update Vite+ toolchain
+
+on:
+  schedule:
+    - cron: '30 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: toolchain-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Record current toolchain version
+        id: before
+        run: |
+          version=$(node -e "console.log(require('fs').readFileSync('pnpm-workspace.yaml', 'utf8').match(/^  vite-plus: (.+)$/m)[1])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          vitest=$(node -e "console.log(require('fs').readFileSync('pnpm-workspace.yaml', 'utf8').match(/^  vitest: (.+)$/m)[1])")
+          echo "vitest=$vitest" >> "$GITHUB_OUTPUT"
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          version: latest
+          node-version: '22'
+          run-install: false
+      - run: vp run update:toolchain
+      - name: Classify version change
+        id: change
+        env:
+          PREVIOUS_VERSION: ${{ steps.before.outputs.version }}
+          PREVIOUS_VITEST: ${{ steps.before.outputs.vitest }}
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const current = JSON.parse(readFileSync('node_modules/vite-plus/package.json')).version;
+          const previous = process.env.PREVIOUS_VERSION;
+          const vitest = readFileSync('pnpm-workspace.yaml', 'utf8').match(/^  vitest: (.+)$/m)[1];
+          const previousVitest = process.env.PREVIOUS_VITEST;
+          const stable = /^\d+\.\d+\.\d+$/;
+          const automatic = stable.test(current) && stable.test(previous) &&
+            current.split('.')[0] === previous.split('.')[0] &&
+            stable.test(vitest) && stable.test(previousVitest) &&
+            vitest.split('.')[0] === previousVitest.split('.')[0] &&
+            (current.split('.')[0] !== '0' || current.split('.')[1] === previous.split('.')[1]);
+          appendFileSync(process.env.GITHUB_OUTPUT, `automatic=${automatic}\n`);
+          JS
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        id: pr
+        with:
+          branch: maintenance/vite-plus
+          title: Update Vite+ toolchain
+          commit-message: Update Vite+ toolchain
+          body: |
+            Align Vite+, its Vite alias, Vitest, and browser/coverage packages using `vp migrate`.
+            Patch/minor upgrades merge after required checks; major upgrades need manual review.
+            Production deployment remains manual.
+      # GITHUB_TOKEN-created PRs don't trigger pull_request workflows; dispatch CI explicitly.
+      - name: Start checks and queue eligible updates
+        if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_URL: ${{ steps.pr.outputs.pull-request-url }}
+          AUTOMATIC: ${{ steps.change.outputs.automatic }}
+        run: |
+          gh workflow run ci.yml --ref maintenance/vite-plus
+          if [ "$AUTOMATIC" = true ]; then
+            gh pr merge --auto --squash "$PR_URL"
+          else
+            gh pr merge --disable-auto "$PR_URL"
+          fi
