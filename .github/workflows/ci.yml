@@ -38,6 +38,12 @@ jobs:
           cache: true
       - run: vp check
       - run: vp exec playwright install --with-deps chromium firefox webkit
+      - name: Provide audio output for Firefox WebRTC tests
+        run: |
+          sudo apt-get install -y pulseaudio
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci
+          pactl set-default-sink ci
       - run: vp test --project node
       # One worker avoids the browser interception race seen with concurrent engines.
       - run: COMPAT=true vp test --project browser --maxWorkers 1
