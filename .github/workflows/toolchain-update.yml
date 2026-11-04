@@ -8,7 +8,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  actions: write
 
 concurrency:
   group: toolchain-update
@@ -64,9 +63,10 @@ jobs:
           body: |
             Align Vite+, its Vite alias, Vitest, and browser/coverage packages using `vp migrate`.
             Patch/minor upgrades merge after required checks; major upgrades need manual review.
+            Click "Approve and run" on the CI workflow when GitHub requests it.
             Production deployment remains manual.
-      # GITHUB_TOKEN-created PRs don't trigger pull_request workflows; dispatch CI explicitly.
-      - name: Start checks and queue eligible updates
+      # Built-in-token PRs need one maintainer approval before their PR tests run.
+      - name: Queue eligible updates
         if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -74,7 +74,6 @@ jobs:
           PR_URL: ${{ steps.pr.outputs.pull-request-url }}
           AUTOMATIC: ${{ steps.change.outputs.automatic }}
         run: |
-          gh workflow run ci.yml --ref maintenance/vite-plus
           if [ "$AUTOMATIC" = true ]; then
             gh pr merge --auto --squash "$PR_URL"
           else
