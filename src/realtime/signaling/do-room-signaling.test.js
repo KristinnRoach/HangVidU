@@ -27,6 +27,7 @@ vi.mock('../signaling-socket', () => ({
     return {
       send: (m) => socket.sent.push(m),
       isOpen: () => socket.isOpen,
+      clearQueue() {},
       onMessage: (h) => {
         messageHandlers.add(h);
         return () => messageHandlers.delete(h);

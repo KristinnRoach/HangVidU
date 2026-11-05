@@ -5,11 +5,13 @@ import { subscribeToWakeSignals } from './wake-signals';
  * Thin reconnecting WebSocket client to the signaling worker. Transport only —
  * it knows nothing about rooms, peers, SDP, or ICE. Outgoing messages are
  * queued until the socket is open; consumers re-establish room state via the
- * `onOpen` hook (fired on every (re)connect).
+ * `onOpen` hook (fired on every (re)connect, before queued sends are flushed).
  */
 export interface SignalingSocket {
   send(message: ClientMessage): void;
   isOpen(): boolean;
+  /** Drops queued sends, optionally only those matching `match`. */
+  clearQueue(match?: (message: ClientMessage) => boolean): void;
   onMessage(handler: (message: ServerMessage) => void): () => void;
   onOpen(handler: () => void): () => void;
   close(): void;
@@ -31,7 +33,7 @@ export function createSignalingSocket(
   const maxBackoff = options.maxBackoffMs ?? 10_000;
   const messageHandlers = new Set<(m: ServerMessage) => void>();
   const openHandlers = new Set<() => void>();
-  const sendQueue: string[] = [];
+  const sendQueue: ClientMessage[] = [];
 
   let ws: WebSocket | null = null;
   let closed = false;
@@ -55,8 +57,9 @@ export function createSignalingSocket(
 
     socket.addEventListener('open', () => {
       backoff = 500;
-      for (const data of sendQueue.splice(0)) socket.send(data);
       openHandlers.forEach((h) => h());
+      for (const message of sendQueue.splice(0))
+        socket.send(JSON.stringify(message));
     });
     socket.addEventListener('message', (event) => {
       let message: ServerMessage;
@@ -98,11 +101,15 @@ export function createSignalingSocket(
 
   return {
     send(message) {
-      const data = JSON.stringify(message);
-      if (ws && ws.readyState === WebSocket.OPEN) ws.send(data);
-      else sendQueue.push(data);
+      if (ws && ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify(message));
+      else sendQueue.push(message);
     },
     isOpen: () => ws?.readyState === WebSocket.OPEN,
+    clearQueue(match = () => true) {
+      const kept = sendQueue.filter((message) => !match(message));
+      sendQueue.splice(0, sendQueue.length, ...kept);
+    },
     onMessage(handler) {
       messageHandlers.add(handler);
       return () => messageHandlers.delete(handler);
