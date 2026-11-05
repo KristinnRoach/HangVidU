@@ -200,6 +200,38 @@ describe('createDoRoomSignaling over the real signaling socket', () => {
     ]);
   });
 
+  it('replays only the latest queued offer per peer', async () => {
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('req-1');
+    const first = await connected();
+    first.open();
+    const joined = signaling.join('peer-a');
+    first.receive({ t: 'joined', peerId: 'peer-a', requestId: 'req-1' });
+    await joined;
+    first.close();
+
+    const peerB = signaling.createPeerSignaling({ remotePeerId: 'peer-b' });
+    const peerC = signaling.createPeerSignaling({ remotePeerId: 'peer-c' });
+    peerC.sendOffer({ type: 'offer', sdp: 'offer-c' });
+    peerB.sendOffer({ type: 'offer', sdp: 'stale-offer' });
+    peerB.sendAnswer({ type: 'answer', sdp: 'answer' });
+    peerB.sendCandidate({ candidate: 'candidate' });
+    peerB.sendOffer({ type: 'offer', sdp: 'latest-offer' });
+    await vi.advanceTimersByTimeAsync(500);
+    const second = FakeWebSocket.instances.at(-1);
+    second.open();
+
+    expect(
+      second.sent
+        .filter((message) => message.t === 'relay')
+        .map(({ to, data }) => [to, data.payload?.sdp ?? data.candidate]),
+    ).toEqual([
+      ['peer-c', 'offer-c'],
+      ['peer-b', 'answer'],
+      ['peer-b', 'candidate'],
+      ['peer-b', 'latest-offer'],
+    ]);
+  });
+
   it('discards queued relays, presence and leave before a new registration', async () => {
     vi.spyOn(crypto, 'randomUUID')
       .mockReturnValueOnce('first')

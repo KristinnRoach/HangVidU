@@ -206,8 +206,18 @@ export function createDoRoomSignaling({
         socket.send({ t: 'relay', to: remotePeerId, channel, data });
 
       return {
-        sendOffer: (offer) =>
-          sendRelay('sdp', { kind: 'offer', payload: offer } as SdpEnvelope),
+        sendOffer: (offer) => {
+          // The remote would answer every replayed offer, and the first answer
+          // would be applied to this one with stale ICE credentials.
+          socket.clearQueue(
+            (message) =>
+              message.t === 'relay' &&
+              message.to === remotePeerId &&
+              message.channel === 'sdp' &&
+              (message.data as SdpEnvelope).kind === 'offer',
+          );
+          sendRelay('sdp', { kind: 'offer', payload: offer } as SdpEnvelope);
+        },
         sendAnswer: (answer) =>
           sendRelay('sdp', { kind: 'answer', payload: answer } as SdpEnvelope),
 
