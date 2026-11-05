@@ -8,8 +8,8 @@ import {
 } from 'vite-plus/test';
 
 // Real `createSignalingSocket` + real DO adapter; only the browser WebSocket
-// and the token provider are faked. Guards the queue replay fixed in 8488dca5:
-// a join queued before connect must not be sent again (or after cancellation).
+// and the token provider are faked. Covers admission, reconnect replay and
+// cancellation without replacing the socket's real send queue.
 
 vi.mock('../../auth/index.js', () => ({
   getLoggedInUserToken: vi.fn(async () => 'test-token'),
@@ -112,7 +112,7 @@ describe('createDoRoomSignaling over the real signaling socket', () => {
     await cancel();
     await rejected;
     ws.open();
-    expect(joins(ws)).toEqual([]);
+    expect(ws.sent).toEqual([]);
   });
 
   it('retries after cancellation with only the current request ID', async () => {
@@ -153,6 +153,82 @@ describe('createDoRoomSignaling over the real signaling socket', () => {
         peerId: 'peer-a',
         requestId: 'req-1',
         data: { muted: true },
+      },
+    ]);
+  });
+
+  it('re-joins before replaying queued SDP, ICE and restart requests', async () => {
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('req-1');
+    const first = await connected();
+    first.open();
+    const joined = signaling.join('peer-a');
+    first.receive({ t: 'joined', peerId: 'peer-a', requestId: 'req-1' });
+    await joined;
+    first.close();
+
+    const peer = signaling.createPeerSignaling({ remotePeerId: 'peer-b' });
+    peer.sendOffer({ type: 'offer', sdp: 'restart-offer' });
+    peer.sendCandidate({ candidate: 'restart-candidate' });
+    peer.sendIceRestartRequest({ requestId: 'restart-1' });
+    await vi.advanceTimersByTimeAsync(500);
+    const second = FakeWebSocket.instances.at(-1);
+    second.open();
+
+    expect(second.sent).toEqual([
+      { t: 'join', peerId: 'peer-a', requestId: 'req-1' },
+      {
+        t: 'relay',
+        to: 'peer-b',
+        channel: 'sdp',
+        data: {
+          kind: 'offer',
+          payload: { type: 'offer', sdp: 'restart-offer' },
+        },
+      },
+      {
+        t: 'relay',
+        to: 'peer-b',
+        channel: 'ice',
+        data: { candidate: 'restart-candidate' },
+      },
+      {
+        t: 'relay',
+        to: 'peer-b',
+        channel: 'ice-restart',
+        data: { requestId: 'restart-1' },
+      },
+    ]);
+  });
+
+  it('discards queued relays, presence and leave before a new registration', async () => {
+    vi.spyOn(crypto, 'randomUUID')
+      .mockReturnValueOnce('first')
+      .mockReturnValueOnce('second');
+    const first = await connected();
+    first.open();
+    const joined = signaling.join('peer-a');
+    first.receive({ t: 'joined', peerId: 'peer-a', requestId: 'first' });
+    await joined;
+    first.close();
+
+    signaling
+      .createPeerSignaling({ remotePeerId: 'peer-b' })
+      .sendOffer({ type: 'offer', sdp: 'cancelled-offer' });
+    signaling.updatePresenceData('peer-a', { muted: true });
+    signaling.leave('peer-a');
+    const rejoined = signaling.join('peer-a', { muted: false });
+    await vi.advanceTimersByTimeAsync(500);
+    const second = FakeWebSocket.instances.at(-1);
+    second.open();
+
+    second.receive({ t: 'joined', peerId: 'peer-a', requestId: 'second' });
+    await rejoined;
+    expect(second.sent).toEqual([
+      {
+        t: 'join',
+        peerId: 'peer-a',
+        requestId: 'second',
+        data: { muted: false },
       },
     ]);
   });

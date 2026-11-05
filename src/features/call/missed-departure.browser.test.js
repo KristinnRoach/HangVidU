@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { createRoot } from 'solid-js';
-import { P2PRoom } from '@kidlib/p2p';
+import { P2PRoom, Peer } from '@kidlib/p2p';
 import { useP2PRoom } from '@kidlib/p2p/solid';
 import { createRoomSignaling } from '../../realtime';
 import { CallHandshakeController } from './call-handshake-controller';
@@ -27,7 +27,7 @@ vi.mock('@sentry/browser', () => ({
 // Only the signaling network/server is simulated. Both native WebRTC rooms,
 // the Solid adapter, reconnecting transport, DO adapter and controller are real.
 // Worker tests separately verify persistence/expiry of this wire snapshot.
-function createNetwork({ replay }) {
+function createNetwork({ replay, autoOpen = true }) {
   const sockets = [];
   const departures = new Set();
   const peers = () =>
@@ -48,20 +48,22 @@ function createNetwork({ replay }) {
     listeners = new Map();
     peerId = null;
     blackholed = false;
+    sent = [];
 
     constructor() {
       sockets.push(this);
-      setTimeout(() => {
-        this.readyState = Socket.OPEN;
-        // The server sends its connect-time snapshot before handling rejoin.
-        const snapshot = {
-          t: 'peers',
-          peers: peers(),
-          ...(replay && departures.size ? { departed: [...departures] } : {}),
-        };
-        this.dispatch('open');
-        this.receive(snapshot);
-      });
+      if (autoOpen) setTimeout(() => this.open());
+    }
+    open() {
+      this.readyState = Socket.OPEN;
+      // The server sends its connect-time snapshot before handling rejoin.
+      const snapshot = {
+        t: 'peers',
+        peers: peers(),
+        ...(replay && departures.size ? { departed: [...departures] } : {}),
+      };
+      this.dispatch('open');
+      this.receive(snapshot);
     }
     addEventListener(type, listener) {
       const listeners = this.listeners.get(type) ?? new Set();
@@ -78,6 +80,7 @@ function createNetwork({ replay }) {
     send(raw) {
       if (this.blackholed) return;
       const message = JSON.parse(raw);
+      this.sent.push(message);
       queueMicrotask(() => {
         if (message.t === 'join') {
           this.peerId = message.peerId;
@@ -94,6 +97,10 @@ function createNetwork({ replay }) {
           if (id) departures.add(id);
           broadcast(id ? [id] : undefined);
         } else if (message.t === 'relay') {
+          if (!this.peerId) {
+            this.receive({ t: 'error', message: 'join before relaying' });
+            return;
+          }
           sockets
             .find((ws) => ws.peerId === message.to)
             ?.receive({
@@ -117,7 +124,7 @@ function createNetwork({ replay }) {
   return { Socket, sockets, departures };
 }
 
-describe('missed hangup through the DO adapter and call controller', () => {
+describe('call recovery and missed hangups through DO signaling', () => {
   const cleanups = [];
   afterEach(async () => {
     for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
@@ -125,6 +132,80 @@ describe('missed hangup through the DO adapter and call controller', () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
+
+  it.each(['initiator', 'joiner'])(
+    'replays a queued %s recovery message after rejoining',
+    async (role) => {
+      const network = createNetwork({ replay: false, autoOpen: false });
+      vi.stubGlobal('WebSocket', network.Socket);
+      const a = createRoomSignaling({ roomId: 'recovery' });
+      const b = createRoomSignaling({ roomId: 'recovery' });
+      cleanups.push(
+        () => a.cleanupSignaling(),
+        () => b.cleanupSignaling(),
+      );
+      await expect.poll(() => network.sockets.length).toBe(2);
+      network.sockets.forEach((socket) => socket.open());
+      await Promise.all([a.join('a'), b.join('b')]);
+
+      const signalingA = a.createPeerSignaling({ remotePeerId: 'b' });
+      const signalingB = b.createPeerSignaling({ remotePeerId: 'a' });
+      const options = {
+        rtcConfig: { iceServers: [{ urls: 'stun:127.0.0.1:3478' }] },
+        iceRecovery: { maxAttempts: 1, attemptTimeoutMs: 3000 },
+      };
+      const initiator = new Peer({
+        ...options,
+        role: 'initiator',
+        dataChannel: true,
+        signaling: signalingA,
+      });
+      const joiner = new Peer({
+        ...options,
+        role: 'joiner',
+        signaling: signalingB,
+      });
+      cleanups.push(
+        () => initiator.dispose(),
+        () => joiner.dispose(),
+      );
+      await Promise.all([initiator.start(), joiner.start()]);
+      await expect.poll(() => initiator.dataChannel?.readyState).toBe('open');
+      await expect.poll(() => joiner.dataChannel?.readyState).toBe('open');
+
+      const target = role === 'initiator' ? initiator : joiner;
+      const sendRecovery = vi.spyOn(
+        role === 'initiator' ? signalingA : signalingB,
+        role === 'initiator' ? 'sendOffer' : 'sendIceRestartRequest',
+      );
+      const recovered = vi.fn();
+      target.on('iceReconnected', recovered);
+      const initialUfrag =
+        initiator.pc.localDescription.sdp.match(/a=ice-ufrag:(.*)/)[1];
+      network.sockets[role === 'initiator' ? 0 : 1].close();
+      // Trigger the real recovery path without depending on physical ICE loss.
+      target._startIceRecovery('failed');
+      await expect.poll(() => sendRecovery.mock.calls.length).toBe(1);
+      await expect.poll(() => network.sockets.length).toBe(3);
+      const reconnected = network.sockets.at(-1);
+      reconnected.open();
+
+      await expect
+        .poll(() => recovered.mock.calls.length, { timeout: 4000 })
+        .toBe(1);
+      expect(recovered.mock.calls[0][0]).toMatchObject({ attempt: 1 });
+      expect(reconnected.sent[0]).toMatchObject({ t: 'join' });
+      expect(
+        initiator.pc.localDescription.sdp.match(/a=ice-ufrag:(.*)/)[1],
+      ).not.toBe(initialUfrag);
+      const message = vi.fn();
+      joiner.on('message', message);
+      initiator.send('recovered');
+      await expect.poll(() => message.mock.calls.length).toBe(1);
+      expect(message.mock.calls[0][0]).toEqual({ data: 'recovered' });
+    },
+    10000,
+  );
 
   it.each(['replayed', 'missing', 'late'])(
     'reconnect after a half-open socket with departure %s',

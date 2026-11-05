@@ -73,6 +73,7 @@ export function createDoRoomSignaling({
     const pending = pendingJoin;
     pendingJoin = undefined;
     registration = null;
+    socket.clearQueue();
     if (pending) {
       clearTimeout(pending.timer);
       pending.reject(error);

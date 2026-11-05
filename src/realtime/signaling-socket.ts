@@ -5,11 +5,12 @@ import { subscribeToWakeSignals } from './wake-signals';
  * Thin reconnecting WebSocket client to the signaling worker. Transport only —
  * it knows nothing about rooms, peers, SDP, or ICE. Outgoing messages are
  * queued until the socket is open; consumers re-establish room state via the
- * `onOpen` hook (fired on every (re)connect).
+ * `onOpen` hook (fired on every (re)connect, before queued sends are flushed).
  */
 export interface SignalingSocket {
   send(message: ClientMessage): void;
   isOpen(): boolean;
+  clearQueue(): void;
   onMessage(handler: (message: ServerMessage) => void): () => void;
   onOpen(handler: () => void): () => void;
   close(): void;
@@ -55,8 +56,8 @@ export function createSignalingSocket(
 
     socket.addEventListener('open', () => {
       backoff = 500;
-      for (const data of sendQueue.splice(0)) socket.send(data);
       openHandlers.forEach((h) => h());
+      for (const data of sendQueue.splice(0)) socket.send(data);
     });
     socket.addEventListener('message', (event) => {
       let message: ServerMessage;
@@ -103,6 +104,9 @@ export function createSignalingSocket(
       else sendQueue.push(data);
     },
     isOpen: () => ws?.readyState === WebSocket.OPEN,
+    clearQueue() {
+      sendQueue.length = 0;
+    },
     onMessage(handler) {
       messageHandlers.add(handler);
       return () => messageHandlers.delete(handler);
