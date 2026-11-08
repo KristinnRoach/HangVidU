@@ -4,6 +4,11 @@ import { isMember } from '../data/repo';
 import type { WorkerEnv } from '../types';
 import type { FileObjectStore } from './file-object-store';
 import { R2FileObjectStore } from './r2-file-object-store';
+import {
+  initializeStorageQuota,
+  reserveFileStorage,
+  releaseFileStorage,
+} from './storage-quota';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const AUTHORIZATION_CACHE_TTL_MS = 30 * 1000;
@@ -232,6 +237,17 @@ async function handleUpload(
   }
 
   const key = objectKey(conversationId, crypto.randomUUID());
+  await initializeStorageQuota(env.DB, env.FILES_BUCKET);
+  if (!(await reserveFileStorage(env.DB, key, body.byteLength))) {
+    return json(
+      request,
+      env,
+      { error: 'App storage quota reached. Delete files to free space.' },
+      { status: 507 },
+    );
+  }
+  // Keep the reservation if put throws: R2 may have accepted the write despite
+  // a transport failure. Overcounting is safer than exceeding the quota.
   await store.put(key, {
     body,
     contentType: mimeType,
@@ -294,7 +310,9 @@ async function handleDelete(
     return response(request, env, 'Forbidden', { status: 403 });
   }
 
+  await initializeStorageQuota(env.DB, env.FILES_BUCKET);
   await store.delete(key);
+  await releaseFileStorage(env.DB, key);
   return response(request, env, null, { status: 204 });
 }
 

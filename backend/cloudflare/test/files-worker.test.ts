@@ -394,4 +394,33 @@ describe('files worker routing + auth', () => {
 
     expect(res.status).toBe(415);
   });
+  it('rejects uploads when app storage is full without writing to R2', async () => {
+    const token = await signToken(validClaims());
+    await allowMember('quota-test', 'user-a');
+    await env.DB.batch([
+      env.DB.prepare(
+        'INSERT OR IGNORE INTO file_storage_quota_state (id) VALUES (1)',
+      ),
+      env.DB.prepare(
+        'INSERT INTO file_storage_usage (object_key, size_bytes) VALUES (?, ?)',
+      ).bind('quota-test-reservation', 1024 * 1024 * 1024),
+    ]);
+    const before = await env.FILES_BUCKET.list();
+    try {
+      const res = await request('/conversations/quota-test/files', {
+        method: 'POST',
+        token,
+        contentType: 'text/plain',
+        body: 'hello',
+      });
+      expect(res.status).toBe(507);
+      expect((await env.FILES_BUCKET.list()).objects).toEqual(before.objects);
+    } finally {
+      await env.DB.prepare(
+        'DELETE FROM file_storage_usage WHERE object_key = ?',
+      )
+        .bind('quota-test-reservation')
+        .run();
+    }
+  });
 });
