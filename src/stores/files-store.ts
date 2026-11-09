@@ -25,8 +25,14 @@ export function createConversationFileObjectUrl(
   conversationId: ConversationId,
   storage: R2StorageDescriptor,
   signal?: AbortSignal,
+  maxBytes?: number,
 ) {
-  return getFilesClient().createObjectUrl(conversationId, storage, signal);
+  return getFilesClient().createObjectUrl(
+    conversationId,
+    storage,
+    signal,
+    maxBytes,
+  );
 }
 
 export function deleteConversationFile(

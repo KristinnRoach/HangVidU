@@ -19,7 +19,6 @@ import {
   displayAttachmentFileName,
   formatFileSize,
   isImageAttachment,
-  isR2FileAttachment,
 } from '@stores/conversation/attachments';
 import {
   getConversationState,
@@ -31,8 +30,12 @@ import type {
   MessageAttachment,
   SystemChatMessage,
 } from '@stores/conversation/types.js';
-import type { ConversationId } from '@stores/conversation/types';
 import { createConversationFileObjectUrl } from '@stores/files-store';
+
+import {
+  attachmentPreviewKey,
+  createAttachmentPreviews,
+} from '../attachment-previews';
 
 import { linkifyText } from '../utils/linkifyText';
 import {
@@ -61,17 +64,11 @@ export function MessageList() {
   // movement may latch it — see onMessagesScroll.
   let userHasScrolledUp = false;
   let lastScrollTop = 0;
-  const pendingR2Loads = new Map<string, AbortController>();
   const [r2AttachmentUrls, setR2AttachmentUrls] = createSignal<
     Record<string, string>
   >({});
 
-  function makeAttachmentKey(
-    conversationId: ConversationId,
-    messageId: string,
-  ) {
-    return `${conversationId}:${messageId}`;
-  }
+  const previews = createAttachmentPreviews(setR2AttachmentUrls);
 
   const NEAR_BOTTOM_PX = 80;
 
@@ -150,108 +147,33 @@ export function MessageList() {
     const conversationId = state.conversationId;
     if (!conversationId) return null;
     return (
-      r2AttachmentUrls()[makeAttachmentKey(conversationId, msg.id)] ?? null
+      (msg.type === 'user' && msg.attachment
+        ? r2AttachmentUrls()[
+            attachmentPreviewKey(conversationId, msg.attachment.storage)
+          ]
+        : null) ?? null
     );
   };
 
-  createEffect(on(() => state.messages.length, followIfPinned));
+  // A full recent window replaces rows without changing its length.
+  createEffect(
+    on(
+      () => [state.messages.length, state.messages.at(-1)?.id],
+      followIfPinned,
+    ),
+  );
 
   createEffect(() => {
-    const conversationId = state.conversationId;
-    const currentUrls = r2AttachmentUrls();
-    const neededKeys = new Set<string>();
-
-    for (const msg of state.messages) {
-      if (msg.type === 'system') continue;
-      const attachment = msg.attachment;
-      if (
-        !conversationId ||
-        !attachment ||
-        !isR2FileAttachment(attachment) ||
-        !isImageAttachment(attachment)
-      ) {
-        continue;
-      }
-
-      const key = makeAttachmentKey(conversationId, msg.id);
-      neededKeys.add(key);
-      if (currentUrls[key] || pendingR2Loads.has(key)) continue;
-
-      const controller = new AbortController();
-      pendingR2Loads.set(key, controller);
-
-      void createConversationFileObjectUrl(
-        conversationId,
-        attachment.storage,
-        controller.signal,
-      )
-        .then((objectUrl) => {
-          const stillNeeded =
-            state.conversationId === conversationId &&
-            state.messages.some(
-              (message) =>
-                message.id === msg.id &&
-                message.type === 'user' &&
-                message.attachment &&
-                isR2FileAttachment(message.attachment) &&
-                isImageAttachment(message.attachment),
-            );
-
-          if (!stillNeeded) {
-            URL.revokeObjectURL(objectUrl);
-            return;
-          }
-
-          setR2AttachmentUrls((urls) => ({
-            ...urls,
-            [key]: objectUrl,
-          }));
-        })
-        .catch((error) => {
-          if (!controller.signal.aborted) {
-            console.warn('[conversation] failed to load R2 attachment', {
-              messageId: msg.id,
-              error,
-            });
-          }
-        })
-        .finally(() => {
-          if (pendingR2Loads.get(key) === controller) {
-            pendingR2Loads.delete(key);
-          }
-        });
-    }
-
-    for (const [attachmentKey, controller] of pendingR2Loads) {
-      if (neededKeys.has(attachmentKey)) continue;
-      controller.abort();
-      pendingR2Loads.delete(attachmentKey);
-    }
-
-    setR2AttachmentUrls((urls) => {
-      let changed = false;
-      const next = { ...urls };
-      for (const [attachmentKey, objectUrl] of Object.entries(urls)) {
-        if (neededKeys.has(attachmentKey)) continue;
-        URL.revokeObjectURL(objectUrl);
-        delete next[attachmentKey];
-        pendingR2Loads.get(attachmentKey)?.abort();
-        pendingR2Loads.delete(attachmentKey);
-        changed = true;
-      }
-      return changed ? next : urls;
-    });
+    previews.update(
+      state.conversationId,
+      state.messages.flatMap((message) =>
+        message.type === 'user' && message.attachment
+          ? [message.attachment]
+          : [],
+      ),
+    );
   });
-
-  onCleanup(() => {
-    for (const objectUrl of Object.values(r2AttachmentUrls())) {
-      URL.revokeObjectURL(objectUrl);
-    }
-    for (const controller of pendingR2Loads.values()) {
-      controller.abort();
-    }
-    pendingR2Loads.clear();
-  });
+  onCleanup(() => previews.dispose());
 
   return (
     <div class={styles.messages} ref={messagesEl} onScroll={onMessagesScroll}>

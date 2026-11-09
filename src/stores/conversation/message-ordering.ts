@@ -1,5 +1,7 @@
 import type { ChatMessage, MessageEnvelope } from './types.js';
 
+export const RECENT_MESSAGES_WINDOW = 40;
+
 type OrderedMessage = Pick<ChatMessage | MessageEnvelope, 'sentAt'> & {
   id?: string;
   messageId?: string;
@@ -22,4 +24,14 @@ function compareMessagesBySentAt(a: OrderedMessage, b: OrderedMessage) {
 
 export function sortMessagesBySentAt<T extends OrderedMessage>(messages: T[]) {
   return [...messages].sort(compareMessagesBySentAt);
+}
+
+export function recentChatMessages(messages: ChatMessage[]) {
+  // Unacknowledged local sends must survive incoming snapshots and eviction.
+  const sent = messages.filter((message) => message.status === 'sent');
+  const unsent = messages.filter((message) => message.status !== 'sent');
+  return sortMessagesBySentAt([
+    ...sortMessagesBySentAt(sent).slice(-RECENT_MESSAGES_WINDOW),
+    ...unsent,
+  ]);
 }

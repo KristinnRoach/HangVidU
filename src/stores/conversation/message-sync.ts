@@ -21,6 +21,7 @@ import type {
   IncomingMessage,
   MessageRepository,
 } from './types.js';
+import { RECENT_MESSAGES_WINDOW } from './message-ordering.js';
 
 /**
  * The slice of storage + realtime this sync helper needs. The store supplies a
@@ -47,9 +48,6 @@ export type MessageSyncClient = {
     onEvent: (event: ConversationServerEvent) => void,
   ): () => void;
 };
-
-// Cap the in-memory live window so long-lived sessions don't grow unbounded.
-const RECENT_MESSAGES_WINDOW = 40;
 
 export function createMessageSyncRepository(
   client: MessageSyncClient,
