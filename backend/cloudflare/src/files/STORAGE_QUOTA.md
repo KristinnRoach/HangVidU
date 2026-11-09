@@ -1,7 +1,7 @@
 # File storage quota
 
 `TOTAL_FILE_STORAGE_BYTES` in `storage-quota.ts` sets the app-wide limit
-(default: 5 GiB). The separate 5 MiB per-file limit is unchanged.
+(default: 5 GiB). The separate per-file limit is 20 MiB.
 
 Before deploying the Worker, apply migrations through 0010 with `vp run migrate:remote`
 from the repository root. Then use the normal `vp run deploy:cf` workflow.
@@ -39,3 +39,9 @@ Unexpected client-observed upload failures (network, server errors other than
 quota rejection, or invalid success metadata) are captured through the existing
 browser Sentry SDK. Events include status and file size, without file names,
 contents, object keys, or response bodies. Expected HTTP rejections remain logs.
+
+Each Worker isolate buffers at most one upload at a time, holding the guard
+through the R2 write. Competing uploads return HTTP 503 with `Retry-After: 1`
+before their bodies are read. Retry manually; the client does not automatically
+retry uploads. Other isolates can accept uploads independently, and downloads
+and deletions are unaffected by this guard.
