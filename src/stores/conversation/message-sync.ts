@@ -21,6 +21,10 @@ import type {
   IncomingMessage,
   MessageRepository,
 } from './types.js';
+import {
+  RECENT_MESSAGES_WINDOW,
+  sortMessagesBySentAt,
+} from './message-ordering.js';
 
 /**
  * The slice of storage + realtime this sync helper needs. The store supplies a
@@ -48,9 +52,6 @@ export type MessageSyncClient = {
   ): () => void;
 };
 
-// Cap the in-memory live window so long-lived sessions don't grow unbounded.
-const RECENT_MESSAGES_WINDOW = 40;
-
 export function createMessageSyncRepository(
   client: MessageSyncClient,
 ): MessageRepository {
@@ -58,10 +59,11 @@ export function createMessageSyncRepository(
     conversationId: ConversationId,
   ): Promise<IncomingMessage[]> {
     const rows = await client.loadMessages(conversationId);
-    return rows
-      .map(toIncomingMessage)
-      .filter((m): m is IncomingMessage => m !== null)
-      .sort((a, b) => a.sentAt - b.sentAt);
+    return sortMessagesBySentAt(
+      rows
+        .map(toIncomingMessage)
+        .filter((m): m is IncomingMessage => m !== null),
+    );
   }
 
   return {
@@ -84,9 +86,7 @@ export function createMessageSyncRepository(
       let refreshRequested = false;
       let stopped = false;
       const emit = () => {
-        const ordered = [...window.values()].sort(
-          (a, b) => a.sentAt - b.sentAt,
-        );
+        const ordered = sortMessagesBySentAt([...window.values()]);
         if (ordered.length > RECENT_MESSAGES_WINDOW) {
           // Evict oldest beyond the window so the Map stays bounded.
           for (const stale of ordered.splice(

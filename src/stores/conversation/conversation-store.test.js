@@ -286,6 +286,63 @@ describe('conversation-store', () => {
     );
   });
 
+  it('evicts old displayed messages as watcher windows advance instead of accumulating history', async () => {
+    const store = await import('./conversation-store.js');
+    await store.openDirectConversation('contact-1');
+    for (let i = 0; i < 100; i++) {
+      watch.emit([envelope({ messageId: `msg-${i}`, sentAt: i })]);
+    }
+    const state = store.getConversationState();
+    expect(state.messages.map((msg) => msg.id)).toEqual(
+      Array.from({ length: 40 }, (_, i) => `msg-${i + 60}`),
+    );
+    // A delayed snapshot must not restore old history or evict newer rows.
+    watch.emit([envelope({ messageId: 'msg-1', sentAt: 1 })]);
+    expect(state.messages).toHaveLength(40);
+    expect(state.messages[0].id).toBe('msg-60');
+  });
+
+  it('preserves local failed and in-flight sends during eviction and bounds confirmed sends', async () => {
+    const store = await import('./conversation-store.js');
+    await store.openDirectConversation('contact-1');
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(0);
+    try {
+      repo.createMessageId
+        .mockReturnValueOnce('failed-local')
+        .mockReturnValueOnce('pending-local');
+      repo.send.mockRejectedValueOnce(new Error('offline'));
+      await store.sendMessage({ type: 'text', text: 'failed' });
+      let finish;
+      repo.send.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+      );
+      const sending = store.sendMessage({ type: 'text', text: 'pending' });
+      for (let i = 1; i <= 60; i++)
+        watch.emit([envelope({ messageId: `msg-${i}`, sentAt: i })]);
+      const state = store.getConversationState();
+      expect(state.messages).toHaveLength(42);
+      expect(
+        state.messages.find((msg) => msg.id === 'failed-local')?.status,
+      ).toBe('failed');
+      expect(
+        state.messages.find((msg) => msg.id === 'pending-local')?.status,
+      ).toBe('sending');
+      finish({ id: 'pending-local', sentAt: 0 });
+      await sending;
+      expect(state.messages).toHaveLength(41);
+      expect(
+        state.messages.filter((msg) => msg.status === 'sent'),
+      ).toHaveLength(40);
+      expect(
+        state.messages.find((msg) => msg.id === 'failed-local')?.status,
+      ).toBe('failed');
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it('sends the draft under a reserved persistent id and clears it', async () => {
     const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');
@@ -342,6 +399,33 @@ describe('conversation-store', () => {
     const state = store.getConversationState();
     expect(state.messages.map((msg) => msg.id)).toEqual(['reserved-1']);
     expect(state.messages[0].status).toBe('sent');
+  });
+
+  it('applies the server timestamp before trimming a send when the client clock is behind', async () => {
+    const store = await import('./conversation-store.js');
+    await store.openDirectConversation('contact-1');
+    watch.emit(
+      Array.from({ length: 40 }, (_, i) =>
+        envelope({ messageId: `msg-${i}`, sentAt: i + 1 }),
+      ),
+    );
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(0);
+    repo.send.mockResolvedValue({ id: 'reserved-1', sentAt: 41 });
+    try {
+      expect(
+        await store.sendMessage({ type: 'text', text: 'newest send' }),
+      ).toBe(true);
+      const messages = store.getConversationState().messages;
+      expect(messages).toHaveLength(40);
+      expect(messages.at(-1)).toMatchObject({
+        id: 'reserved-1',
+        sentAt: 41,
+        status: 'sent',
+      });
+      expect(messages.some((message) => message.id === 'msg-0')).toBe(false);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it('marks the optimistic message failed when the send rejects', async () => {

@@ -33,7 +33,10 @@ import {
 
 import { publish } from '@shared/events/index.js';
 
-import { sortMessagesBySentAt } from './message-ordering.js';
+import {
+  recentLiveMessages,
+  sortMessagesBySentAt,
+} from './message-ordering.js';
 import {
   clearLocalDraft,
   loadLocalDraft,
@@ -320,12 +323,12 @@ function mergeLoadedMessages(messages: ChatMessage[]) {
   // every <img>, collapsing scroll layout).
   setState(
     'messages',
-    reconcile(sortMessagesBySentAt([...byId.values()]), { key: 'id' }),
+    reconcile(recentLiveMessages([...byId.values()]), { key: 'id' }),
   );
 }
 
 function addOptimisticMessage(msg: ChatMessage) {
-  setState('messages', (msgs) => sortMessagesBySentAt([...msgs, msg]));
+  setState('messages', (msgs) => recentLiveMessages([...msgs, msg]));
 }
 
 export async function recordSystemMessage(
@@ -349,19 +352,20 @@ export async function recordSystemMessage(
   );
 }
 
-function markSent(tempId: string, realId: string) {
+function markSent(tempId: string, realId: string, sentAt: number) {
   setState('messages', (msgs) => {
     const realMessageAlreadyArrived =
       tempId !== realId && msgs.some((msg) => msg.id === realId);
 
-    return sortMessagesBySentAt(
+    return recentLiveMessages(
       msgs.flatMap((msg) => {
         if (msg.id === tempId) {
           return realMessageAlreadyArrived
             ? []
-            : [{ ...msg, id: realId, status: 'sent' as const }];
+            : [{ ...msg, id: realId, sentAt, status: 'sent' as const }];
         }
-        if (msg.id === realId) return [{ ...msg, status: 'sent' as const }];
+        if (msg.id === realId)
+          return [{ ...msg, sentAt, status: 'sent' as const }];
         return [msg];
       }),
     );
@@ -618,7 +622,7 @@ export async function sendMessage(
       delivery: 'persistent',
       payload,
     });
-    markSent(tempId, saved.id);
+    markSent(tempId, saved.id, saved.sentAt);
     sent = true;
   } catch {
     markFailed(tempId);

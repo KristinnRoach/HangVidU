@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { ReadableStream } from 'node:stream/web';
 
 const mocks = vi.hoisted(() => ({
   reportApiAuthFailure: vi.fn(),
@@ -21,6 +22,7 @@ describe('files client', () => {
   };
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
     mocks.reportApiAuthFailure.mockReset();
     mocks.captureException.mockReset();
@@ -42,6 +44,114 @@ describe('files client', () => {
         baseUrl: '/files',
       }),
     ).toThrow('files client base URL must be absolute');
+  });
+
+  const previewStorage = { provider: 'r2', bucket: 'files', key: 'image' };
+  const previewClient = () =>
+    createFilesClient({ ...options, baseUrl: 'https://files.example.com' });
+
+  it('rejects declared oversized previews before buffering and cancels their body', async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream({ cancel });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(body, { headers: { 'Content-Length': '100' } }),
+      ),
+    );
+    const create = vi.spyOn(URL, 'createObjectURL');
+    await expect(
+      previewClient().createObjectUrl(
+        'conversation',
+        previewStorage,
+        undefined,
+        4,
+      ),
+    ).rejects.toThrow('preview exceeds size limit');
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, '1'])(
+    'enforces the actual streamed preview size with Content-Length %s',
+    async (contentLength) => {
+      const cancel = vi.fn();
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array([1, 2]));
+          controller.enqueue(new Uint8Array([3, 4, 5]));
+        },
+        cancel,
+      });
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          async () =>
+            new Response(body, {
+              headers: contentLength ? { 'Content-Length': contentLength } : {},
+            }),
+        ),
+      );
+      const create = vi.spyOn(URL, 'createObjectURL');
+      await expect(
+        previewClient().createObjectUrl(
+          'conversation',
+          previewStorage,
+          undefined,
+          4,
+        ),
+      ).rejects.toThrow('preview exceeds size limit');
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(create).not.toHaveBeenCalled();
+    },
+  );
+
+  it('allows a preview exactly at the byte cap and retains its media type', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(new Uint8Array([1, 2, 3, 4]), {
+            headers: { 'Content-Type': 'image/png' },
+          }),
+      ),
+    );
+    const create = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:preview');
+    await expect(
+      previewClient().createObjectUrl(
+        'conversation',
+        previewStorage,
+        undefined,
+        4,
+      ),
+    ).resolves.toBe('blob:preview');
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ size: 4, type: 'image/png' }),
+    );
+  });
+
+  it('does not create a URL if a preview finishes after cancellation', async () => {
+    const controller = new AbortController();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        controller.abort();
+        return new Response('tiny');
+      }),
+    );
+    const create = vi.spyOn(URL, 'createObjectURL');
+    await expect(
+      previewClient().createObjectUrl(
+        'conversation',
+        previewStorage,
+        controller.signal,
+        4,
+      ),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(create).not.toHaveBeenCalled();
   });
 
   it('deletes files by full R2 storage key', async () => {

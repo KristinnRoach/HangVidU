@@ -35,6 +35,39 @@ describe('message sync reactions', () => {
     ]);
   });
 
+  it('uses the same timestamp/id order for snapshots, live events and window eviction', async () => {
+    let onEvent;
+    const rows = Array.from({ length: 42 }, (_, i) => ({
+      ...wireMessage(),
+      id: `m${String(42 - i).padStart(2, '0')}`,
+    }));
+    const repository = createMessageSyncRepository({
+      getUserId: () => 'me',
+      loadMessages: async () => rows,
+      subscribe: (_conversationId, handler) => {
+        onEvent = handler;
+        return () => {};
+      },
+    });
+    expect(
+      (await repository.loadMessages('c1')).map((message) => message.messageId),
+    ).toEqual(rows.map((row) => row.id).reverse());
+    const snapshots = [];
+    const stop = await repository.watchRecentMessages('c1', (messages) =>
+      snapshots.push(messages.map((message) => message.messageId)),
+    );
+    try {
+      onEvent({ t: 'message', message: { ...wireMessage(), id: 'm00' } });
+      const expected = Array.from(
+        { length: 40 },
+        (_, i) => `m${String(i + 3).padStart(2, '0')}`,
+      );
+      expect(snapshots).toEqual([expected, expected]);
+    } finally {
+      stop();
+    }
+  });
+
   it('hydrates history and folds shared reaction events into the same window', async () => {
     let onEvent;
     const client = {

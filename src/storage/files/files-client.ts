@@ -142,7 +142,14 @@ export function createFilesClient({
       conversationId: string,
       storage: R2StorageDescriptor,
       signal?: AbortSignal,
+      maxBytes?: number,
     ) {
+      if (
+        maxBytes !== undefined &&
+        (!Number.isFinite(maxBytes) || maxBytes <= 0)
+      ) {
+        throw new Error('file preview requires a positive size limit');
+      }
       const response = await fetch(
         conversationFileObjectUrl(conversationId, storage),
         {
@@ -163,7 +170,38 @@ export function createFilesClient({
         throw new Error(`file download failed: ${response.status}`);
       }
 
-      return URL.createObjectURL(await response.blob());
+      let blob: Blob;
+      if (maxBytes === undefined) {
+        blob = await response.blob();
+      } else {
+        if (Number(response.headers.get('Content-Length')) > maxBytes) {
+          await response.body?.cancel();
+          throw new Error('file preview exceeds size limit');
+        }
+        const chunks: Uint8Array<ArrayBuffer>[] = [];
+        let size = 0;
+        const reader = response.body?.getReader();
+        try {
+          while (reader) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            size += value.byteLength;
+            // Message descriptors and Content-Length are not a size guarantee.
+            if (size > maxBytes) {
+              await reader.cancel();
+              throw new Error('file preview exceeds size limit');
+            }
+            chunks.push(value);
+          }
+        } finally {
+          reader?.releaseLock();
+        }
+        blob = new Blob(chunks, {
+          type: response.headers.get('Content-Type') ?? '',
+        });
+      }
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      return URL.createObjectURL(blob);
     },
 
     async deleteFile(conversationId: string, storage: R2StorageDescriptor) {
