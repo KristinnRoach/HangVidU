@@ -1,3 +1,4 @@
+import { captureException } from '@sentry/browser';
 import { reportApiAuthFailure } from '../../infra/api-auth-failure.js';
 
 export type R2StorageDescriptor = {
@@ -74,40 +75,67 @@ export function createFilesClient({
       conversationId: string,
       file: File,
     ): Promise<R2StorageDescriptor> {
-      const response = await fetch(conversationFilesUrl(conversationId), {
-        method: 'POST',
-        headers: {
-          ...(await authHeaders()),
-          'Content-Type': file.type || 'application/octet-stream',
-        },
-        body: file,
-      });
-      if (!response.ok) {
-        if (response.status === 401) {
-          const detail = await response.text().catch(() => '');
-          reportApiAuthFailure(
-            `files upload ${conversationId}`,
-            response.status,
-            detail,
-          );
-          throw new Error(`file upload failed: ${response.status} ${detail}`);
+      const headers = await authHeaders();
+      let status: number | undefined;
+      let initializing = false;
+      try {
+        const response = await fetch(conversationFilesUrl(conversationId), {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Content-Type': file.type || 'application/octet-stream',
+          },
+          body: file,
+        });
+        status = response.status;
+        initializing =
+          status === 503 && response.headers.get('Retry-After') === '1';
+        if (!response.ok) {
+          if (response.status === 401) {
+            const detail = await response.text().catch(() => '');
+            reportApiAuthFailure(
+              `files upload ${conversationId}`,
+              response.status,
+              detail,
+            );
+            throw new Error(`file upload failed: ${response.status} ${detail}`);
+          }
+          throw new Error(`file upload failed: ${response.status}`);
         }
-        throw new Error(`file upload failed: ${response.status}`);
-      }
 
-      const body = (await response.json()) as Partial<UploadResponse>;
-      if (
-        body.provider !== 'r2' ||
-        typeof body.bucket !== 'string' ||
-        typeof body.key !== 'string'
-      ) {
-        throw new Error('file upload returned invalid storage metadata');
+        const body = (await response.json()) as Partial<UploadResponse>;
+        if (
+          body.provider !== 'r2' ||
+          typeof body.bucket !== 'string' ||
+          typeof body.key !== 'string'
+        ) {
+          throw new Error('file upload returned invalid storage metadata');
+        }
+        return {
+          provider: 'r2',
+          bucket: body.bucket,
+          key: body.key,
+        };
+      } catch (error) {
+        // Auth, validation and quota rejections are expected, not SDK issues.
+        if (
+          status === undefined ||
+          (status >= 500 && status !== 507 && !initializing) ||
+          (status >= 200 && status < 300)
+        ) {
+          const failure =
+            status === undefined
+              ? 'network'
+              : status < 300
+                ? 'invalid-response'
+                : 'server';
+          captureException(new Error(`File upload failed (${failure})`), {
+            tags: { operation: 'file-upload', failure },
+            extra: { status: status ?? null, fileSizeBytes: file.size },
+          });
+        }
+        throw error;
       }
-      return {
-        provider: 'r2',
-        bucket: body.bucket,
-        key: body.key,
-      };
     },
 
     async createObjectUrl(

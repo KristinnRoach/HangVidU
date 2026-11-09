@@ -36,30 +36,84 @@ function getEventMessage(event, hint) {
 // Opaque ids (conversation, user) are deliberately left alone: they are not
 // PII on their own and Sentry needs them to correlate events.
 const EMAIL_PATTERN = /[^\s<>()[\]{}@,;:"]+@[^\s<>()[\]{}@,;:"]+\.[a-z]{2,}/gi;
+// Query values can contain reversible email encodings (emailHash), object keys
+// or credentials. Keep parameter names for diagnostics without their values.
+const QUERY_VALUE_PATTERN = /([?&][^=\s&#?"'<>]+)=([^&#\s"'<>]*)/g;
 
 export function redactEmails(value) {
   return typeof value === 'string'
-    ? value.replace(EMAIL_PATTERN, '[redacted-email]')
+    ? value
+        .replace(QUERY_VALUE_PATTERN, '$1=[redacted]')
+        .replace(EMAIL_PATTERN, '[redacted-email]')
     : value;
 }
 
-// Covers where an address lands on an error event: the message, exception
-// values, and console breadcrumbs (message plus raw console arguments).
-export function redactEventEmails(event) {
-  if (event.message) event.message = redactEmails(event.message);
-  if (event.logentry?.message) {
-    event.logentry.message = redactEmails(event.logentry.message);
-  }
-  for (const exception of event.exception?.values ?? []) {
-    exception.value = redactEmails(exception.value);
-  }
-  for (const breadcrumb of event.breadcrumbs ?? []) {
-    breadcrumb.message = redactEmails(breadcrumb.message);
-    if (Array.isArray(breadcrumb.data?.arguments)) {
-      breadcrumb.data.arguments = breadcrumb.data.arguments.map(redactEmails);
+// Console arguments include nested recipient objects. Bound traversal so cyclic
+// or unexpectedly large diagnostic data cannot break error reporting.
+function sanitizeDiagnosticValue(event) {
+  const ancestors = new WeakSet();
+  let remaining = 2_000;
+  function sanitize(value, depth = 0) {
+    if (--remaining < 0) return '[truncated]';
+    if (typeof value === 'string') return redactEmails(value);
+    if (!value || typeof value !== 'object') return value;
+    if (depth >= 10) return '[truncated]';
+    if (ancestors.has(value)) return '[circular]';
+    ancestors.add(value);
+    const entries =
+      value instanceof Error
+        ? Object.assign({}, value, {
+            name: value.name,
+            message: value.message,
+            stack: value.stack,
+          })
+        : value;
+    let result;
+    if (Array.isArray(entries)) {
+      result = entries.slice(0, 100).map((item) => sanitize(item, depth + 1));
+    } else {
+      result = {};
+      let count = 0;
+      for (const key of Object.keys(entries)) {
+        if (++count > 100 || remaining <= 0) break;
+        // An encoded email is sensitive even outside a URL.
+        Object.defineProperty(result, redactEmails(key), {
+          value: /^emailHash$/i.test(key)
+            ? '[redacted-email]'
+            : sanitize(entries[key], depth + 1),
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
+      }
     }
+    ancestors.delete(value);
+    return result;
   }
-  return event;
+  return sanitize(event);
+}
+
+// Give each event field and breadcrumb its own bounded budget, so a noisy
+// diagnostic subtree cannot erase the error or more recent breadcrumbs.
+export function redactEventEmails(event) {
+  if (!event || typeof event !== 'object' || Array.isArray(event)) {
+    return sanitizeDiagnosticValue(event);
+  }
+  const result = {};
+  for (const key of Object.keys(event).slice(0, 100)) {
+    const value = event[key];
+    Object.defineProperty(result, redactEmails(key), {
+      value: /^emailHash$/i.test(key)
+        ? '[redacted-email]'
+        : key === 'breadcrumbs' && Array.isArray(value)
+          ? value.slice(-100).map(sanitizeDiagnosticValue)
+          : sanitizeDiagnosticValue(value),
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
+  }
+  return result;
 }
 
 function shouldDropKnownExternalNoise(event, hint) {
@@ -100,14 +154,9 @@ if (sentryDsn) {
       // against the log quota.
       Sentry.consoleLoggingIntegration({ levels: ['warn', 'error'] }),
     ],
-    // beforeSend only sees error events; logs need their own hook.
-    beforeSendLog(log) {
-      log.message = redactEmails(log.message);
-      for (const [key, value] of Object.entries(log.attributes ?? {})) {
-        log.attributes[key] = redactEmails(value);
-      }
-      return log;
-    },
+    // Errors, logs and request traces all need the same privacy filter.
+    beforeSendLog: redactEventEmails,
+    beforeSendSpan: redactEventEmails,
     // Toggle with VITE_SENTRY_FILTER_EXTENSION_ASYNC_CHANNEL_ERRORS:
     // - default (unset): enabled
     // - "0": disabled
