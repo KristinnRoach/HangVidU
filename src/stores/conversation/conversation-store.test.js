@@ -401,6 +401,33 @@ describe('conversation-store', () => {
     expect(state.messages[0].status).toBe('sent');
   });
 
+  it('applies the server timestamp before trimming a send when the client clock is behind', async () => {
+    const store = await import('./conversation-store.js');
+    await store.openDirectConversation('contact-1');
+    watch.emit(
+      Array.from({ length: 40 }, (_, i) =>
+        envelope({ messageId: `msg-${i}`, sentAt: i + 1 }),
+      ),
+    );
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(0);
+    repo.send.mockResolvedValue({ id: 'reserved-1', sentAt: 41 });
+    try {
+      expect(
+        await store.sendMessage({ type: 'text', text: 'newest send' }),
+      ).toBe(true);
+      const messages = store.getConversationState().messages;
+      expect(messages).toHaveLength(40);
+      expect(messages.at(-1)).toMatchObject({
+        id: 'reserved-1',
+        sentAt: 41,
+        status: 'sent',
+      });
+      expect(messages.some((message) => message.id === 'msg-0')).toBe(false);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it('marks the optimistic message failed when the send rejects', async () => {
     const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');

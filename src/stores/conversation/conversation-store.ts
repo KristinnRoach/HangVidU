@@ -352,7 +352,7 @@ export async function recordSystemMessage(
   );
 }
 
-function markSent(tempId: string, realId: string) {
+function markSent(tempId: string, realId: string, sentAt: number) {
   setState('messages', (msgs) => {
     const realMessageAlreadyArrived =
       tempId !== realId && msgs.some((msg) => msg.id === realId);
@@ -362,9 +362,10 @@ function markSent(tempId: string, realId: string) {
         if (msg.id === tempId) {
           return realMessageAlreadyArrived
             ? []
-            : [{ ...msg, id: realId, status: 'sent' as const }];
+            : [{ ...msg, id: realId, sentAt, status: 'sent' as const }];
         }
-        if (msg.id === realId) return [{ ...msg, status: 'sent' as const }];
+        if (msg.id === realId)
+          return [{ ...msg, sentAt, status: 'sent' as const }];
         return [msg];
       }),
     );
@@ -621,7 +622,7 @@ export async function sendMessage(
       delivery: 'persistent',
       payload,
     });
-    markSent(tempId, saved.id);
+    markSent(tempId, saved.id, saved.sentAt);
     sent = true;
   } catch {
     markFailed(tempId);

@@ -113,6 +113,36 @@ describe('attachment preview ownership', () => {
     });
   });
 
+  it('prioritizes a new preview over retained queued work without restarting active loads', async () => {
+    const loads = [];
+    createConversationFileObjectUrl.mockImplementation(() => {
+      const pending = deferred();
+      loads.push(pending);
+      return pending.promise;
+    });
+    const files = Array.from({ length: 40 }, (_, i) => image(String(i)));
+    cache.update('conversation', files);
+    const activeSignals = createConversationFileObjectUrl.mock.calls.map(
+      (call) => call[2],
+    );
+
+    cache.update('conversation', [...files, image('newest')]);
+    expect(loads).toHaveLength(3);
+    expect(activeSignals.every((signal) => !signal.aborted)).toBe(true);
+    loads[0].resolve('blob:retained');
+    await vi.waitFor(() => expect(loads).toHaveLength(4));
+
+    expect(createConversationFileObjectUrl.mock.calls[3][1].key).toBe('newest');
+    const retainedKey = attachmentPreviewKey(
+      'conversation',
+      image('39').storage,
+    );
+    expect(changed).toHaveBeenLastCalledWith({
+      [retainedKey]: 'blob:retained',
+    });
+    expect(revoke).not.toHaveBeenCalled();
+  });
+
   it('releases loaded URLs on dispose and revokes URLs that finish afterward', async () => {
     const late = deferred();
     createConversationFileObjectUrl

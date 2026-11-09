@@ -119,13 +119,18 @@ export function createAttachmentPreviews(
         entries.delete(key);
       }
       for (const [key, attachment] of needed) {
-        if (entries.has(key)) continue;
-        entries.set(key, {
-          conversationId: conversationId!,
-          storage: attachment.storage,
-          controller: new AbortController(),
-          started: false,
-        });
+        // Map order drives the queue; retain owners but refresh their priority.
+        const existing = entries.get(key);
+        entries.delete(key);
+        entries.set(
+          key,
+          existing ?? {
+            conversationId: conversationId!,
+            storage: attachment.storage,
+            controller: new AbortController(),
+            started: false,
+          },
+        );
       }
       notify();
       pump();
