@@ -37,15 +37,15 @@ export function createWorkerRequest({ baseUrl, getToken }) {
     });
 
     if (!res.ok) {
-      const detail = await res.text().catch(() => '');
+      // Queries include reversible email keys; response bodies may echo them.
+      // Diagnostics need only the method, route and status.
+      const route = path.split(/[?#]/, 1)[0];
       if (res.status === 401) {
-        reportApiAuthFailure(`data:${method} ${path}`, res.status, detail);
+        reportApiAuthFailure(`data:${method} ${route}`, res.status);
       } else if (res.status >= 500) {
-        reportApiOutage(`data:${method} ${path}`, res.status, detail);
+        reportApiOutage(`data:${method} ${route}`, res.status);
       }
-      const err = new Error(
-        `data worker ${method} ${path} -> ${res.status} ${detail}`,
-      );
+      const err = new Error(`data worker ${method} ${route} -> ${res.status}`);
       err.status = res.status;
       throw err;
     }
