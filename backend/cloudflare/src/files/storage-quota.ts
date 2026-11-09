@@ -1,5 +1,5 @@
 // App-wide quota. All writers must use this ledger; dashboard/S3 uploads bypass it.
-export const TOTAL_FILE_STORAGE_BYTES = 1024 * 1024 * 1024;
+export const TOTAL_FILE_STORAGE_BYTES = 5 * 1024 * 1024 * 1024;
 
 export async function initializeStorageQuota(db: D1Database, bucket: R2Bucket) {
   if (

@@ -403,7 +403,7 @@ describe('files worker routing + auth', () => {
       ),
       env.DB.prepare(
         'INSERT INTO file_storage_usage (object_key, size_bytes) VALUES (?, ?)',
-      ).bind('quota-test-reservation', 1024 * 1024 * 1024),
+      ).bind('quota-test-reservation', 5 * 1024 * 1024 * 1024),
     ]);
     const before = await env.FILES_BUCKET.list();
     try {

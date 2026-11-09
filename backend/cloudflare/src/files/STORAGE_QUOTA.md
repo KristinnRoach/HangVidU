@@ -1,7 +1,7 @@
 # File storage quota
 
 `TOTAL_FILE_STORAGE_BYTES` in `storage-quota.ts` sets the app-wide limit
-(default: 1 GiB). The separate 5 MiB per-file limit is unchanged.
+(default: 5 GiB). The separate 5 MiB per-file limit is unchanged.
 
 Before deploying the Worker, apply migration 0009 with `vp run migrate:remote`
 from the repository root. Then use the normal `vp run deploy:cf` workflow.
@@ -19,3 +19,8 @@ an overcount. To reconcile, pause uploads and deletions (including in-flight
 requests), clear `file_storage_usage` and `file_storage_quota_state` in a D1
 transaction, then resume. The next upload/deletion rebuilds the ledger from R2.
 Never reset the ledger while writes are in progress.
+
+Unexpected client-observed upload failures (network, server errors other than
+quota rejection, or invalid success metadata) are captured through the existing
+browser Sentry SDK. Events include status and file size, without file names,
+contents, object keys, or response bodies. Expected HTTP rejections remain logs.

@@ -2,6 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
   reportApiAuthFailure: vi.fn(),
+  captureException: vi.fn(),
+}));
+
+vi.mock('@sentry/browser', () => ({
+  captureException: mocks.captureException,
 }));
 
 vi.mock('../../infra/api-auth-failure.js', () => ({
@@ -18,6 +23,7 @@ describe('files client', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     mocks.reportApiAuthFailure.mockReset();
+    mocks.captureException.mockReset();
   });
 
   it('rejects an empty base URL', () => {
@@ -171,4 +177,51 @@ describe('files client', () => {
       'unauthorized',
     );
   });
+  it.each([
+    [
+      'network',
+      () => {
+        throw new TypeError('Failed to fetch');
+      },
+      true,
+    ],
+    [
+      'server',
+      () => new Response('secret server detail', { status: 500 }),
+      true,
+    ],
+    ['invalid-response', () => Response.json({ wrong: 'metadata' }), true],
+    ['quota', () => new Response('full', { status: 507 }), false],
+    ['validation', () => new Response('too large', { status: 413 }), false],
+  ])(
+    'reports %s failures selectively without file details',
+    async (kind, result, reports) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => result()),
+      );
+      const client = createFilesClient({
+        ...options,
+        baseUrl: 'https://files.example.com',
+      });
+      await expect(
+        client.uploadFile(
+          'private-conversation',
+          new File(['secret contents'], 'private-name.txt'),
+        ),
+      ).rejects.toThrow();
+      expect(mocks.captureException).toHaveBeenCalledTimes(reports ? 1 : 0);
+      if (reports) {
+        const [error, context] = mocks.captureException.mock.calls[0];
+        expect(error.message).toBe(`File upload failed (${kind})`);
+        expect(context).toEqual({
+          tags: { operation: 'file-upload', failure: kind },
+          extra: {
+            status: kind === 'network' ? null : kind === 'server' ? 500 : 200,
+            fileSizeBytes: 15,
+          },
+        });
+      }
+    },
+  );
 });
