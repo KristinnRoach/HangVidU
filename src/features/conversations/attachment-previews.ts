@@ -1,14 +1,17 @@
 import { createConversationFileObjectUrl } from '@stores/files-store';
 import {
-  IMAGE_COMPRESSION_THRESHOLD_BYTES,
   isImageAttachment,
   isR2FileAttachment,
 } from '@stores/conversation/attachments';
-import { RECENT_MESSAGES_WINDOW } from '@stores/conversation/message-ordering';
 import type {
   ConversationId,
   MessageAttachment,
 } from '@stores/conversation/types';
+
+// Loading more history or allowing larger uploads must not raise preview costs.
+const MAX_PREVIEWS = 40;
+const MAX_PREVIEW_BYTES = 1.5 * 1024 * 1024;
+const MAX_CONCURRENT_LOADS = 3;
 
 export function attachmentPreviewKey(
   conversationId: ConversationId,
@@ -46,10 +49,15 @@ export function createAttachmentPreviews(
       ),
     );
 
+  function release(entry: Preview) {
+    entry.controller.abort();
+    if (entry.url) URL.revokeObjectURL(entry.url);
+  }
+
   function pump() {
     if (disposed) return;
-    for (const [key, entry] of entries) {
-      if (active >= 3) break;
+    for (const entry of entries.values()) {
+      if (active >= MAX_CONCURRENT_LOADS) break;
       if (entry.started) continue;
       entry.started = true;
       active++;
@@ -57,14 +65,11 @@ export function createAttachmentPreviews(
         entry.conversationId,
         entry.storage,
         entry.controller.signal,
-        IMAGE_COMPRESSION_THRESHOLD_BYTES,
+        MAX_PREVIEW_BYTES,
       )
         .then((url) => {
-          if (
-            disposed ||
-            entry.controller.signal.aborted ||
-            entries.get(key) !== entry
-          ) {
+          // Releasing an entry also invalidates any result still in flight.
+          if (entry.controller.signal.aborted) {
             URL.revokeObjectURL(url);
             return;
           }
@@ -99,19 +104,18 @@ export function createAttachmentPreviews(
             !isImageAttachment(attachment) ||
             !Number.isFinite(attachment.fileSize) ||
             attachment.fileSize <= 0 ||
-            attachment.fileSize > IMAGE_COMPRESSION_THRESHOLD_BYTES
+            attachment.fileSize > MAX_PREVIEW_BYTES
           )
             continue;
           needed.set(
             attachmentPreviewKey(conversationId, attachment.storage),
             attachment,
           );
-          if (needed.size >= RECENT_MESSAGES_WINDOW) break;
+          if (needed.size >= MAX_PREVIEWS) break;
         }
       for (const [key, entry] of entries) {
         if (needed.has(key)) continue;
-        entry.controller.abort();
-        if (entry.url) URL.revokeObjectURL(entry.url);
+        release(entry);
         entries.delete(key);
       }
       for (const [key, attachment] of needed) {
@@ -129,8 +133,7 @@ export function createAttachmentPreviews(
     dispose() {
       disposed = true;
       for (const entry of entries.values()) {
-        entry.controller.abort();
-        if (entry.url) URL.revokeObjectURL(entry.url);
+        release(entry);
       }
       entries.clear();
     },

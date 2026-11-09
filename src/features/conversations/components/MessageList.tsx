@@ -29,6 +29,7 @@ import type {
   ChatMessage,
   MessageAttachment,
   SystemChatMessage,
+  UserChatMessage,
 } from '@stores/conversation/types.js';
 import { createConversationFileObjectUrl } from '@stores/files-store';
 
@@ -143,15 +144,13 @@ export function MessageList() {
     return null;
   });
 
-  const attachmentUrl = (msg: ChatMessage) => {
+  const attachmentUrl = (msg: UserChatMessage) => {
     const conversationId = state.conversationId;
-    if (!conversationId) return null;
+    if (!conversationId || !msg.attachment) return null;
     return (
-      (msg.type === 'user' && msg.attachment
-        ? r2AttachmentUrls()[
-            attachmentPreviewKey(conversationId, msg.attachment.storage)
-          ]
-        : null) ?? null
+      r2AttachmentUrls()[
+        attachmentPreviewKey(conversationId, msg.attachment.storage)
+      ] ?? null
     );
   };
 

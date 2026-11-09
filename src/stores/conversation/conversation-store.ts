@@ -34,7 +34,7 @@ import {
 import { publish } from '@shared/events/index.js';
 
 import {
-  recentChatMessages,
+  recentLiveMessages,
   sortMessagesBySentAt,
 } from './message-ordering.js';
 import {
@@ -323,12 +323,12 @@ function mergeLoadedMessages(messages: ChatMessage[]) {
   // every <img>, collapsing scroll layout).
   setState(
     'messages',
-    reconcile(recentChatMessages([...byId.values()]), { key: 'id' }),
+    reconcile(recentLiveMessages([...byId.values()]), { key: 'id' }),
   );
 }
 
 function addOptimisticMessage(msg: ChatMessage) {
-  setState('messages', (msgs) => recentChatMessages([...msgs, msg]));
+  setState('messages', (msgs) => recentLiveMessages([...msgs, msg]));
 }
 
 export async function recordSystemMessage(
@@ -357,7 +357,7 @@ function markSent(tempId: string, realId: string) {
     const realMessageAlreadyArrived =
       tempId !== realId && msgs.some((msg) => msg.id === realId);
 
-    return recentChatMessages(
+    return recentLiveMessages(
       msgs.flatMap((msg) => {
         if (msg.id === tempId) {
           return realMessageAlreadyArrived

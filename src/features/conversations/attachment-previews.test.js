@@ -7,7 +7,6 @@ import {
   vi,
 } from 'vite-plus/test';
 import { createConversationFileObjectUrl } from '@stores/files-store';
-import { IMAGE_COMPRESSION_THRESHOLD_BYTES } from '@stores/conversation/attachments';
 import {
   attachmentPreviewKey,
   createAttachmentPreviews,
@@ -62,7 +61,7 @@ describe('attachment preview ownership', () => {
       'conversation',
       file.storage,
       expect.any(AbortSignal),
-      IMAGE_COMPRESSION_THRESHOLD_BYTES,
+      1.5 * 1024 * 1024,
     );
     cache.update('conversation', [file]);
     expect(createConversationFileObjectUrl).toHaveBeenCalledTimes(1);
@@ -156,7 +155,7 @@ describe('attachment preview ownership', () => {
     );
     cache.update('conversation', [
       ...Array.from({ length: 50 }, (_, i) => image(String(i))),
-      image('large', IMAGE_COMPRESSION_THRESHOLD_BYTES + 1),
+      image('large', 1.5 * 1024 * 1024 + 1),
       image('invalid', NaN),
       { ...image('pdf'), mimeType: 'application/pdf' },
     ]);

@@ -26,7 +26,8 @@ export function sortMessagesBySentAt<T extends OrderedMessage>(messages: T[]) {
   return [...messages].sort(compareMessagesBySentAt);
 }
 
-export function recentChatMessages(messages: ChatMessage[]) {
+// Paged history must not pass through this live-tail eviction policy.
+export function recentLiveMessages(messages: ChatMessage[]) {
   // Unacknowledged local sends must survive incoming snapshots and eviction.
   const sent = messages.filter((message) => message.status === 'sent');
   const unsent = messages.filter((message) => message.status !== 'sent');
