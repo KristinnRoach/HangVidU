@@ -8,6 +8,10 @@ import {
   it,
   vi,
 } from 'vite-plus/test';
+import {
+  initializeStorageQuota,
+  reserveFileStorage,
+} from '../src/files/storage-quota';
 
 const PROJECT_ID = env.FIREBASE_PROJECT_ID;
 const KID = 'test-key-1';
@@ -422,5 +426,136 @@ describe('files worker routing + auth', () => {
         .bind('quota-test-reservation')
         .run();
     }
+  });
+
+  it('recovers quota on an authorized deletion retry after the ledger release fails', async () => {
+    await allowMember('delete-recovery', 'user-a');
+    await allowMember('delete-recovery', 'user-b');
+    const token = await signToken(validClaims('user-a'));
+    const otherToken = await signToken(validClaims('user-b'));
+    const upload = await request('/conversations/delete-recovery/files', {
+      method: 'POST',
+      token,
+      contentType: 'text/plain',
+      body: 'hello',
+    });
+    expect(upload.status).toBe(201);
+    const { key } = (await upload.json()) as { key: string };
+    const path = `/conversations/delete-recovery/files/object?key=${encodeURIComponent(key)}`;
+    await env.DB.prepare(`CREATE TRIGGER fail_release BEFORE DELETE ON file_storage_usage
+      WHEN OLD.object_key LIKE 'conversation-files/delete-recovery/%'
+      BEGIN SELECT RAISE(ABORT, 'test release failure'); END`).run();
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect((await request(path, { method: 'DELETE', token })).status).toBe(
+        503,
+      );
+      expect(await env.FILES_BUCKET.head(key)).toBeNull();
+      expect(
+        await env.DB.prepare(
+          'SELECT size_bytes FROM file_storage_usage WHERE object_key = ?',
+        )
+          .bind(key)
+          .first('size_bytes'),
+      ).toBe(5);
+      expect(
+        await env.DB.prepare(
+          'SELECT uploaded_by FROM file_storage_pending_deletions WHERE object_key = ?',
+        )
+          .bind(key)
+          .first('uploaded_by'),
+      ).toBe('user-a');
+      expect(
+        (await request(path, { method: 'DELETE', token: otherToken })).status,
+      ).toBe(403);
+    } finally {
+      await env.DB.prepare('DROP TRIGGER fail_release').run();
+      errorSpy.mockRestore();
+    }
+    expect((await request(path, { method: 'DELETE', token })).status).toBe(204);
+    expect(
+      await env.DB.prepare(
+        'SELECT object_key FROM file_storage_usage WHERE object_key = ?',
+      )
+        .bind(key)
+        .first(),
+    ).toBeNull();
+    expect(
+      await env.DB.prepare(
+        'SELECT object_key FROM file_storage_pending_deletions WHERE object_key = ?',
+      )
+        .bind(key)
+        .first(),
+    ).toBeNull();
+    expect((await request(path, { method: 'DELETE', token })).status).toBe(404);
+  });
+
+  it('keeps in-flight upload reservations on ordinary deletion 404s', async () => {
+    await allowMember('delete-in-flight', 'user-a');
+    const token = await signToken(validClaims());
+    await initializeStorageQuota(env.DB, env.FILES_BUCKET);
+    const key = 'conversation-files/delete-in-flight/upload';
+    expect(await reserveFileStorage(env.DB, key, 5)).toBe(true);
+    expect(
+      (
+        await request(
+          `/conversations/delete-in-flight/files/object?key=${encodeURIComponent(key)}`,
+          {
+            method: 'DELETE',
+            token,
+          },
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      await env.DB.prepare(
+        'SELECT size_bytes FROM file_storage_usage WHERE object_key = ?',
+      )
+        .bind(key)
+        .first('size_bytes'),
+    ).toBe(5);
+  });
+
+  it('returns retryable 503s until inventory completes without uploading or deleting', async () => {
+    // Earlier routing tests have already initialized the ledger in this file.
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM file_storage_usage'),
+      env.DB.prepare('DELETE FROM file_storage_quota_state'),
+      env.DB.prepare('DELETE FROM file_storage_quota_inventory'),
+      env.DB.prepare('DELETE FROM file_storage_pending_deletions'),
+    ]);
+    const existing = await env.FILES_BUCKET.list();
+    if (existing.objects.length) {
+      await env.FILES_BUCKET.delete(
+        existing.objects.map((object) => object.key),
+      );
+    }
+    await allowMember('inventory-pending', 'user-a');
+    const token = await signToken(validClaims());
+    const key = 'conversation-files/inventory-pending/existing';
+    await env.FILES_BUCKET.put(key, 'hello', {
+      customMetadata: { uploadedBy: 'user-a' },
+    });
+    await Promise.all(
+      Array.from({ length: 201 }, (_, i) =>
+        env.FILES_BUCKET.put(`inventory/${String(i).padStart(3, '0')}`, 'x'),
+      ),
+    );
+    const upload = await request('/conversations/inventory-pending/files', {
+      method: 'POST',
+      token,
+      contentType: 'text/plain',
+      body: 'new file',
+    });
+    expect(upload.status).toBe(503);
+    expect(upload.headers.get('Retry-After')).toBe('1');
+    const path = `/conversations/inventory-pending/files/object?key=${encodeURIComponent(key)}`;
+    const deletion = await request(path, { method: 'DELETE', token });
+    expect(deletion.status).toBe(503);
+    expect(deletion.headers.get('Retry-After')).toBe('1');
+    expect(await env.FILES_BUCKET.head(key)).not.toBeNull();
+    expect((await env.FILES_BUCKET.list()).objects).toHaveLength(202);
+    expect((await request(path, { token })).status).toBe(200);
+    expect((await request(path, { method: 'DELETE', token })).status).toBe(204);
   });
 });

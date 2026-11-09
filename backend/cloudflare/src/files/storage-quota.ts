@@ -1,38 +1,72 @@
 // App-wide quota. All writers must use this ledger; dashboard/S3 uploads bypass it.
 export const TOTAL_FILE_STORAGE_BYTES = 5 * 1024 * 1024 * 1024;
 
-export async function initializeStorageQuota(db: D1Database, bucket: R2Bucket) {
+// Keep both the R2 response and the D1 transaction bounded per request.
+const INVENTORY_PAGE_SIZE = 100;
+
+/** Inventory one page; return false while subsequent requests must resume it. */
+export async function initializeStorageQuota(
+  db: D1Database,
+  bucket: Pick<R2Bucket, 'list'>,
+) {
   if (
     await db
       .prepare('SELECT id FROM file_storage_quota_state WHERE id = 1')
       .first()
   )
-    return;
+    return true;
 
-  // Bootstrap from actual objects, including files uploaded before this feature.
-  // No upload using this handler can write until initialization commits.
-  const objects: { key: string; size: number }[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await bucket.list({ cursor });
-    objects.push(...page.objects.map(({ key, size }) => ({ key, size })));
-    cursor = page.truncated ? page.cursor : undefined;
-  } while (cursor);
+  await db
+    .prepare(
+      'INSERT OR IGNORE INTO file_storage_quota_inventory (id) VALUES (1)',
+    )
+    .run();
+  const progress = await db
+    .prepare(
+      'SELECT cursor, version FROM file_storage_quota_inventory WHERE id = 1',
+    )
+    .first<{ cursor: string | null; version: number }>();
+  if (!progress) throw new Error('Storage inventory progress missing');
+  const page = await bucket.list({
+    cursor: progress.cursor ?? undefined,
+    limit: INVENTORY_PAGE_SIZE,
+  });
 
-  // A batch is atomic. A concurrent initializer becomes a no-op once ready.
+  // The page, readiness flag and cursor commit atomically. Each statement is
+  // guarded by the version we read: a stale initializer cannot replay a page
+  // after another request finishes initialization and starts deleting files.
   await db.batch([
-    ...objects.map(({ key, size }) =>
-      db
-        .prepare(`
+    db
+      .prepare(`
       INSERT OR IGNORE INTO file_storage_usage (object_key, size_bytes)
-      SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM file_storage_quota_state WHERE id = 1)
+      SELECT json_extract(value, '$.key'), json_extract(value, '$.size')
+      FROM json_each(?)
+      WHERE EXISTS (SELECT 1 FROM file_storage_quota_inventory WHERE id = 1 AND version = ?)
+        AND NOT EXISTS (SELECT 1 FROM file_storage_quota_state WHERE id = 1)
     `)
-        .bind(key, size),
-    ),
-    db.prepare(
-      'INSERT OR IGNORE INTO file_storage_quota_state (id) VALUES (1)',
-    ),
+      .bind(
+        JSON.stringify(page.objects.map(({ key, size }) => ({ key, size }))),
+        progress.version,
+      ),
+    db
+      .prepare(`
+      INSERT OR IGNORE INTO file_storage_quota_state (id)
+      SELECT 1 WHERE ? = 0
+        AND EXISTS (SELECT 1 FROM file_storage_quota_inventory WHERE id = 1 AND version = ?)
+    `)
+      .bind(Number(page.truncated), progress.version),
+    db
+      .prepare(`
+      UPDATE file_storage_quota_inventory SET cursor = ?, version = version + 1
+      WHERE id = 1 AND version = ?
+    `)
+      .bind(page.truncated ? page.cursor : null, progress.version),
   ]);
+  return Boolean(
+    await db
+      .prepare('SELECT id FROM file_storage_quota_state WHERE id = 1')
+      .first(),
+  );
 }
 
 export async function reserveFileStorage(
@@ -53,8 +87,37 @@ export async function reserveFileStorage(
 }
 
 export async function releaseFileStorage(db: D1Database, key: string) {
+  // Preserve the retry marker if either statement fails.
+  await db.batch([
+    db.prepare('DELETE FROM file_storage_usage WHERE object_key = ?').bind(key),
+    db
+      .prepare(
+        'DELETE FROM file_storage_pending_deletions WHERE object_key = ?',
+      )
+      .bind(key),
+  ]);
+}
+
+export async function beginFileDeletion(
+  db: D1Database,
+  key: string,
+  uploadedBy: string,
+) {
   await db
-    .prepare('DELETE FROM file_storage_usage WHERE object_key = ?')
-    .bind(key)
+    .prepare(`
+    INSERT OR IGNORE INTO file_storage_pending_deletions (object_key, uploaded_by)
+    VALUES (?, ?)
+  `)
+    .bind(key, uploadedBy)
     .run();
+}
+
+export async function pendingFileDeletionOwner(db: D1Database, key: string) {
+  const pending = await db
+    .prepare(
+      'SELECT uploaded_by FROM file_storage_pending_deletions WHERE object_key = ?',
+    )
+    .bind(key)
+    .first<{ uploaded_by: string }>();
+  return pending?.uploaded_by;
 }

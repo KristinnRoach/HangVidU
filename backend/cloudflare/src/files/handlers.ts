@@ -5,7 +5,9 @@ import type { WorkerEnv } from '../types';
 import type { FileObjectStore } from './file-object-store';
 import { R2FileObjectStore } from './r2-file-object-store';
 import {
+  beginFileDeletion,
   initializeStorageQuota,
+  pendingFileDeletionOwner,
   reserveFileStorage,
   releaseFileStorage,
 } from './storage-quota';
@@ -65,6 +67,18 @@ function json(
       ...init.headers,
     },
   });
+}
+
+function storageInitializingResponse(request: Request, env: WorkerEnv) {
+  return json(
+    request,
+    env,
+    { error: 'Storage inventory is initializing. Retry this request.' },
+    {
+      status: 503,
+      headers: { 'Retry-After': '1' },
+    },
+  );
 }
 
 function isSupportedFileMimeType(value: string | null): value is string {
@@ -237,7 +251,9 @@ async function handleUpload(
   }
 
   const key = objectKey(conversationId, crypto.randomUUID());
-  await initializeStorageQuota(env.DB, env.FILES_BUCKET);
+  if (!(await initializeStorageQuota(env.DB, env.FILES_BUCKET))) {
+    return storageInitializingResponse(request, env);
+  }
   if (!(await reserveFileStorage(env.DB, key, body.byteLength))) {
     return json(
       request,
@@ -298,7 +314,16 @@ async function handleDelete(
 ) {
   const object = await store.head(key);
   if (!object) {
-    return response(request, env, 'Not found', { status: 404 });
+    const owner = await pendingFileDeletionOwner(env.DB, key);
+    if (!owner) return response(request, env, 'Not found', { status: 404 });
+    if (owner !== identity.userId) {
+      return response(request, env, 'Forbidden', { status: 403 });
+    }
+    // Only an authenticated deletion intent permits reclaiming a missing file.
+    // An ordinary 404 may still belong to an upload whose R2 put is in flight.
+    await store.delete(key);
+    await releaseFileStorage(env.DB, key);
+    return response(request, env, null, { status: 204 });
   }
 
   const uploadedBy = object.uploadedBy;
@@ -310,7 +335,10 @@ async function handleDelete(
     return response(request, env, 'Forbidden', { status: 403 });
   }
 
-  await initializeStorageQuota(env.DB, env.FILES_BUCKET);
+  if (!(await initializeStorageQuota(env.DB, env.FILES_BUCKET))) {
+    return storageInitializingResponse(request, env);
+  }
+  await beginFileDeletion(env.DB, key, uploadedBy);
   await store.delete(key);
   await releaseFileStorage(env.DB, key);
   return response(request, env, null, { status: 204 });

@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:test';
-import { beforeEach, describe, expect, it } from 'vite-plus/test';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import {
   initializeStorageQuota,
   reserveFileStorage,
@@ -12,6 +12,8 @@ describe('app storage quota', () => {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM file_storage_usage'),
       env.DB.prepare('DELETE FROM file_storage_quota_state'),
+      env.DB.prepare('DELETE FROM file_storage_quota_inventory'),
+      env.DB.prepare('DELETE FROM file_storage_pending_deletions'),
     ]);
     const page = await env.FILES_BUCKET.list();
     if (page.objects.length)
@@ -34,6 +36,104 @@ describe('app storage quota', () => {
 
   it('fails closed before initialization', async () => {
     expect(await reserveFileStorage(env.DB, 'file', 1)).toBe(false);
+  });
+
+  it('resumes bounded pages and publishes readiness only after the final page', async () => {
+    await Promise.all(
+      Array.from({ length: 101 }, (_, i) =>
+        env.FILES_BUCKET.put(`inventory/${String(i).padStart(3, '0')}`, 'x'),
+      ),
+    );
+    const bucket = {
+      list: vi.fn((options?: R2ListOptions) => env.FILES_BUCKET.list(options)),
+    };
+    expect(await initializeStorageQuota(env.DB, bucket)).toBe(false);
+    expect(bucket.list).toHaveBeenCalledExactlyOnceWith({
+      cursor: undefined,
+      limit: 100,
+    });
+    expect(await reserveFileStorage(env.DB, 'too-early', 1)).toBe(false);
+    const progress = await env.DB.prepare(
+      'SELECT cursor, version FROM file_storage_quota_inventory',
+    ).first();
+    expect(progress).toMatchObject({ cursor: expect.any(String), version: 1 });
+
+    // A fresh call resumes persisted state, without retaining the first page.
+    expect(await initializeStorageQuota(env.DB, bucket)).toBe(true);
+    expect(bucket.list).toHaveBeenLastCalledWith({
+      cursor: progress!.cursor,
+      limit: 100,
+    });
+    expect(
+      await reserveFileStorage(env.DB, 'fits', TOTAL_FILE_STORAGE_BYTES - 101),
+    ).toBe(true);
+    expect(await reserveFileStorage(env.DB, 'overflow', 1)).toBe(false);
+  });
+
+  it('does not replay a stale page after a concurrent initializer finishes and a file is deleted', async () => {
+    await env.FILES_BUCKET.put('existing', 'hello');
+    let resume!: () => void;
+    let captured!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    const listed = new Promise<void>((resolve) => {
+      captured = resolve;
+    });
+    const slow = initializeStorageQuota(env.DB, {
+      async list(options) {
+        const page = await env.FILES_BUCKET.list(options);
+        captured();
+        await gate;
+        return page;
+      },
+    });
+    await listed;
+    try {
+      expect(await initializeStorageQuota(env.DB, env.FILES_BUCKET)).toBe(true);
+      await env.FILES_BUCKET.delete('existing');
+      await releaseFileStorage(env.DB, 'existing');
+    } finally {
+      resume();
+      await slow;
+    }
+    expect(
+      await env.DB.prepare(
+        'SELECT version FROM file_storage_quota_inventory',
+      ).first('version'),
+    ).toBe(1);
+    expect(
+      await reserveFileStorage(env.DB, 'fits', TOTAL_FILE_STORAGE_BYTES),
+    ).toBe(true);
+  });
+
+  it('rolls back a failed inventory page and resumes from the same cursor', async () => {
+    await env.FILES_BUCKET.put('existing', 'hello');
+    await env.DB.prepare(`CREATE TRIGGER fail_inventory BEFORE INSERT ON file_storage_quota_state
+      BEGIN SELECT RAISE(ABORT, 'test inventory failure'); END`).run();
+    try {
+      await expect(
+        initializeStorageQuota(env.DB, env.FILES_BUCKET),
+      ).rejects.toThrow();
+      expect(
+        await env.DB.prepare(
+          'SELECT COUNT(*) AS count FROM file_storage_usage',
+        ).first('count'),
+      ).toBe(0);
+      expect(
+        await env.DB.prepare(
+          'SELECT cursor, version FROM file_storage_quota_inventory',
+        ).first(),
+      ).toEqual({ cursor: null, version: 0 });
+      expect(await reserveFileStorage(env.DB, 'too-early', 1)).toBe(false);
+    } finally {
+      await env.DB.prepare('DROP TRIGGER fail_inventory').run();
+    }
+    expect(await initializeStorageQuota(env.DB, env.FILES_BUCKET)).toBe(true);
+    expect(
+      await reserveFileStorage(env.DB, 'fits', TOTAL_FILE_STORAGE_BYTES - 5),
+    ).toBe(true);
+    expect(await reserveFileStorage(env.DB, 'overflow', 1)).toBe(false);
   });
 
   it('reserves atomically and releases idempotently', async () => {
