@@ -13,6 +13,8 @@ import {
 } from './storage-quota';
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
+// Isolate-wide admission guard: never queue requests with buffered bodies.
+let uploadInProgress = false;
 const AUTHORIZATION_CACHE_TTL_MS = 30 * 1000;
 const AUTHORIZATION_CACHE_MAX_ENTRIES = 500;
 const CONVERSATION_FILE_PREFIX = 'conversation-files';
@@ -396,7 +398,23 @@ export async function handleFilesRequest(
     if (request.method !== 'POST') {
       return response(request, env, 'Method not allowed', { status: 405 });
     }
-    return handleUpload(request, env, store, conversationId, identity);
+    if (uploadInProgress) {
+      return json(
+        request,
+        env,
+        { error: 'Upload busy. Retry this request.' },
+        {
+          status: 503,
+          headers: { 'Retry-After': '1' },
+        },
+      );
+    }
+    uploadInProgress = true;
+    try {
+      return await handleUpload(request, env, store, conversationId, identity);
+    } finally {
+      uploadInProgress = false;
+    }
   }
 
   const key = storageKeyFromUrl(url, conversationId);

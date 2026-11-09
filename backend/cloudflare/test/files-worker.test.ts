@@ -1,6 +1,9 @@
+import { handleFilesRequest } from '../src/files/handlers';
+import { R2FileObjectStore } from '../src/files/r2-file-object-store';
 import { env, SELF } from 'cloudflare:test';
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -571,5 +574,75 @@ describe('files worker routing + auth', () => {
     expect((await env.FILES_BUCKET.list()).objects).toHaveLength(202);
     expect((await request(path, { token })).status).toBe(200);
     expect((await request(path, { method: 'DELETE', token })).status).toBe(204);
+  });
+});
+
+describe('buffered upload admission', () => {
+  afterEach(() => vi.restoreAllMocks());
+  async function upload(body: BodyInit) {
+    const token = await signToken(validClaims());
+    await allowMember('upload-concurrency', 'user-a');
+    return handleFilesRequest(
+      new Request(
+        'https://api.hangvidu.com/conversations/upload-concurrency/files',
+        {
+          method: 'POST',
+          headers: {
+            Origin: ORIGIN,
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/octet-stream',
+          },
+          body,
+        },
+      ),
+      { ...env, APP_ENV: 'production' },
+    );
+  }
+  it('rejects competing bodies unread while a near-limit R2 write is pending', async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    const writing = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const put = vi
+      .spyOn(R2FileObjectStore.prototype, 'put')
+      .mockImplementationOnce(async () => {
+        entered();
+        await pending;
+      });
+    const first = upload(new Uint8Array(20 * 1024 * 1024));
+    await writing;
+    try {
+      const pull = vi.fn();
+      const body = new ReadableStream({ pull }, { highWaterMark: 0 });
+      const busy = await upload(body);
+      expect(busy.status).toBe(503);
+      expect(busy.headers.get('Retry-After')).toBe('1');
+      expect(pull).not.toHaveBeenCalled();
+      expect(put).toHaveBeenCalledTimes(1);
+      await body.cancel();
+    } finally {
+      release();
+      expect((await first).status).toBe(201);
+    }
+    expect((await upload('retry')).status).toBe(201);
+  });
+
+  it('releases admission after a rejected body', async () => {
+    expect((await upload(new Uint8Array(20 * 1024 * 1024 + 1))).status).toBe(
+      413,
+    );
+    expect((await upload('next')).status).toBe(201);
+  });
+
+  it('releases admission after a failed R2 write', async () => {
+    vi.spyOn(R2FileObjectStore.prototype, 'put').mockRejectedValueOnce(
+      new Error('R2 unavailable'),
+    );
+    await expect(upload('failure')).rejects.toThrow('R2 unavailable');
+    expect((await upload('next')).status).toBe(201);
   });
 });
