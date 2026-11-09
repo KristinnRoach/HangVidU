@@ -97,6 +97,27 @@ describe('redactEventEmails', () => {
     expect(JSON.stringify(result)).toContain('[truncated]');
   });
 
+  it('preserves error metadata and recent breadcrumbs after large diagnostic fields', () => {
+    const noisy = Array.from({ length: 100 }, () =>
+      Array(100).fill('contact@example.com'),
+    );
+    const event = redactEventEmails({
+      extra: { noisy },
+      breadcrumbs: [
+        { data: { noisy } },
+        ...Array.from({ length: 99 }, (_, i) => ({
+          message: `recent ${i} contact@example.com`,
+        })),
+      ],
+      exception: { values: [{ type: 'Error', value: 'Upload failed' }] },
+      tags: { operation: 'file-upload' },
+    });
+    expect(event.exception.values[0].value).toBe('Upload failed');
+    expect(event.tags.operation).toBe('file-upload');
+    expect(event.breadcrumbs.at(-1).message).toBe('recent 98 [redacted-email]');
+    expect(JSON.stringify(event)).not.toContain('contact@example.com');
+  });
+
   it('limits total work for broad, deeply nested input', () => {
     const branch = Array.from({ length: 100 }, () => ({
       email: 'contact@example.com',

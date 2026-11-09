@@ -77,6 +77,7 @@ export function createFilesClient({
     ): Promise<R2StorageDescriptor> {
       const headers = await authHeaders();
       let status: number | undefined;
+      let initializing = false;
       try {
         const response = await fetch(conversationFilesUrl(conversationId), {
           method: 'POST',
@@ -87,6 +88,8 @@ export function createFilesClient({
           body: file,
         });
         status = response.status;
+        initializing =
+          status === 503 && response.headers.get('Retry-After') === '1';
         if (!response.ok) {
           if (response.status === 401) {
             const detail = await response.text().catch(() => '');
@@ -117,7 +120,7 @@ export function createFilesClient({
         // Auth, validation and quota rejections are expected, not SDK issues.
         if (
           status === undefined ||
-          (status >= 500 && status !== 507) ||
+          (status >= 500 && status !== 507 && !initializing) ||
           (status >= 200 && status < 300)
         ) {
           const failure =

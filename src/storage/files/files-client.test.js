@@ -191,6 +191,16 @@ describe('files client', () => {
       true,
     ],
     ['invalid-response', () => Response.json({ wrong: 'metadata' }), true],
+    ['server', () => new Response('unavailable', { status: 503 }), true],
+    [
+      'initializing',
+      () =>
+        new Response('initializing', {
+          status: 503,
+          headers: { 'Retry-After': '1' },
+        }),
+      false,
+    ],
     ['quota', () => new Response('full', { status: 507 }), false],
     ['validation', () => new Response('too large', { status: 413 }), false],
   ])(
@@ -217,7 +227,12 @@ describe('files client', () => {
         expect(context).toEqual({
           tags: { operation: 'file-upload', failure: kind },
           extra: {
-            status: kind === 'network' ? null : kind === 'server' ? 500 : 200,
+            status:
+              kind === 'network'
+                ? null
+                : kind === 'server'
+                  ? result().status
+                  : 200,
             fileSizeBytes: 15,
           },
         });

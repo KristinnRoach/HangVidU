@@ -50,7 +50,7 @@ export function redactEmails(value) {
 
 // Console arguments include nested recipient objects. Bound traversal so cyclic
 // or unexpectedly large diagnostic data cannot break error reporting.
-export function redactEventEmails(event) {
+function sanitizeDiagnosticValue(event) {
   const ancestors = new WeakSet();
   let remaining = 2_000;
   function sanitize(value, depth = 0) {
@@ -91,6 +91,29 @@ export function redactEventEmails(event) {
     return result;
   }
   return sanitize(event);
+}
+
+// Give each event field and breadcrumb its own bounded budget, so a noisy
+// diagnostic subtree cannot erase the error or more recent breadcrumbs.
+export function redactEventEmails(event) {
+  if (!event || typeof event !== 'object' || Array.isArray(event)) {
+    return sanitizeDiagnosticValue(event);
+  }
+  const result = {};
+  for (const key of Object.keys(event).slice(0, 100)) {
+    const value = event[key];
+    Object.defineProperty(result, redactEmails(key), {
+      value: /^emailHash$/i.test(key)
+        ? '[redacted-email]'
+        : key === 'breadcrumbs' && Array.isArray(value)
+          ? value.slice(-100).map(sanitizeDiagnosticValue)
+          : sanitizeDiagnosticValue(value),
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
+  }
+  return result;
 }
 
 function shouldDropKnownExternalNoise(event, hint) {
