@@ -373,6 +373,20 @@ describe('files worker routing + auth', () => {
     expect(res.status).toBe(201);
   });
 
+  it('accepts a file exactly at the 20 MiB limit', async () => {
+    const token = await signToken(validClaims());
+    await allowMember('file-limit', 'user-a');
+    const res = await request('/conversations/file-limit/files', {
+      method: 'POST',
+      token,
+      contentType: 'application/octet-stream',
+      body: new Uint8Array(20 * 1024 * 1024),
+    });
+    expect(res.status).toBe(201);
+    const { key } = (await res.json()) as { key: string };
+    expect((await env.FILES_BUCKET.head(key))?.size).toBe(20 * 1024 * 1024);
+  });
+
   it('rejects oversized uploads before storing', async () => {
     const token = await signToken(validClaims());
     await allowMember('conversation-1', 'user-a');
@@ -380,7 +394,7 @@ describe('files worker routing + auth', () => {
       method: 'POST',
       token,
       contentType: 'image/png',
-      body: new Uint8Array(5 * 1024 * 1024 + 1),
+      body: new Uint8Array(20 * 1024 * 1024 + 1),
     });
 
     expect(res.status).toBe(413);

@@ -1,7 +1,7 @@
 # File storage quota
 
 `TOTAL_FILE_STORAGE_BYTES` in `storage-quota.ts` sets the app-wide limit
-(default: 5 GiB). The separate 5 MiB per-file limit is unchanged.
+(default: 5 GiB). The separate per-file limit is 20 MiB.
 
 Before deploying the Worker, apply migrations through 0010 with `vp run migrate:remote`
 from the repository root. Then use the normal `vp run deploy:cf` workflow.

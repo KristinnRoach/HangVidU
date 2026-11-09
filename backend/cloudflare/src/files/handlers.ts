@@ -12,7 +12,7 @@ import {
   releaseFileStorage,
 } from './storage-quota';
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const AUTHORIZATION_CACHE_TTL_MS = 30 * 1000;
 const AUTHORIZATION_CACHE_MAX_ENTRIES = 500;
 const CONVERSATION_FILE_PREFIX = 'conversation-files';

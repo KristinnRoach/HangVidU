@@ -1,6 +1,6 @@
 import type { MessageAttachment } from './types.js';
 
-export const MAX_R2_FILE_UPLOAD_BYTES = 5 * 1024 * 1024;
+export const MAX_R2_FILE_UPLOAD_BYTES = 20 * 1024 * 1024;
 export const IMAGE_COMPRESSION_THRESHOLD_BYTES = Math.round(1.5 * 1024 * 1024);
 const DISPLAY_ATTACHMENT_FILE_NAME_LENGTH = 24;
 
