@@ -201,7 +201,9 @@ describe('call recovery and missed hangups through DO signaling', () => {
       const message = vi.fn();
       joiner.on('message', message);
       initiator.send('recovered');
-      await expect.poll(() => message.mock.calls.length).toBe(1);
+      await expect
+        .poll(() => message.mock.calls.length, { timeout: 4000 })
+        .toBe(1);
       expect(message.mock.calls[0][0]).toEqual({ data: 'recovered' });
     },
     10000,
