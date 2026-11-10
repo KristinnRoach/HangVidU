@@ -1,8 +1,7 @@
 # Code map
 
-This describes the current implementation, not a new architecture to build.
-[AGENTS.md](../../AGENTS.md) owns conventions and the [roadmap](../ROADMAP.md)
-owns planned changes. Read module docs only when working in that area.
+A guide to the current implementation. See [AGENTS.md](../../AGENTS.md) for
+conventions and the [roadmap](../ROADMAP.md) for planned changes.
 
 ## Finding the owner
 
@@ -20,22 +19,20 @@ owns planned changes. Read module docs only when working in that area.
 | `shared/`, `backend/`                     | Wire contracts; server implementations                                               |
 
 The import rules in [eslint.boundaries.config.js](../../eslint.boundaries.config.js)
-and [vite.config.js](../../vite.config.js) are executable constraints. Use public
-module entry points where enforced; do not copy the allow-table into documentation
-or weaken it merely to silence a lint error.
+and [vite.config.js](../../vite.config.js) enforce module boundaries. Use the public
+module entry points they specify; keep the dependency rules in those configs.
 
 ## State and startup
 
 Solid stores/signals serve reactive UI. Auth also exposes synchronous getters and
-lifecycle events for non-Solid consumers. Keep raw state writers private; public
-named actions such as sending a message or signing out are valid APIs. Do not
-create a second state mirror simply to fit a naming convention.
+lifecycle events for non-Solid consumers. Keep raw state writers private and expose
+named actions, such as sending a message or signing out. Avoid duplicate state.
 
 `main.tsx` registers feature side effects before auth setup emits its initial
 lifecycle events; teardown runs in reverse. Preserve that ordering until the
-startup contract is deliberately changed. Component cleanup and session cleanup
-are different lifetimes: call media is still created by `ActiveCallRoom`, a
-[known foundation task](../ROADMAP.md), not the desired pattern for new session features.
+startup contract is deliberately changed. Call media is currently created by
+`ActiveCallRoom`. Separating its lifetime from the screen is a
+[planned change](../ROADMAP.md).
 
 ## Data and transport
 

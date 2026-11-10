@@ -1,12 +1,11 @@
 # Roadmap
 
-Keep HangVidU easy for a solo maintainer to understand, extend, and maintain.
+Keep HangVidU straightforward to maintain as features are added.
 
 [Working conventions](../AGENTS.md) · [Current code map](architecture/README.md)
 
-The sequence below is planned work. Resolve open decisions when each step starts;
-update its status here as work lands. Continue UI improvements within each feature
-using the foundation from step 2.
+Resolve open decisions when each step starts and update its status as work lands.
+Build ongoing UI improvements on the foundation from step 2.
 
 ## 1. Reliable session behaviour — next
 
@@ -39,7 +38,7 @@ component, removing replaced rules. A complete redesign or CSS migration is not 
 
 ## 4. User settings
 
-- **Outcome:** Users can customise the behaviours that matter to them.
+- **Outcome:** Users can adjust app preferences and call settings.
 - **Scope:** A settings UI using the shared foundation, with explicit defaults and persistence behaviour.
 - **Decide:** Initial preferences; which belong to the device, account, or current session; whether any require cross-device sync.
 - **Done when:** Selected preferences apply consistently, persist as intended, and handle logout and unavailable devices predictably.
