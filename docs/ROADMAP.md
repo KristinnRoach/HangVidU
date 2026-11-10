@@ -14,7 +14,7 @@ Build ongoing UI improvements on the foundation from step 2.
 - **Decide:** Operation ownership and cancellation boundaries.
 - **Done when:** Tests cover delayed results after navigation/logout and call continuity across screen changes.
 
-Call media lifetime is done: `CallHandshakeProvider` owns it for the joined call.
+Call media lifetime is done: `CallHandshakeProvider` owns it for the active call.
 Next: login-scoped ownership of conversation operations in
 [`conversation-store.ts`](../src/stores/conversation/conversation-store.ts).
 

@@ -15,7 +15,12 @@ import LegalFooter from '../components/LegalFooter';
 import LocaleToggle from '../components/LocaleToggle';
 
 import PublicHomepage from './PublicHomepage';
-import { ActiveCallRoom, CallDialogs, StartCallButton } from '@features/call';
+import {
+  ActiveCallRoom,
+  CallDialogs,
+  StartCallButton,
+  useCallHandshake,
+} from '@features/call';
 import ConversationsList from './ConversationsList';
 import { ConversationPanel } from '@features/conversations';
 
@@ -103,10 +108,7 @@ export default function MainContent() {
 
   const headerVisible = createAutoHide(3000, () => p2p.state() !== 'idle');
 
-  const isConnecting = () => {
-    const s = p2p.state();
-    return s === 'creating' || s === 'watching' || s === 'joining';
-  };
+  const { media: callMedia } = useCallHandshake();
   const showAuthenticatedUi = createMemo(() => isLoggedIn() && !isLoggingOut());
 
   createEffect(() => {
@@ -160,16 +162,22 @@ export default function MainContent() {
             <div
               class={`${mainStyles.activeViewContainer} ${mainStyles.callView}`}
             >
-              <LoadBoundary
-                loading={isConnecting()}
+              <Show
+                when={callMedia()}
+                keyed
                 fallback={
                   <div class={mainStyles.callLoading}>
                     <Spinner />
                   </div>
                 }
               >
-                <ActiveCallRoom holdTopBar={headerVisible.hold} />
-              </LoadBoundary>
+                {(media) => (
+                  <ActiveCallRoom
+                    media={media}
+                    holdTopBar={headerVisible.hold}
+                  />
+                )}
+              </Show>
             </div>
           </Show>
 

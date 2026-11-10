@@ -37,7 +37,7 @@ type CallHandshakeContextValue = {
   startCall: (details: StartCallDetails) => Promise<void>;
   hangUp: () => void;
 
-  /** Local media for the joined call; undefined outside one. */
+  /** Local media for the active call; undefined while idle or connecting. */
   media: Accessor<CallMedia | undefined>;
   isCalleeBusy: Accessor<boolean>;
   reconnectStatus: Accessor<CallReconnectStatus>;
@@ -163,11 +163,12 @@ export function CallHandshakeProvider(props: ParentProps) {
   });
   onCleanup(() => document.documentElement.removeAttribute('data-call-active'));
 
-  // Call media belongs to the joined call, not to the view showing it, so call
-  // views can unmount and remount without stopping owned tracks. The memo owns
-  // the media's effects: leaving the call (or unmounting the provider) disposes
-  // them, which stops owned tracks and marks late device results stale.
-  const inJoinedCall = createMemo(() => {
+  // Call media belongs to the active call, not to the view showing it, so call
+  // views can unmount and remount without stopping owned tracks. Active means
+  // past connecting (including room-full/error states, which the call view
+  // shows). The memo owns the media's effects: leaving that phase or unmounting
+  // the provider disposes them, stopping owned tracks.
+  const callActive = createMemo(() => {
     const state = p2p.state();
     return (
       state !== 'idle' &&
@@ -177,7 +178,7 @@ export function CallHandshakeProvider(props: ParentProps) {
     );
   });
   const media = createMemo(() =>
-    inJoinedCall() ? untrack(() => createCallMedia(p2p)) : undefined,
+    callActive() ? untrack(() => createCallMedia(p2p)) : undefined,
   );
 
   const controller = new CallHandshakeController({

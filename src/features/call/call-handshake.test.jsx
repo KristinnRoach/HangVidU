@@ -135,13 +135,23 @@ describe('CallHandshakeProvider', () => {
     setState('joined');
     setViewShown(false);
     setViewShown(true);
+    setState('error');
+    setViewShown(false);
+    setViewShown(true);
     expect(createCallMedia).toHaveBeenCalledOnce();
-    expect(seen.at(-1)).toBeDefined();
+    expect(seen[1]).toBeDefined();
+    expect(seen[2]).toBe(seen[1]);
     expect(mocks.disposeMedia).not.toHaveBeenCalled();
 
-    setState('leaving');
-    expect(mocks.disposeMedia).not.toHaveBeenCalled();
     setState('idle');
+    expect(mocks.disposeMedia).toHaveBeenCalledOnce();
+  });
+
+  it('releases call media when the provider unmounts mid-call', () => {
+    mocks.p2pState = () => 'joined';
+    render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
+    expect(createCallMedia).toHaveBeenCalledOnce();
+    cleanup();
     expect(mocks.disposeMedia).toHaveBeenCalledOnce();
   });
 

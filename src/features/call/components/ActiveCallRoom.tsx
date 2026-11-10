@@ -4,18 +4,20 @@ import type { AutoHideController } from '@shared/createAutoHide';
 import { MemberStreams } from './MemberStreams';
 import { ActiveCallControls } from './CallControls';
 import { useCallHandshake } from '../call-handshake.js';
+import type { CallMedia } from '../call-media';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { t } from '@shared/i18n';
 
 import styles from './ActiveCallRoom.module.css';
 
 export function ActiveCallRoom(props: {
+  media: CallMedia;
   holdTopBar: AutoHideController['hold'];
 }) {
   const p2p = useP2PContext();
-  const { reconnectStatus, media } = useCallHandshake();
+  const { reconnectStatus } = useCallHandshake();
   createEffect(() => {
-    if (media()?.faceMaskCapturing()) onCleanup(props.holdTopBar('hidden'));
+    if (props.media.faceMaskCapturing()) onCleanup(props.holdTopBar('hidden'));
   });
 
   // Room-link (guest) calls carry ?publicRoom= in the URL; contact calls don't.
@@ -37,14 +39,10 @@ export function ActiveCallRoom(props: {
 
   return (
     <div class={styles.room}>
-      <Show when={media()}>
-        {(media) => (
-          <MemberStreams
-            remoteAudioMuted={remoteAudioMuted()}
-            media={media()}
-          />
-        )}
-      </Show>
+      <MemberStreams
+        remoteAudioMuted={remoteAudioMuted()}
+        media={props.media}
+      />
 
       <Show when={reconnectStatus() !== 'connected'}>
         <div class={styles.reconnecting} role='status' aria-live='polite'>
@@ -79,14 +77,12 @@ export function ActiveCallRoom(props: {
         </div>
       </Show>
 
-      <Show when={p2p.state() === 'joined' && media()}>
-        {(media) => (
-          <ActiveCallControls
-            media={media()}
-            remoteAudioMuted={remoteAudioMuted()}
-            onRemoteAudioMutedChange={setRemoteAudioMuted}
-          />
-        )}
+      <Show when={p2p.state() === 'joined'}>
+        <ActiveCallControls
+          media={props.media}
+          remoteAudioMuted={remoteAudioMuted()}
+          onRemoteAudioMutedChange={setRemoteAudioMuted}
+        />
       </Show>
     </div>
   );
