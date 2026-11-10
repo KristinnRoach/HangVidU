@@ -17,6 +17,7 @@ playwright/.cache/
 # Vitest
 .vitest-attachments/
 .vite-plugin-mkcert/
+.certs/
 
 # Coverage
 coverage/
