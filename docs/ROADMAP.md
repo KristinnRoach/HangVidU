@@ -9,15 +9,14 @@ Build ongoing UI improvements on the foundation from step 2.
 
 ## 1. Reliable session behaviour — next
 
-- **Outcome:** Navigation and session changes do not disrupt ongoing work or lose unsent text.
-- **Scope:** Stale conversation requests, failed-message recovery, and call media lifetime independent of screen mounting.
-- **Decide:** Operation ownership and cancellation boundaries; how failed messages are recovered.
-- **Done when:** Tests cover delayed results after navigation/logout, failed sends, and call continuity across screen changes.
+- **Outcome:** Navigation and session changes do not disrupt ongoing work or apply stale results.
+- **Scope:** Stale conversation requests and call media lifetime independent of screen mounting. Failed-message recovery is tracked separately in #758.
+- **Decide:** Operation ownership and cancellation boundaries.
+- **Done when:** Tests cover delayed results after navigation/logout and call continuity across screen changes.
 
-Start by verifying the conversation paths in
+Call media lifetime is done: `CallHandshakeProvider` owns it for the joined call.
+Next: login-scoped ownership of conversation operations in
 [`conversation-store.ts`](../src/stores/conversation/conversation-store.ts).
-Call media currently originates in
-[`ActiveCallRoom.tsx`](../src/features/call/components/ActiveCallRoom.tsx).
 
 ## 2. Minimal UI foundation
 

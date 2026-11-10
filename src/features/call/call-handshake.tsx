@@ -1,8 +1,10 @@
 import {
   createContext,
   createEffect,
+  createMemo,
   createSignal,
   onCleanup,
+  untrack,
   useContext,
   type Accessor,
   type ParentProps,
@@ -23,6 +25,7 @@ import {
   CallHandshakeController,
   type IncomingCallNotificationDetails,
 } from './call-handshake-controller.js';
+import { createCallMedia, type CallMedia } from './call-media';
 import type {
   CallHandshakeState,
   CallReconnectStatus,
@@ -34,6 +37,8 @@ type CallHandshakeContextValue = {
   startCall: (details: StartCallDetails) => Promise<void>;
   hangUp: () => void;
 
+  /** Local media for the joined call; undefined outside one. */
+  media: Accessor<CallMedia | undefined>;
   isCalleeBusy: Accessor<boolean>;
   reconnectStatus: Accessor<CallReconnectStatus>;
   incomingCall: Accessor<MailboxInvite | null>;
@@ -158,6 +163,23 @@ export function CallHandshakeProvider(props: ParentProps) {
   });
   onCleanup(() => document.documentElement.removeAttribute('data-call-active'));
 
+  // Call media belongs to the joined call, not to the view showing it, so call
+  // views can unmount and remount without stopping owned tracks. The memo owns
+  // the media's effects: leaving the call (or unmounting the provider) disposes
+  // them, which stops owned tracks and marks late device results stale.
+  const inJoinedCall = createMemo(() => {
+    const state = p2p.state();
+    return (
+      state !== 'idle' &&
+      state !== 'creating' &&
+      state !== 'watching' &&
+      state !== 'joining'
+    );
+  });
+  const media = createMemo(() =>
+    inJoinedCall() ? untrack(() => createCallMedia(p2p)) : undefined,
+  );
+
   const controller = new CallHandshakeController({
     p2p,
     createSignaling: createRoomSignaling,
@@ -191,6 +213,7 @@ export function CallHandshakeProvider(props: ParentProps) {
     startCall: controller.startCall,
     // Wrap so a click handler's MouseEvent can't leak in as the hangUp reason.
     hangUp: () => controller.hangUp('user'),
+    media,
     isCalleeBusy,
     reconnectStatus,
     incomingCall,

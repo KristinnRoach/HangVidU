@@ -5,11 +5,11 @@ import { createAutoHide } from '@shared/createAutoHide';
 import { ActiveCallRoom } from './ActiveCallRoom';
 
 const mocks = vi.hoisted(() => ({ capturing: vi.fn() }));
-vi.mock('../call-media', () => ({
-  createCallMedia: () => ({ faceMaskCapturing: mocks.capturing }),
-}));
 vi.mock('../call-handshake.js', () => ({
-  useCallHandshake: () => ({ reconnectStatus: () => 'connected' }),
+  useCallHandshake: () => ({
+    reconnectStatus: () => 'connected',
+    media: () => ({ faceMaskCapturing: mocks.capturing }),
+  }),
 }));
 vi.mock('@shared/p2p-context.js', () => ({
   useP2PContext: () => ({ state: () => 'idle' }),
