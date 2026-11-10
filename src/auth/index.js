@@ -18,7 +18,7 @@
 //         lifecycle. Non-Solid auth-scoped listeners (e.g. `presence`,
 //         `contacts`, `conversations`) (re)wire on these from their own
 //         `setup()` so they survive a login that completes after setup.
-//     See docs/architecture/STATE_RULES.md.
+//     See docs/architecture/README.md.
 //
 // App-level auth wiring (logout housekeeping + calling `initAuth()` last) lives
 // in `src/auth/setup.js`, which main.tsx invokes after feature setups.
@@ -45,7 +45,7 @@ export {
 
 // Read-only state API. `setState` is intentionally NOT re-exported — writers live
 // inside the auth module only. External consumers read via getters and subscribe
-// to `evt:auth:state:changed`. See docs/architecture/STATE_RULES.md.
+// to `evt:auth:state:changed`. See docs/architecture/README.md.
 export {
   getAuthState,
   getIsLoggedIn,

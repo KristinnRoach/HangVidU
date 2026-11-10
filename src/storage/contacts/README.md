@@ -62,23 +62,3 @@ patches.
 
 If another layer later needs its own command/input validation, that should be a
 separate schema, not a second copy of the storage record schema.
-
-### Deferred On Purpose
-
-- auth readiness policy
-- backend selection policy
-- result envelopes
-- query helpers like "get by conversation id"
-- sorting helpers
-- migration between guest/local and authenticated/RTDB storage
-
-### Possible Final Split
-
-Keep `contact-transform.js` as one file for now.
-
-When finalizing the standardized storage-layer pattern, consider splitting it if
-the file grows enough to make the boundaries clearer:
-
-- `contact-normalizers.js`: pure canonicalization helpers only
-- `contact-validators.js`: schema parse/assert entry points
-- `contact-merge.js`: patch merge semantics and invariants

@@ -1,13 +1,72 @@
-# Architecture Rules
+# Code map
 
-Where to find each rule category. All docs use bullet lists, no long prose.
+This describes the current implementation, not a new architecture to build.
+[AGENTS.md](../../AGENTS.md) owns conventions and the [roadmap](../ROADMAP.md)
+owns planned changes. Read module docs only when working in that area.
 
-| File                                 | Covers                                                  |
-| ------------------------------------ | ------------------------------------------------------- |
-| [`NAMING.md`](./NAMING.md)           | File names, event names, payload shapes                 |
-| [`STRUCTURE.md`](./STRUCTURE.md)     | Folder layout, layers, where files live, barrel exports |
-| [`STATE_RULES.md`](./STATE_RULES.md) | In-memory state pattern (`*-state.js`)                  |
-| [`EVENTS.md`](./EVENTS.md)           | Event bus usage, single-bus rule                        |
-| [`STYLING.md`](./STYLING.md)         | Tailwind v4 rules, tokens, cascade layers, migration    |
+## Finding the owner
 
-Layer import rules are enforced by [`eslint.boundaries.config.js`](../../eslint.boundaries.config.js) — that config is the source of truth for the allow-table.
+| Location                                  | Responsibility                                                                       |
+| ----------------------------------------- | ------------------------------------------------------------------------------------ |
+| `src/main.tsx`, `src/App.tsx`, `src/app/` | Startup, providers, navigation, and screens that compose features                    |
+| `src/features/`                           | Calls, contacts, conversations, presence, notifications, and their UI                |
+| `src/stores/`                             | Reactive application state and actions over persistence/realtime                     |
+| `src/storage/`                            | Durable data access and validation                                                   |
+| `src/realtime/`                           | Signaling, conversation channels, and user mailbox connections                       |
+| `src/auth/`                               | Identity, login lifecycle, and token access                                          |
+| `src/components/`                         | Shared UI; `base-legacy/` is existing imperative UI, not the pattern for new screens |
+| `src/shared/`, `src/lib/`                 | App-aware cross-cutting helpers; reusable primitives respectively                    |
+| `src/infra/`, `src/push/`, `src/pwa/`     | SDK wiring; push delivery/client lifecycle; service-worker updates                   |
+| `shared/`, `backend/`                     | Wire contracts; server implementations                                               |
+
+The import rules in [eslint.boundaries.config.js](../../eslint.boundaries.config.js)
+and [vite.config.js](../../vite.config.js) are executable constraints. Use public
+module entry points where enforced; do not copy the allow-table into documentation
+or weaken it merely to silence a lint error.
+
+## State and startup
+
+Solid stores/signals serve reactive UI. Auth also exposes synchronous getters and
+lifecycle events for non-Solid consumers. Keep raw state writers private; public
+named actions such as sending a message or signing out are valid APIs. Do not
+create a second state mirror simply to fit a naming convention.
+
+`main.tsx` registers feature side effects before auth setup emits its initial
+lifecycle events; teardown runs in reverse. Preserve that ordering until the
+startup contract is deliberately changed. Component cleanup and session cleanup
+are different lifetimes: call media is still created by `ActiveCallRoom`, a
+[known foundation task](../ROADMAP.md), not the desired pattern for new session features.
+
+## Data and transport
+
+Firebase provides identity, RTDB presence, Hosting, and push Functions. The
+Cloudflare Worker uses D1 for durable app data, R2 for attachments, and Durable
+Objects for signaling and live coordination. Contacts use D1 for signed-in users
+and local storage for guests; old RTDB contacts are migration input, not an app
+write path. `@kidlib/p2p` owns WebRTC mechanics; the call feature supplies signaling
+and application behaviour.
+
+Persistent messages combine HTTP writes/history with live conversation-channel
+updates. The selected conversation store also owns drafts and optimistic send
+state. Private messaging is not implemented by that persistence-oriented path.
+Use the [events API reference](../../src/shared/events/README.md) only when working
+with the bus; direct calls remain the default for actions.
+
+## Styling transition
+
+Tailwind v4 is the default for new UI. Existing global CSS and CSS Modules remain
+until their components are migrated. Shared tokens live in
+[src/styles/theme.css](../../src/styles/theme.css); use semantic tokens for recurring
+visual roles and Tailwind defaults for ordinary spacing and sizing. Extend the
+small palette when an actual UI change needs it, not by bulk-porting legacy variables.
+
+[src/styles/main.css](../../src/styles/main.css) declares layers in order:
+`theme < base < app < utilities`. Legacy global CSS is in `app`, so utilities can
+override it. CSS Modules are unlayered and beat layered utilities: do not combine
+them as competing styling systems on the same element. Migrate a component fully,
+then remove its module/global rules and tokens that have no remaining consumers.
+Keep necessary dynamic values local; do not recreate a parallel theme with literals.
+
+Dialogs currently have both native-modal and custom-overlay implementations.
+Consolidating accessible focus, keyboard, and dismissal behaviour is roadmap work;
+new styling alone does not make those behaviours equivalent.

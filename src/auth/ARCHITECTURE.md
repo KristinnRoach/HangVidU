@@ -20,7 +20,7 @@ authed Cloud Function calls are in `src/push/`.
 - `auth-state.js` is the provider-agnostic state store + lifecycle events.
 - Writes to auth state happen ONLY inside this module. External code reads via
   getters and subscribes to `evt:auth:*` events. See
-  `docs/architecture/STATE_RULES.md`.
+  [the code map](../../docs/architecture/README.md).
 
 ## Vendor Boundary
 

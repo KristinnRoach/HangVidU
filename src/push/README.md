@@ -1,33 +1,17 @@
-# Push Notifications
+# Push notifications
 
-Public app entrypoint:
+Import through [index.js](index.js). It exports `PushNotifications`,
+`getPushNotifications`, `initPushNotifications`, and the startup `setup` function.
+The [client](push-notifications.js) owns permission and subscription operations.
 
-- import from [index.js](./index.js) only
+`setup` subscribes to call and conversation events and invokes the client's
+notification methods. Message push is initiated by the app after a persistent
+send; it is not a database-only trigger. Backend Functions validate requests,
+store subscriptions, and deliver web push. [sw/](sw/) owns native display and click
+routing. Keep in-app notification UI separate from this delivery path.
 
-Supported app-facing operations:
+Add notification kinds through the shared contracts, backend, and service worker
+together. Do not add content-bearing push to private session messaging.
 
-- `registerCurrentClient()`
-- `unregisterCurrentClient()`
-- `ensureEnabledIfGranted()`
-- `requestPermission()`
-- `sendIncomingCall({ targetUserId, roomId, callerId, callerName, notificationId? })`
-- `sendMissedCall({ targetUserId, roomId, callerId, callerName, notificationId? })`
-
-Current ownership contract:
-
-- app code decides when a call event should trigger push
-- backend functions own subscription persistence, request validation, and fan-out delivery
-- service worker code under [sw](./sw) owns native notification display and click routing
-- message push delivery is backend-driven in V1, not app-driven
-
-Extension rules:
-
-- keep push/system notifications separate from in-app UI notifications
-- add new notification kinds through the shared/backend/service-worker path together, not by adding ad hoc client APIs
-- keep [index.js](./index.js) as the only public import boundary
-- avoid introducing debug-only endpoints or window globals into the production path
-
-Troubleshooting:
-
-- In Brave, enable “Use Google services for push messaging” in browser settings and restart Brave if push setup fails.
-- If setup succeeds but notifications do not appear on macOS, check System Settings → Notifications for Brave or the installed app, and check Focus settings.
+If notifications do not appear, check browser push permissions and OS notification/
+Focus settings. Brave may also require “Use Google services for push messaging”.
