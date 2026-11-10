@@ -172,6 +172,10 @@ describe('call recovery and missed hangups through DO signaling', () => {
       await Promise.all([initiator.start(), joiner.start()]);
       await expect.poll(() => initiator.dataChannel?.readyState).toBe('open');
       await expect.poll(() => joiner.dataChannel?.readyState).toBe('open');
+      // Recovery is ignored until connectionstatechange reports 'connected',
+      // which WebKit can fire after the data channel opens.
+      await expect.poll(() => initiator.state).toBe('connected');
+      await expect.poll(() => joiner.state).toBe('connected');
 
       const target = role === 'initiator' ? initiator : joiner;
       const sendRecovery = vi.spyOn(
