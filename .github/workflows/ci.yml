@@ -21,7 +21,7 @@ jobs:
     # Preinstalled browsers and system deps avoid slow apt mirrors on the runner.
     # Keep the tag in sync with the locked playwright version.
     container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      image: mcr.microsoft.com/playwright:v1.64.1-resolute
       options: --ipc=host --init
     env:
       # Firefox refuses to start as root when HOME belongs to another user.
