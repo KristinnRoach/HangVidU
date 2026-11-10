@@ -1472,6 +1472,7 @@ describe('CallHandshakeController', () => {
 
   it('reports caller media failure as a call failure grouped by error name', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
     mocks.getUserMedia.mockRejectedValue(
       Object.assign(new Error('Permission denied'), {
         name: 'NotAllowedError',
@@ -1500,10 +1501,76 @@ describe('CallHandshakeController', () => {
           message: 'Permission denied',
           audioOnly: true,
           permissions: { camera: 'unsupported', microphone: 'unsupported' },
+          msSinceLoad: expect.any(Number),
+          mediaRejectedAfterMs: expect.any(Number),
         }),
       }),
     );
+    // No reload: it never clears a NotAllowedError.
+    expect(alert).toHaveBeenCalledWith(
+      expect.stringContaining('Fully close HangVidU'),
+    );
   });
+
+  it('tells the user to allow access when media permission is denied', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    // beforeEach replaces navigator, so this doesn't leak.
+    navigator.permissions = { query: async () => ({ state: 'denied' }) };
+    mocks.getUserMedia.mockRejectedValue(
+      Object.assign(new Error('Permission denied'), {
+        name: 'NotAllowedError',
+      }),
+    );
+    const controller = createController(createP2PMock(), {
+      getCallerName: () => 'Caller',
+    });
+
+    await controller.startCall({
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: true,
+    });
+
+    expect(alert).toHaveBeenCalledWith(
+      expect.stringContaining('Allow it in your browser settings'),
+    );
+  });
+
+  it.each([true, false])(
+    'considers denied camera permission only when video is requested (audioOnly=%s)',
+    async (audioOnly) => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      navigator.permissions = {
+        query: async ({ name }) => ({
+          state: name === 'camera' ? 'denied' : 'prompt',
+        }),
+      };
+      mocks.getUserMedia.mockRejectedValue(
+        Object.assign(new Error('Permission denied'), {
+          name: 'NotAllowedError',
+        }),
+      );
+      const controller = createController(createP2PMock(), {
+        getCallerName: () => 'Caller',
+      });
+
+      await controller.startCall({
+        calleeId: 'callee-id',
+        calleeName: 'Callee',
+        audioOnly,
+      });
+
+      expect(alert).toHaveBeenCalledWith(
+        expect.stringContaining(
+          audioOnly
+            ? 'Fully close HangVidU'
+            : 'Allow it in your browser settings',
+        ),
+      );
+    },
+  );
 
   it('stops stale caller media when cleanup wins the permission race', async () => {
     const media = deferred();

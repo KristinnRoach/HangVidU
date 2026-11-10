@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { PAGE_RELOAD_REASON_KEY } from '@shared/app-reload/index.js';
 import {
   reloadAfterPreloadError,
   reloadPageWhenAllowed,
@@ -26,6 +27,9 @@ describe('PWA page reload', () => {
     allowReload();
     await Promise.all([firstPendingReload, secondPendingReload]);
     expect(reload).toHaveBeenCalledOnce();
+    expect(sessionStorage.getItem(PAGE_RELOAD_REASON_KEY)).toBe(
+      'sw-update-reload',
+    );
   });
 
   it('reloads once after a failed dynamic import', async () => {
@@ -34,10 +38,16 @@ describe('PWA page reload', () => {
     const options = { whenAllowed: () => Promise.resolve(), reload };
 
     await reloadAfterPreloadError(options);
+    expect(sessionStorage.getItem(PAGE_RELOAD_REASON_KEY)).toBe(
+      'stale-chunk-reload',
+    );
+    // Startup consumes the reason before the next import failure.
+    sessionStorage.removeItem(PAGE_RELOAD_REASON_KEY);
     // The reloaded page fails the same import again; it must not loop.
     await reloadAfterPreloadError(options);
 
     expect(reload).toHaveBeenCalledOnce();
+    expect(sessionStorage.getItem(PAGE_RELOAD_REASON_KEY)).toBeNull();
   });
 
   it.each(['getItem', 'setItem'])(
@@ -55,6 +65,8 @@ describe('PWA page reload', () => {
       ).resolves.toBeUndefined();
       await reloadAfterPreloadError(options);
       expect(reload).not.toHaveBeenCalled();
+      vi.restoreAllMocks();
+      expect(sessionStorage.getItem(PAGE_RELOAD_REASON_KEY)).toBeNull();
     },
   );
 });
