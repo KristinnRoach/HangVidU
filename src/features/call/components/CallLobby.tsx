@@ -99,19 +99,23 @@ export function CallLobby() {
     setJoining(true);
     setCallEnded(false);
     setError(null);
-    let localStream: MediaStream | undefined;
+    let streamPromise: Promise<MediaStream> | undefined;
     try {
-      const uid = await signInAsGuest();
+      // iOS requires getUserMedia to start within the tap's transient user
+      // activation — start it alongside the guest sign-in, not after it.
+      streamPromise = navigator.mediaDevices.getUserMedia({
+        video: getVideoConstraints(),
+        audio: getAudioConstraints(),
+      });
+      const [uid, acquiredStream] = await Promise.all([
+        signInAsGuest(),
+        streamPromise,
+      ]);
       // peerId must be unique per tab, not per user: the anonymous session is
       // shared by all tabs of a browser profile, and the signaling DO keys
       // peers by peerId. The full UID binds the tab ID to its authenticated
       // owner; the UUID lets tabs participate separately.
       const peerId = `${uid}:${crypto.randomUUID()}`;
-      const acquiredStream = await navigator.mediaDevices.getUserMedia({
-        video: getVideoConstraints(),
-        audio: getAudioConstraints(),
-      });
-      localStream = acquiredStream;
       const room = await p2p.join({
         roomId: id,
         peerId,
@@ -135,9 +139,12 @@ export function CallLobby() {
       });
       if (!room) throw p2p.error() ?? new Error('Room join returned no room');
     } catch (err) {
-      // A signaling failure can happen before p2p invokes getLocalStream and
-      // assumes ownership of the tracks.
-      localStream?.getTracks().forEach((track) => track.stop());
+      // Sign-in or signaling can fail before p2p invokes getLocalStream and
+      // assumes ownership of the tracks, possibly before capture resolves.
+      void streamPromise?.then(
+        (stream) => stream.getTracks().forEach((track) => track.stop()),
+        () => {},
+      );
       console.error('[CallLobby] Failed to join guest room:', err);
       setError(joinErrorMessage(err, p2p.errorKind()));
       setJoining(false);

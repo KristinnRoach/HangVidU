@@ -369,6 +369,23 @@ describe('call media', () => {
       expect(media.micOn()).toBe(true);
     });
 
+    it('waits until the app is visible to recover an ended microphone', async () => {
+      const visibility = vi
+        .spyOn(document, 'visibilityState', 'get')
+        .mockReturnValue('hidden');
+      const { media, microphone } = setup();
+      const replacement = createTrack('audio');
+      getUserMedia.mockResolvedValue(createStream([replacement]));
+      microphone.readyState = 'ended';
+      microphone.dispatch('ended');
+      expect(getUserMedia).not.toHaveBeenCalled();
+
+      visibility.mockRestore();
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(getUserMedia).toHaveBeenCalledOnce();
+      await vi.waitFor(() => expect(media.micOn()).toBe(true));
+    });
+
     it('leaves a live microphone alone on devicechange', () => {
       const { deviceEvents, room } = setup();
       deviceEvents.dispatchEvent(new Event('devicechange'));
