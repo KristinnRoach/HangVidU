@@ -1248,7 +1248,7 @@ describe('CallHandshakeController', () => {
     }
   });
 
-  it('does not notify accepted when joining the room fails', async () => {
+  it('rejects instead of accepting when joining the room fails', async () => {
     const joinError = new Error('camera blocked');
     const stream = createMediaStream({ audio: true, video: true });
     mocks.getUserMedia.mockResolvedValue(stream);
@@ -1274,7 +1274,13 @@ describe('CallHandshakeController', () => {
     controller.acceptIncoming();
     await flushPromises();
 
-    expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+    // The caller stops ringing instead of waiting for the invite to expire.
+    await vi.waitFor(() =>
+      expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledWith(
+        expect.objectContaining({ responseType: 'rejected' }),
+      ),
+    );
+    expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledOnce();
     await vi.waitFor(() => expect(p2p.dispose).toHaveBeenCalled());
     expect(p2p.error).toHaveBeenCalledTimes(1);
     await vi.waitFor(() =>
@@ -1506,9 +1512,10 @@ describe('CallHandshakeController', () => {
         }),
       }),
     );
-    // No reload: it never clears a NotAllowedError.
+    // No reload: it never clears a NotAllowedError. Unknown permission
+    // state could be a denial, so the message covers both fixes.
     expect(alert).toHaveBeenCalledWith(
-      expect.stringContaining('Fully close HangVidU'),
+      expect.stringMatching(/browser settings.*fully close HangVidU/),
     );
   });
 

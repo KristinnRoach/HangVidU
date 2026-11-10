@@ -32,6 +32,7 @@
   "call.media_error.capture.generic": "Ekki tókst að nota myndavélina eða hljóðnemann. Reyndu aftur.",
   "call.media_error.capture.blocked": "Aðgangur að myndavél eða hljóðnema er lokaður. Leyfðu aðgang í stillingum vafrans og reyndu svo aftur.",
   "call.media_error.capture.refused": "Aðgangi að myndavél eða hljóðnema var hafnað. Lokaðu HangVidU (eða vafranum) alveg, opnaðu aftur og reyndu á ný.",
+  "call.media_error.capture.unknown": "Aðgangi að myndavél eða hljóðnema var hafnað. Athugaðu hvort aðgangur sé leyfður í stillingum vafrans, lokaðu svo HangVidU (eða vafranum) alveg, opnaðu aftur og reyndu á ný.",
   "call.media_error.microphone.blocked": "Aðgangi að hljóðnema hafnað. Leyfðu hann í stillingum vafrans.",
   "call.media_error.microphone.not_found": "Enginn hljóðnemi fannst.",
   "call.media_error.microphone.in_use": "Hljóðnemi er ekki tiltækur. Hann gæti verið í notkun í öðru forriti.",

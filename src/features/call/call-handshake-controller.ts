@@ -270,10 +270,14 @@ function mediaFailureMessage(
   if (!(err instanceof Error) || err.name !== 'NotAllowedError') {
     return t('call.media_error.capture.generic');
   }
-  return permissions.microphone === 'denied' ||
-    (!audioOnly && permissions.camera === 'denied')
-    ? t('call.media_error.capture.blocked')
-    : t('call.media_error.capture.refused');
+  const states = audioOnly
+    ? [permissions.microphone]
+    : [permissions.microphone, permissions.camera];
+  if (states.includes('denied')) return t('call.media_error.capture.blocked');
+  // 'unsupported' or 'timeout' could hide a denial, so cover both fixes.
+  return states.every((state) => state === 'prompt' || state === 'granted')
+    ? t('call.media_error.capture.refused')
+    : t('call.media_error.capture.unknown');
 }
 
 /**
@@ -956,6 +960,7 @@ export class CallHandshakeController {
       );
     }
     const { signal } = abortController;
+    let acceptSent = false;
     this.enterRoom(
       state.call.roomId,
       localUID,
@@ -970,6 +975,7 @@ export class CallHandshakeController {
           );
         }
         if (signal.aborted) throw signal.reason;
+        acceptSent = true;
         return svc.respondToIncomingCallInvite({
           callInviteId: state.call.callInviteId,
           roomId: state.call.roomId,
@@ -1028,6 +1034,19 @@ export class CallHandshakeController {
             );
           }
         });
+        // Otherwise the caller keeps ringing until the invite expires.
+        if (!acceptSent) {
+          svc
+            .respondToIncomingCallInvite({
+              callInviteId: state.call.callInviteId,
+              roomId: state.call.roomId,
+              callerId: state.call.callerId,
+              responseType: 'rejected',
+            })
+            .catch((err) =>
+              console.error('Error rejecting failed incoming call:', err),
+            );
+        }
         this.hangUp('accept-error');
       })
       .finally(() => {
