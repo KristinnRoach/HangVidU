@@ -18,7 +18,14 @@ jobs:
     name: Verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Preinstalled browsers and system deps avoid slow apt mirrors on the runner.
+    # Keep the tag in sync with the locked playwright version.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host --init
     env:
+      # Firefox refuses to start as root when HOME belongs to another user.
+      HOME: /root
       VITE_HANGVIDU_API_URL: https://api.hangvidu.com
       VITE_FIREBASE_API_KEY: dummy
       VITE_FIREBASE_AUTH_DOMAIN: test.firebaseapp.com
@@ -37,10 +44,10 @@ jobs:
           node-version: '22'
           cache: true
       - run: vp check
-      - run: vp exec playwright install --with-deps chromium firefox webkit
       - name: Provide audio output for Firefox WebRTC tests
         run: |
-          sudo apt-get install -y pulseaudio
+          apt-get update
+          apt-get install -y --no-install-recommends pulseaudio
           pulseaudio --start --exit-idle-time=-1
           pactl load-module module-null-sink sink_name=ci
           pactl set-default-sink ci
