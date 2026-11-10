@@ -37,7 +37,15 @@ jobs:
           node-version: '22'
           cache: true
       - run: vp check
-      - run: vp exec playwright install --with-deps chromium firefox webkit
+      # The runner's apt mirror occasionally stalls for minutes; retry once instead of waiting.
+      # A Playwright container image was tried, but WebKit WebRTC tests fail inside it.
+      - id: browsers
+        run: vp exec playwright install --with-deps chromium firefox webkit
+        timeout-minutes: 2
+        continue-on-error: true
+      - if: steps.browsers.outcome == 'failure'
+        run: vp exec playwright install --with-deps chromium firefox webkit
+        timeout-minutes: 3
       - name: Provide audio output for Firefox WebRTC tests
         run: |
           sudo apt-get install -y pulseaudio
