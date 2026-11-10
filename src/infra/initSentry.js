@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/browser';
 
 import { subscribe } from '@shared/events/index.js';
-import { UPDATE_RELOAD_KEY } from '@shared/app-reload/index.js';
+import { PAGE_RELOAD_REASON_KEY } from '@shared/app-reload/index.js';
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 const FILTER_EXTENSION_ASYNC_CHANNEL_ERRORS =
@@ -126,13 +126,14 @@ function shouldDropKnownExternalNoise(event, hint) {
   return message.includes(EXTENSION_ASYNC_CHANNEL_ERROR_TEXT);
 }
 
-// navigate | reload | back_forward, or update-reload for a PWA update reload.
+// Browser navigation type, or the explicit reason recorded before app reloads.
 // Separates failures right after a reload from ones after a fresh launch.
 function getPageLoadType() {
   try {
-    if (sessionStorage.getItem(UPDATE_RELOAD_KEY)) {
-      sessionStorage.removeItem(UPDATE_RELOAD_KEY);
-      return 'update-reload';
+    const reason = sessionStorage.getItem(PAGE_RELOAD_REASON_KEY);
+    sessionStorage.removeItem(PAGE_RELOAD_REASON_KEY);
+    if (reason === 'sw-update-reload' || reason === 'stale-chunk-reload') {
+      return reason;
     }
   } catch {
     // Storage blocked: fall back to the navigation type.

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 
-import { UPDATE_RELOAD_KEY } from '@shared/app-reload/index.js';
+import { PAGE_RELOAD_REASON_KEY } from '@shared/app-reload/index.js';
 import { reloadPageWhenAllowed } from './reload-page.js';
 
 describe('PWA page reload', () => {
@@ -23,6 +23,8 @@ describe('PWA page reload', () => {
     allowReload();
     await Promise.all([firstPendingReload, secondPendingReload]);
     expect(reload).toHaveBeenCalledOnce();
-    expect(sessionStorage.getItem(UPDATE_RELOAD_KEY)).toBe('1');
+    expect(sessionStorage.getItem(PAGE_RELOAD_REASON_KEY)).toBe(
+      'sw-update-reload',
+    );
   });
 });
