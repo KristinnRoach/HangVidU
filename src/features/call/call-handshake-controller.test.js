@@ -1506,9 +1506,10 @@ describe('CallHandshakeController', () => {
         }),
       }),
     );
-    // No reload: it never clears a NotAllowedError.
+    // No reload: it never clears a NotAllowedError. Unknown permission
+    // state could be a denial, so the message covers both fixes.
     expect(alert).toHaveBeenCalledWith(
-      expect.stringContaining('Fully close HangVidU'),
+      expect.stringMatching(/browser settings.*fully close HangVidU/),
     );
   });
 
