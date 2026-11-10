@@ -230,13 +230,17 @@ async function getMediaPermissions(): Promise<Record<string, string>> {
  * A failed call attempt (before or while joining) as a Sentry issue, grouped
  * by error name. Awaited before the reload in alertCallStartFailed, which
  * would otherwise drop the buffered console log that was the only trace.
+ * Resolves with the reported permission state.
  */
 async function reportCallStartFailure(
   kind: CallFailureKind,
   err: unknown,
   detail: Record<string, unknown> = {},
-): Promise<void> {
+): Promise<Record<string, string>> {
   const errorName = err instanceof Error ? err.name : 'unknown';
+  const mediaRejectedAfterMs = (err as { mediaRejectedAfterMs?: number })
+    ?.mediaRejectedAfterMs;
+  const permissions = await getMediaPermissions();
   reportCallFailure(
     kind,
     {
@@ -245,10 +249,29 @@ async function reportCallStartFailure(
       ...detail,
       standalone: globalThis.matchMedia?.('(display-mode: standalone)').matches,
       visibilityState: globalThis.document?.visibilityState,
-      permissions: await getMediaPermissions(),
+      permissions,
+      msSinceLoad: Math.round(performance.now()),
+      ...(mediaRejectedAfterMs != null && { mediaRejectedAfterMs }),
     },
     errorName,
   );
+  return permissions;
+}
+
+/**
+ * Reloading never clears a NotAllowedError (field reports: only fully
+ * closing the PWA or browser does), so say what will instead.
+ */
+function mediaFailureMessage(
+  err: unknown,
+  permissions: Record<string, string>,
+): string {
+  if (!(err instanceof Error) || err.name !== 'NotAllowedError') {
+    return 'Could not use the camera or microphone. Try again.';
+  }
+  return Object.values(permissions).includes('denied')
+    ? 'Camera or microphone access is blocked. Allow it in your browser settings, then try again.'
+    : 'Camera or microphone access was refused. Fully close HangVidU (or your browser), reopen it and try again.';
 }
 
 /**
@@ -523,9 +546,12 @@ export class CallHandshakeController {
       this.pendingOutgoingLocalStream = localStream;
     } catch (err) {
       console.error('Error getting caller media before starting call:', err);
-      // Field reports: repeats across reloads until the PWA is relaunched.
-      await reportCallStartFailure('caller-media-failed', err, { audioOnly });
-      this.alertCallStartFailed('Error getting caller media. Try again.');
+      const permissions = await reportCallStartFailure(
+        'caller-media-failed',
+        err,
+        { audioOnly },
+      );
+      window.alert(mediaFailureMessage(err, permissions));
       return;
     }
 
@@ -784,9 +810,20 @@ export class CallHandshakeController {
     audioOnly: boolean,
     signal?: AbortSignal,
   ): Promise<MediaStream> {
+    const startedAt = performance.now();
     const streamPromise = navigator.mediaDevices.getUserMedia({
       video: audioOnly ? false : getVideoConstraints(),
       audio: getAudioConstraints(),
+    });
+    // Reported with the failure: a near-instant rejection means no permission
+    // prompt was shown. A side branch, registered first, so it runs before
+    // any consumer and adds no tick to the stream's own chain.
+    streamPromise.catch((err: unknown) => {
+      if (err instanceof Error) {
+        Object.assign(err, {
+          mediaRejectedAfterMs: Math.round(performance.now() - startedAt),
+        });
+      }
     });
     if (!signal) return streamPromise;
 
@@ -978,6 +1015,10 @@ export class CallHandshakeController {
         void reportCallStartFailure('accept-failed', err, {
           roomId: state.call.roomId,
           audioOnly: state.call.audioOnly ?? false,
+        }).then((permissions) => {
+          if (err instanceof Error && err.name === 'NotAllowedError') {
+            window.alert(mediaFailureMessage(err, permissions));
+          }
         });
         this.hangUp('accept-error');
       })

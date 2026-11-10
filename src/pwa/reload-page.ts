@@ -1,4 +1,7 @@
-import { whenAppReloadAllowed } from '@shared/app-reload/index.js';
+import {
+  UPDATE_RELOAD_KEY,
+  whenAppReloadAllowed,
+} from '@shared/app-reload/index.js';
 
 type ReloadPageOptions = {
   whenAllowed?: () => Promise<void>;
@@ -16,7 +19,14 @@ export function reloadPageWhenAllowed({
 
   pendingReload = Promise.resolve()
     .then(whenAllowed)
-    .then(reload)
+    .then(() => {
+      try {
+        sessionStorage.setItem(UPDATE_RELOAD_KEY, '1');
+      } catch {
+        // Storage blocked: the load is just tagged 'reload' instead.
+      }
+      reload();
+    })
     .finally(() => {
       pendingReload = null;
     });
