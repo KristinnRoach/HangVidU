@@ -9,6 +9,8 @@ are in [the development guide](README.md).
 
 `vpr deploy:cf` typechecks and tests the Cloudflare Worker, then deploys it. For coordinated backend/frontend releases, `vpr deploy:prod` runs all checks and the build before deploying the Worker, then Hosting, then marking the deploy in Sentry.
 
+Neither command applies remote D1 migrations. For schema changes, keep migrations compatible with the running Worker and run `vpr migrate:remote` before deploying a Worker that needs the new schema.
+
 `vpr deploy:all` (and `deploy:all:skip-tests`) deploys all of Firebase, including functions and rules, but not Cloudflare. `vpr deploy:fb:db` and `vpr deploy:fb:functions` deploy only rules or functions.
 
 Compat tests prepare Playwright browsers automatically. For other browser tests, run `vpr setup:browsers` on a fresh machine or after a Playwright upgrade.

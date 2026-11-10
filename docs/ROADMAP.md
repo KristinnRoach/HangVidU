@@ -2,7 +2,7 @@
 
 ## Goal and scope
 
-Make HangVidU easy for one junior developer to understand, extend, and maintain.
+Keep HangVidU easy for a solo maintainer to understand, extend, and maintain.
 Prioritise dependable user-facing features and consistent UI over broad rewrites.
 This is the agreed direction, not a promise that every detail is already decided.
 [AGENTS.md](../AGENTS.md) owns working conventions; the [code map](architecture/README.md)

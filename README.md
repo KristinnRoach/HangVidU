@@ -8,10 +8,7 @@ A web app for video calls and messaging. [Try HangVidU](https://hangvidu.com/).
 - Contact invitations, persistent text messages and attachments, and push notifications.
 - English/Icelandic UI and an installable web app.
 
-Group calls are the next major feature to validate and build. Shared/synchronised
-media playback and private session messaging are planned, not completed features.
-Persistent chat currently exposes only the latest 40 messages; older-history
-loading is still planned. Screen sharing is not synchronised media playback.
+Next up: group calls. See the [roadmap](docs/ROADMAP.md) for planned work and current limitations.
 
 ## Working on the app
 

@@ -8,7 +8,14 @@ Start with [AGENTS.md](../../AGENTS.md) for conventions and the
 
 `vpr preview` builds the app and starts a production preview on port 4173 with the tunnel. Use `vpr preview:local` for a preview without the tunnel.
 
-The dev server uses a trusted mkcert certificate locally. The mobile dev tunnel connects to that HTTPS origin and disables origin certificate verification because the certificate is local-only.
+Local HTTPS needs a trusted certificate. Install [mkcert](https://github.com/FiloSottile/mkcert#installation), then run once from the repository root:
+
+```bash
+mkdir -p .certs
+vpr setup:dev-certs
+```
+
+The mobile dev tunnel connects to that HTTPS origin and disables origin certificate verification because the certificate is local-only.
 
 The tunnel uses the named tunnel `vidu-dev`. One-time setup: `cloudflared tunnel login`, then `cloudflared tunnel create vidu-dev` and `cloudflared tunnel route dns vidu-dev dev.hangvidu.com`. The mobile dev script points directly at `https://localhost:5173`; preview uses local tunnel ingress configured for `http://localhost:4173`. Run only one tunnel command at a time.
 
@@ -22,21 +29,6 @@ Environment variables are split per environment:
 For local development, copy `.env.example` to `.env.development` and supply your
 project values. The Worker reads `backend/cloudflare/.dev.vars`; obtain the
 required local credentials rather than copying production secrets into source.
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:066e27080c4339b1f1d6b15808f85bd02c3fc2af33722b0cc66c135e1375a221 -->
-
-Install the [mkcert executable](https://github.com/FiloSottile/mkcert#installation) using its installation instructions. From the repository root, create the certificate directory and run the setup command once:
-
-```bash
-mkdir -p .certs
-vpr setup:dev-certs
-```
-
-This creates the certificates used by the local Worker.
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 `vpr dev` applies local D1 migrations before starting the API.
 
