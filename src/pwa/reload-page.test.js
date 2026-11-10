@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   reloadAfterPreloadError,
@@ -6,6 +6,7 @@ import {
 } from './reload-page.js';
 
 describe('PWA page reload', () => {
+  afterEach(() => vi.restoreAllMocks());
   it('does not reload until the app reload gate opens', async () => {
     let allowReload;
     const whenAllowed = new Promise((resolve) => {
@@ -38,4 +39,22 @@ describe('PWA page reload', () => {
 
     expect(reload).toHaveBeenCalledOnce();
   });
+
+  it.each(['getItem', 'setItem'])(
+    'does not reload or throw when sessionStorage.%s fails',
+    async (method) => {
+      sessionStorage.clear();
+      vi.spyOn(Storage.prototype, method).mockImplementation(() => {
+        throw new DOMException('Storage blocked', 'SecurityError');
+      });
+      const reload = vi.fn();
+      const options = { whenAllowed: () => Promise.resolve(), reload };
+
+      await expect(
+        Promise.resolve().then(() => reloadAfterPreloadError(options)),
+      ).resolves.toBeUndefined();
+      await reloadAfterPreloadError(options);
+      expect(reload).not.toHaveBeenCalled();
+    },
+  );
 });

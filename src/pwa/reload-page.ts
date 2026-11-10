@@ -35,13 +35,24 @@ export function reloadAfterPreloadError({
   reload = () => window.location.reload(),
   ...options
 }: ReloadPageOptions = {}): Promise<void> | undefined {
-  const reloadedAt = Number(sessionStorage.getItem(PRELOAD_RELOAD_KEY));
+  let reloadedAt: number;
+  try {
+    reloadedAt = Number(sessionStorage.getItem(PRELOAD_RELOAD_KEY));
+  } catch {
+    // Without a persistent cooldown, a reload could repeat indefinitely.
+    return;
+  }
   if (Date.now() - reloadedAt < PRELOAD_RELOAD_COOLDOWN_MS) return;
 
   return reloadPageWhenAllowed({
     ...options,
     reload: () => {
-      sessionStorage.setItem(PRELOAD_RELOAD_KEY, String(Date.now()));
+      try {
+        sessionStorage.setItem(PRELOAD_RELOAD_KEY, String(Date.now()));
+      } catch {
+        // Keep the original import failure when the cooldown cannot be saved.
+        return;
+      }
       reload();
     },
   });
