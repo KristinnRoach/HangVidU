@@ -960,6 +960,7 @@ export class CallHandshakeController {
       );
     }
     const { signal } = abortController;
+    let acceptSent = false;
     this.enterRoom(
       state.call.roomId,
       localUID,
@@ -974,6 +975,7 @@ export class CallHandshakeController {
           );
         }
         if (signal.aborted) throw signal.reason;
+        acceptSent = true;
         return svc.respondToIncomingCallInvite({
           callInviteId: state.call.callInviteId,
           roomId: state.call.roomId,
@@ -1032,6 +1034,19 @@ export class CallHandshakeController {
             );
           }
         });
+        // Otherwise the caller keeps ringing until the invite expires.
+        if (!acceptSent) {
+          svc
+            .respondToIncomingCallInvite({
+              callInviteId: state.call.callInviteId,
+              roomId: state.call.roomId,
+              callerId: state.call.callerId,
+              responseType: 'rejected',
+            })
+            .catch((err) =>
+              console.error('Error rejecting failed incoming call:', err),
+            );
+        }
         this.hangUp('accept-error');
       })
       .finally(() => {
