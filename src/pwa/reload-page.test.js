@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 
-import { reloadPageWhenAllowed } from './reload-page.js';
+import {
+  reloadAfterPreloadError,
+  reloadPageWhenAllowed,
+} from './reload-page.js';
 
 describe('PWA page reload', () => {
   it('does not reload until the app reload gate opens', async () => {
@@ -21,6 +24,18 @@ describe('PWA page reload', () => {
 
     allowReload();
     await Promise.all([firstPendingReload, secondPendingReload]);
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('reloads once after a failed dynamic import', async () => {
+    sessionStorage.clear();
+    const reload = vi.fn();
+    const options = { whenAllowed: () => Promise.resolve(), reload };
+
+    await reloadAfterPreloadError(options);
+    // The reloaded page fails the same import again; it must not loop.
+    await reloadAfterPreloadError(options);
+
     expect(reload).toHaveBeenCalledOnce();
   });
 });
