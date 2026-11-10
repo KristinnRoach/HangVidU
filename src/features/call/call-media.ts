@@ -259,17 +259,21 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   // WebKit needs getDisplayMedia (and getUserMedia on iOS) to start within the
   // tap's transient user activation, so start capture before restoring.
   async function restoreMaskCameraDuring(capture: Promise<MediaStream>) {
-    const [stream] = await Promise.all([
-      capture,
-      restoreMaskCamera().catch((error: unknown) => {
-        void capture.then(
-          (stream) => stream.getTracks().forEach((track) => track.stop()),
-          () => {},
-        );
-        throw error;
-      }),
-    ]);
-    return stream;
+    const restoration = restoreMaskCamera().catch((error: unknown) => {
+      void capture.then(
+        (stream) => stream.getTracks().forEach((track) => track.stop()),
+        () => {},
+      );
+      throw error;
+    });
+    try {
+      const [stream] = await Promise.all([capture, restoration]);
+      return stream;
+    } catch (error) {
+      // A capture failure must not unlock controls while restoration is active.
+      await restoration.catch(() => {});
+      throw error;
+    }
   }
 
   async function toggleFaceMask() {

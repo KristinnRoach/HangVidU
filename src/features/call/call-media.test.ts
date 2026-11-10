@@ -1281,6 +1281,37 @@ describe('experimental face mask lifecycle', () => {
     expect(mask.dispose).toHaveBeenCalledOnce();
     expect(room.setLocalTrack).not.toHaveBeenCalled();
   });
+  it('keeps camera controls locked after capture fails until mask restoration settles', async () => {
+    const { media, room, dispose } = setup();
+    await toggleAndApply(media);
+    let finishRestoration!: () => void;
+    room.setLocalTrack.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRestoration = resolve;
+        }),
+    );
+    const error = new DOMException('Capture denied', 'NotAllowedError');
+    const getDisplayMedia = vi.fn().mockRejectedValue(error);
+    Object.assign(navigator.mediaDevices, { getDisplayMedia });
+    let settled = false;
+    const pending = media.toggleScreenShare().catch((failure: unknown) => {
+      settled = true;
+      return failure;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(settled).toBe(false);
+    expect(media.cameraPending()).toBe(true);
+    await media.toggleScreenShare();
+    expect(getDisplayMedia).toHaveBeenCalledOnce();
+
+    finishRestoration();
+    expect(await pending).toBe(error);
+    expect(media.cameraPending()).toBe(false);
+    dispose();
+  });
+
   it('publishes the mask and restores the live camera without reacquiring it', async () => {
     const { camera, filtered, mask, room, media, dispose } = setup();
     await toggleAndApply(media);
