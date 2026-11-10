@@ -179,7 +179,7 @@ export async function setupUpdateHandler() {
     const updateSW = registerSW({
       immediate: true,
       onNeedReload() {
-        void reloadPageWhenAllowed();
+        void reloadPageWhenAllowed({ reason: 'sw-update-reload' });
       },
       onNeedRefresh() {
         console.info('[PWA] New version available');

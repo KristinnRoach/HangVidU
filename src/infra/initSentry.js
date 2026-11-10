@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/browser';
 
 import { subscribe } from '@shared/events/index.js';
+import { PAGE_RELOAD_REASON_KEY } from '@shared/app-reload/index.js';
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 const FILTER_EXTENSION_ASYNC_CHANNEL_ERRORS =
@@ -125,6 +126,21 @@ function shouldDropKnownExternalNoise(event, hint) {
   return message.includes(EXTENSION_ASYNC_CHANNEL_ERROR_TEXT);
 }
 
+// Browser navigation type, or the explicit reason recorded before app reloads.
+// Separates failures right after a reload from ones after a fresh launch.
+function getPageLoadType() {
+  try {
+    const reason = sessionStorage.getItem(PAGE_RELOAD_REASON_KEY);
+    sessionStorage.removeItem(PAGE_RELOAD_REASON_KEY);
+    if (reason === 'sw-update-reload' || reason === 'stale-chunk-reload') {
+      return reason;
+    }
+  } catch {
+    // Storage blocked: fall back to the navigation type.
+  }
+  return performance.getEntriesByType?.('navigation')[0]?.type ?? 'unknown';
+}
+
 if (sentryDsn) {
   Sentry.init({
     dsn: sentryDsn,
@@ -168,6 +184,8 @@ if (sentryDsn) {
       return redactEventEmails(event);
     },
   });
+
+  Sentry.setTag('page.load', getPageLoadType());
 
   // uid only: it is opaque, and the email stays out (see EMAIL_PATTERN above).
   // 'loading' is skipped so an in-flight sign-out keeps attributing to the user.
