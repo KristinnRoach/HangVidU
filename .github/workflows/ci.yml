@@ -39,13 +39,18 @@ jobs:
       - run: vp check
       # The runner's apt mirror occasionally stalls for minutes; retry once instead of waiting.
       # A Playwright container image was tried, but WebKit WebRTC tests fail inside it.
+      # A timed-out step leaves its apt-get running, so the retry must wait for the dpkg lock.
+      - name: Configure apt timeouts
+        run: |
+          printf 'Acquire::http::Timeout "15";\nAcquire::Retries "3";\nDPkg::Lock::Timeout "120";\n' \
+            | sudo tee /etc/apt/apt.conf.d/99ci
       - id: browsers
         run: vp exec playwright install --with-deps chromium firefox webkit
         timeout-minutes: 2
         continue-on-error: true
       - if: steps.browsers.outcome == 'failure'
         run: vp exec playwright install --with-deps chromium firefox webkit
-        timeout-minutes: 3
+        timeout-minutes: 5
       - name: Provide audio output for Firefox WebRTC tests
         run: |
           sudo apt-get install -y pulseaudio
