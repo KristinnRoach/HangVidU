@@ -5,17 +5,18 @@ import { createAutoHide } from '@shared/createAutoHide';
 import { ActiveCallRoom } from './ActiveCallRoom';
 
 const mocks = vi.hoisted(() => ({ capturing: vi.fn() }));
-vi.mock('../call-media', () => ({
-  createCallMedia: () => ({ faceMaskCapturing: mocks.capturing }),
-}));
 vi.mock('../call-handshake.js', () => ({
-  useCallHandshake: () => ({ reconnectStatus: () => 'connected' }),
+  useCallHandshake: () => ({
+    reconnectStatus: () => 'connected',
+  }),
 }));
 vi.mock('@shared/p2p-context.js', () => ({
   useP2PContext: () => ({ state: () => 'idle' }),
 }));
 vi.mock('./MemberStreams', () => ({ MemberStreams: () => null }));
 vi.mock('./CallControls', () => ({ ActiveCallControls: () => null }));
+
+const media = { faceMaskCapturing: () => mocks.capturing() };
 
 afterEach(() => {
   cleanup();
@@ -29,7 +30,7 @@ it('holds the top bar hidden throughout setup and resumes after setup ends', () 
   let header;
   render(() => {
     header = createAutoHide(1000);
-    return <ActiveCallRoom holdTopBar={header.hold} />;
+    return <ActiveCallRoom media={media} holdTopBar={header.hold} />;
   });
 
   expect(header.visible()).toBe(true);
@@ -49,7 +50,7 @@ it('releases the top-bar hold when the call room unmounts during setup', () => {
   mocks.capturing.mockReturnValue(true);
   const hold = vi.fn(() => release);
   const release = vi.fn();
-  render(() => <ActiveCallRoom holdTopBar={hold} />);
+  render(() => <ActiveCallRoom media={media} holdTopBar={hold} />);
   expect(hold).toHaveBeenCalledExactlyOnceWith('hidden');
   cleanup();
   expect(release).toHaveBeenCalledOnce();

@@ -30,9 +30,11 @@ named actions, such as sending a message or signing out. Avoid duplicate state.
 
 `main.tsx` registers feature side effects before auth setup emits its initial
 lifecycle events; teardown runs in reverse. Preserve that ordering until the
-startup contract is deliberately changed. Call media is currently created by
-`ActiveCallRoom`. Separating its lifetime from the screen is a
-[planned change](../ROADMAP.md).
+startup contract is deliberately changed. Call media belongs to the active
+call: `CallHandshakeProvider` creates it once connecting finishes and disposes it
+when the call ends, so call views can unmount and remount without stopping
+local tracks. `MainContent` shows the call room only while
+`useCallHandshake().media()` exists and passes it in.
 
 ## Data and transport
 

@@ -1,8 +1,10 @@
 import {
   createContext,
   createEffect,
+  createMemo,
   createSignal,
   onCleanup,
+  untrack,
   useContext,
   type Accessor,
   type ParentProps,
@@ -23,6 +25,7 @@ import {
   CallHandshakeController,
   type IncomingCallNotificationDetails,
 } from './call-handshake-controller.js';
+import { createCallMedia, type CallMedia } from './call-media';
 import type {
   CallHandshakeState,
   CallReconnectStatus,
@@ -34,6 +37,8 @@ type CallHandshakeContextValue = {
   startCall: (details: StartCallDetails) => Promise<void>;
   hangUp: () => void;
 
+  /** Local media for the active call; undefined while idle or connecting. */
+  media: Accessor<CallMedia | undefined>;
   isCalleeBusy: Accessor<boolean>;
   reconnectStatus: Accessor<CallReconnectStatus>;
   incomingCall: Accessor<MailboxInvite | null>;
@@ -158,6 +163,24 @@ export function CallHandshakeProvider(props: ParentProps) {
   });
   onCleanup(() => document.documentElement.removeAttribute('data-call-active'));
 
+  // Call media belongs to the active call, not to the view showing it, so call
+  // views can unmount and remount without stopping owned tracks. Active means
+  // past connecting (including room-full/error states, which the call view
+  // shows). The memo owns the media's effects: leaving that phase or unmounting
+  // the provider disposes them, stopping owned tracks.
+  const callActive = createMemo(() => {
+    const state = p2p.state();
+    return (
+      state !== 'idle' &&
+      state !== 'creating' &&
+      state !== 'watching' &&
+      state !== 'joining'
+    );
+  });
+  const media = createMemo(() =>
+    callActive() ? untrack(() => createCallMedia(p2p)) : undefined,
+  );
+
   const controller = new CallHandshakeController({
     p2p,
     createSignaling: createRoomSignaling,
@@ -191,6 +214,7 @@ export function CallHandshakeProvider(props: ParentProps) {
     startCall: controller.startCall,
     // Wrap so a click handler's MouseEvent can't leak in as the hangUp reason.
     hangUp: () => controller.hangUp('user'),
+    media,
     isCalleeBusy,
     reconnectStatus,
     incomingCall,

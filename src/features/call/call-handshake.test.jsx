@@ -6,10 +6,11 @@ import {
   it,
   vi,
 } from 'vite-plus/test';
-import { createSignal } from 'solid-js';
+import { Show, createSignal } from 'solid-js';
 import { render, cleanup } from '@solidjs/testing-library';
 import { whenAppReloadAllowed } from '../../shared/app-reload/index.js';
-import { CallHandshakeProvider } from './call-handshake';
+import { CallHandshakeProvider, useCallHandshake } from './call-handshake';
+import { createCallMedia } from './call-media';
 
 const mocks = vi.hoisted(() => ({
   init: vi.fn(),
@@ -22,7 +23,18 @@ const mocks = vi.hoisted(() => ({
   user: () => null,
   p2pState: () => 'idle',
   controllerOptions: undefined,
+  disposeMedia: vi.fn(),
 }));
+
+vi.mock('./call-media', async () => {
+  const { onCleanup } = await import('solid-js');
+  return {
+    createCallMedia: vi.fn(() => {
+      onCleanup(mocks.disposeMedia);
+      return {};
+    }),
+  };
+});
 
 vi.mock('./call-handshake-controller.js', () => ({
   CallHandshakeController: vi.fn(function (options) {
@@ -101,6 +113,47 @@ describe('CallHandshakeProvider', () => {
   });
 
   afterEach(() => cleanup());
+
+  it('keeps call media across call view remounts and releases it when the call ends', () => {
+    const [state, setState] = createSignal('joining');
+    const [viewShown, setViewShown] = createSignal(true);
+    mocks.p2pState = state;
+    const seen = [];
+    function CallView() {
+      seen.push(useCallHandshake().media());
+      return null;
+    }
+    render(() => (
+      <CallHandshakeProvider>
+        <Show when={viewShown()}>
+          <CallView />
+        </Show>
+      </CallHandshakeProvider>
+    ));
+    expect(seen).toEqual([undefined]);
+
+    setState('joined');
+    setViewShown(false);
+    setViewShown(true);
+    setState('error');
+    setViewShown(false);
+    setViewShown(true);
+    expect(createCallMedia).toHaveBeenCalledOnce();
+    expect(seen[1]).toBeDefined();
+    expect(seen[2]).toBe(seen[1]);
+    expect(mocks.disposeMedia).not.toHaveBeenCalled();
+
+    setState('idle');
+    expect(mocks.disposeMedia).toHaveBeenCalledOnce();
+  });
+
+  it('releases call media when the provider unmounts mid-call', () => {
+    mocks.p2pState = () => 'joined';
+    render(() => <CallHandshakeProvider>{null}</CallHandshakeProvider>);
+    expect(createCallMedia).toHaveBeenCalledOnce();
+    cleanup();
+    expect(mocks.disposeMedia).toHaveBeenCalledOnce();
+  });
 
   it('holds app reloads from an incoming invite through call teardown', async () => {
     const allowed = vi.fn();

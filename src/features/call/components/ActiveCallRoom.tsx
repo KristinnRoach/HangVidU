@@ -3,22 +3,21 @@ import type { AutoHideController } from '@shared/createAutoHide';
 
 import { MemberStreams } from './MemberStreams';
 import { ActiveCallControls } from './CallControls';
-import { createCallMedia } from '../call-media';
 import { useCallHandshake } from '../call-handshake.js';
+import type { CallMedia } from '../call-media';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { t } from '@shared/i18n';
 
 import styles from './ActiveCallRoom.module.css';
 
 export function ActiveCallRoom(props: {
+  media: CallMedia;
   holdTopBar: AutoHideController['hold'];
 }) {
   const p2p = useP2PContext();
   const { reconnectStatus } = useCallHandshake();
-  // createCallMedia owns local imperative track state (camera tracks, screen-share track)
-  const media = createCallMedia(p2p);
   createEffect(() => {
-    if (media.faceMaskCapturing()) onCleanup(props.holdTopBar('hidden'));
+    if (props.media.faceMaskCapturing()) onCleanup(props.holdTopBar('hidden'));
   });
 
   // Room-link (guest) calls carry ?publicRoom= in the URL; contact calls don't.
@@ -40,7 +39,10 @@ export function ActiveCallRoom(props: {
 
   return (
     <div class={styles.room}>
-      <MemberStreams remoteAudioMuted={remoteAudioMuted()} media={media} />
+      <MemberStreams
+        remoteAudioMuted={remoteAudioMuted()}
+        media={props.media}
+      />
 
       <Show when={reconnectStatus() !== 'connected'}>
         <div class={styles.reconnecting} role='status' aria-live='polite'>
@@ -77,7 +79,7 @@ export function ActiveCallRoom(props: {
 
       <Show when={p2p.state() === 'joined'}>
         <ActiveCallControls
-          media={media}
+          media={props.media}
           remoteAudioMuted={remoteAudioMuted()}
           onRemoteAudioMutedChange={setRemoteAudioMuted}
         />
