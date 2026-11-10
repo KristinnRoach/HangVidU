@@ -10,13 +10,8 @@ A web app for video calls and messaging. [Try HangVidU](https://hangvidu.com/).
 
 Next up: group calls. See the [roadmap](docs/ROADMAP.md) for planned work and current limitations.
 
-## Working on the app
+## Development
 
-Start with [AGENTS.md](AGENTS.md) for working conventions and agent instructions.
-Then read only what the task needs:
-
-- [Roadmap](docs/ROADMAP.md): goals, sequence, completion criteria, and open decisions.
-- [Code map](docs/architecture/README.md): current ownership and styling transition.
-- [Development](docs/dev/README.md): local setup and validation.
-
-The roadmap is the high-level context for future work; no prior chat is required.
+See the [development guide](docs/dev/README.md) for local setup and the
+[code map](docs/architecture/README.md) for how the code is organised.
+Conventions are in [AGENTS.md](AGENTS.md).
