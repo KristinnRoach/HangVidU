@@ -7,7 +7,7 @@ button {
   outline-color: transparent;
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   font-size: var(--font-size-md);
   padding: var(--spacing-xs) var(--spacing-md);
 

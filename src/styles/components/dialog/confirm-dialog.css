@@ -12,8 +12,8 @@
   margin: var(--spacing-md);
   padding: 1rem;
   box-shadow: var(--shadow-md);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
 }
 
 .confirm-dialog-actions {

@@ -7,8 +7,8 @@
   margin: var(--spacing-md);
   padding: 1.25rem;
   box-shadow: var(--shadow-md);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
 }
 
 .edit-contact-dialog label {
@@ -25,8 +25,8 @@
   font-size: var(--font-size-base);
   border: 1px solid var(--border-color, #555);
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
   box-sizing: border-box;
 }
 

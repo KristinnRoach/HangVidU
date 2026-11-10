@@ -11,7 +11,7 @@
   padding: 0.5rem;
   margin: var(--spacing-2xl) auto;
 
-  background: var(--bg-brighter);
+  background: var(--color-bg-brighter);
   border: 2px solid #8d8d8d;
   border-radius: 12px;
 
@@ -70,7 +70,7 @@
 
       & .unread-badge {
         background-color: var(--color-primary);
-        color: var(--text-primary);
+        color: var(--color-text-primary);
         font-size: 0.7rem;
         font-weight: 700;
         text-shadow: 0 0 2px rgb(0 0 0);

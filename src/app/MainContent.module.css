@@ -37,7 +37,7 @@
   width: var(--content-width);
   max-width: var(--content-width);
 
-  background: var(--bg-darker);
+  background: var(--color-bg-darker);
 }
 
 /* Temp fix for mobile height issues */

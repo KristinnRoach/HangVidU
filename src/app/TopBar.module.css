@@ -103,7 +103,7 @@
     display 0.2s ease-out allow-discrete;
 
   button {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
   }
   @media (hover: hover) and (pointer: fine) {
     button:hover {
@@ -126,9 +126,9 @@
   height: 100%;
   padding-right: 0.5rem;
   icon {
-    color: var(--text-secondary) !important;
-    fill: var(--text-secondary) !important;
-    stroke: var(--text-secondary) !important;
+    color: var(--color-text-secondary) !important;
+    fill: var(--color-text-secondary) !important;
+    stroke: var(--color-text-secondary) !important;
   }
 }
 
@@ -142,7 +142,7 @@
   font-size: 1.2rem;
   border-radius: 50%;
 
-  color: var(--text-secondary) !important;
+  color: var(--color-text-secondary) !important;
 }
 
 @starting-style {
@@ -164,7 +164,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 1rem;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 
   flex: 1;
   min-width: 0;
@@ -185,7 +185,7 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--bg-brighter);
+    background: var(--color-bg-brighter);
     font-size: 1.2rem;
     flex-shrink: 0;
   }

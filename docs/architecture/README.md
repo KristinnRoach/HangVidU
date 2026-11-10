@@ -54,10 +54,13 @@ with the bus; direct calls remain the default for actions.
 ## Styling transition
 
 Tailwind v4 is the default for new UI. Existing global CSS and CSS Modules remain
-until their components are migrated. Shared tokens live in
-[src/styles/theme.css](../../src/styles/theme.css); use semantic tokens for recurring
-visual roles and Tailwind defaults for ordinary spacing and sizing. Extend the
-small palette when an actual UI change needs it, not by bulk-porting legacy variables.
+until their components are migrated. All shared tokens live in
+[src/styles/theme.css](../../src/styles/theme.css): colours, shadows, text shadows,
+and the font family are Tailwind theme variables, which legacy CSS and CSS Modules
+read through `var()`. The legacy spacing, radius, font-size, z-index, and
+transition variables stay in plain `:root` until a design pass settles one scale.
+Use theme tokens for recurring visual roles and Tailwind defaults for ordinary
+spacing and sizing.
 
 [src/styles/main.css](../../src/styles/main.css) declares layers in order:
 `theme < base < app < utilities`. Legacy global CSS is in `app`, so utilities can

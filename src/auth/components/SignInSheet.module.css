@@ -62,7 +62,7 @@
     .description {
       font-size: 0.9rem;
       font-weight: 100;
-      color: var(--text-secondary, #888);
+      color: var(--color-text-secondary, #888);
     }
   }
   .providersSection {
@@ -83,7 +83,7 @@
     align-items: center;
     width: 100%;
     gap: 0.5rem;
-    color: var(--text-secondary, #888);
+    color: var(--color-text-secondary, #888);
     font-size: 0.85rem;
     margin: 0.25rem 0;
   }
@@ -93,7 +93,7 @@
     content: '';
     flex: 1;
     height: 1px;
-    background: var(--border-primary, currentColor);
+    background: var(--color-border-primary, currentColor);
     opacity: 0.3;
   }
 
@@ -101,14 +101,14 @@
     background: none;
     letter-spacing: 0.05em;
     font-size: 0.85rem;
-    color: var(--text-secondary, #888);
+    color: var(--color-text-secondary, #888);
     cursor: pointer;
   }
   @media (hover: hover) and (pointer: fine) {
     .passwordToggle:hover {
       background: none;
       text-decoration: underline;
-      color: var(--text-primary, #eee);
+      color: var(--color-text-primary, #eee);
     }
   }
 }

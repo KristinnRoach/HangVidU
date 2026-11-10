@@ -17,12 +17,12 @@
 .dialog-card {
   width: min(100%, 26rem);
   padding: var(--spacing-2xl);
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-xl);
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent 35%),
-    var(--bg-brighter);
-  color: var(--text-primary);
+    var(--color-bg-brighter);
+  color: var(--color-text-primary);
   box-shadow: var(--shadow-lg);
 }
 
@@ -41,7 +41,7 @@
   padding: 0.35rem 0.7rem;
   border-radius: var(--radius-sm);
   background: rgb(255 255 255 / 0.06);
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -60,7 +60,7 @@
 
 .dialog-subtitle {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-size: var(--font-size-md);
 }
 
@@ -99,11 +99,11 @@
 
 .dialog-persona-text strong {
   font-size: var(--font-size-lg);
-  color: var(--text-primary);
+  color: var(--color-text-primary);
 }
 
 .dialog-meta {
-  color: var(--text-tertiary);
+  color: var(--color-text-tertiary);
   font-size: var(--font-size-sm);
 }
 
