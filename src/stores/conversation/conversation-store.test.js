@@ -483,6 +483,139 @@ describe('conversation-store', () => {
     }
   });
 
+  function deferred() {
+    let resolve;
+    const promise = new Promise((r) => {
+      resolve = r;
+    });
+    return { promise, resolve };
+  }
+
+  it('drops a delayed direct open once a newer selection was made', async () => {
+    const store = await import('./conversation-store.js');
+    const resolving = deferred();
+    mocks.getContactById.mockReturnValue({ contactId: 'contact-2' });
+    mocks.resolveDirectConversationId.mockReturnValue(resolving.promise);
+
+    const pending = store.openDirectConversation('contact-2');
+    store.openConversation('conversation-1');
+    resolving.resolve('conversation-2');
+    await pending;
+
+    expect(store.selection().conversationId).toBe('conversation-1');
+    expect(store.getConversationState().conversationId).toBe('conversation-1');
+    expect(store.loadSelectedConversationId()).toBe('conversation-1');
+  });
+
+  it('drops a delayed direct open that resolves after logout', async () => {
+    const store = await import('./conversation-store.js');
+    const resolving = deferred();
+    mocks.getContactById.mockReturnValue({ contactId: 'contact-2' });
+    mocks.resolveDirectConversationId.mockReturnValue(resolving.promise);
+
+    const pending = store.openDirectConversation('contact-2');
+    store.resetConversationStore();
+    mocks.getLoggedInUserId.mockReturnValue('someone-else');
+    resolving.resolve('conversation-2');
+    await pending;
+
+    expect(store.selection()).toBeNull();
+    expect(mocks.cacheContactConversationId).not.toHaveBeenCalled();
+    expect(repo.watchRecentMessages).not.toHaveBeenCalled();
+  });
+
+  it('does not select a conversation while logged out', async () => {
+    const store = await import('./conversation-store.js');
+    mocks.getLoggedInUserId.mockReturnValue(null);
+
+    store.openConversation('conversation-1');
+
+    expect(store.selection()).toBeNull();
+  });
+
+  it('keeps a newer send busy when an older send completes after a switch', async () => {
+    const store = await import('./conversation-store.js');
+    const first = deferred();
+    const second = deferred();
+    repo.send
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+
+    store.openConversation('conversation-1');
+    store.setConversationDraft('one');
+    const firstSend = store.sendMessage();
+    store.openConversation('conversation-2');
+    store.setConversationDraft('two');
+    const secondSend = store.sendMessage();
+
+    first.resolve({ id: 'saved-1', sentAt: 10 });
+    await firstSend;
+    expect(store.getConversationState().sending).toBe(true);
+
+    second.resolve({ id: 'saved-2', sentAt: 11 });
+    await secondSend;
+    expect(store.getConversationState().sending).toBe(false);
+  });
+
+  it('does not send a push for a send that completes after logout', async () => {
+    const store = await import('./conversation-store.js');
+    const sending = deferred();
+    repo.send.mockReturnValue(sending.promise);
+
+    store.openConversation('conversation-1');
+    store.setConversationDraft('hello');
+    const send = store.sendMessage();
+    store.resetConversationStore();
+    mocks.getLoggedInUserId.mockReturnValue(null);
+    sending.resolve({ id: 'saved-1', sentAt: 10 });
+
+    expect(await send).toBe(true);
+    expect(mocks.publish).not.toHaveBeenCalled();
+    expect(store.getConversationState().messages).toEqual([]);
+  });
+
+  it('abandons an upload that finishes after leaving and returning', async () => {
+    const store = await import('./conversation-store.js');
+    const uploading = deferred();
+    mocks.uploadConversationFile.mockReturnValue(uploading.promise);
+    mocks.deleteConversationFile.mockResolvedValue(undefined);
+
+    store.openConversation('conversation-1');
+    const upload = store.sendFileMessage(
+      new File(['x'], 'note.txt', { type: 'text/plain' }),
+    );
+    store.openConversation('conversation-2');
+    store.openConversation('conversation-1');
+    const storage = { key: 'file-1' };
+    uploading.resolve(storage);
+
+    expect(await upload).toBe('skipped');
+    expect(repo.send).not.toHaveBeenCalled();
+    expect(mocks.deleteConversationFile).toHaveBeenCalledWith(
+      'conversation-1',
+      storage,
+    );
+  });
+
+  it('keeps a newer upload busy when an older upload finishes', async () => {
+    const store = await import('./conversation-store.js');
+    const first = deferred();
+    mocks.uploadConversationFile
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(new Promise(() => {}));
+    mocks.deleteConversationFile.mockResolvedValue(undefined);
+    const file = () => new File(['x'], 'note.txt', { type: 'text/plain' });
+
+    store.openConversation('conversation-1');
+    const firstUpload = store.sendFileMessage(file());
+    store.openConversation('conversation-2');
+    void store.sendFileMessage(file());
+    first.resolve({ key: 'file-1' });
+    await firstUpload;
+
+    expect(store.getConversationState().preparingFile).toBe(true);
+  });
+
   it('reset stops the watch and clears all conversation state', async () => {
     const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');

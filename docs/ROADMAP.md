@@ -7,18 +7,19 @@ Keep HangVidU straightforward to maintain as features are added.
 Resolve open decisions when each step starts and update its status as work lands.
 Build ongoing UI improvements on the foundation from step 2.
 
-## 1. Reliable session behaviour — next
+## 1. Reliable session behaviour — done
 
 - **Outcome:** Navigation and session changes do not disrupt ongoing work or apply stale results.
 - **Scope:** Stale conversation requests and call media lifetime independent of screen mounting. Failed-message recovery is tracked separately in #758.
 - **Decide:** Operation ownership and cancellation boundaries.
 - **Done when:** Tests cover delayed results after navigation/logout and call continuity across screen changes.
 
-Call media lifetime is done: `CallHandshakeProvider` owns it for the active call.
-Next: login-scoped ownership of conversation operations in
-[`conversation-store.ts`](../src/stores/conversation/conversation-store.ts).
+`CallHandshakeProvider` owns call media for the active call. Conversation opens,
+sends, and uploads belong to one activation of the selected conversation in
+[`conversation-store.ts`](../src/stores/conversation/conversation-store.ts);
+logout and every selection change start a new one.
 
-## 2. Minimal UI foundation
+## 2. Minimal UI foundation — next
 
 - **Outcome:** UI improvements and new features follow a simple, consistent system.
 - **Scope:** Shared visual tokens, core controls, and accessible dialog behaviour. Apply them to a small existing flow as the reference for future work.

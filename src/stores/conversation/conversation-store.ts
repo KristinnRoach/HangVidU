@@ -378,6 +378,17 @@ function markFailed(tempId: string) {
 
 let stopWatch: (() => void) | undefined;
 
+// Ownership of async work. `activation` identifies one stay in one conversation
+// under one login: every open, switch, and logout starts a new one, so leaving
+// and returning to the same conversation does not revive earlier work. Sends
+// and uploads capture it and stop touching store state once it has moved on.
+// The server write itself is not cancelled: a message that was already
+// submitted still lands and arrives through the watcher.
+// `openRequest` identifies the latest request to change the selection, so a
+// slow openDirectConversation() cannot override whatever was asked for after it.
+let activation = 0;
+let openRequest = 0;
+
 function startWatch(
   conversationId: ConversationId,
   myUserId: UserId,
@@ -465,18 +476,21 @@ function startWatch(
 }
 
 function activate(next: ConversationSelection | null) {
+  activation++;
+  openRequest++;
   flushDraftSave();
   stopWatch?.();
   sentReadMarkers.clear();
   setLatestReadCandidate(null);
-  setSelection(next);
 
   const myUserId = getLoggedInUserId() as UserId | null;
   if (!next || !myUserId) {
+    setSelection(null);
     setState({ ...initial });
     return;
   }
 
+  setSelection(next);
   setState({
     conversationId: next.conversationId,
     myUserId,
@@ -516,6 +530,7 @@ export async function openDirectConversation(
   contactId: string,
   opts?: { displayUI?: boolean; forceResolve?: boolean },
 ): Promise<void> {
+  const request = ++openRequest;
   const contact = getContactById(contactId);
   let conversationId: string | null = contact?.conversationId ?? null;
 
@@ -525,12 +540,14 @@ export async function openDirectConversation(
       // here to keep failures on the warn-and-return path instead of an
       // unhandled rejection.
       conversationId = await resolveDirectConversationId(contactId);
+      if (request !== openRequest) return;
       void cacheContactConversationId(contactId, conversationId);
     } catch (error) {
       console.warn('[conversation] failed to resolve conversation id', {
         contactId,
         error,
       });
+      if (request !== openRequest) return;
     }
   }
 
@@ -552,11 +569,7 @@ export async function openDirectConversation(
 
 /** Release the active conversation and all its state. Called on logout. */
 export function resetConversationStore(): void {
-  flushDraftSave();
-  stopWatch?.();
-  setSelection(null);
-  setLatestReadCandidate(null);
-  setState({ ...initial });
+  activate(null);
 }
 
 type SendPayload = TextMessagePayload | FileMessagePayload;
@@ -583,6 +596,7 @@ export async function sendMessage(
 
   clearPersistedDraft();
 
+  const owner = activation;
   const repo = getRepo();
   const tempId = repo.createMessageId(conversationId);
   const sentAt = Date.now();
@@ -627,11 +641,13 @@ export async function sendMessage(
   } catch {
     markFailed(tempId);
   } finally {
-    setState('sending', false);
+    if (owner === activation) setState('sending', false);
   }
 
   if (!sent) return false;
-  if (recipientIds.length > 0) {
+  // The push is sent with the current login's credentials; skip it once the
+  // sender has logged out or switched account.
+  if (recipientIds.length > 0 && getLoggedInUserId() === myUserId) {
     const messageText =
       payload.type === 'text' ? payload.text : payload.text || 'Sent a file';
     try {
@@ -685,6 +701,7 @@ export async function sendFileMessage(file: File): Promise<SendFileResult> {
     );
   }
 
+  const owner = activation;
   setState('preparingFile', true);
   try {
     let attachmentFile = file;
@@ -708,7 +725,7 @@ export async function sendFileMessage(file: File): Promise<SendFileResult> {
       conversationId,
       attachmentFile,
     );
-    if (state.conversationId !== conversationId) {
+    if (owner !== activation) {
       cleanupUploadedFile();
       return 'skipped';
     }
@@ -732,7 +749,7 @@ export async function sendFileMessage(file: File): Promise<SendFileResult> {
     console.warn('[conversation] failed to send file attachment', error);
     return 'failed';
   } finally {
-    setState('preparingFile', false);
+    if (owner === activation) setState('preparingFile', false);
   }
 }
 
