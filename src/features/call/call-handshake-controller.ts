@@ -38,7 +38,7 @@ import {
 } from '../../stores/contacts-store.js';
 import { CALLING_TTL_MS } from '../../../shared/constants';
 import { getHangViduApiBaseUrl } from '../../infra/hangvidu-api-url';
-// import { t } from '@shared/i18n';
+import { t } from '@shared/i18n';
 
 const DATA_URL = getHangViduApiBaseUrl();
 const TURN_FETCH_TIMEOUT_MS = 4_000;
@@ -268,12 +268,12 @@ function mediaFailureMessage(
   audioOnly: boolean,
 ): string {
   if (!(err instanceof Error) || err.name !== 'NotAllowedError') {
-    return 'Could not use the camera or microphone. Try again.';
+    return t('call.media_error.capture.generic');
   }
   return permissions.microphone === 'denied' ||
     (!audioOnly && permissions.camera === 'denied')
-    ? 'Camera or microphone access is blocked. Allow it in your browser settings, then try again.'
-    : 'Camera or microphone access was refused. Fully close HangVidU (or your browser), reopen it and try again.';
+    ? t('call.media_error.capture.blocked')
+    : t('call.media_error.capture.refused');
 }
 
 /**
