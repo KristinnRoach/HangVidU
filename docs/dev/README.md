@@ -22,7 +22,22 @@ Environment variables are split per environment:
 For local development, copy `.env.example` to `.env.development` and supply your
 project values. The Worker reads `backend/cloudflare/.dev.vars`; obtain the
 required local credentials rather than copying production secrets into source.
-Run `vpr setup:dev-certs` once to create the certificates used by the local Worker.
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:066e27080c4339b1f1d6b15808f85bd02c3fc2af33722b0cc66c135e1375a221 -->
+
+Install the [mkcert executable](https://github.com/FiloSottile/mkcert#installation) using its installation instructions. From the repository root, create the certificate directory and run the setup command once:
+
+```bash
+mkdir -p .certs
+vpr setup:dev-certs
+```
+
+This creates the certificates used by the local Worker.
+
+<!-- /coderabbit-ai-generated:v1 -->
+
 `vpr dev` applies local D1 migrations before starting the API.
 
 For production builds, copy the production template:
