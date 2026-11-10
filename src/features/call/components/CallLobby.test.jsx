@@ -134,4 +134,24 @@ describe('CallLobby', () => {
     await waitFor(() => expect(microphone.stop).toHaveBeenCalledOnce());
     expect(camera.stop).toHaveBeenCalledOnce();
   });
+
+  it('starts capture within the tap and stops it when guest sign-in fails', async () => {
+    const { camera, microphone } = setupMediaDevices();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    let failSignIn;
+    mocks.signInAsGuest.mockReturnValue(
+      new Promise((_, reject) => {
+        failSignIn = reject;
+      }),
+    );
+
+    const { getByRole } = render(() => <CallLobby />);
+    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledOnce();
+
+    failSignIn(new Error('auth unavailable'));
+    await waitFor(() => expect(microphone.stop).toHaveBeenCalledOnce());
+    expect(camera.stop).toHaveBeenCalledOnce();
+    expect(mocks.p2p.join).not.toHaveBeenCalled();
+  });
 });

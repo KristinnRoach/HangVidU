@@ -256,6 +256,26 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
     syncTrackState();
   }
 
+  // WebKit needs getDisplayMedia (and getUserMedia on iOS) to start within the
+  // tap's transient user activation, so start capture before restoring.
+  async function restoreMaskCameraDuring(capture: Promise<MediaStream>) {
+    const restoration = restoreMaskCamera().catch((error: unknown) => {
+      void capture.then(
+        (stream) => stream.getTracks().forEach((track) => track.stop()),
+        () => {},
+      );
+      throw error;
+    });
+    try {
+      const [stream] = await Promise.all([capture, restoration]);
+      return stream;
+    } catch (error) {
+      // A capture failure must not unlock controls while restoration is active.
+      await restoration.catch(() => {});
+      throw error;
+    }
+  }
+
   async function toggleFaceMask() {
     if (
       !faceMaskSupported() ||
@@ -428,8 +448,11 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const isStale = (room: ReturnType<SolidP2PRoom['room']>) =>
     disposed || p2p.room() !== room;
 
+  // iOS ends capture for Control Center, phone calls and backgrounding.
+  // Recapture once the app is visible again rather than while hidden.
   function recoverMicrophone() {
     if (disposed || !microphoneEnabled || !p2p.room() || hasLiveMic()) return;
+    if (document.visibilityState !== 'visible') return;
     void setMicEnabled(true).catch((error) => {
       console.error('[CallMedia] Failed to recover microphone', error);
     });
@@ -441,6 +464,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   };
   void refreshCameraSwitchAvailability();
   navigator.mediaDevices?.addEventListener?.('devicechange', onDeviceChange);
+  document.addEventListener('visibilitychange', recoverMicrophone);
 
   const syncTrackState = () => {
     const stream = localStream();
@@ -495,6 +519,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
       'devicechange',
       onDeviceChange,
     );
+    document.removeEventListener('visibilitychange', recoverMicrophone);
     maskAbort.abort();
     disposeMask();
     screenTrack?.stop();
@@ -730,7 +755,6 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
     setCameraPending(true);
     try {
-      await restoreMaskCamera();
       const settings = currentTrack.getSettings();
       const openCamera = (cameraConstraint: MediaTrackConstraints) =>
         navigator.mediaDevices.getUserMedia({
@@ -764,19 +788,22 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
             : undefined;
       // An exact facing mode rejects when no camera reports the opposite
       // direction (e.g. two front-facing lenses), so cycle by device instead.
-      const stream = oppositeFacingMode
-        ? await openCamera({
-            facingMode: { exact: oppositeFacingMode },
-          }).catch((error: unknown) => {
-            if (
-              (error as { name?: string } | null)?.name !==
-              'OverconstrainedError'
-            ) {
-              throw error;
-            }
-            return openNextDevice();
-          })
-        : await openNextDevice();
+      // Cycling by device enumerates first; iOS cameras report facingMode.
+      const stream = await restoreMaskCameraDuring(
+        oppositeFacingMode
+          ? openCamera({
+              facingMode: { exact: oppositeFacingMode },
+            }).catch((error: unknown) => {
+              if (
+                (error as { name?: string } | null)?.name !==
+                'OverconstrainedError'
+              ) {
+                throw error;
+              }
+              return openNextDevice();
+            })
+          : openNextDevice(),
+      );
       const nextTrack = stream.getVideoTracks()[0];
       if (!nextTrack) {
         stream.getTracks().forEach((track) => track.stop());
@@ -873,11 +900,10 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
 
     setCameraPending(true);
     try {
-      await restoreMaskCamera();
+      const stream = await restoreMaskCameraDuring(
+        navigator.mediaDevices.getDisplayMedia({ video: true }),
+      );
       cameraBeforeScreenShare = localStream()?.getVideoTracks()[0] ?? null;
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-      });
       const displayTrack = stream.getVideoTracks()[0];
       if (!displayTrack) {
         stream.getTracks().forEach((track) => track.stop());
