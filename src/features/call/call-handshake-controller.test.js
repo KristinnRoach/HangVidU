@@ -1537,6 +1537,41 @@ describe('CallHandshakeController', () => {
     );
   });
 
+  it.each([true, false])(
+    'considers denied camera permission only when video is requested (audioOnly=%s)',
+    async (audioOnly) => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      navigator.permissions = {
+        query: async ({ name }) => ({
+          state: name === 'camera' ? 'denied' : 'prompt',
+        }),
+      };
+      mocks.getUserMedia.mockRejectedValue(
+        Object.assign(new Error('Permission denied'), {
+          name: 'NotAllowedError',
+        }),
+      );
+      const controller = createController(createP2PMock(), {
+        getCallerName: () => 'Caller',
+      });
+
+      await controller.startCall({
+        calleeId: 'callee-id',
+        calleeName: 'Callee',
+        audioOnly,
+      });
+
+      expect(alert).toHaveBeenCalledWith(
+        expect.stringContaining(
+          audioOnly
+            ? 'Fully close HangVidU'
+            : 'Allow it in your browser settings',
+        ),
+      );
+    },
+  );
+
   it('stops stale caller media when cleanup wins the permission race', async () => {
     const media = deferred();
     const stop = vi.fn();

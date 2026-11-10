@@ -265,11 +265,13 @@ async function reportCallStartFailure(
 function mediaFailureMessage(
   err: unknown,
   permissions: Record<string, string>,
+  audioOnly: boolean,
 ): string {
   if (!(err instanceof Error) || err.name !== 'NotAllowedError') {
     return 'Could not use the camera or microphone. Try again.';
   }
-  return Object.values(permissions).includes('denied')
+  return permissions.microphone === 'denied' ||
+    (!audioOnly && permissions.camera === 'denied')
     ? 'Camera or microphone access is blocked. Allow it in your browser settings, then try again.'
     : 'Camera or microphone access was refused. Fully close HangVidU (or your browser), reopen it and try again.';
 }
@@ -551,7 +553,7 @@ export class CallHandshakeController {
         err,
         { audioOnly },
       );
-      window.alert(mediaFailureMessage(err, permissions));
+      window.alert(mediaFailureMessage(err, permissions, audioOnly));
       return;
     }
 
@@ -1017,7 +1019,13 @@ export class CallHandshakeController {
           audioOnly: state.call.audioOnly ?? false,
         }).then((permissions) => {
           if (err instanceof Error && err.name === 'NotAllowedError') {
-            window.alert(mediaFailureMessage(err, permissions));
+            window.alert(
+              mediaFailureMessage(
+                err,
+                permissions,
+                state.call.audioOnly ?? false,
+              ),
+            );
           }
         });
         this.hangUp('accept-error');
