@@ -1,6 +1,8 @@
 ## Event Emitter (Reusable Core)
 
-Generic event primitives for JavaScript apps.
+Generic event primitives for JavaScript apps. HangVidU application code uses
+[the shared events API](../../shared/events/README.md); the examples below describe
+the reusable primitive, not a recommendation to add more app buses.
 
 - `EventEmitter`: convenience facade (`on`, `once`, `off`, `emit`, `emitAsync`, `emitAsyncSequential`)
 - `ListenerRegistry`: listener storage and subscription lifecycle

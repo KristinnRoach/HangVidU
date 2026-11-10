@@ -85,7 +85,7 @@ export default defineConfig(({ mode }) => {
       overrides: [
         ...boundariesOverrides,
         {
-          // STATE_RULES.md: *-state.js modules are module-private. A later
+          // State ownership: *-state.js modules are module-private. A later
           // override resets this inside src/auth/** and src/features/contacts/**.
           files: ['src/**/*.js', 'src/**/*.jsx', 'src/**/*.ts', 'src/**/*.tsx'],
           rules: {
@@ -111,12 +111,12 @@ export default defineConfig(({ mode }) => {
                   {
                     group: ['**/auth-state', '**/auth-state.js'],
                     message:
-                      'auth-state.js is private to src/auth/. Import read-only getters from src/auth/index.js and subscribe to evt:auth:state:changed. See docs/architecture/STATE_RULES.md.',
+                      'auth-state.js is private to src/auth/. Import read-only getters from src/auth/index.js and subscribe to evt:auth:state:changed. See docs/architecture/README.md.',
                   },
                   {
                     group: ['**/contacts-state', '**/contacts-state.js'],
                     message:
-                      'contacts-state.js is private to src/features/contacts/. Import read-only getters from src/features/contacts/index.js and subscribe to evt:contacts:state:changed. See docs/architecture/STATE_RULES.md.',
+                      'contacts-state.js is private to src/features/contacts/. Import read-only getters from src/features/contacts/index.js and subscribe to evt:contacts:state:changed. See docs/architecture/README.md.',
                   },
                 ],
               },
