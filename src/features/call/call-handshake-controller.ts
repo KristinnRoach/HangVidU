@@ -13,10 +13,11 @@ import {
   setTag,
 } from '@sentry/browser';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
-import type {
-  CreateRoomSignalingOptions,
-  IceServersProvider,
-  P2PRoomSignaling,
+import {
+  P2P_ERROR_CODES,
+  type CreateRoomSignalingOptions,
+  type IceServersProvider,
+  type P2PRoomSignaling,
 } from '@kidlib/p2p';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
 import { publish } from '@shared/events/index.js';
@@ -177,10 +178,19 @@ type CallFailureKind =
   | 'ice-reconnect-failed'
   | 'reconnect-timeout';
 
+// Startup failures of a member session. Teardown (aborted / closed before
+// start) is not a connection failure.
+const CONNECT_FAILURE_CODES: ReadonlySet<string> = new Set(
+  Object.values(P2P_ERROR_CODES).filter(
+    (code) =>
+      code !== P2P_ERROR_CODES.ABORTED && code !== P2P_ERROR_CODES.START_CLOSED,
+  ),
+);
+
 /**
  * Terminal call failures become Sentry issues, not just warn logs, so they
  * alert and count per release/user. One issue per kind (and sub-kind, e.g.
- * Peer.start vs P2PSession); the console.warn next to each call still feeds
+ * the p2p error code); the console.warn next to each call still feeds
  * the same detail to Sentry logs and breadcrumbs.
  */
 function reportCallFailure(
@@ -1133,15 +1143,12 @@ export class CallHandshakeController {
    * A peer session that never reached `connected` within `connectedTimeoutMs`
    * is a dead call, not a blip — @kidlib/p2p has already closed that member.
    * Show a bounded failure message, then exit to the lobby so the user can retry.
-   *
-   * ponytail: matched on the message prefix — @kidlib/p2p 0.5.1 throws plain
-   * Errors with no code/name. Ask upstream for a structured error to key off.
    */
   private handleRoomError(error: unknown, roomId: string): void {
     const message = error instanceof Error ? error.message : String(error);
     console.log('[call] room error', { message });
-    const stage = /^(Peer\.start|P2PSession):/.exec(message)?.[1];
-    if (!stage) return;
+    const code = (error as { code?: unknown } | null)?.code;
+    if (typeof code !== 'string' || !CONNECT_FAILURE_CODES.has(code)) return;
     const detail = {
       message,
       roomId,
@@ -1149,7 +1156,7 @@ export class CallHandshakeController {
       state: this.p2p.state(),
     };
     console.warn(detail, '[call] connection failed');
-    reportCallFailure('connect-failed', detail, stage);
+    reportCallFailure('connect-failed', detail, code);
     this.clearReconnectTimers();
     this.clearConnectFailureTimeout();
     this.onReconnectStatus('connect-failed');

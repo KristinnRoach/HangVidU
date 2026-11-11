@@ -127,6 +127,10 @@ export class SignalingRoom extends DurableObject<Env> {
             ));
         if (!ownsId)
           return this.sendError(ws, 'unauthorized peerId', message.requestId);
+        // A reconnecting member keeps its place in join order, so a newcomer
+        // cannot rank ahead of it for the last capacity slot.
+        const joinedAt =
+          this.earliestJoinOrder(message.peerId) ?? this.nextJoinOrder();
         if (!this.replaceExistingPeerSocket(ws, message.peerId)) {
           return this.sendError(ws, 'peerId in use', message.requestId);
         }
@@ -134,7 +138,7 @@ export class SignalingRoom extends DurableObject<Env> {
         this.setPeerState(ws, {
           peerId: message.peerId,
           data: message.data,
-          joinedAt: this.nextJoinOrder(),
+          joinedAt,
         });
         this.broadcastPeers();
         this.send(ws, {
@@ -215,8 +219,9 @@ export class SignalingRoom extends DurableObject<Env> {
     }
   }
 
-  /** Joined peers with their presence data; the local peer is included (its own
-   * socket is in getWebSockets()), so self mute toggles round-trip back. */
+  /** Joined peers in join order, with their presence data. @kidlib/p2p admits
+   * the first `memberCapacity` members of this list. The local peer is included
+   * (its own socket is in getWebSockets()), so self mute toggles round-trip back. */
   private presenceMembers(): PresenceMember[] {
     const byPeerId = new Map<
       PeerId,
@@ -232,7 +237,21 @@ export class SignalingRoom extends DurableObject<Env> {
         joinedAt,
       });
     }
-    return [...byPeerId.values()].map(({ member }) => member);
+    return [...byPeerId.values()]
+      .sort((a, b) => a.joinedAt - b.joinedAt)
+      .map(({ member }) => member);
+  }
+
+  private earliestJoinOrder(peerId: PeerId): number | undefined {
+    let earliest: number | undefined;
+    for (const ws of this.ctx.getWebSockets()) {
+      const state = this.getSocketState(ws);
+      if (state.peerId !== peerId || state.joinedAt === undefined) continue;
+      if (earliest === undefined || state.joinedAt < earliest) {
+        earliest = state.joinedAt;
+      }
+    }
+    return earliest;
   }
 
   /** Also cleans up rooms that receive no further sockets or messages. */
