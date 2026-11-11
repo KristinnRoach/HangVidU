@@ -480,4 +480,51 @@ describe('SignalingRoom', () => {
       data: { sdp: 'offer-for-new-page' },
     });
   });
+
+  // Three members, so neither socket order nor its reverse matches join order.
+  async function joinAll(roomId: string, peerIds: string[]) {
+    for (const peerId of peerIds) {
+      const peer = await connect(roomId, peerId);
+      await peer.next();
+      peer.send({ t: 'join', peerId });
+      await peer.next();
+    }
+  }
+
+  async function snapshot(roomId: string) {
+    return (await connect(roomId, 'watcher')).next();
+  }
+
+  it('lists presence in join order, not socket order', async () => {
+    const sockets = await Promise.all(
+      ['peer-a', 'peer-b', 'peer-c'].map(async (peerId) => {
+        const peer = await connect('join-order', peerId);
+        await peer.next();
+        return { peer, peerId };
+      }),
+    );
+    const joined: string[] = [];
+    for (const index of [1, 0, 2]) {
+      const { peer, peerId } = sockets[index];
+      joined.push(peerId);
+      peer.send({ t: 'join', peerId });
+      await nextMembers(peer, [...joined].sort());
+    }
+    expect(await snapshot('join-order')).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-b' }, { peerId: 'peer-a' }, { peerId: 'peer-c' }],
+    });
+  });
+
+  it('keeps a reconnecting member ahead of later joiners', async () => {
+    await joinAll('rejoin-order', ['peer-a', 'peer-b', 'peer-c']);
+    const newA = await connect('rejoin-order', 'peer-a');
+    await newA.next();
+    newA.send({ t: 'join', peerId: 'peer-a' });
+    await newA.next();
+    expect(await snapshot('rejoin-order')).toEqual({
+      t: 'peers',
+      peers: [{ peerId: 'peer-a' }, { peerId: 'peer-b' }, { peerId: 'peer-c' }],
+    });
+  });
 });

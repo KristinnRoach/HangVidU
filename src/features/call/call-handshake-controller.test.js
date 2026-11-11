@@ -6,6 +6,7 @@ import {
   it,
   vi,
 } from 'vite-plus/test';
+import { P2P_ERROR_CODES } from '@kidlib/p2p';
 
 const mocks = vi.hoisted(() => ({
   incomingCallback: undefined,
@@ -1126,11 +1127,21 @@ describe('CallHandshakeController', () => {
       expect(joinOptions?.startTimeoutMs).toBe(20_000);
 
       joinOptions?.onError?.({ error: new Error('presence refresh failed') });
+      for (const code of [
+        P2P_ERROR_CODES.ABORTED,
+        P2P_ERROR_CODES.START_CLOSED,
+      ]) {
+        joinOptions?.onError?.({
+          error: Object.assign(new Error('teardown'), { code }),
+        });
+      }
       expect(onReconnectStatus).not.toHaveBeenCalledWith('connect-failed');
       expect(warn).not.toHaveBeenCalled();
 
       joinOptions?.onError?.({
-        error: new Error('Peer.start: timed out after 20000ms'),
+        error: Object.assign(new Error('Peer.start: timed out after 20000ms'), {
+          code: P2P_ERROR_CODES.START_TIMEOUT,
+        }),
       });
       expect(onReconnectStatus).toHaveBeenLastCalledWith('connect-failed');
       expect(warn).toHaveBeenCalledWith(
@@ -1146,15 +1157,26 @@ describe('CallHandshakeController', () => {
       expect(mocks.captureMessage).toHaveBeenCalledWith(
         '[call] connect-failed',
         expect.objectContaining({
-          fingerprint: ['call-failure', 'connect-failed', 'Peer.start'],
+          fingerprint: ['call-failure', 'connect-failed', 'START_TIMEOUT'],
         }),
       );
 
       joinOptions?.onError?.({
-        error: new Error(
-          'P2PSession: data channel open timed out after 10000ms',
+        error: Object.assign(
+          new Error('P2PSession: data channel open timed out after 10000ms'),
+          { code: P2P_ERROR_CODES.DATA_CHANNEL_OPEN_TIMEOUT },
         ),
       });
+      expect(mocks.captureMessage).toHaveBeenLastCalledWith(
+        '[call] connect-failed',
+        expect.objectContaining({
+          fingerprint: [
+            'call-failure',
+            'connect-failed',
+            'DATA_CHANNEL_OPEN_TIMEOUT',
+          ],
+        }),
+      );
       expect(onReconnectStatus).toHaveBeenLastCalledWith('connect-failed');
       expect(p2p.dispose).not.toHaveBeenCalled();
 
