@@ -1127,6 +1127,14 @@ describe('CallHandshakeController', () => {
       expect(joinOptions?.startTimeoutMs).toBe(20_000);
 
       joinOptions?.onError?.({ error: new Error('presence refresh failed') });
+      for (const code of [
+        P2P_ERROR_CODES.ABORTED,
+        P2P_ERROR_CODES.START_CLOSED,
+      ]) {
+        joinOptions?.onError?.({
+          error: Object.assign(new Error('teardown'), { code }),
+        });
+      }
       expect(onReconnectStatus).not.toHaveBeenCalledWith('connect-failed');
       expect(warn).not.toHaveBeenCalled();
 
@@ -1159,6 +1167,16 @@ describe('CallHandshakeController', () => {
           { code: P2P_ERROR_CODES.DATA_CHANNEL_OPEN_TIMEOUT },
         ),
       });
+      expect(mocks.captureMessage).toHaveBeenLastCalledWith(
+        '[call] connect-failed',
+        expect.objectContaining({
+          fingerprint: [
+            'call-failure',
+            'connect-failed',
+            'DATA_CHANNEL_OPEN_TIMEOUT',
+          ],
+        }),
+      );
       expect(onReconnectStatus).toHaveBeenLastCalledWith('connect-failed');
       expect(p2p.dispose).not.toHaveBeenCalled();
 
