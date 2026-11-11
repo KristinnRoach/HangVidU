@@ -201,8 +201,8 @@ importers:
         specifier: ^0.1.5
         version: 0.1.5
       '@kidlib/p2p':
-        specifier: ^0.5.2
-        version: 0.5.2(solid-js@1.9.18)
+        specifier: ^0.5.3
+        version: 0.5.3(solid-js@1.9.18)
       '@sentry/browser':
         specifier: ^11.11.0
         version: 11.11.0
@@ -1908,8 +1908,8 @@ packages:
   '@kidlib/create-component@0.1.5':
     resolution: {integrity: sha512-viom5Q6hIMz13plwb6665OT+2N3OBLs+8T7dNT5G9+0UQFcCtOI0iFE0tq0PNf5nnkNsrhS/NkhkyFvclTbMKA==}
 
-  '@kidlib/p2p@0.5.2':
-    resolution: {integrity: sha512-loTJMBIR8B/0VYSh3HYULW0tNXegxHOHA6w9VeKuOE/MPdyZB8ChSbrRfShBSgT8uG6qBxtG+1yai6tqo6FQQg==}
+  '@kidlib/p2p@0.5.3':
+    resolution: {integrity: sha512-mk5pjLUNUKeyAqsNFI4SL3OlnJY7ROgVrRRReA9+Um8RTsQl1Jy0AJazJAuYSBrg3KGVw77DQrMZyjcJy7m+Jg==}
     peerDependencies:
       solid-js: '>=1.8.0'
     peerDependenciesMeta:
@@ -9043,7 +9043,7 @@ snapshots:
 
   '@kidlib/create-component@0.1.5': {}
 
-  '@kidlib/p2p@0.5.2(solid-js@1.9.18)':
+  '@kidlib/p2p@0.5.3(solid-js@1.9.18)':
     optionalDependencies:
       solid-js: 1.9.18
 
