@@ -159,9 +159,3 @@
     background: var(--color-danger-hover);
   }
 }
-
-@media (max-width: 520px) {
-  .call-dialog-actions {
-    flex-direction: column;
-  }
-}

@@ -1,13 +1,5 @@
 .authControls {
-  /* Uses auto-animate pattern from animations.css */
   display: flex;
   transform: translateX(0);
   transition: var(--transition-default);
-}
-
-@starting-style {
-  .authControls .userInfo {
-    opacity: 0;
-    transform: translateX(10px);
-  }
 }

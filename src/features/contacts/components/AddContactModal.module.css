@@ -14,9 +14,9 @@
     flex: 1;
     min-width: 0;
     padding: 0.4rem 0.6rem;
-    border: 1px solid var(--border-subtle, #ccc);
+    border: 1px solid #ccc;
     border-radius: 4px;
-    background: var(--bg-input, transparent);
+    background: transparent;
     color: inherit;
   }
 }
@@ -59,7 +59,7 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem 0.65rem;
-  border: 1px solid var(--border-subtle, #ccc);
+  border: 1px solid #ccc;
   border-radius: 4px;
   background: transparent;
   color: inherit;
@@ -80,7 +80,7 @@
 .divider {
   margin: 0.75rem 0;
   border: none;
-  border-top: 1px solid var(--border-subtle, #ccc);
+  border-top: 1px solid #ccc;
 }
 
 .importStatus {
@@ -96,7 +96,7 @@
     color: var(--color-success, green);
   }
   &:global(.error) {
-    color: var(--color-error, red);
+    color: red;
   }
   &:global(.info) {
     color: var(--color-text-secondary);

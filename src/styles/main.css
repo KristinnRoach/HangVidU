@@ -22,31 +22,13 @@
 @import './element/input.css' layer(app);
 @import './animations.css' layer(app);
 @import './utilities.css' layer(app);
-@import './layout/wrappers.css' layer(app);
 
 @import './components/conversations-list.css' layer(app);
 @import '../lib/reactions/reactions.css' layer(app);
 @import './components/search.css' layer(app);
 @import './components/notifications.css' layer(app);
 @import './components/toast.css' layer(app);
-@import './components/dialog/incoming-call.css' layer(app);
 @import './components/dialog/call-ui.css' layer(app);
 @import './components/dialog/image-preview-dialog.css' layer(app);
-@import './components/dialog/confirm-dialog.css' layer(app);
-@import './components/dialog/edit-contact-dialog.css' layer(app);
-
-@layer app {
-  /* LEGACY - Default visible state for elements that toggle visibility */
-  .video-box,
-  #yt-video-box,
-  #shared-video-box,
-  #yt-video-box iframe,
-  #main-messages-toggle-btn,
-  .messages-box,
-  .top-bar-right {
-    opacity: 1;
-    pointer-events: auto;
-  }
-}
 
 /* Todo: Review components to minimize redundant lines of CSS, simplify, consolidate and align styles to current system */

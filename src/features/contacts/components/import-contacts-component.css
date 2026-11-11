@@ -1,7 +1,7 @@
 /* Import Contacts Component */
 
 .import-section {
-  width: var(--add-contact-content-width);
+  width: unset;
   margin: 0 auto;
   margin-bottom: 0;
 }

@@ -29,16 +29,7 @@ dialog:modal {
   color: var(--color-text-primary);
 }
 
-/* unused drawer variant draft */
-.modalDrawer {
-  margin-inline-end: 0;
-  margin-block: 0;
-  block-size: 100vh;
-  max-block-size: 100vh;
-}
-
-.modal::backdrop,
-.modalDrawer::backdrop {
+.modal::backdrop {
   background: rgb(0 0 0 / 0.45);
 }
 
