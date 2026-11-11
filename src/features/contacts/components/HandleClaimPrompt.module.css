@@ -13,9 +13,9 @@
 .row input {
   min-width: 0;
   padding: 0.45rem 0.6rem;
-  border: 1px solid var(--border-subtle, #ccc);
+  border: 1px solid #ccc;
   border-radius: 4px;
-  background: var(--bg-input, transparent);
+  background: transparent;
   color: inherit;
   font-size: 0.9rem;
 }

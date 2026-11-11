@@ -56,30 +56,6 @@
   }
 }
 
-/* Position reactions relative to the message bubble (`.message-text`).
-   This prevents the badges from anchoring to the full-width <p> element
-   which causes them to appear far to the right in wide containers. */
-#messages .message-text {
-  position: relative;
-}
-
-/* By default the reactions attach to the right edge of the bubble. For
-   remote (left) bubbles we flip to the left side so badges sit beside
-   the bubble as in messenger-style UIs. */
-#messages p.message-local .message-text .message-reactions,
-#messages p.message-local .message-reactions {
-  right: -6px;
-  left: auto;
-  justify-content: flex-end;
-}
-
-#messages p.message-remote .message-text .message-reactions,
-#messages p.message-remote .message-reactions {
-  left: -6px;
-  right: auto;
-  justify-content: flex-start;
-}
-
 /* ===== REACTION PICKER ===== */
 
 .reaction-picker {
@@ -87,7 +63,7 @@
   gap: 4px;
   padding: 6px 10px;
   background: var(--color-bg-primary, #1a1a1a);
-  border: 1px solid var(--border-color, #333);
+  border: 1px solid #333;
   border-radius: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 10001;

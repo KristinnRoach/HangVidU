@@ -11,7 +11,3 @@
 .invisible {
   visibility: hidden !important;
 }
-
-.visible {
-  visibility: visible !important;
-}

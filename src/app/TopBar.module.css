@@ -107,7 +107,7 @@
   }
   @media (hover: hover) and (pointer: fine) {
     button:hover {
-      color: var(--text-secondary-hover);
+      color: unset;
     }
   }
 }
@@ -125,11 +125,6 @@
   align-items: center;
   height: 100%;
   padding-right: 0.5rem;
-  icon {
-    color: var(--color-text-secondary) !important;
-    fill: var(--color-text-secondary) !important;
-    stroke: var(--color-text-secondary) !important;
-  }
 }
 
 .stickyRight button {
@@ -157,42 +152,3 @@
     transform: translateX(-50px);
   }
 }
-
-/* 
-.userInfo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  color: var(--color-text-secondary);
-
-  flex: 1;
-  min-width: 0;
-
-  overflow: hidden;
-
-  & .userAvatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
-  & .userAvatarPlaceholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--color-bg-brighter);
-    font-size: 1.2rem;
-    flex-shrink: 0;
-  }
-
-  & .displayName {
-    overflow-x: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-} */
