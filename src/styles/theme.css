@@ -1,43 +1,38 @@
 /* ============================================
    DESIGN TOKENS
 
-   @theme = the intentional Tailwind token system. Starts near-empty;
-   mint a token only when a component migration or the redesign needs
-   it. Tailwind's default theme (spacing, neutral-*, text-xs, ...) is
-   the baseline.
+   @theme = Tailwind theme variables. Each one creates utilities
+   (--color-bg-primary -> bg-bg-primary) and is also emitted as a
+   plain CSS variable for legacy CSS and CSS Modules. `static` emits
+   every variable, since Tailwind cannot see usage inside CSS Modules.
+   Tailwind's default theme (spacing, neutral-*, text-xs, ...) is the
+   baseline. Names are carried over from the legacy set for now.
 
-   The :root block below is the LEGACY token set, kept verbatim for
-   unmigrated CSS. Migrated components must not reference these vars.
-   Delete each line when its last consumer migrates.
+   :root = variables with no Tailwind namespace, plus the legacy
+   spacing, radius and font-size scales, which stay outside @theme
+   until the design slice settles one scale. Being unlayered, the
+   --radius-* values here already override Tailwind's (rounded-md is 5px).
    ============================================ */
 
-@theme {
+@theme static {
+  /* Backgrounds */
+  --color-bg-primary: #1a1a1a;
+  --color-bg-secondary: #2a2a2a;
+  --color-bg-tertiary: #2d2d2d;
+  --color-bg-darker: rgba(0, 0, 0, 0.5);
+  --color-bg-brighter: rgba(255, 255, 255, 0.05);
+
+  /* Text */
+  --color-text-primary: #eee;
+  --color-text-secondary: #ccc;
+  --color-text-tertiary: #aaa;
+
+  /* Borders */
+  --color-border-primary: #444;
+
   /* Brand */
   --color-primary: #4c81af;
   --color-primary-subtle: #739cc07b;
-}
-
-/* ===== LEGACY TOKENS - delete per line as consumers migrate ===== */
-:root {
-  /* Backgrounds */
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2a2a2a;
-  --bg-tertiary: #2d2d2d;
-  --bg-darker: rgba(0, 0, 0, 0.5);
-  --bg-brighter: rgba(255, 255, 255, 0.05);
-
-  /* Text */
-  --text-primary: #eee;
-  --text-secondary: #ccc;
-  --text-tertiary: #aaa;
-  --text-muted: #888;
-  --text-disabled: #666;
-
-  /* Borders */
-  --border-primary: #444;
-  --border-secondary: #555;
-
-  /* Interactive */
   --color-primary-hover: #739cc0d8;
 
   /* Actions */
@@ -45,36 +40,28 @@
   --color-success-hover: #2b632e;
   --color-danger: #f44336;
   --color-danger-hover: #da190b;
-  --color-info: #007bff;
-  --color-info-hover: #0056b3;
-  --color-warning: #ffc107;
 
-  /* Accents */
-  --color-accent-blue: rgb(55, 162, 255);
-  --color-accent-hover: #777;
-
-  /* Shadows */
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+  /* Shadows (override Tailwind's shadow-md and shadow-lg) */
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
-  --shadow-inset-sm: inset 0 4px 12px rgba(0, 0, 0, 0.15);
-  --shadow-inset-md: inset 0 20px 40px rgba(0, 0, 0, 0.3);
 
   /* Text shadows */
   --text-shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.45);
   --text-shadow-medium: 0 2px 4px rgba(0, 0, 0, 0.55);
-  --text-shadow-strong: 0 4px 8px rgba(0, 0, 0, 0.65);
   --text-shadow-extreme: 0 4px 8px rgba(0, 0, 0, 0.9);
 
+  /* Typography */
+  --font-primary: 'Satoshi', 'Roboto', sans-serif;
+}
+
+:root {
   /* Spacing */
-  --spacing-xxs: 2px;
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 10px;
   --spacing-lg: 16px;
   --spacing-xl: 20px;
   --spacing-2xl: 24px;
-  --spacing-3xl: 32px;
 
   /* Sizing */
   --content-width: clamp(200px, 100%, 680px);
@@ -87,27 +74,20 @@
   --radius-full: 50%;
 
   /* Typography */
-  --font-family-primary: 'Satoshi', 'Roboto', sans-serif;
   --font-size-xs: 12px;
   --font-size-sm: 13px;
   --font-size-base: 14px;
   --font-size-md: 16px;
   --font-size-lg: 18px;
-  --font-size-xl: 20px;
   --font-size-2xl: 2rem;
 
   /* Z-index */
-  --z-low: 0;
   --z-mid: 100;
-  --z-high: 200;
-  --z-overlay: 300;
   --z-modal: 9999;
 
   /* Transitions */
-  --transition-fast: 100ms;
   --transition-base: 200ms;
   --transition-slow: 300ms;
-  --transition-slower: 400ms;
 
   interpolate-size: allow-keywords;
 }

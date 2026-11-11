@@ -23,8 +23,8 @@ body {
   display: grid;
   grid-template-rows: auto 1fr auto;
 
-  color: var(--text-secondary);
-  background: var(--bg-primary);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
 }
 
 /* Native refresh is available except while a call cannot survive reload. */

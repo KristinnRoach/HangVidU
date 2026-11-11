@@ -31,7 +31,7 @@
   width: 36px;
   height: 36px;
   background-color: rgba(131 131 131 / 0.639);
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   text-shadow: 0 0 4px rgba(0 0 0 / 0.5);
   cursor: pointer;
   overflow: hidden;
@@ -43,7 +43,7 @@
   .image-preview-close:hover,
   .image-preview-download:hover {
     background: rgb(0 0 0 / 0.8);
-    color: var(--text-primary);
+    color: var(--color-text-primary);
   }
 }
 

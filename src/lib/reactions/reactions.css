@@ -22,7 +22,7 @@
   gap: 2px;
   padding: 0.2em;
   font-size: 0.8em;
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   text-shadow: var(--text-shadow-extreme);
   cursor: default;
   -webkit-user-select: none;
@@ -86,7 +86,7 @@
   display: flex;
   gap: 4px;
   padding: 6px 10px;
-  background: var(--bg-primary, #1a1a1a);
+  background: var(--color-bg-primary, #1a1a1a);
   border: 1px solid var(--border-color, #333);
   border-radius: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);

@@ -27,8 +27,8 @@ dialog.incoming-call-dialog {
     scale-in var(--duration-default) var(--easing-overshoot) forwards,
     pulse 2s ease-in-out var(--duration-default) infinite;
 
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
   border-radius: var(--radius-lg);
   padding: var(--spacing-2xl);
   box-shadow: var(--shadow-md);
@@ -43,7 +43,7 @@ dialog.incoming-call-dialog {
 }
 
 .incoming-call-dialog > div:first-child {
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   font-weight: 600;
   text-align: center;
 }
