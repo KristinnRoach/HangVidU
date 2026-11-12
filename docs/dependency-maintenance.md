@@ -6,8 +6,12 @@ runs. The root pnpm workspace includes the Cloudflare package; Firebase Function
 uses its separate npm lockfile. GitHub Actions versions are tracked too.
 
 Patch/minor Dependabot PRs queue for squash merge. The required `Verify` check
-runs formatting, lint, types, node tests, Chromium/Firefox/WebKit tests, Worker
-tests, a clean Functions install and module load, and the production build.
+runs formatting, lint, types, Node and Worker tests, a clean Functions install
+and module load, and the production build. Chromium/Firefox/WebKit compatibility
+runs only on manual CI dispatch and through existing frontend deployment scripts.
+Automatic dependency merges use the fast required check and do not wait for the
+manual browser guard; for manually merged PRs, follow the final pre-merge guard
+in [AGENTS.md](../AGENTS.md).
 Major upgrades stay open for review. Failed checks leave the PR open; GitHub's
 workflow notifications report failures. Passing tests cannot guarantee that every
 production behavior is covered.

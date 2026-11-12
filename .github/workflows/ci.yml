@@ -37,29 +37,22 @@ jobs:
           node-version: '22'
           cache: true
       - run: vp check
-      # The runner's apt mirror occasionally stalls for minutes; retry once instead of waiting.
-      # A Playwright container image was tried, but WebKit WebRTC tests fail inside it.
-      # A timed-out step leaves its apt-get running, so the retry must wait for the dpkg lock.
-      - name: Configure apt timeouts
-        run: |
-          printf 'Acquire::http::Timeout "15";\nAcquire::Retries "3";\nDPkg::Lock::Timeout "120";\n' \
-            | sudo tee /etc/apt/apt.conf.d/99ci
-      - id: browsers
+      - run: vp test --project node
+      # Full browser compatibility is an explicit final pre-merge guard.
+      - name: Install compatibility browsers
+        if: github.event_name == 'workflow_dispatch'
         run: vp exec playwright install --with-deps chromium firefox webkit
-        timeout-minutes: 2
-        continue-on-error: true
-      - if: steps.browsers.outcome == 'failure'
-        run: vp exec playwright install --with-deps chromium firefox webkit
-        timeout-minutes: 5
       - name: Provide audio output for Firefox WebRTC tests
+        if: github.event_name == 'workflow_dispatch'
         run: |
           sudo apt-get install -y pulseaudio
           pulseaudio --start --exit-idle-time=-1
           pactl load-module module-null-sink sink_name=ci
           pactl set-default-sink ci
-      - run: vp test --project node
       # One worker avoids the browser interception race seen with concurrent engines.
-      - run: COMPAT=true vp test --project browser --maxWorkers 1
+      - name: Test browser compatibility
+        if: github.event_name == 'workflow_dispatch'
+        run: COMPAT=true vp test --project browser --maxWorkers 1
       - run: vp run lint:cf
       - run: vp run test:cf
       - run: npm ci --prefix backend/firebase

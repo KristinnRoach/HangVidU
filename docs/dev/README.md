@@ -47,11 +47,19 @@ Install Vite+ once using the [official setup instructions](https://viteplus.dev/
 
 Use `vpr <script>` for every `package.json` script (`vpr` is shorthand for `vp run`). Use `vp` for built-in operations such as `vp install`, `vp add`, `vp update`, and `vp check`. Existing `pnpm` script and package commands still work.
 
-Run `vp check` and `vp test` before submitting changes, as required by `AGENTS.md`. For documentation cleanup, also check local links and references to deleted files. No new tests are needed for prose changes. Check `vite.config.js` and `package.json` for relevant scripts; run them with `vpr <script>`.
+Run `vp check` and focused tests while iterating; `vpr test:node` runs the fast Node suite without browsers. For documentation cleanup, also check local links and references to deleted files. No new tests are needed for prose changes. Check `vite.config.js` and `package.json` for relevant scripts; run them with `vpr <script>`.
 
 `vpr test:compat` ensures the required Playwright browsers are installed, then runs Node tests and browser tests across Chromium, Firefox, and WebKit. Existing browser installations are reused; Playwright upgrades are handled on the next run. For other browser test commands on a fresh checkout or after a Playwright upgrade, run `vpr setup:browsers` first.
 
 For Worker changes, also run `vpr lint:cf` and `vpr test:cf`. The test runner split
 and browser setup are described in [tests/README.md](../../tests/README.md).
-CI runs the broader verification suite; dependency automation is documented in
+Routine PR and main-push CI runs checks, Node and Worker tests, the Firebase
+Functions install/module-load smoke check, and the production build. Browser
+setup and compatibility tests run only on manual CI dispatch. Once a PR is final
+and the decision to merge is made, dispatch **CI** from GitHub Actions using the
+PR branch and confirm success before merging, as required by `AGENTS.md`. Repeat
+that guard if the branch changes afterward; avoid full-suite runs for trivial
+edits. Existing frontend deployment scripts still run `test:compat`.
+
+Dependency automation is documented in
 [Dependency maintenance](../dependency-maintenance.md).
