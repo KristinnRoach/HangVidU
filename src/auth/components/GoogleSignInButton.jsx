@@ -1,47 +1,36 @@
-import { createEffect, onCleanup, onMount } from 'solid-js';
+import { createEffect, onCleanup } from 'solid-js';
 import { initOneTap, renderGoogleSignInButton } from '../onetap.js';
 import { useI18n } from '@shared/i18n/index.js';
 
 export default function GoogleSignInButton() {
   const { locale } = useI18n();
   let buttonContainer;
-  let isDisposed = false;
-  let isMounted = false;
-
-  async function renderButton() {
-    if (!buttonContainer) return;
-
-    await initOneTap();
-    if (isDisposed) return;
-
-    renderGoogleSignInButton(buttonContainer, {
-      text: 'signin_with',
-      size: 'medium',
-      shape: 'pill',
-    });
-  }
-
-  onMount(() => {
-    isMounted = true;
-
-    renderButton().catch((error) => {
-      console.warn('[GoogleSignInButton] render failed:', error);
-    });
-
-    onCleanup(() => {
-      isDisposed = true;
-      buttonContainer?.replaceChildren();
-    });
-  });
 
   createEffect(() => {
     locale();
-    if (!isMounted) return;
+    let disposed = false;
 
-    renderButton().catch((error) => {
-      console.warn('[GoogleSignInButton] render failed:', error);
+    initOneTap()
+      .then(() => {
+        if (disposed) return;
+        renderGoogleSignInButton(buttonContainer, {
+          text: 'signin_with',
+          size: 'medium',
+          shape: 'pill',
+        });
+      })
+      .catch((error) => {
+        console.warn('[GoogleSignInButton] render failed:', error);
+      });
+
+    onCleanup(() => {
+      disposed = true;
+      buttonContainer.replaceChildren();
+      delete buttonContainer.dataset.gsiRendered;
     });
   });
 
-  return <div class='min-h-8 w-60 max-w-full' ref={buttonContainer} />;
+  // The medium Google button is 32px high. Its temporary button and iframe
+  // briefly coexist; their combined height must not resize the dialog.
+  return <div class='h-8 w-60 max-w-full shrink-0' ref={buttonContainer} />;
 }
