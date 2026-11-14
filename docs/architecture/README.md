@@ -72,5 +72,9 @@ Keep necessary dynamic values local; do not recreate a parallel theme with liter
 Shared controls wrap [Kobalte](https://kobalte.dev) primitives, which own focus,
 keyboard, dismissal, and aria wiring; the wrappers only add Tailwind styling:
 `components/dialogs/Dialog.tsx`, `components/Button.tsx`, `components/TextField.tsx`.
-Call dialogs still use the custom `DialogFrame` overlay without focus trapping
-or keyboard handling.
+
+Every dialog is a `Dialog`: pass `open`, `title`, the body as children, and
+optional `description`/`footer`. `onOpenChange` makes it dismissible; omit it for
+a prompt that must be answered through its own actions (call dialogs). Content
+mounts only while open, so keep state outside the dialog body. There are no
+native `<dialog>` or `popover` elements left; do not add one.

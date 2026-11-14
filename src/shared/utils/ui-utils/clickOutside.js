@@ -1,3 +1,5 @@
+const OPEN_DIALOG = 'dialog[open], [role="dialog"], [role="alertdialog"]';
+
 /**
  * closeOnClickOutside
  *
@@ -11,7 +13,7 @@
  * @param {boolean} [options.esc=true] - Whether to close on Escape key.
  * @param {Array<string>} [options.events=['mousedown','touchstart']] - DOM events to listen for outside interactions.
  * @param {boolean} [options.ignoreInputBlur=false] - Ignore clicks that dismiss mobile keyboard (prevents accidental closes).
- * @param {boolean} [options.ignoreWhenDialogOpen=true] - If true, will not trigger callback if a <dialog open> is present.
+ * @param {boolean} [options.ignoreWhenDialogOpen=true] - If true, will not trigger callback while a dialog is open.
  * @returns {() => void} cleanup - Call to remove all attached listeners.
  */
 
@@ -28,7 +30,7 @@ export function onClickOutside(element, onClick, options = {}) {
     esc = true,
     events = ['mousedown', 'touchstart'],
     ignoreInputBlur = false, // New option: ignore clicks that blur input elements
-    ignoreWhenDialogOpen = true, // New option: skip callback if dialog[open] is present
+    ignoreWhenDialogOpen = true, // New option: skip callback while a dialog is open
   } = options;
 
   // Resolve ignore list lazily on each click (supports dynamic ignore elements)
@@ -57,8 +59,8 @@ export function onClickOutside(element, onClick, options = {}) {
         if (ign === target) return;
       }
 
-      // If a native <dialog open> is present, skip (unless option is false)
-      if (ignoreWhenDialogOpen && document.querySelector('dialog[open]')) {
+      // If a dialog is open, skip (unless option is false)
+      if (ignoreWhenDialogOpen && document.querySelector(OPEN_DIALOG)) {
         return;
       }
 
@@ -87,8 +89,8 @@ export function onClickOutside(element, onClick, options = {}) {
 
   const keyHandler = (evt) => {
     if (esc && evt.key === 'Escape') {
-      // If a native <dialog open> is present, skip (unless option is false)
-      if (ignoreWhenDialogOpen && document.querySelector('dialog[open]')) {
+      // If a dialog is open, skip (unless option is false)
+      if (ignoreWhenDialogOpen && document.querySelector(OPEN_DIALOG)) {
         return;
       }
       onClick(evt);

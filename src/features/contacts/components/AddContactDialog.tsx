@@ -1,5 +1,3 @@
-// src/features/contacts/components/AddContactModal.tsx
-//
 // The import-contacts section is mounted as a vanilla JS island via ref.
 // TODO: Port import-contacts-component.js to SolidJS (ImportContactsSection.tsx)
 
@@ -11,8 +9,9 @@ import {
   onMount,
   onCleanup,
 } from 'solid-js';
+import Button from '../../../components/Button';
 import Dialog from '../../../components/dialogs/Dialog';
-import styles from './AddContactModal.module.css';
+import TextField from '../../../components/TextField';
 import { Share2, Copy } from 'lucide-solid';
 import { t as t_, useI18n } from '@shared/i18n/index.js';
 import {
@@ -92,7 +91,7 @@ function openEmailComposeFallback(
   }
 }
 
-export function AddContactModal(props: Props) {
+export function AddContactDialog(props: Props) {
   const { t } = useI18n();
   const shareProviders = getInviteShareProviders();
   const senderName = () =>
@@ -115,10 +114,10 @@ export function AddContactModal(props: Props) {
   const [status, setStatus] = createSignal<StatusState>({ text: '', type: '' });
   const [sharePending, setSharePending] = createSignal(false);
 
-  let emailInputRef!: HTMLInputElement;
   let importComponent: ReturnType<typeof createImportContactsComponent> | null =
     null;
   let allContacts: unknown[] = [];
+  let importContainer: HTMLDivElement | undefined;
 
   onMount(() => {
     importComponent = createImportContactsComponent({
@@ -150,7 +149,7 @@ export function AddContactModal(props: Props) {
             continue;
           }
           console.error(
-            '[AddContactModal] Failed to invite:',
+            '[AddContactDialog] Failed to invite:',
             contact.name,
             result.error,
           );
@@ -193,7 +192,7 @@ export function AddContactModal(props: Props) {
           if (results.failed > 0) {
             showErrorToast(t('contact.invite.failed_emails'));
             console.warn(
-              `[AddContactModal] Partial failure - ${results.failed} emails failed:`,
+              `[AddContactDialog] Partial failure - ${results.failed} emails failed:`,
               results.errors,
             );
           }
@@ -201,7 +200,7 @@ export function AddContactModal(props: Props) {
             ? { ok: true, status: 'sent', count: results.sent }
             : { ok: false, status: 'failed' };
         } catch (err: any) {
-          console.error('[AddContactModal] Gmail send error:', err);
+          console.error('[AddContactDialog] Gmail send error:', err);
           if (err.message === 'Authorization cancelled') {
             showErrorToast(t('contact.invite.permission_denied'));
             openEmailComposeFallback(
@@ -218,9 +217,10 @@ export function AddContactModal(props: Props) {
         }
       },
     });
+    importContainer?.appendChild(importComponent.element);
   });
 
-  // Reset the vanilla island when the modal closes
+  // Reset the vanilla island when the dialog closes
   createEffect(() => {
     if (!props.open) {
       importComponent?.reset?.();
@@ -336,7 +336,7 @@ export function AddContactModal(props: Props) {
     try {
       await debouncedShare({ type, providerId });
     } catch (err) {
-      console.error('[AddContactModal] Share error:', err);
+      console.error('[AddContactDialog] Share error:', err);
       showErrorToast(t('contact.invite.share.copy_failed'));
       setStatus({ text: t('contact.invite.share.copy_failed'), type: 'error' });
     }
@@ -348,10 +348,6 @@ export function AddContactModal(props: Props) {
     const email = emailInput().trim().toLowerCase();
     if (!email) return;
     setEmailInput(email);
-    if (!emailInputRef.checkValidity()) {
-      emailInputRef.reportValidity();
-      return;
-    }
     setEmailSending(true);
     setStatus({ text: '', type: '' });
 
@@ -381,7 +377,7 @@ export function AddContactModal(props: Props) {
       setStatus({ text: t('contact.add.lookup_error'), type: 'error' });
     } else {
       console.error(
-        '[AddContactModal] Manual email invite error:',
+        '[AddContactDialog] Manual email invite error:',
         (result as any).error,
       );
       setStatus({ text: t('contact.add.email_error'), type: 'error' });
@@ -399,7 +395,7 @@ export function AddContactModal(props: Props) {
     try {
       await hydrateContacts().catch((error) => {
         console.warn(
-          '[AddContactModal] Contact hydration before search failed:',
+          '[AddContactDialog] Contact hydration before search failed:',
           error,
         );
       });
@@ -407,14 +403,14 @@ export function AddContactModal(props: Props) {
         searchUsersByHandle(handle),
         listOutgoingContactRequests().catch((error) => {
           console.warn(
-            '[AddContactModal] Outgoing contact requests lookup failed:',
+            '[AddContactDialog] Outgoing contact requests lookup failed:',
             error,
           );
           return [];
         }),
         listIncomingContactRequests().catch((error) => {
           console.warn(
-            '[AddContactModal] Incoming contact requests lookup failed:',
+            '[AddContactDialog] Incoming contact requests lookup failed:',
             error,
           );
           return [];
@@ -444,7 +440,7 @@ export function AddContactModal(props: Props) {
         setStatus({ text: t('contact.add.handle_not_found'), type: 'info' });
       }
     } catch (error) {
-      console.error('[AddContactModal] Handle search error:', error);
+      console.error('[AddContactDialog] Handle search error:', error);
       setStatus({ text: t('contact.add.lookup_error'), type: 'error' });
     } finally {
       setHandleSearching(false);
@@ -484,7 +480,7 @@ export function AddContactModal(props: Props) {
       showSuccessToast(t('contact.invite.sent_one'));
       setStatus({ text: `✓ ${t('contact.invite.sent_one')}`, type: 'success' });
     } catch (error) {
-      console.error('[AddContactModal] Contact request error:', error);
+      console.error('[AddContactDialog] Contact request error:', error);
       setStatus({ text: t('contact.add.email_error'), type: 'error' });
     } finally {
       setRequestingUserId(null);
@@ -537,7 +533,7 @@ export function AddContactModal(props: Props) {
     }
     const importErr =
       result.status === 'error' ? (result.error as any) : undefined;
-    console.error('[AddContactModal] Import error:', importErr);
+    console.error('[AddContactDialog] Import error:', importErr);
     importComponent?.setStatus(
       t('contact.import.error', { error: importErr?.message }),
       'error',
@@ -545,161 +541,147 @@ export function AddContactModal(props: Props) {
     importComponent?.renderEmptyState(t('contact.import.failed'));
   }
 
+  const statusTone = () =>
+    ({ success: 'text-success', error: 'text-danger', loading: 'opacity-70' })[
+      status().type
+    ] ?? '';
+
   return (
     <Dialog
       open={props.open}
       onOpenChange={props.onOpenChange}
       title={t('contact.add.title')}
     >
-      <div class={styles.directActions}>
-        <div class={styles.manualEmailRow}>
-          <input
-            type='text'
-            value={handleInput()}
-            onInput={(e) => setHandleInput(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !handleSearching())
-                void handleSearchByHandle();
-            }}
-            placeholder={t('contact.add.enter_handle')}
-            aria-label={t('contact.add.enter_handle')}
-            autocomplete='off'
-            autocapitalize='none'
-          />
-          <button
-            type='button'
-            class={styles.sharePresetBtn}
-            disabled={handleSearching()}
-            onClick={handleSearchByHandle}
-          >
-            {handleSearching() ? t('shared.searching') : t('shared.search')}
-          </button>
-        </div>
+      <form
+        class='flex gap-2'
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSearchByHandle();
+        }}
+      >
+        <TextField
+          class='flex-1'
+          label={t('contact.add.enter_handle')}
+          hideLabel
+          placeholder={t('contact.add.enter_handle')}
+          value={handleInput()}
+          onChange={setHandleInput}
+          autocomplete='off'
+          autocapitalize='none'
+        />
+        <Button type='submit' loading={handleSearching()}>
+          {handleSearching() ? t('shared.searching') : t('shared.search')}
+        </Button>
+      </form>
 
-        <Show when={handleResults().length > 0}>
-          <div class={styles.handleResults}>
-            <For each={handleResults()}>
-              {(user) => {
-                const inviteStatus = () => handleInviteStatuses()[user.uid];
-                const inviteLabel = () => {
-                  if (requestingUserId() === user.uid)
-                    return t('shared.sending');
-                  if (inviteStatus() === 'already_saved')
-                    return t('contact.add.already_saved');
-                  if (inviteStatus() === 'already_invited')
-                    return t('contact.add.already_invited');
-                  if (inviteStatus() === 'incoming_pending')
-                    return t('contact.add.invited_you');
-                  if (inviteStatus() === 'sent')
-                    return `✓ ${t('contact.invite.sent_one')}`;
-                  return t('contact.invite');
-                };
-                return (
-                  <div class={styles.handleResult}>
-                    <span>
-                      {user.displayName}
-                      <Show when={user.username}>
-                        <small>@{user.username}</small>
-                      </Show>
-                    </span>
-                    <button
-                      type='button'
-                      class={styles.sharePresetBtn}
-                      disabled={
-                        requestingUserId() === user.uid ||
-                        Boolean(inviteStatus())
-                      }
-                      onClick={() => handleSendRequest(user)}
-                    >
-                      {inviteLabel()}
-                    </button>
-                  </div>
-                );
-              }}
-            </For>
-          </div>
-        </Show>
-
-        <div class={styles.manualEmailRow}>
-          <input
-            ref={emailInputRef}
-            type='email'
-            value={emailInput()}
-            onInput={(e) => setEmailInput(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !emailSending())
-                void handleManualEmailInvite();
-            }}
-            placeholder={t('contact.add.enter_email')}
-            aria-label={t('contact.add.enter_email')}
-            autocomplete='email'
-          />
-          <button
-            type='button'
-            class={styles.sharePresetBtn}
-            disabled={emailSending()}
-            onClick={handleManualEmailInvite}
-          >
-            {emailSending() ? t('shared.sending') : t('contact.invite')}
-          </button>
-        </div>
-
-        <div
-          class={styles.sharePresetsRow}
-          role='group'
-          aria-label={t('contact.invite.share.presets_label')}
-        >
-          <For each={shareProviders}>
-            {(provider) => (
-              <button
-                type='button'
-                class={styles.sharePresetBtn}
-                disabled={sharePending()}
-                aria-label={t(provider.labelKey)}
-                title={t(provider.labelKey)}
-                onClick={() => handleShareAction('provider', provider.id)}
+      <For each={handleResults()}>
+        {(user) => {
+          const inviteStatus = () => handleInviteStatuses()[user.uid];
+          const inviteLabel = () => {
+            if (requestingUserId() === user.uid) return t('shared.sending');
+            if (inviteStatus() === 'already_saved')
+              return t('contact.add.already_saved');
+            if (inviteStatus() === 'already_invited')
+              return t('contact.add.already_invited');
+            if (inviteStatus() === 'incoming_pending')
+              return t('contact.add.invited_you');
+            if (inviteStatus() === 'sent')
+              return `✓ ${t('contact.invite.sent_one')}`;
+            return t('contact.invite');
+          };
+          return (
+            <div class='flex items-center justify-between gap-2 text-sm'>
+              <span class='min-w-0 truncate'>
+                {user.displayName}
+                <Show when={user.username}>
+                  <small class='ml-1.5 text-text-secondary'>
+                    @{user.username}
+                  </small>
+                </Show>
+              </span>
+              <Button
+                loading={requestingUserId() === user.uid}
+                disabled={Boolean(inviteStatus())}
+                onClick={() => handleSendRequest(user)}
               >
-                {/* Provider icons are custom SVGs from share-invite-presets.js */}
-                <span innerHTML={provider.iconSvg} aria-hidden='true' />
-                <span>{t(provider.labelKey)}</span>
-              </button>
-            )}
-          </For>
+                {inviteLabel()}
+              </Button>
+            </div>
+          );
+        }}
+      </For>
 
-          <button
-            type='button'
-            class={styles.sharePresetBtn}
-            disabled={sharePending()}
-            aria-label={t('contact.invite.share.label')}
-            onClick={() => handleShareAction('generic')}
-          >
-            <Share2 size={20} />
-          </button>
+      {/* type='email' lets the browser validate the address on submit. */}
+      <form
+        class='flex gap-2'
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleManualEmailInvite();
+        }}
+      >
+        <TextField
+          class='flex-1'
+          type='email'
+          label={t('contact.add.enter_email')}
+          hideLabel
+          placeholder={t('contact.add.enter_email')}
+          value={emailInput()}
+          onChange={setEmailInput}
+          autocomplete='email'
+        />
+        <Button type='submit' loading={emailSending()}>
+          {emailSending() ? t('shared.sending') : t('contact.invite')}
+        </Button>
+      </form>
 
-          <button
-            type='button'
-            class={styles.sharePresetBtn}
-            disabled={sharePending()}
-            aria-label={t('contact.invite.copy.label')}
-            onClick={() => handleShareAction('copy')}
-          >
-            <Copy size={20} />
-          </button>
-        </div>
+      <div
+        class='flex flex-wrap gap-2'
+        role='group'
+        aria-label={t('contact.invite.share.presets_label')}
+      >
+        <For each={shareProviders}>
+          {(provider) => (
+            <Button
+              disabled={sharePending()}
+              onClick={() => handleShareAction('provider', provider.id)}
+            >
+              {/* Provider icons are custom SVGs from share-invite-presets.js */}
+              <span innerHTML={provider.iconSvg} aria-hidden='true' />
+              {t(provider.labelKey)}
+            </Button>
+          )}
+        </For>
+        <Button
+          disabled={sharePending()}
+          aria-label={t('contact.invite.share.label')}
+          onClick={() => handleShareAction('generic')}
+        >
+          <Share2 size={20} />
+        </Button>
+        <Button
+          disabled={sharePending()}
+          aria-label={t('contact.invite.copy.label')}
+          onClick={() => handleShareAction('copy')}
+        >
+          <Copy size={20} />
+        </Button>
       </div>
 
-      <hr class={styles.divider} />
+      <hr class='border-border-primary' />
 
       {/* Vanilla JS island — replace with ImportContactsSection.tsx when ported.
           Dialog content mounts only while open, so re-attach on each mount. */}
       <div
-        ref={(el) => importComponent && el.appendChild(importComponent.element)}
+        ref={(el) => {
+          importContainer = el;
+          if (importComponent) el.appendChild(importComponent.element);
+        }}
       />
 
+      {/* Stays mounted so screen readers announce changes to it. */}
       <div
-        class={`${styles.importStatus}${status().type ? ` ${status().type}` : ''}`}
+        class={`text-sm text-text-secondary empty:hidden ${statusTone()}`}
         role='status'
-        aria-live='polite'
       >
         {status().text}
       </div>

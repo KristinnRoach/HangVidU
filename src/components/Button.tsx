@@ -6,6 +6,7 @@ const variants = {
   secondary:
     'border border-border-primary bg-bg-secondary text-text-primary hover:bg-bg-brighter',
   ghost: 'text-text-secondary hover:bg-bg-brighter hover:text-text-primary',
+  success: 'bg-success text-white hover:bg-success-hover',
   danger: 'bg-danger text-white hover:bg-danger-hover',
 };
 

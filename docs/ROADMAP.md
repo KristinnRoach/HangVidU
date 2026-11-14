@@ -6,8 +6,8 @@ Keep HangVidU straightforward to maintain as features are added.
 
 ## Current status
 
-- **Current:** Step 2, minimal UI foundation. Shared Tailwind tokens are in place; reusable controls and consistent dialog behaviour remain.
-- **Next:** Choose one existing dialog flow as the reference, then implement the shared controls and focus, keyboard, loading, and error states it needs.
+- **Current:** Step 2, minimal UI foundation. Shared Tailwind tokens and Kobalte-based `Dialog`, `Button`, and `TextField` are in place; every dialog uses them (trial in #769).
+- **Next:** Decide whether to keep Kobalte, then port the vanilla import-contacts section inside the add-contact dialog to the shared controls.
 - **Separate follow-up:** [Failed-message recovery (#758)](https://github.com/KristinnRoach/HangVidU/issues/758).
 
 Update this block in the same PR when progress or the next step changes. Keep it

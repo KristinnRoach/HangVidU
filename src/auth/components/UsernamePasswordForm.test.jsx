@@ -35,14 +35,12 @@ describe('UsernamePasswordForm', () => {
     vi.clearAllMocks();
   });
 
-  it('shows a friendly inline error and keeps the sheet open on failed sign-in', async () => {
+  it('shows a friendly inline error on failed sign-in', async () => {
     mocks.signInWithUsernameOrEmail.mockRejectedValue({
       code: 'auth/invalid-credential',
     });
-    const onAuthFailure = vi.fn();
-
-    const { container, getByPlaceholderText } = render(() => (
-      <UsernamePasswordForm onAuthFailure={onAuthFailure} />
+    const { container, getByPlaceholderText, getByRole } = render(() => (
+      <UsernamePasswordForm />
     ));
 
     const identifier = getByPlaceholderText('username or email');
@@ -58,7 +56,8 @@ describe('UsernamePasswordForm', () => {
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 
     await waitFor(() => {
-      expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+      expect(password.getAttribute('aria-invalid')).toBe('true');
+      expect(getByRole('alert').textContent).toContain(
         "We couldn't find an account with those credentials.",
       );
     });
@@ -67,6 +66,31 @@ describe('UsernamePasswordForm', () => {
       identifier: 'missing-user',
       password: 'incorrect-password',
     });
-    expect(onAuthFailure).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores repeated submissions and mode changes while signing in', async () => {
+    let finish;
+    mocks.signInWithUsernameOrEmail.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { container, getByText } = render(() => <UsernamePasswordForm />);
+    const form = container.querySelector('form');
+    const submit = () =>
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true }),
+      );
+
+    submit();
+    submit();
+    expect(mocks.signInWithUsernameOrEmail).toHaveBeenCalledTimes(1);
+    expect(getByText('No account? Sign up').disabled).toBe(true);
+
+    finish();
+    await waitFor(() =>
+      expect(getByText('No account? Sign up').disabled).toBe(false),
+    );
   });
 });

@@ -17,7 +17,6 @@ export default function PublicHomepage() {
       </p>
 
       <LoginButton
-        popoverTarget='signinSheet'
         textContent='Log in'
         class='mt-9 rounded-md border border-primary bg-primary/20 px-4 py-2 font-medium text-neutral-100 transition-colors hover:bg-primary/30'
       />

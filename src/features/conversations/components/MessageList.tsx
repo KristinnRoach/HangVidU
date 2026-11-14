@@ -11,7 +11,8 @@ import { Download } from 'lucide-solid';
 import { useI18n } from '@shared/i18n';
 // eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:reactions` directive
 import { reactions } from '@lib/reactions/solid/solid.js';
-import { showImagePreview } from '@components/base-legacy/imagePreview.js';
+import Button from '@components/Button';
+import Dialog from '@components/dialogs/Dialog';
 import { downloadUrl } from '@lib/utils/download-url.js';
 import { detectDoubleClick } from '@shared/utils/ui-utils/detectDoubleClick.js';
 
@@ -336,11 +337,7 @@ function FileAttachment(props: {
   const canPreview = () =>
     Boolean(props.url?.startsWith('blob:')) && isImageAttachment(props.file);
 
-  function openPreview(url: string) {
-    showImagePreview(url, props.file.fileName, null, {
-      revokeOnClose: false,
-    });
-  }
+  const [previewOpen, setPreviewOpen] = createSignal(false);
 
   async function downloadAttachment() {
     if (props.url?.startsWith('blob:')) {
@@ -362,9 +359,33 @@ function FileAttachment(props: {
     }
   }
 
+  function download() {
+    void downloadAttachment().catch((error) => {
+      console.warn('[conversation] failed to download attachment', error);
+    });
+  }
+
   return (
     <span class={styles.fileMessage}>
       <Show when={canPreview()}>
+        <Dialog
+          wide
+          open={previewOpen()}
+          onOpenChange={setPreviewOpen}
+          title={props.file.fileName}
+          footer={
+            <Button onClick={download}>
+              <Download size={16} aria-hidden='true' />
+              {t('shared.download')}
+            </Button>
+          }
+        >
+          <img
+            class='max-h-[70dvh] max-w-full self-center rounded-md object-contain'
+            src={props.url ?? undefined}
+            alt={props.file.fileName}
+          />
+        </Dialog>
         <img
           class={styles.filePreviewImg}
           src={props.url ?? undefined}
@@ -383,7 +404,7 @@ function FileAttachment(props: {
             const dc = detectDoubleClick(
               el,
               () => {
-                if (props.url) openPreview(props.url);
+                setPreviewOpen(true);
               },
               () => {},
             );
@@ -392,7 +413,7 @@ function FileAttachment(props: {
           onKeyDown={(e) => {
             if (e.key !== 'Enter' && e.key !== ' ') return;
             e.preventDefault();
-            if (props.url) openPreview(props.url);
+            setPreviewOpen(true);
           }}
         />
       </Show>
@@ -404,12 +425,7 @@ function FileAttachment(props: {
           title={props.file.fileName}
           onClick={(event) => {
             event.preventDefault();
-            void downloadAttachment().catch((error) => {
-              console.warn(
-                '[conversation] failed to download attachment',
-                error,
-              );
-            });
+            download();
           }}
         >
           {displayAttachmentFileName(props.file.fileName)}

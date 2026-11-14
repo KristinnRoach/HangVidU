@@ -3,7 +3,7 @@ import { useAuth } from '../solid-auth';
 import { signOutUser } from '../auth-commands.js';
 import { useI18n } from '@shared/i18n/index.js';
 import LoginButton from './LoginButton';
-import SignInSheet from './SignInSheet';
+import SignInDialog from './SignInDialog';
 import { LogOut } from 'lucide-solid';
 
 import styles from './AuthControls.module.css';
@@ -30,8 +30,8 @@ export default function AuthControls() {
   return (
     <div class={styles.authControls}>
       <Show when={isAuthInitialized() && !isLoggedIn()}>
-        <LoginButton popoverTarget='signinSheet' />
-        <SignInSheet id='signinSheet' />
+        <LoginButton />
+        <SignInDialog />
       </Show>
 
       <Show when={isLoggingIn() || isLoggingOut()}>
