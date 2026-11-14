@@ -69,6 +69,8 @@ them as competing styling systems on the same element. Migrate a component fully
 then remove its module/global rules and tokens that have no remaining consumers.
 Keep necessary dynamic values local; do not recreate a parallel theme with literals.
 
-Dialogs currently have both native-modal and custom-overlay implementations.
-Consolidating accessible focus, keyboard, and dismissal behaviour is roadmap work;
-new styling alone does not make those behaviours equivalent.
+Shared controls wrap [Kobalte](https://kobalte.dev) primitives, which own focus,
+keyboard, dismissal, and aria wiring; the wrappers only add Tailwind styling:
+`components/dialogs/Dialog.tsx`, `components/Button.tsx`, `components/TextField.tsx`.
+Call dialogs still use the custom `DialogFrame` overlay without focus trapping
+or keyboard handling.

@@ -32,6 +32,10 @@ required local credentials rather than copying production secrets into source.
 
 `vpr dev` applies local D1 migrations before starting the API.
 
+Git worktrees don't get these untracked files. Run `scripts/copy-local-files.sh`
+inside a worktree to copy env files, Worker dev vars, and `.certs/` from the main
+checkout; `vpr worktree <branch>` and T3 worktree creation run it automatically.
+
 For production builds, copy the production template:
 
 ```bash

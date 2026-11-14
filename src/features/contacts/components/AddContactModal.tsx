@@ -11,7 +11,7 @@ import {
   onMount,
   onCleanup,
 } from 'solid-js';
-import Modal from '../../../components/dialogs/Modal.js';
+import Dialog from '../../../components/dialogs/Dialog';
 import styles from './AddContactModal.module.css';
 import { Share2, Copy } from 'lucide-solid';
 import { t as t_, useI18n } from '@shared/i18n/index.js';
@@ -115,7 +115,6 @@ export function AddContactModal(props: Props) {
   const [status, setStatus] = createSignal<StatusState>({ text: '', type: '' });
   const [sharePending, setSharePending] = createSignal(false);
 
-  let importContainerRef!: HTMLDivElement;
   let emailInputRef!: HTMLInputElement;
   let importComponent: ReturnType<typeof createImportContactsComponent> | null =
     null;
@@ -219,7 +218,6 @@ export function AddContactModal(props: Props) {
         }
       },
     });
-    importContainerRef.appendChild(importComponent.element);
   });
 
   // Reset the vanilla island when the modal closes
@@ -548,7 +546,7 @@ export function AddContactModal(props: Props) {
   }
 
   return (
-    <Modal
+    <Dialog
       open={props.open}
       onOpenChange={props.onOpenChange}
       title={t('contact.add.title')}
@@ -692,8 +690,11 @@ export function AddContactModal(props: Props) {
 
       <hr class={styles.divider} />
 
-      {/* Vanilla JS island — replace with ImportContactsSection.tsx when ported */}
-      <div ref={importContainerRef} />
+      {/* Vanilla JS island — replace with ImportContactsSection.tsx when ported.
+          Dialog content mounts only while open, so re-attach on each mount. */}
+      <div
+        ref={(el) => importComponent && el.appendChild(importComponent.element)}
+      />
 
       <div
         class={`${styles.importStatus}${status().type ? ` ${status().type}` : ''}`}
@@ -702,6 +703,6 @@ export function AddContactModal(props: Props) {
       >
         {status().text}
       </div>
-    </Modal>
+    </Dialog>
   );
 }
