@@ -4,6 +4,16 @@ Keep HangVidU straightforward to maintain as features are added.
 
 [Working conventions](../AGENTS.md) · [Current code map](architecture/README.md)
 
+## Current status
+
+- **Current:** Step 2, minimal UI foundation. Shared Tailwind tokens are in place; reusable controls and consistent dialog behaviour remain.
+- **Next:** Choose one existing dialog flow as the reference, then implement the shared controls and focus, keyboard, loading, and error states it needs.
+- **Separate follow-up:** [Failed-message recovery (#758)](https://github.com/KristinnRoach/HangVidU/issues/758).
+
+Update this block in the same PR when progress or the next step changes. Keep it
+concise and concrete, with no history. Link to a GitHub issue or PR when the
+proposed next step needs more detail.
+
 Resolve open decisions when each step starts and update its status as work lands.
 Build ongoing UI improvements on the foundation from step 2.
 
