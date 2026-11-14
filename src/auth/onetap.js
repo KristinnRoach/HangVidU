@@ -138,14 +138,10 @@ export function renderGoogleSignInButton(containerEl, options = {}) {
     return false;
   }
 
-  containerEl.style.visibility = 'hidden';
-
   const locale = getLocale();
-  if (containerEl.dataset.gsiRendered === locale) {
-    containerEl.style.visibility = 'visible';
-    return;
-  }
+  if (containerEl.dataset.gsiRendered === locale) return;
 
+  containerEl.style.visibility = 'hidden';
   containerEl.replaceChildren();
 
   renderAdapterGoogleSignInButton(containerEl, {
@@ -160,9 +156,17 @@ export function renderGoogleSignInButton(containerEl, options = {}) {
   });
 
   containerEl.dataset.gsiRendered = locale;
-  requestAnimationFrame(() => {
-    containerEl.style.visibility = 'visible';
-  });
+  // GIS replaces its temporary button with an iframe. Revealing the temporary
+  // label first causes a flash on every dialog open, even with GIS cached.
+  const frame = containerEl.querySelector('iframe');
+  const reveal = () => {
+    requestAnimationFrame(() => {
+      if (frame && !containerEl.contains(frame)) return;
+      containerEl.style.visibility = 'visible';
+    });
+  };
+  if (frame) frame.addEventListener('load', reveal, { once: true });
+  else reveal();
 
   return true;
 }

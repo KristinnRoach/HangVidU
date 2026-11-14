@@ -18,8 +18,6 @@ export default function GoogleSignInButton() {
       text: 'signin_with',
       size: 'medium',
       shape: 'pill',
-      // theme: 'filled_black',
-      // width: '240',
     });
   }
 
@@ -45,5 +43,5 @@ export default function GoogleSignInButton() {
     });
   });
 
-  return <div class='gsi-button-container' ref={buttonContainer} />;
+  return <div class='min-h-8 w-60 max-w-full' ref={buttonContainer} />;
 }
