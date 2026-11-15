@@ -6,7 +6,7 @@
 set -eu
 umask 077
 
-worktree_path="$(cd "${1:-.}" && pwd)"
+worktree_path="$(git -C "${1:-.}" rev-parse --show-toplevel)"
 
 main_worktree="$(
   git -C "$worktree_path" worktree list --porcelain 2>/dev/null |

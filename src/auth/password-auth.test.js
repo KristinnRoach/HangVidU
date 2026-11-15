@@ -1,17 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { getAuthState, setState } from './auth-state.js';
 
 const mocks = vi.hoisted(() => ({
-  previousAuthState: {
-    status: 'unauthenticated',
-    user: null,
-    isLoggedIn: false,
-  },
   createPasswordUser: vi.fn(),
   deleteFirebaseUser: vi.fn(),
   signInPassword: vi.fn(),
   updateFirebaseProfile: vi.fn(),
-  getAuthState: vi.fn(),
-  setState: vi.fn(),
   logAuthError: vi.fn(),
   dbGet: vi.fn(),
   dbSet: vi.fn(),
@@ -38,15 +32,6 @@ vi.mock('./adapters/firebase-auth-adapter.js', () => ({
   updateFirebaseProfile: mocks.updateFirebaseProfile,
 }));
 
-vi.mock('./auth-state.js', async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    getAuthState: mocks.getAuthState,
-    setState: mocks.setState,
-    toStableAuthState: actual.toStableAuthState,
-  };
-});
-
 vi.mock('./shared/auth-error-logging.js', () => ({
   logAuthError: mocks.logAuthError,
 }));
@@ -56,32 +41,23 @@ vi.mock('@lib/utils/email-hash.js', () => ({
 }));
 
 beforeEach(() => {
-  mocks.previousAuthState = {
+  setState({
     status: 'unauthenticated',
     user: null,
     isLoggedIn: false,
-  };
+  });
   mocks.createPasswordUser.mockReset();
   mocks.deleteFirebaseUser.mockReset().mockResolvedValue(undefined);
   mocks.signInPassword.mockReset();
   mocks.updateFirebaseProfile.mockReset();
   mocks.updateFirebaseProfile.mockResolvedValue(undefined);
-  mocks.getAuthState.mockReset().mockImplementation(() => ({
-    ...mocks.previousAuthState,
-    user: mocks.previousAuthState.user
-      ? { ...mocks.previousAuthState.user }
-      : null,
-  }));
-  mocks.setState.mockReset();
   mocks.logAuthError.mockReset();
   mocks.dbGet.mockReset();
   mocks.dbSet.mockReset().mockResolvedValue(undefined);
 });
 
 function expectAuthStateRestored() {
-  expect(mocks.setState).toHaveBeenNthCalledWith(1, { status: 'loading' });
-  expect(mocks.setState).toHaveBeenCalledTimes(2);
-  expect(mocks.setState).toHaveBeenLastCalledWith({
+  expect(getAuthState()).toEqual({
     status: 'unauthenticated',
     isLoggedIn: false,
     user: null,
@@ -89,6 +65,64 @@ function expectAuthStateRestored() {
 }
 
 describe('password auth failure state', () => {
+  it('blocks overlapping sign-ins and allows a retry after failure', async () => {
+    const { signInWithUsernameOrEmail } = await import('./password-auth.js');
+    let rejectAttempt;
+    mocks.signInPassword.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectAttempt = reject;
+        }),
+    );
+    const params = {
+      identifier: 'someuser',
+      [PASSWORD_FIELD]: SIGN_IN_TEST_VALUE,
+    };
+    const attempt = signInWithUsernameOrEmail(params);
+    expect(getAuthState().status).toBe('loading');
+    await expect(signInWithUsernameOrEmail(params)).rejects.toThrow(
+      'operation-in-progress',
+    );
+    expect(mocks.signInPassword).toHaveBeenCalledTimes(1);
+
+    const error = Object.assign(new Error('bad credentials'), {
+      code: 'auth/invalid-credential',
+    });
+    rejectAttempt(error);
+    await expect(attempt).rejects.toBe(error);
+    expectAuthStateRestored();
+
+    const credential = { user: { uid: 'retry-user' } };
+    mocks.signInPassword.mockResolvedValueOnce(credential);
+    await expect(signInWithUsernameOrEmail(params)).resolves.toBe(credential);
+  });
+
+  it('does not revert a Firebase auth update when an older lookup fails', async () => {
+    const { signInWithUsernameOrEmail } = await import('./password-auth.js');
+    let rejectLookup;
+    mocks.dbGet.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectLookup = reject;
+        }),
+    );
+    const attempt = signInWithUsernameOrEmail({
+      identifier: 'someuser@example.com',
+      [PASSWORD_FIELD]: SIGN_IN_TEST_VALUE,
+    });
+    const authenticated = {
+      status: 'authenticated',
+      isLoggedIn: true,
+      user: { uid: 'google-user', email: 'someuser@example.com' },
+    };
+    setState(authenticated);
+    const error = new Error('lookup unavailable');
+    rejectLookup(error);
+    await expect(attempt).rejects.toBe(error);
+    expect(getAuthState()).toEqual(authenticated);
+    expect(mocks.signInPassword).not.toHaveBeenCalled();
+  });
+
   it('restores unauthenticated state when username sign-in fails', async () => {
     const { signInWithUsernameOrEmail } = await import('./password-auth.js');
     const error = Object.assign(new Error('bad credentials'), {

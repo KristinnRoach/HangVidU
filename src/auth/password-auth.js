@@ -19,7 +19,12 @@ import {
   normalizeAuthErrorCode,
   resolveErrorLookupKey,
 } from './shared/auth-error-codes.js';
-import { getAuthState, setState, toStableAuthState } from './auth-state.js';
+import {
+  beginAuthTransition,
+  getAuthState,
+  setState,
+  toStableAuthState,
+} from './auth-state.js';
 import { logAuthError } from './shared/auth-error-logging.js';
 import {
   SYNTHETIC_DOMAIN,
@@ -37,6 +42,7 @@ export {
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 const MIN_PASSWORD_LENGTH = 8;
+let passwordSignInPending = false;
 // Domain codes we throw ourselves + normalized Firebase codes (see
 // normalizeAuthErrorCode). Expected failures are surfaced to the user, not logged.
 const EXPECTED_PASSWORD_AUTH_FAILURES = new Set([
@@ -177,8 +183,9 @@ export async function signInWithUsernameOrEmail({ identifier, password }) {
     throw new Error('password_required');
   }
 
-  const previousAuthState = getAuthState();
-  setState({ status: 'loading' });
+  if (passwordSignInPending) throw new Error('operation-in-progress');
+  passwordSignInPending = true;
+  const revertAuthState = beginAuthTransition();
 
   try {
     let handle;
@@ -198,10 +205,12 @@ export async function signInWithUsernameOrEmail({ identifier, password }) {
 
     return await signInPassword(syntheticEmail(handle), password);
   } catch (e) {
-    setState(toStableAuthState(previousAuthState));
+    revertAuthState();
     if (!isExpectedPasswordAuthFailure(e)) {
       logAuthError('Sign in (password)', e);
     }
     throw e;
+  } finally {
+    passwordSignInPending = false;
   }
 }
