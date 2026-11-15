@@ -42,7 +42,10 @@ export default function Dialog(props: DialogProps) {
               // under a key the user was already pressing.
               if (props.onOpenChange) return;
               event.preventDefault();
-              content.focus();
+              // Let Kobalte pause the underlying dialog's focus trap first.
+              queueMicrotask(() => {
+                if (content.isConnected && props.open) content.focus();
+              });
             }}
             onCloseAutoFocus={(event) => {
               if (!returnFocus?.isConnected) return;
@@ -52,12 +55,12 @@ export default function Dialog(props: DialogProps) {
             class={`flex max-h-full flex-col gap-3 overflow-auto rounded-lg border border-border-primary bg-bg-primary p-4 text-text-primary shadow-lg outline-none ${props.wide ? 'max-w-full' : 'w-full max-w-lg'}`}
           >
             <header class='flex items-center justify-between gap-4'>
-              <KDialog.Title class='m-0 min-w-0 truncate text-lg font-semibold'>
+              <KDialog.Title class='m-0 min-w-0 wrap-anywhere text-lg font-semibold'>
                 {props.title}
               </KDialog.Title>
               <Show when={props.onOpenChange}>
                 <KDialog.CloseButton
-                  class='rounded-md p-1 text-text-secondary hover:bg-bg-brighter hover:text-text-primary focus-visible:outline-2 focus-visible:outline-primary'
+                  class='shrink-0 rounded-md p-1 text-text-secondary hover:bg-bg-brighter hover:text-text-primary focus-visible:outline-2 focus-visible:outline-primary'
                   aria-label={t('shared.close')}
                 >
                   <X size={20} />
@@ -71,7 +74,9 @@ export default function Dialog(props: DialogProps) {
             </Show>
             {props.children}
             <Show when={props.footer}>
-              <footer class='flex justify-end gap-2'>{props.footer}</footer>
+              <footer class='flex flex-wrap justify-end gap-2'>
+                {props.footer}
+              </footer>
             </Show>
           </KDialog.Content>
         </div>

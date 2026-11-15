@@ -69,9 +69,9 @@ them as competing styling systems on the same element. Migrate a component fully
 then remove its module/global rules and tokens that have no remaining consumers.
 Keep necessary dynamic values local; do not recreate a parallel theme with literals.
 
-Shared controls wrap [Kobalte](https://kobalte.dev) primitives, which own focus,
-keyboard, dismissal, and aria wiring; the wrappers only add Tailwind styling:
-`components/dialogs/Dialog.tsx`, `components/Button.tsx`, `components/TextField.tsx`.
+`components/dialogs/Dialog.tsx` and `components/TextField.tsx` wrap
+[Kobalte](https://kobalte.dev) primitives for focus, keyboard, dismissal, and aria
+wiring. `components/Button.tsx` styles a native button. All three use Tailwind.
 
 Every dialog is a `Dialog`: pass `open`, `title`, the body as children, and
 optional `description`/`footer`. `onOpenChange` makes it dismissible; omit it for

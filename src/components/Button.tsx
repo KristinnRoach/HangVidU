@@ -1,4 +1,3 @@
-import { Button as KButton } from '@kobalte/core/button';
 import { splitProps, type ComponentProps } from 'solid-js';
 
 const variants = {
@@ -25,7 +24,7 @@ export default function Button(props: ButtonProps) {
   ]);
 
   return (
-    <KButton
+    <button
       type='button'
       {...rest}
       disabled={local.disabled || local.loading}

@@ -41,6 +41,47 @@ describe('Dialog', () => {
     await waitFor(() => expect(document.activeElement).toBe(opener));
   });
 
+  it('returns focus through stacked dialogs and unlocks the page after both close', async () => {
+    const [open, setOpen] = createSignal(false);
+    const [incoming, setIncoming] = createSignal(false);
+    render(() => (
+      <>
+        <button onClick={() => setOpen(true)}>opener</button>
+        <Dialog open={open()} onOpenChange={setOpen} title='First'>
+          <button onClick={() => setIncoming(true)}>inside</button>
+        </Dialog>
+        <Show when={incoming()}>
+          <Dialog open title='Incoming'>
+            <button onClick={() => setIncoming(false)}>decline</button>
+          </Dialog>
+        </Show>
+      </>
+    ));
+
+    const opener = screen.getByText('opener');
+    opener.focus();
+    fireEvent.click(opener);
+    const inside = await screen.findByText('inside');
+    const firstDialog = screen.getByRole('dialog');
+    await waitFor(() =>
+      expect(firstDialog.contains(document.activeElement)).toBe(true),
+    );
+    inside.focus();
+    fireEvent.click(inside);
+    const incomingDialog = await screen.findByRole('alertdialog');
+    await waitFor(() => expect(document.activeElement).toBe(incomingDialog));
+
+    fireEvent.click(screen.getByText('decline'));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(inside));
+    expect(document.body.style.pointerEvents).toBe('none');
+
+    fireEvent.keyDown(inside, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+    expect(document.body.style.pointerEvents).not.toBe('none');
+  });
+
   it('without onOpenChange cannot be dismissed and focuses no action', async () => {
     const [mounted, setMounted] = createSignal(true);
     const opener = document.createElement('button');
