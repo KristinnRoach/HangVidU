@@ -11,7 +11,6 @@ import {
   isGoogleOneTapLoaded,
   loadGoogleIdentityScript,
   promptGoogleOneTap,
-  renderGoogleSignInButton as renderAdapterGoogleSignInButton,
 } from '@shared/utils/google/google-identity-adapter.js';
 import { devDebug } from '@shared/utils/dev/dev-utils.js';
 import { getLocale, t } from '@shared/i18n/index.js';
@@ -123,40 +122,6 @@ async function handleOneTapCredential(response) {
       alert(t('auth.onetap_failed', { error: errorMessage }));
     }
   }
-}
-
-/**
- * Render the branded "Sign in with Google" button into a container element.
- *
- * @param {HTMLElement} containerEl
- * @param {Record<string, unknown>} [options]
- * @returns {boolean|undefined}
- */
-export function renderGoogleSignInButton(containerEl, options = {}) {
-  if (!isGoogleOneTapLoaded()) {
-    devDebug('[ONE TAP] Cannot render button: GIS not loaded yet');
-    return false;
-  }
-
-  const locale = getLocale();
-  if (containerEl.dataset.gsiRendered === locale) return;
-
-  containerEl.replaceChildren();
-
-  renderAdapterGoogleSignInButton(containerEl, {
-    type: 'standard',
-    theme: 'filled_black',
-    size: 'medium',
-    shape: 'pill',
-    text: 'signin_with',
-    width: '240',
-    locale,
-    ...options,
-  });
-
-  containerEl.dataset.gsiRendered = locale;
-
-  return true;
 }
 
 export function cancelOneTap() {

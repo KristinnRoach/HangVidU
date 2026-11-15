@@ -184,6 +184,7 @@
   "notification.update.later": "Seinna",
   "auth.logout": "Skrá út",
   "auth.sign_in": "Skrá inn",
+  "auth.sign_in_with_google": "Skrá inn með Google",
   "auth.continue_with_username": "Halda áfram með notandanafn",
   "auth.sign_up": "Nýskráning",
   "auth.placeholder.identifier": "notandanafn eða netfang",

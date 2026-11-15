@@ -184,6 +184,7 @@
   "notification.update.later": "Later",
   "auth.logout": "Logout",
   "auth.sign_in": "Sign in",
+  "auth.sign_in_with_google": "Sign in with Google",
   "auth.continue_with_username": "Continue with username",
   "auth.sign_up": "Sign up",
   "auth.placeholder.identifier": "username or email",
