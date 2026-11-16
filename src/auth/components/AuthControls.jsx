@@ -2,6 +2,7 @@ import { Show } from 'solid-js';
 import { useAuth } from '../solid-auth';
 import { signOutUser } from '../auth-commands.js';
 import { useI18n } from '@shared/i18n/index.js';
+import Button from '../../components/Button';
 import LoginButton from './LoginButton';
 import SignInDialog from './SignInDialog';
 import { LogOut } from 'lucide-solid';
@@ -41,9 +42,9 @@ export default function AuthControls() {
       </Show>
 
       <Show when={isLoggedIn()}>
-        <button
+        <Button
+          variant='ghost'
           id='goog-logout-btn'
-          class={styles.logoutBtn}
           type='button'
           title={t('auth.logout')}
           aria-label={t('auth.logout')}
@@ -51,7 +52,7 @@ export default function AuthControls() {
           onClick={requestLogout}
         >
           <LogOut />
-        </button>
+        </Button>
       </Show>
     </div>
   );
