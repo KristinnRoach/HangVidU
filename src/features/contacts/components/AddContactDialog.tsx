@@ -359,7 +359,7 @@ function AddContactContent() {
           class='flex-1'
           label={t('contact.add.search')}
           hideLabel
-          placeholder={t('contact.add.search')}
+          placeholder={t('contact.add.search_placeholder')}
           value={searchInput()}
           onChange={setSearchInput}
           autocomplete='off'
