@@ -11,17 +11,14 @@ import { buildImportableContacts } from './import-contacts-utils.js';
 /**
  * Import Google contacts and annotate each result against saved contacts and registered users.
  *
- * @param {{ onProgress?: (update: { step: string, count?: number }) => void, isCurrent?: () => boolean }} [options]
+ * @param {{ onProgress?: (update: { step: string, count?: number }) => void }} [options]
  * @returns {Promise<
  *   | { status: 'success', contacts: import('./types').ImportContact[] }
- *   | { status: 'no_email' | 'cancelled' | 'stale', contacts: [] }
+ *   | { status: 'no_email' | 'cancelled', contacts: [] }
  *   | { status: 'error', error: unknown, contacts: [] }
  * >}
  */
-export async function importGoogleContacts({
-  onProgress = () => {},
-  isCurrent = () => true,
-} = {}) {
+export async function importGoogleContacts({ onProgress = () => {} } = {}) {
   try {
     onProgress({ step: 'requesting' });
     const accessToken = await requestContactsAccess({
@@ -29,11 +26,9 @@ export async function importGoogleContacts({
       hint: getAuthState().user?.email ?? undefined,
     });
 
-    if (!isCurrent()) return { status: 'stale', contacts: [] };
     onProgress({ step: 'fetching' });
-    const contacts = await fetchGoogleContacts(accessToken, { isCurrent });
+    const contacts = await fetchGoogleContacts(accessToken);
 
-    if (!isCurrent()) return { status: 'stale', contacts: [] };
     if (contacts.length === 0) {
       return {
         status: 'no_email',
@@ -47,14 +42,12 @@ export async function importGoogleContacts({
     });
 
     await hydrateContacts();
-    if (!isCurrent()) return { status: 'stale', contacts: [] };
     const savedContacts = getAllContacts();
     const savedContactIds = new Set(Object.keys(savedContacts || {}));
     const registeredUsers = await findRegisteredUsersByEmails(
       contacts.map((contact) => contact.email),
     );
 
-    if (!isCurrent()) return { status: 'stale', contacts: [] };
     return {
       status: 'success',
       contacts: buildImportableContacts({

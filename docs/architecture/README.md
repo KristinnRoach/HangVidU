@@ -92,15 +92,14 @@ The add-contact flow (`features/contacts/components/AddContactDialog.tsx` and
 and a persistent `role="status"` for pending/results/errors. Import selection is
 keyed by email and survives filtering; select-all affects visible eligible rows.
 Successful/duplicate app invites become unavailable, while failures stay selected
-for retry. The bulk app-invite action appears only with eligible app contacts
-selected; invite-sending actions use the existing `success` button variant.
-Email sends deselect only successful recipients. Username search retains previous results
-with disabled actions while refreshing to avoid collapsing the dialog; the
-result region takes no space until results exist. Feedback remains
-until the next action rather than disappearing on a timer.
+for retry. Email sends deselect only successful recipients. Username search
+retains previous results with disabled actions while refreshing to avoid
+collapsing the dialog. Feedback remains until the next action rather than
+disappearing on a timer.
 
 Dialog content owns pending UI work. Cleanup invalidates late results and stops
 remaining batch operations; already-issued requests may finish. Check the
 lifetime after authorization and between requests before starting more work or
-opening an email fallback. Services keep optional lifetime guards for this
-purpose; UI state and selection stay in the Solid component.
+opening an email fallback. Services that send (contact invites, bulk Gmail) take
+an optional `isCurrent` guard; read-only fetches do not, and the component
+discards their late results. UI state and selection stay in the Solid component.

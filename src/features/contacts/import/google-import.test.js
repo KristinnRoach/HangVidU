@@ -93,16 +93,3 @@ describe('importGoogleContacts', () => {
     expect(mocks.getAllContacts).not.toHaveBeenCalled();
   });
 });
-
-it('does not fetch contacts after authorization outlives the dialog', async () => {
-  let current = true;
-  mocks.requestContactsAccess.mockImplementationOnce(async () => {
-    current = false;
-    return 'late-token';
-  });
-  const fetches = mocks.fetchGoogleContacts.mock.calls.length;
-  await expect(
-    importGoogleContacts({ isCurrent: () => current }),
-  ).resolves.toEqual({ status: 'stale', contacts: [] });
-  expect(mocks.fetchGoogleContacts).toHaveBeenCalledTimes(fetches);
-});

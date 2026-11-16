@@ -32,14 +32,12 @@ export default function ImportContactsSection(props: {
 
   const [contacts, setContacts] = createSignal<ImportContact[]>([]);
   const [query, setQuery] = createSignal('');
-  const [started, setStarted] = createSignal(false);
-  const [importing, setImporting] = createSignal(false);
-  const [pending, setPending] = createSignal(false);
-  const [sendingEmail, setSendingEmail] = createSignal(false);
+  const [busy, setBusy] = createSignal<'import' | 'invite' | 'email' | null>(
+    null,
+  );
   const [selected, setSelected] = createSignal<Set<string>>(new Set());
   const [invites, setInvites] = createSignal<Record<string, InviteStatus>>({});
   const [status, setStatus] = createSignal<Status>({ text: '' });
-  const [emptyMessage, setEmptyMessage] = createSignal('');
   const visible = createMemo(
     () => filterImportableContacts(contacts(), query()) as ImportContact[],
   );
@@ -54,7 +52,6 @@ export default function ImportContactsSection(props: {
   const offApp = () => chosen().filter((contact) => !contact.user);
   const selectedVisibleCount = () =>
     available().filter((contact) => selected().has(contact.email)).length;
-  const busy = () => importing() || pending();
 
   function select(email: string, checked: boolean) {
     setSelected((previous) => {
@@ -67,16 +64,13 @@ export default function ImportContactsSection(props: {
 
   async function runImport() {
     if (busy() || !isCurrent()) return;
-    setImporting(true);
-    setStarted(true);
+    setBusy('import');
     setContacts([]);
     setSelected(new Set<string>());
     setInvites({});
     setQuery('');
-    setEmptyMessage('');
     try {
       const result = await importGoogleContacts({
-        isCurrent,
         onProgress: ({ step, count }: { step: string; count?: number }) => {
           if (!isCurrent()) return;
           const text =
@@ -92,7 +86,7 @@ export default function ImportContactsSection(props: {
         setStatus({
           text: t('contact.import.found', { count: result.contacts.length }),
         });
-      } else if (result.status !== 'stale') {
+      } else {
         setStatus({
           text: t(`contact.import.${result.status}`, {
             error:
@@ -106,22 +100,15 @@ export default function ImportContactsSection(props: {
           }),
           error: result.status === 'error',
         });
-        setEmptyMessage(
-          t(
-            result.status === 'no_email'
-              ? 'contact.import.none'
-              : 'contact.import.failed',
-          ),
-        );
       }
     } finally {
-      if (isCurrent()) setImporting(false);
+      if (isCurrent()) setBusy(null);
     }
   }
 
   async function invite(items: ImportContact[]) {
     if (busy() || !isCurrent()) return;
-    setPending(true);
+    setBusy('invite');
     setStatus({ text: t('contact.invite.sending') });
     let sent = 0;
     let alreadyInvited = 0;
@@ -166,7 +153,7 @@ export default function ImportContactsSection(props: {
       if (isCurrent())
         setStatus({ text: t('contact.invite.error_retry'), error: true });
     } finally {
-      if (isCurrent()) setPending(false);
+      if (isCurrent()) setBusy(null);
     }
   }
 
@@ -174,8 +161,7 @@ export default function ImportContactsSection(props: {
     if (busy() || !isCurrent()) return;
     const items = offApp();
     if (!items.length) return;
-    setPending(true);
-    setSendingEmail(true);
+    setBusy('email');
     setStatus({ text: t('contact.invite.requesting_permission') });
     try {
       const accessToken = await requestGmailSendAccess({
@@ -226,10 +212,7 @@ export default function ImportContactsSection(props: {
       });
       if (cancelled) props.onEmailFallback(items);
     } finally {
-      if (isCurrent()) {
-        setPending(false);
-        setSendingEmail(false);
-      }
+      if (isCurrent()) setBusy(null);
     }
   }
 
@@ -239,29 +222,26 @@ export default function ImportContactsSection(props: {
       aria-label={t('contact.import.google')}
     >
       <Button
-        loading={importing()}
-        disabled={pending()}
+        loading={busy() === 'import'}
+        disabled={Boolean(busy())}
         onClick={() => void runImport()}
       >
         {t('contact.import.google')}
       </Button>
-      <Show when={started()}>
+      <Show when={contacts().length > 0}>
         <TextField
           label={t('contact.search')}
           hideLabel
           placeholder={t('contact.search')}
           value={query()}
           onChange={setQuery}
-          disabled={importing()}
         />
         <Show
           when={visible().length > 0}
           fallback={
-            <Show when={!importing()}>
-              <p class='m-0 py-4 text-center text-sm text-text-secondary'>
-                {emptyMessage() || t('contact.import.none')}
-              </p>
-            </Show>
+            <p class='m-0 py-4 text-center text-sm text-text-secondary'>
+              {t('contact.import.none')}
+            </p>
           }
         >
           <Checkbox
@@ -273,7 +253,7 @@ export default function ImportContactsSection(props: {
               selectedVisibleCount() > 0 &&
               selectedVisibleCount() < available().length
             }
-            disabled={busy() || available().length === 0}
+            disabled={Boolean(busy()) || available().length === 0}
             onChange={(checked) => {
               const eligible = available();
               setSelected((previous) => {
@@ -295,7 +275,7 @@ export default function ImportContactsSection(props: {
                   <div class='min-w-0 flex-1 basis-48'>
                     <Checkbox
                       checked={selected().has(contact.email)}
-                      disabled={busy() || !selectable(contact)}
+                      disabled={Boolean(busy()) || !selectable(contact)}
                       onChange={(checked) => select(contact.email, checked)}
                     >
                       <span class='flex min-w-0 flex-col'>
@@ -322,7 +302,7 @@ export default function ImportContactsSection(props: {
                       variant={
                         invites()[contact.email] ? 'secondary' : 'success'
                       }
-                      disabled={busy() || Boolean(invites()[contact.email])}
+                      disabled={Boolean(busy() || invites()[contact.email])}
                       onClick={() => void invite([contact])}
                     >
                       {invites()[contact.email] === 'sent'
@@ -340,8 +320,8 @@ export default function ImportContactsSection(props: {
             <Show when={onApp().length > 0}>
               <Button
                 variant='success'
-                loading={pending() && !sendingEmail()}
-                disabled={busy() || onApp().length === 0}
+                loading={busy() === 'invite'}
+                disabled={Boolean(busy())}
                 onClick={() => void invite(onApp())}
               >
                 {t('contact.invite.selected', { count: onApp().length })}
@@ -349,8 +329,8 @@ export default function ImportContactsSection(props: {
             </Show>
             <Button
               variant='success'
-              loading={sendingEmail()}
-              disabled={busy() || offApp().length === 0}
+              loading={busy() === 'email'}
+              disabled={Boolean(busy()) || offApp().length === 0}
               onClick={() => void emailSelected()}
             >
               {t('contact.invite.email', { count: offApp().length })}

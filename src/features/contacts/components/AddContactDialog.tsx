@@ -34,12 +34,30 @@ import {
   showSuccessToast,
 } from '../../../components/base-legacy/toast.js';
 
-type StatusState = { text: string; type: string };
+type Tone = 'success' | 'error';
+type Status = { text: string; tone?: Tone };
+type ShareResult = { status: string };
 type HandleInviteStatus =
   | 'already_saved'
   | 'already_invited'
   | 'incoming_pending'
   | 'sent';
+
+const handleInviteLabels: Record<HandleInviteStatus, string> = {
+  already_saved: 'contact.add.already_saved',
+  already_invited: 'contact.add.already_invited',
+  incoming_pending: 'contact.add.invited_you',
+  sent: 'contact.invite.sent_one',
+};
+
+const emailInviteMessages: Record<string, [string, Tone?]> = {
+  not_found: ['contact.add.not_found_emailing'],
+  self: ['contact.add.self_error', 'error'],
+  already_saved: ['contact.add.already_saved'],
+  already_invited: ['contact.add.already_invited'],
+  permission_denied: ['contact.invite.permission_denied', 'error'],
+  lookup_error: ['contact.add.lookup_error', 'error'],
+};
 
 type Props = {
   open: boolean;
@@ -116,22 +134,36 @@ function AddContactContent() {
   const [requestingUserId, setRequestingUserId] = createSignal<string | null>(
     null,
   );
-  const [status, setStatus] = createSignal<StatusState>({ text: '', type: '' });
+  const [status, setStatus] = createSignal<Status>({ text: '' });
   const [sharePending, setSharePending] = createSignal(false);
 
-  // --- Share actions ---
+  function notify(text: string, tone?: Tone) {
+    if (tone === 'success') showSuccessToast(text);
+    if (tone === 'error') showErrorToast(text);
+    setStatus({ text, tone });
+  }
 
-  const debouncedShare = createDebouncedAsyncAction(
-    async ({
-      type,
-      providerId,
-    }: {
-      type: 'generic' | 'copy' | 'provider';
-      providerId?: string;
-    }) => {
-      if (type === 'generic') return runGenericShare();
-      if (type === 'copy') return runCopyLink();
-      return runPresetShare(providerId!);
+  // Unlisted results (including copy_failed) fall back to the copy error.
+  const share = createDebouncedAsyncAction(
+    async (
+      opening: string,
+      run: () => Promise<ShareResult>,
+      messages: Record<string, [string, Tone?]>,
+    ) => {
+      setStatus({ text: opening });
+      try {
+        const { status } = await run();
+        if (!isCurrent()) return;
+        const [text, tone] = messages[status] ?? [
+          t('contact.invite.share.copy_failed'),
+          'error',
+        ];
+        notify(text, tone);
+      } catch (error) {
+        if (!isCurrent()) return;
+        console.error('[AddContactDialog] Share error:', error);
+        notify(t('contact.invite.share.copy_failed'), 'error');
+      }
     },
     {
       waitMs: 600,
@@ -140,102 +172,52 @@ function AddContactContent() {
       },
     },
   );
+  onCleanup(() => share.cancel());
 
-  onCleanup(() => debouncedShare.cancel());
+  const copiedMessage: [string, Tone] = [
+    t('contact.invite.share.copied'),
+    'success',
+  ];
 
-  async function runGenericShare() {
-    setStatus({ text: t('contact.invite.share.opening'), type: 'loading' });
-    const result = await shareInvite({
-      senderName: senderName(),
-      userId: getLoggedInUserId(),
-    });
-    if (!isCurrent()) return result;
-    const statusConfig: Record<
-      string,
-      { toast: ((msg: string) => void) | null; type: string }
-    > = {
-      opened_elsewhere: { toast: null, type: 'info' },
-      copied: { toast: showSuccessToast, type: 'success' },
-      cancelled: { toast: null, type: 'cancelled' },
-      copy_failed: { toast: showErrorToast, type: 'error' },
-    };
-    const safe = Object.hasOwn(statusConfig, result.status)
-      ? result.status
-      : 'copy_failed';
-    const cfg = statusConfig[safe] ?? { toast: showErrorToast, type: 'error' };
-    const key = `contact.invite.share.${safe}`;
-    cfg.toast?.(t(key));
-    setStatus({ text: t(key), type: cfg.type });
-    return result;
-  }
-
-  async function runPresetShare(providerId: string) {
-    const provider = shareProviders.find((p) => p.id === providerId);
-    if (!provider) throw new Error(`Unsupported provider: ${providerId}`);
-    const providerLabel = t(provider.labelKey);
-    setStatus({
-      text: t('contact.invite.share.provider_opening', {
-        provider: providerLabel,
-      }),
-      type: 'loading',
-    });
-    const result = await shareInviteViaProvider({
-      providerId: providerId as 'whatsapp' | 'telegram',
-      senderName: senderName(),
-      userId: getLoggedInUserId(),
-    });
-    if (!isCurrent()) return result;
-    if (result.status === 'opened') {
-      setStatus({
-        text: t('contact.invite.share.provider_opened', {
-          provider: providerLabel,
+  function shareViaProvider(provider: { id: string; labelKey: string }) {
+    const name = t(provider.labelKey);
+    void share(
+      t('contact.invite.share.provider_opening', { provider: name }),
+      () =>
+        shareInviteViaProvider({
+          providerId: provider.id as 'whatsapp' | 'telegram',
+          senderName: senderName(),
+          userId: getLoggedInUserId(),
         }),
-        type: 'info',
-      });
-      return result;
-    }
-    if (result.status === 'copied') {
-      const msg = t('contact.invite.share.provider_copied', {
-        provider: providerLabel,
-      });
-      showSuccessToast(msg);
-      setStatus({ text: msg, type: 'success' });
-      return result;
-    }
-    // copy_failed fallthrough
-    showErrorToast(t('contact.invite.share.copy_failed'));
-    setStatus({ text: t('contact.invite.share.copy_failed'), type: 'error' });
-    return result;
+      {
+        opened: [t('contact.invite.share.provider_opened', { provider: name })],
+        copied: [
+          t('contact.invite.share.provider_copied', { provider: name }),
+          'success',
+        ],
+      },
+    );
   }
 
-  async function runCopyLink() {
-    setStatus({ text: t('contact.invite.copying'), type: 'loading' });
-    const result = await copyInviteLink({
-      userId: getLoggedInUserId() as string,
-    });
-    if (!isCurrent()) return result;
-    if (result.status === 'copied') {
-      showSuccessToast(t('contact.invite.share.copied'));
-      setStatus({ text: t('contact.invite.share.copied'), type: 'success' });
-      return result;
-    }
-    showErrorToast(t('contact.invite.share.copy_failed'));
-    setStatus({ text: t('contact.invite.share.copy_failed'), type: 'error' });
-    return result;
+  function shareGeneric() {
+    void share(
+      t('contact.invite.share.opening'),
+      () =>
+        shareInvite({ senderName: senderName(), userId: getLoggedInUserId() }),
+      {
+        opened_elsewhere: [t('contact.invite.share.opened_elsewhere')],
+        cancelled: [t('contact.invite.share.cancelled')],
+        copied: copiedMessage,
+      },
+    );
   }
 
-  async function handleShareAction(
-    type: 'generic' | 'copy' | 'provider',
-    providerId?: string,
-  ) {
-    try {
-      await debouncedShare({ type, providerId });
-    } catch (err) {
-      if (!isCurrent()) return;
-      console.error('[AddContactDialog] Share error:', err);
-      showErrorToast(t('contact.invite.share.copy_failed'));
-      setStatus({ text: t('contact.invite.share.copy_failed'), type: 'error' });
-    }
+  function copyLink() {
+    void share(
+      t('contact.invite.copying'),
+      () => copyInviteLink({ userId: getLoggedInUserId() as string }),
+      { copied: copiedMessage },
+    );
   }
 
   // --- Manual email invite ---
@@ -245,7 +227,7 @@ function AddContactContent() {
     if (!email || emailSending() || !isCurrent()) return;
     setEmailInput(email);
     setEmailSending(true);
-    setStatus({ text: '', type: '' });
+    setStatus({ text: '' });
 
     const result = await inviteContactByEmail(email, {
       isCurrent,
@@ -254,36 +236,25 @@ function AddContactContent() {
     });
 
     if (!isCurrent()) return;
+    const message = emailInviteMessages[result.status];
     if (result.status === 'sent') {
-      showSuccessToast(t('contact.invite.sent_one'));
-      setStatus({ text: `✓ ${t('contact.invite.sent_one')}`, type: 'success' });
-    } else if (result.status === 'not_found') {
-      setStatus({ text: t('contact.add.not_found_emailing'), type: 'info' });
-    } else if (result.status === 'self') {
-      setStatus({ text: t('contact.add.self_error'), type: 'error' });
-    } else if (result.status === 'already_saved') {
-      setStatus({ text: t('contact.add.already_saved'), type: 'info' });
-    } else if (result.status === 'already_invited') {
-      setStatus({ text: t('contact.add.already_invited'), type: 'info' });
-    } else if (result.status === 'permission_denied') {
-      setStatus({ text: t('contact.invite.permission_denied'), type: 'error' });
-    } else if (result.status === 'lookup_error') {
-      setStatus({ text: t('contact.add.lookup_error'), type: 'error' });
+      notify(`✓ ${t('contact.invite.sent_one')}`, 'success');
+    } else if (message) {
+      setStatus({ text: t(message[0]), tone: message[1] });
     } else {
       console.error(
         '[AddContactDialog] Manual email invite error:',
-        (result as any).error,
+        (result as { error?: unknown }).error,
       );
-      setStatus({ text: t('contact.add.email_error'), type: 'error' });
+      setStatus({ text: t('contact.add.email_error'), tone: 'error' });
     }
-
     setEmailSending(false);
   }
 
   async function handleSearchByHandle() {
     if (handleSearching() || !isCurrent()) return;
     const handle = handleInput().trim().replace(/^@+/, '');
-    setStatus({ text: '', type: '' });
+    setStatus({ text: '' });
     if (!handle) {
       setHandleResults([]);
       setHandleInviteStatuses({});
@@ -337,33 +308,28 @@ function AddContactContent() {
         ),
       );
       if (users.length === 0) {
-        setStatus({ text: t('contact.add.handle_not_found'), type: 'info' });
+        setStatus({ text: t('contact.add.handle_not_found') });
       }
     } catch (error) {
       if (!isCurrent()) return;
       setHandleResults([]);
       setHandleInviteStatuses({});
       console.error('[AddContactDialog] Handle search error:', error);
-      setStatus({ text: t('contact.add.lookup_error'), type: 'error' });
+      setStatus({ text: t('contact.add.lookup_error'), tone: 'error' });
     } finally {
       if (isCurrent()) setHandleSearching(false);
     }
   }
 
   async function handleSendRequest(user: UserSearchResult) {
-    if (!user?.uid || handleSearching() || requestingUserId() || !isCurrent())
-      return;
+    if (handleSearching() || requestingUserId() || !isCurrent()) return;
     if (user.uid === getLoggedInUserId()) {
-      setStatus({ text: t('contact.add.self_error'), type: 'error' });
+      setStatus({ text: t('contact.add.self_error'), tone: 'error' });
       return;
     }
     setRequestingUserId(user.uid);
-    setStatus({ text: '', type: '' });
+    setStatus({ text: '' });
     try {
-      if (handleInviteStatuses()[user.uid] === 'already_saved') {
-        setStatus({ text: t('contact.add.already_saved'), type: 'info' });
-        return;
-      }
       const result = await sendContactInvite(user.uid, user.displayName);
       if (!isCurrent()) return;
       if (result.status === 'already_invited') {
@@ -371,32 +337,33 @@ function AddContactContent() {
           ...statuses,
           [user.uid]: 'already_invited',
         }));
-        setStatus({ text: t('contact.add.already_invited'), type: 'info' });
+        setStatus({ text: t('contact.add.already_invited') });
         return;
       }
       if (result.status !== 'sent') {
-        setStatus({ text: t('contact.add.email_error'), type: 'error' });
+        setStatus({ text: t('contact.add.email_error'), tone: 'error' });
         return;
       }
       setHandleInviteStatuses((statuses) => ({
         ...statuses,
         [user.uid]: 'sent',
       }));
-      showSuccessToast(t('contact.invite.sent_one'));
-      setStatus({ text: `✓ ${t('contact.invite.sent_one')}`, type: 'success' });
+      notify(`✓ ${t('contact.invite.sent_one')}`, 'success');
     } catch (error) {
       if (!isCurrent()) return;
       console.error('[AddContactDialog] Contact request error:', error);
-      setStatus({ text: t('contact.add.email_error'), type: 'error' });
+      setStatus({ text: t('contact.add.email_error'), tone: 'error' });
     } finally {
       if (isCurrent()) setRequestingUserId(null);
     }
   }
 
   const statusTone = () =>
-    ({ success: 'text-success', error: 'text-danger', loading: 'opacity-70' })[
-      status().type
-    ] ?? '';
+    status().tone === 'success'
+      ? 'text-success'
+      : status().tone === 'error'
+        ? 'text-danger'
+        : '';
 
   return (
     <>
@@ -428,16 +395,11 @@ function AddContactContent() {
             {(user) => {
               const inviteStatus = () => handleInviteStatuses()[user.uid];
               const inviteLabel = () => {
+                const current = inviteStatus();
                 if (requestingUserId() === user.uid) return t('shared.sending');
-                if (inviteStatus() === 'already_saved')
-                  return t('contact.add.already_saved');
-                if (inviteStatus() === 'already_invited')
-                  return t('contact.add.already_invited');
-                if (inviteStatus() === 'incoming_pending')
-                  return t('contact.add.invited_you');
-                if (inviteStatus() === 'sent')
-                  return `✓ ${t('contact.invite.sent_one')}`;
-                return t('contact.invite');
+                if (!current) return t('contact.invite');
+                const label = t(handleInviteLabels[current]);
+                return current === 'sent' ? `✓ ${label}` : label;
               };
               return (
                 <div class='flex items-center justify-between gap-2 text-sm'>
@@ -496,7 +458,7 @@ function AddContactContent() {
           {(provider) => (
             <Button
               disabled={sharePending()}
-              onClick={() => handleShareAction('provider', provider.id)}
+              onClick={() => shareViaProvider(provider)}
             >
               {/* Provider icons are custom SVGs from share-invite-presets.js */}
               <span innerHTML={provider.iconSvg} aria-hidden='true' />
@@ -507,14 +469,14 @@ function AddContactContent() {
         <Button
           disabled={sharePending()}
           aria-label={t('contact.invite.share.label')}
-          onClick={() => handleShareAction('generic')}
+          onClick={shareGeneric}
         >
           <Share2 size={20} />
         </Button>
         <Button
           disabled={sharePending()}
           aria-label={t('contact.invite.copy.label')}
-          onClick={() => handleShareAction('copy')}
+          onClick={copyLink}
         >
           <Copy size={20} />
         </Button>
