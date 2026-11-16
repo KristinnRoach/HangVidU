@@ -319,6 +319,9 @@ export default function ImportContactsSection(props: {
                   </span>
                   <Show when={contact.user && !contact.isAlreadySaved}>
                     <Button
+                      variant={
+                        invites()[contact.email] ? 'secondary' : 'success'
+                      }
                       disabled={busy() || Boolean(invites()[contact.email])}
                       onClick={() => void invite([contact])}
                     >
@@ -334,14 +337,18 @@ export default function ImportContactsSection(props: {
             </For>
           </ul>
           <div class='flex flex-wrap gap-2'>
+            <Show when={onApp().length > 0}>
+              <Button
+                variant='success'
+                loading={pending() && !sendingEmail()}
+                disabled={busy() || onApp().length === 0}
+                onClick={() => void invite(onApp())}
+              >
+                {t('contact.invite.selected', { count: onApp().length })}
+              </Button>
+            </Show>
             <Button
-              loading={pending() && !sendingEmail()}
-              disabled={busy() || onApp().length === 0}
-              onClick={() => void invite(onApp())}
-            >
-              {t('contact.invite.selected', { count: onApp().length })}
-            </Button>
-            <Button
+              variant='success'
               loading={sendingEmail()}
               disabled={busy() || offApp().length === 0}
               onClick={() => void emailSelected()}

@@ -92,7 +92,11 @@ The add-contact flow (`features/contacts/components/AddContactDialog.tsx` and
 and a persistent `role="status"` for pending/results/errors. Import selection is
 keyed by email and survives filtering; select-all affects visible eligible rows.
 Successful/duplicate app invites become unavailable, while failures stay selected
-for retry. Email sends deselect only successful recipients. Feedback remains
+for retry. The bulk app-invite action appears only with eligible app contacts
+selected; invite-sending actions use the existing `success` button variant.
+Email sends deselect only successful recipients. Username search reserves one
+result row and retains previous results with disabled actions while refreshing
+to avoid collapsing the dialog. Feedback remains
 until the next action rather than disappearing on a timer.
 
 Dialog content owns pending UI work. Cleanup invalidates late results and stops

@@ -283,9 +283,12 @@ function AddContactContent() {
   async function handleSearchByHandle() {
     if (handleSearching() || !isCurrent()) return;
     const handle = handleInput().trim().replace(/^@+/, '');
-    setHandleResults([]);
     setStatus({ text: '', type: '' });
-    if (!handle) return;
+    if (!handle) {
+      setHandleResults([]);
+      setHandleInviteStatuses({});
+      return;
+    }
     setHandleSearching(true);
     try {
       await hydrateContacts().catch((error) => {
@@ -338,6 +341,8 @@ function AddContactContent() {
       }
     } catch (error) {
       if (!isCurrent()) return;
+      setHandleResults([]);
+      setHandleInviteStatuses({});
       console.error('[AddContactDialog] Handle search error:', error);
       setStatus({ text: t('contact.add.lookup_error'), type: 'error' });
     } finally {
@@ -346,7 +351,8 @@ function AddContactContent() {
   }
 
   async function handleSendRequest(user: UserSearchResult) {
-    if (!user?.uid || requestingUserId() || !isCurrent()) return;
+    if (!user?.uid || handleSearching() || requestingUserId() || !isCurrent())
+      return;
     if (user.uid === getLoggedInUserId()) {
       setStatus({ text: t('contact.add.self_error'), type: 'error' });
       return;
@@ -416,42 +422,46 @@ function AddContactContent() {
         </Button>
       </form>
 
-      <For each={handleResults()}>
-        {(user) => {
-          const inviteStatus = () => handleInviteStatuses()[user.uid];
-          const inviteLabel = () => {
-            if (requestingUserId() === user.uid) return t('shared.sending');
-            if (inviteStatus() === 'already_saved')
-              return t('contact.add.already_saved');
-            if (inviteStatus() === 'already_invited')
-              return t('contact.add.already_invited');
-            if (inviteStatus() === 'incoming_pending')
-              return t('contact.add.invited_you');
-            if (inviteStatus() === 'sent')
-              return `✓ ${t('contact.invite.sent_one')}`;
-            return t('contact.invite');
-          };
-          return (
-            <div class='flex items-center justify-between gap-2 text-sm'>
-              <span class='min-w-0 truncate'>
-                {user.displayName}
-                <Show when={user.username}>
-                  <small class='ml-1.5 text-text-secondary'>
-                    @{user.username}
-                  </small>
-                </Show>
-              </span>
-              <Button
-                loading={requestingUserId() === user.uid}
-                disabled={Boolean(inviteStatus())}
-                onClick={() => handleSendRequest(user)}
-              >
-                {inviteLabel()}
-              </Button>
-            </div>
-          );
-        }}
-      </For>
+      {/* Reserve one row and retain results during refresh to avoid collapse. */}
+      <div class='flex min-h-10 flex-col gap-2' aria-busy={handleSearching()}>
+        <For each={handleResults()}>
+          {(user) => {
+            const inviteStatus = () => handleInviteStatuses()[user.uid];
+            const inviteLabel = () => {
+              if (requestingUserId() === user.uid) return t('shared.sending');
+              if (inviteStatus() === 'already_saved')
+                return t('contact.add.already_saved');
+              if (inviteStatus() === 'already_invited')
+                return t('contact.add.already_invited');
+              if (inviteStatus() === 'incoming_pending')
+                return t('contact.add.invited_you');
+              if (inviteStatus() === 'sent')
+                return `✓ ${t('contact.invite.sent_one')}`;
+              return t('contact.invite');
+            };
+            return (
+              <div class='flex items-center justify-between gap-2 text-sm'>
+                <span class='min-w-0 truncate'>
+                  {user.displayName}
+                  <Show when={user.username}>
+                    <small class='ml-1.5 text-text-secondary'>
+                      @{user.username}
+                    </small>
+                  </Show>
+                </span>
+                <Button
+                  variant={inviteStatus() ? 'secondary' : 'success'}
+                  loading={requestingUserId() === user.uid}
+                  disabled={handleSearching() || Boolean(inviteStatus())}
+                  onClick={() => handleSendRequest(user)}
+                >
+                  {inviteLabel()}
+                </Button>
+              </div>
+            );
+          }}
+        </For>
+      </div>
 
       {/* type='email' lets the browser validate the address on submit. */}
       <form
@@ -471,7 +481,7 @@ function AddContactContent() {
           onChange={setEmailInput}
           autocomplete='email'
         />
-        <Button type='submit' loading={emailSending()}>
+        <Button variant='success' type='submit' loading={emailSending()}>
           {emailSending() ? t('shared.sending') : t('contact.invite')}
         </Button>
       </form>

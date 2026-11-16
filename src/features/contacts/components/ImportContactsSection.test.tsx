@@ -91,6 +91,26 @@ describe('ImportContactsSection', () => {
   });
   afterEach(cleanup);
 
+  it('shows bulk app invitations only when eligible app contacts are selected', async () => {
+    render(() => <ImportContactsSection onEmailFallback={vi.fn()} />);
+    await load();
+    expect(
+      screen.queryByRole('button', { name: /contact.invite.selected/ }),
+    ).toBeNull();
+    fireEvent.click(checkbox('Guest guest@example.com'));
+    expect(
+      screen.queryByRole('button', { name: /contact.invite.selected/ }),
+    ).toBeNull();
+    fireEvent.click(checkbox('Alice alice@example.com'));
+    expect(
+      screen.getByRole('button', { name: 'contact.invite.selected 1' }),
+    ).toHaveProperty('disabled', false);
+    fireEvent.click(checkbox('Alice alice@example.com'));
+    expect(
+      screen.queryByRole('button', { name: /contact.invite.selected/ }),
+    ).toBeNull();
+  });
+
   it('keeps selection across filtering and selects only available visible contacts', async () => {
     render(() => <ImportContactsSection onEmailFallback={vi.fn()} />);
     await load();

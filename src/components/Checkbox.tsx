@@ -14,7 +14,7 @@ export default function Checkbox(props: Props) {
     input.indeterminate = props.indeterminate ?? false;
   });
   return (
-    <label class='flex min-w-0 items-center gap-2 text-sm text-text-primary'>
+    <label class='flex min-w-0 items-center gap-3 text-sm text-text-primary'>
       <input
         ref={input}
         type='checkbox'
