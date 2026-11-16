@@ -13,7 +13,7 @@ import { buildImportableContacts } from './import-contacts-utils.js';
  *
  * @param {{ onProgress?: (update: { step: string, count?: number }) => void }} [options]
  * @returns {Promise<
- *   | { status: 'success', contacts: unknown[] }
+ *   | { status: 'success', contacts: import('./types').ImportContact[] }
  *   | { status: 'no_email' | 'cancelled', contacts: [] }
  *   | { status: 'error', error: unknown, contacts: [] }
  * >}

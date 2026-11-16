@@ -18,6 +18,17 @@ describe('sendContactInvite', () => {
     expect(result).toEqual({ ok: true, status: 'sent' });
   });
 
+  it('returns already_saved when the server creates no request for existing contacts', async () => {
+    mocks.sendContactRequest.mockResolvedValue({
+      ok: true,
+      alreadyContacts: true,
+    });
+    await expect(sendContactInvite('u2', 'Bob')).resolves.toEqual({
+      ok: true,
+      status: 'already_saved',
+    });
+  });
+
   it('maps duplicate invite by firebase error code', async () => {
     const error = new Error('Invite already exists');
     error.code = 'already_invited';

@@ -1,6 +1,7 @@
 import { createSignal } from 'solid-js';
 import { useI18n } from '@shared/i18n/index.js';
 import { UserPlus } from 'lucide-solid';
+import Button from '../../../components/Button';
 import { AddContactDialog } from './AddContactDialog';
 
 export function AddContactButton() {
@@ -9,7 +10,8 @@ export function AddContactButton() {
 
   return (
     <>
-      <button
+      <Button
+        variant='ghost'
         type='button'
         title={t('a11y.add_contact')}
         aria-label={t('a11y.add_contact')}
@@ -17,7 +19,7 @@ export function AddContactButton() {
         onClick={() => setOpen(true)}
       >
         <UserPlus />
-      </button>
+      </Button>
 
       <AddContactDialog open={open()} onOpenChange={setOpen} />
     </>

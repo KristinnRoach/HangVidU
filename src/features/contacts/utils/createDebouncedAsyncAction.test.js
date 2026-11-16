@@ -42,4 +42,24 @@ describe('createDebouncedAsyncAction', () => {
 
     vi.useRealTimers();
   });
+  it('does not recreate a cooldown timer after cancellation during a share', async () => {
+    vi.useFakeTimers();
+    try {
+      let finish;
+      const guarded = createDebouncedAsyncAction(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      );
+      const running = guarded();
+      guarded.cancel();
+      finish({ ok: true });
+      await running;
+      expect(guarded.isPending()).toBe(false);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

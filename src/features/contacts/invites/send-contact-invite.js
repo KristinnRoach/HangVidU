@@ -61,7 +61,8 @@ function isAlreadyInvitedError(error) {
 
 export async function sendContactInvite(toUserId, _toName = 'User') {
   try {
-    await sendContactRequest(toUserId);
+    const result = await sendContactRequest(toUserId);
+    if (result?.alreadyContacts) return { ok: true, status: 'already_saved' };
     return { ok: true, status: 'sent' };
   } catch (error) {
     if (isPermissionDeniedError(error)) {

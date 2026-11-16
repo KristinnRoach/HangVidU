@@ -24,6 +24,7 @@ export function createDebouncedAsyncAction<Args extends unknown[], T>(
       : null;
 
   let isPending = false;
+  let generation = 0;
   let cooldownTimer: ReturnType<typeof setTimeout> | null = null;
 
   function setPending(nextValue: boolean) {
@@ -37,22 +38,26 @@ export function createDebouncedAsyncAction<Args extends unknown[], T>(
       return { ok: false, status: 'debounced' };
     }
 
+    const startedGeneration = generation;
     setPending(true);
     try {
       return await action(...args);
     } finally {
-      if (cooldownTimer) {
-        clearTimeout(cooldownTimer);
+      if (startedGeneration === generation) {
+        if (cooldownTimer) {
+          clearTimeout(cooldownTimer);
+        }
+        cooldownTimer = setTimeout(() => {
+          cooldownTimer = null;
+          setPending(false);
+        }, waitMs);
       }
-      cooldownTimer = setTimeout(() => {
-        cooldownTimer = null;
-        setPending(false);
-      }, waitMs);
     }
   };
 
   wrapped.isPending = () => isPending;
   wrapped.cancel = () => {
+    generation++;
     if (cooldownTimer) {
       clearTimeout(cooldownTimer);
       cooldownTimer = null;

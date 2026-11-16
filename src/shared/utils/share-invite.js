@@ -61,7 +61,8 @@ export function buildInviteText({ senderName, link }) {
  *   userId?: string | null,
  *   origin?: string,
  *   shareImpl?: ((data: ShareData) => Promise<void>) | null,
- *   copyImpl?: ((text: string) => Promise<boolean>) | null
+ *   copyImpl?: ((text: string) => Promise<boolean>) | null,
+ *   isCurrent?: () => boolean
  * }} params
  * @returns {Promise<{ ok: boolean, status: 'opened_elsewhere' | 'copied' | 'cancelled' | 'copy_failed', link: string, text: string }>}
  */
@@ -74,6 +75,7 @@ export async function shareInvite({
     ? navigator.share.bind(navigator)
     : null,
   copyImpl = copyToClipboard,
+  isCurrent = () => true,
 } = {}) {
   const link = buildReferralLink(userId, origin);
   const text = buildInviteText({ senderName, link });
@@ -93,6 +95,8 @@ export async function shareInvite({
       // Continue to copy fallback for non-cancel failures.
     }
   }
+
+  if (!isCurrent()) return { ok: false, status: 'cancelled', link, text };
 
   let copied = false;
   try {

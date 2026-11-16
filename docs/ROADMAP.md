@@ -6,8 +6,8 @@ Keep HangVidU straightforward to maintain as features are added.
 
 ## Current status
 
-- **Current:** Step 2, minimal UI foundation. Shared Tailwind tokens and Kobalte-based `Dialog`, `Button`, and `TextField` are in place; every dialog uses them (trial in #769).
-- **Next:** Decide whether to keep Kobalte, then port the vanilla import-contacts section inside the add-contact dialog to the shared controls.
+- **Current:** Step 2 complete. Keep Solid, Kobalte, and Tailwind. The add-contact flow is the reference for shared controls, theme tokens, selection, status feedback, and dialog-scoped async work.
+- **Next UI slice:** Replace the imperative toast UI with a Solid/Kobalte toast using the existing theme ([#775](https://github.com/KristinnRoach/HangVidU/issues/775)); remove its replaced stylesheet. Continue component by component as features need them.
 - **Separate follow-up:** [Failed-message recovery (#758)](https://github.com/KristinnRoach/HangVidU/issues/758).
 
 Update this block in the same PR when progress or the next step changes. Keep it
@@ -29,11 +29,11 @@ sends, and uploads belong to one activation of the selected conversation in
 [`conversation-store.ts`](../src/stores/conversation/conversation-store.ts);
 logout and every selection change start a new one.
 
-## 2. Minimal UI foundation — next
+## 2. Minimal UI foundation — done
 
 - **Outcome:** UI improvements and new features follow a simple, consistent system.
 - **Scope:** Shared visual tokens, core controls, and accessible dialog behaviour. Apply them to a small existing flow as the reference for future work.
-- **Decide:** The minimum tokens and controls needed now; the first flow to migrate.
+- **Decision:** Solid + Kobalte + Tailwind; add-contact is the reference. Shared controls own appearance and states; screens own layout. Theme tokens live in `src/styles/theme.css`, with Tailwind defaults for spacing, typography, and rounding.
 - **Done when:** The reference flow demonstrates styling, focus, keyboard, loading, and error states that new UI can reuse.
 
 Use Tailwind as the default. Reconcile global CSS and CSS Modules component by
@@ -69,6 +69,7 @@ component, removing replaced rules. A complete redesign or CSS migration is not 
 
 ## Later / outside the critical path
 
+- WhatsApp/Telegram invite buttons: removed from add-contact in favour of copy link and native share. `src/shared/utils/share-invite-presets.js` (tested, unwired) can be reconnected if users ask for one-tap provider sharing.
 - Older-message pagination: persistent chat currently exposes the latest 40 messages. Keep historical pages separate from live-message eviction.
 - Backend consolidation, broad JS-to-TS conversion, and full CSS migration are not prerequisites.
 - Expand experiments or introduce general frameworks only for a demonstrated need.

@@ -88,7 +88,7 @@
 }
 
 .navItem .toolbar {
-  border-radius: var(--radius-lg);
+  border-radius: var(--legacy-radius-lg);
 
   display: flex;
   opacity: 1;

@@ -67,6 +67,7 @@ export async function sendEmailViaGmail(accessToken, to, subject, body) {
  * @param {Array<{email: string, name: string}>} recipients - Array of recipients
  * @param {string} subject - Email subject
  * @param {string} body - Email body (plain text)
+ * @param {{isCurrent?: () => boolean, onSent?: (recipient: {email: string, name: string}) => void}} [options]
  * @returns {Promise<{sent: number, failed: number, errors: Array}>}
  */
 export async function sendBulkEmailsViaGmail(
@@ -74,15 +75,18 @@ export async function sendBulkEmailsViaGmail(
   recipients,
   subject,
   body,
+  { isCurrent = () => true, onSent = () => {} } = {},
 ) {
   const results = { sent: 0, failed: 0, errors: [] };
 
   // Send emails sequentially with a short delay to respect Gmail API rate limits
   for (let i = 0; i < recipients.length; i++) {
+    if (!isCurrent()) break;
     const recipient = recipients[i];
     try {
       await sendEmailViaGmail(accessToken, recipient.email, subject, body);
       results.sent++;
+      onSent(recipient);
       console.log(`[GMAIL] Sent to ${recipient.name} (${recipient.email})`);
     } catch (err) {
       results.failed++;

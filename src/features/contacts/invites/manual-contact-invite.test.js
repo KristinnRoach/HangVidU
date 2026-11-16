@@ -86,4 +86,15 @@ describe('inviteContactByEmail', () => {
     expect(result).toEqual({ ok: false, status: 'already_saved' });
     expect(mocks.sendContactInvite).not.toHaveBeenCalled();
   });
+  it('does not send after the dialog closes during lookup', async () => {
+    let current = true;
+    mocks.lookupRegisteredUserByEmail.mockImplementationOnce(async () => {
+      current = false;
+      return { status: 'found', user: { uid: 'alice', displayName: 'Alice' } };
+    });
+    await expect(
+      inviteContactByEmail('alice@example.com', { isCurrent: () => current }),
+    ).resolves.toMatchObject({ status: 'stale' });
+    expect(mocks.sendContactInvite).not.toHaveBeenCalled();
+  });
 });
