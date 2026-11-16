@@ -123,6 +123,7 @@ function AddContactContent() {
   const [handleResults, setHandleResults] = createSignal<UserSearchResult[]>(
     [],
   );
+  const [handleNotFound, setHandleNotFound] = createSignal(false);
   const [handleInviteStatuses, setHandleInviteStatuses] = createSignal<
     Record<string, HandleInviteStatus>
   >({});
@@ -230,6 +231,7 @@ function AddContactContent() {
     if (handleSearching() || !isCurrent()) return;
     const handle = handleInput().trim().replace(/^@+/, '');
     setStatus({ text: '' });
+    setHandleNotFound(false);
     if (!handle) {
       setHandleResults([]);
       setHandleInviteStatuses({});
@@ -282,9 +284,7 @@ function AddContactContent() {
           }),
         ),
       );
-      if (users.length === 0) {
-        setStatus({ text: t('contact.add.handle_not_found') });
-      }
+      setHandleNotFound(users.length === 0);
     } catch (error) {
       if (!isCurrent()) return;
       setHandleResults([]);
@@ -333,6 +333,9 @@ function AddContactContent() {
     }
   }
 
+  const canNativeShare =
+    typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
   const statusTone = () =>
     status().tone === 'success'
       ? 'text-success'
@@ -342,6 +345,40 @@ function AddContactContent() {
 
   return (
     <>
+      <div class='flex flex-col gap-3'>
+        <p class='text-sm text-text-secondary'>
+          {t('contact.add.invite_hint')}
+        </p>
+        <div class='flex flex-wrap gap-2'>
+          <Button
+            variant='success'
+            disabled={sharePending()}
+            onClick={copyLink}
+          >
+            <Copy size={16} aria-hidden='true' />
+            {t('contact.invite.copy.label')}
+          </Button>
+          {/* Web Share is mostly missing on desktop; Copy covers it there. */}
+          <Show when={canNativeShare}>
+            <Button
+              variant='success'
+              disabled={sharePending()}
+              aria-label={t('contact.invite.share.label')}
+              onClick={shareGeneric}
+            >
+              <Share2 size={16} aria-hidden='true' />
+              {t('contact.invite.share.short')}
+            </Button>
+          </Show>
+        </div>
+      </div>
+
+      <div class='my-2 flex items-center gap-2 text-xs text-text-secondary'>
+        <hr class='flex-1 border-border-primary' />
+        <span>{t('contact.add.find_divider')}</span>
+        <hr class='flex-1 border-border-primary' />
+      </div>
+
       <form
         class='flex gap-2'
         onSubmit={(e) => {
@@ -363,6 +400,19 @@ function AddContactContent() {
           {handleSearching() ? t('shared.searching') : t('shared.search')}
         </Button>
       </form>
+
+      <Show when={handleNotFound()}>
+        <div class='flex flex-wrap items-center justify-between gap-2 text-sm text-text-secondary'>
+          <span>{t('contact.add.handle_not_found')}</span>
+          <Button
+            variant='ghost'
+            disabled={sharePending()}
+            onClick={canNativeShare ? shareGeneric : copyLink}
+          >
+            {t('contact.add.send_link_instead')}
+          </Button>
+        </div>
+      </Show>
 
       <Show when={handleResults().length > 0}>
         <div class='flex flex-col gap-2' aria-busy={handleSearching()}>
@@ -419,33 +469,12 @@ function AddContactContent() {
           onChange={setEmailInput}
           autocomplete='email'
         />
-        <Button variant='success' type='submit' loading={emailSending()}>
+        <Button type='submit' loading={emailSending()}>
           {emailSending() ? t('shared.sending') : t('contact.invite')}
         </Button>
       </form>
 
-      <div
-        class='flex flex-wrap gap-2'
-        role='group'
-        aria-label={t('contact.invite.share.presets_label')}
-      >
-        <Button
-          disabled={sharePending()}
-          aria-label={t('contact.invite.share.label')}
-          onClick={shareGeneric}
-        >
-          <Share2 size={20} />
-        </Button>
-        <Button
-          disabled={sharePending()}
-          aria-label={t('contact.invite.copy.label')}
-          onClick={copyLink}
-        >
-          <Copy size={20} />
-        </Button>
-      </div>
-
-      <hr class='border-border-primary' />
+      <hr class='my-2 border-border-primary' />
 
       <ImportContactsSection
         onEmailFallback={(contacts) =>

@@ -222,6 +222,7 @@ export default function ImportContactsSection(props: {
       aria-label={t('contact.import.google')}
     >
       <Button
+        variant='ghost'
         loading={busy() === 'import'}
         disabled={Boolean(busy())}
         onClick={() => void runImport()}
