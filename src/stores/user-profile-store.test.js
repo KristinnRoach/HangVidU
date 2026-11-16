@@ -98,6 +98,13 @@ describe('user-profile-store', () => {
     });
   });
 
+  it('preserves the server outcome when a contact request is already satisfied', async () => {
+    const response = { ok: true, alreadyContacts: true };
+    mocks.workerRequest.mockResolvedValue(response);
+    const { sendContactRequest } = await import('./user-profile-store.js');
+    await expect(sendContactRequest('friend')).resolves.toEqual(response);
+  });
+
   it('uses an existing D1 profile instead of provider profile fields', async () => {
     mocks.getUserProfile.mockResolvedValue({
       displayName: 'Crystal Quicksand',

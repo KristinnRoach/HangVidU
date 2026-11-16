@@ -9,7 +9,7 @@ import {
   copyInviteLink,
   shareInvite,
 } from '@shared/utils/share-invite.js';
-import { getLoggedInUserId } from '@auth';
+import { getLoggedInUserId, useAuth } from '@auth';
 import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
 import { sendContactInvite } from '../invites/send-contact-invite.js';
 import {
@@ -93,13 +93,17 @@ function openEmailComposeFallback(
 
 export function AddContactDialog(props: Props) {
   const { t } = useI18n();
+  const { user } = useAuth();
   return (
     <Dialog
       open={props.open}
       onOpenChange={props.onOpenChange}
       title={t('contact.add.title')}
     >
-      <AddContactContent />
+      {/* Each account owns a fresh form and pending-operation lifetime. */}
+      <Show when={user()?.uid} keyed>
+        {(_userId) => <AddContactContent />}
+      </Show>
     </Dialog>
   );
 }
@@ -178,8 +182,7 @@ function AddContactContent() {
   function shareGeneric() {
     void share(
       t('contact.invite.share.opening'),
-      () =>
-        shareInvite({ senderName: senderName(), userId: getLoggedInUserId() }),
+      () => shareInvite({ senderName: senderName(), userId, isCurrent }),
       {
         opened_elsewhere: [t('contact.invite.share.opened_elsewhere')],
         cancelled: [t('contact.invite.share.cancelled')],
@@ -307,12 +310,16 @@ function AddContactContent() {
     try {
       const result = await sendContactInvite(user.uid, user.displayName);
       if (!isCurrent()) return;
-      if (result.status === 'already_invited') {
+      if (
+        result.status === 'already_invited' ||
+        result.status === 'already_saved'
+      ) {
+        const inviteStatus = result.status;
         setHandleInviteStatuses((statuses) => ({
           ...statuses,
-          [user.uid]: 'already_invited',
+          [user.uid]: inviteStatus,
         }));
-        setStatus({ text: t('contact.add.already_invited') });
+        setStatus({ text: t(handleInviteLabels[inviteStatus]) });
         return;
       }
       if (result.status !== 'sent') {

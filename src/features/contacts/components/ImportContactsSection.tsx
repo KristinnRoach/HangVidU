@@ -14,7 +14,7 @@ import { sendContactInvite } from '../invites/send-contact-invite.js';
 
 import type { ImportContact } from '../import/types';
 
-type InviteStatus = 'sent' | 'already_invited';
+type InviteStatus = 'sent' | 'already_invited' | 'already_saved';
 type Status = { text: string; error?: boolean };
 
 export default function ImportContactsSection(props: {
@@ -112,6 +112,7 @@ export default function ImportContactsSection(props: {
     setStatus({ text: t('contact.invite.sending') });
     let sent = 0;
     let alreadyInvited = 0;
+    let alreadySaved = 0;
     let failed = 0;
     try {
       for (const contact of items) {
@@ -121,7 +122,11 @@ export default function ImportContactsSection(props: {
           contact.user!.displayName,
         );
         if (!isCurrent()) return;
-        if (result.status === 'sent' || result.status === 'already_invited') {
+        if (
+          result.status === 'sent' ||
+          result.status === 'already_invited' ||
+          result.status === 'already_saved'
+        ) {
           const inviteStatus = result.status;
           setInvites((previous) => ({
             ...previous,
@@ -129,7 +134,8 @@ export default function ImportContactsSection(props: {
           }));
           select(contact.email, false);
           if (result.status === 'sent') sent++;
-          else alreadyInvited++;
+          else if (result.status === 'already_invited') alreadyInvited++;
+          else alreadySaved++;
         } else failed++;
       }
       const text =
@@ -144,7 +150,11 @@ export default function ImportContactsSection(props: {
               ? t('contact.add.already_invited')
               : '';
       setStatus({
-        text: [text, failed > 0 ? t('contact.invite.error_retry') : '']
+        text: [
+          text,
+          alreadySaved > 0 ? t('contact.add.already_saved') : '',
+          failed > 0 ? t('contact.invite.error_retry') : '',
+        ]
           .filter(Boolean)
           .join(' '),
         error: failed > 0,
@@ -291,7 +301,8 @@ export default function ImportContactsSection(props: {
                   </div>
                   <span class='text-xs text-text-secondary'>
                     {t(
-                      contact.isAlreadySaved
+                      contact.isAlreadySaved ||
+                        invites()[contact.email] === 'already_saved'
                         ? 'contact.status.saved'
                         : contact.user
                           ? 'contact.status.on_app'
@@ -310,7 +321,9 @@ export default function ImportContactsSection(props: {
                         ? `✓ ${t('contact.invite.sent_one')}`
                         : invites()[contact.email] === 'already_invited'
                           ? t('contact.add.already_invited')
-                          : t('contact.invite')}
+                          : invites()[contact.email] === 'already_saved'
+                            ? t('contact.add.already_saved')
+                            : t('contact.invite')}
                     </Button>
                   </Show>
                 </li>

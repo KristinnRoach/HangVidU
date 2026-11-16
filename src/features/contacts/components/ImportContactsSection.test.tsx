@@ -122,6 +122,29 @@ describe('ImportContactsSection', () => {
     ).toHaveProperty('disabled', false);
   });
 
+  it('marks server-confirmed saved contacts unavailable without reporting an invite sent', async () => {
+    vi.mocked(sendContactInvite).mockResolvedValueOnce({
+      ok: true,
+      status: 'already_saved',
+    });
+    render(() => <ImportContactsSection onEmailFallback={vi.fn()} />);
+    await load();
+    fireEvent.click(checkbox('Alice alice@example.com'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'contact.invite.selected 1' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toContain(
+        'contact.add.already_saved',
+      ),
+    );
+    expect(screen.getByRole('status').textContent).not.toContain(
+      'contact.invite.sent',
+    );
+    expect(checkbox('Alice alice@example.com').disabled).toBe(true);
+    expect(checkbox('Alice alice@example.com').checked).toBe(false);
+  });
+
   it('records successful and duplicate invitations and leaves failures selected for retry', async () => {
     vi.mocked(sendContactInvite)
       .mockResolvedValueOnce({ ok: true, status: 'sent' })

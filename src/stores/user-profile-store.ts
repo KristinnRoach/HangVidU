@@ -356,7 +356,7 @@ export function searchUsersByHandle(handle: string) {
 }
 
 export async function sendContactRequest(toId: string) {
-  await getRequest()('POST', '/contact-requests', { toId });
+  return getRequest()('POST', '/contact-requests', { toId });
 }
 
 export async function listIncomingContactRequests() {

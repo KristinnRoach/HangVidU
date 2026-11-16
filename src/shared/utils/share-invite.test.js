@@ -127,6 +127,23 @@ describe('share-invite', () => {
       );
     });
 
+    it('does not copy a link after the owner closes during native sharing', async () => {
+      let current = true;
+      const shareImpl = vi.fn(async () => {
+        current = false;
+        throw new Error('share failed');
+      });
+      const copyImpl = vi.fn();
+      const result = await shareInvite({
+        userId: 'self',
+        shareImpl,
+        copyImpl,
+        isCurrent: () => current,
+      });
+      expect(result.status).toBe('cancelled');
+      expect(copyImpl).not.toHaveBeenCalled();
+    });
+
     it('returns cancelled when share is aborted', async () => {
       const abortError = new DOMException('Share aborted', 'AbortError');
       const shareImpl = vi.fn().mockRejectedValue(abortError);

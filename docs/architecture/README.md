@@ -84,14 +84,17 @@ Every dialog is a `Dialog`: pass `open`, `title`, the body as children, and
 optional `description`/`footer`. `onOpenChange` makes it dismissible; omit it for
 a prompt that must be answered through its own actions (call dialogs). Content
 mounts only while open. Keep transient form state inside a child component so
-closing resets it; keep state outside only when it must survive dismissal. There
+closing resets it; keep state outside only when it must survive dismissal.
+Add-contact contents are also keyed by the signed-in user ID, so switching
+accounts disposes pending work and starts with a fresh form. There
 are no native `<dialog>` or `popover` elements left; do not add one.
 
 The add-contact flow (`features/contacts/components/AddContactDialog.tsx` and
 `ImportContactsSection.tsx`) is the reference: shared controls, layout utilities,
 and a persistent `role="status"` for pending/results/errors. Import selection is
 keyed by email and survives filtering; select-all affects visible eligible rows.
-Successful/duplicate app invites become unavailable, while failures stay selected
+Successful/duplicate app invites and server-confirmed saved contacts become
+unavailable, while failures stay selected
 for retry. Email sends deselect only successful recipients. Username search
 retains previous results with disabled actions while refreshing to avoid
 collapsing the dialog. Feedback remains until the next action rather than
@@ -100,6 +103,6 @@ disappearing on a timer.
 Dialog content owns pending UI work. Cleanup invalidates late results and stops
 remaining batch operations; already-issued requests may finish. Check the
 lifetime after authorization and between requests before starting more work or
-opening an email fallback. Services that send (contact invites, bulk Gmail) take
+opening an email fallback. Side-effect helpers (contact invites, bulk Gmail, share-to-clipboard fallback) take
 an optional `isCurrent` guard; read-only fetches do not, and the component
 discards their late results. UI state and selection stay in the Solid component.
