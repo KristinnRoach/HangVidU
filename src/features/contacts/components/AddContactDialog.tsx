@@ -422,46 +422,47 @@ function AddContactContent() {
         </Button>
       </form>
 
-      {/* Reserve one row and retain results during refresh to avoid collapse. */}
-      <div class='flex min-h-10 flex-col gap-2' aria-busy={handleSearching()}>
-        <For each={handleResults()}>
-          {(user) => {
-            const inviteStatus = () => handleInviteStatuses()[user.uid];
-            const inviteLabel = () => {
-              if (requestingUserId() === user.uid) return t('shared.sending');
-              if (inviteStatus() === 'already_saved')
-                return t('contact.add.already_saved');
-              if (inviteStatus() === 'already_invited')
-                return t('contact.add.already_invited');
-              if (inviteStatus() === 'incoming_pending')
-                return t('contact.add.invited_you');
-              if (inviteStatus() === 'sent')
-                return `✓ ${t('contact.invite.sent_one')}`;
-              return t('contact.invite');
-            };
-            return (
-              <div class='flex items-center justify-between gap-2 text-sm'>
-                <span class='min-w-0 truncate'>
-                  {user.displayName}
-                  <Show when={user.username}>
-                    <small class='ml-1.5 text-text-secondary'>
-                      @{user.username}
-                    </small>
-                  </Show>
-                </span>
-                <Button
-                  variant={inviteStatus() ? 'secondary' : 'success'}
-                  loading={requestingUserId() === user.uid}
-                  disabled={handleSearching() || Boolean(inviteStatus())}
-                  onClick={() => handleSendRequest(user)}
-                >
-                  {inviteLabel()}
-                </Button>
-              </div>
-            );
-          }}
-        </For>
-      </div>
+      <Show when={handleResults().length > 0}>
+        <div class='flex flex-col gap-2' aria-busy={handleSearching()}>
+          <For each={handleResults()}>
+            {(user) => {
+              const inviteStatus = () => handleInviteStatuses()[user.uid];
+              const inviteLabel = () => {
+                if (requestingUserId() === user.uid) return t('shared.sending');
+                if (inviteStatus() === 'already_saved')
+                  return t('contact.add.already_saved');
+                if (inviteStatus() === 'already_invited')
+                  return t('contact.add.already_invited');
+                if (inviteStatus() === 'incoming_pending')
+                  return t('contact.add.invited_you');
+                if (inviteStatus() === 'sent')
+                  return `✓ ${t('contact.invite.sent_one')}`;
+                return t('contact.invite');
+              };
+              return (
+                <div class='flex items-center justify-between gap-2 text-sm'>
+                  <span class='min-w-0 truncate'>
+                    {user.displayName}
+                    <Show when={user.username}>
+                      <small class='ml-1.5 text-text-secondary'>
+                        @{user.username}
+                      </small>
+                    </Show>
+                  </span>
+                  <Button
+                    variant={inviteStatus() ? 'secondary' : 'success'}
+                    loading={requestingUserId() === user.uid}
+                    disabled={handleSearching() || Boolean(inviteStatus())}
+                    onClick={() => handleSendRequest(user)}
+                  >
+                    {inviteLabel()}
+                  </Button>
+                </div>
+              );
+            }}
+          </For>
+        </div>
+      </Show>
 
       {/* type='email' lets the browser validate the address on submit. */}
       <form
