@@ -170,12 +170,20 @@ describe('call recovery and missed hangups through DO signaling', () => {
         () => joiner.dispose(),
       );
       await Promise.all([initiator.start(), joiner.start()]);
-      await expect.poll(() => initiator.dataChannel?.readyState).toBe('open');
-      await expect.poll(() => joiner.dataChannel?.readyState).toBe('open');
-      // Recovery is ignored until connectionstatechange reports 'connected',
-      // which WebKit can fire after the data channel opens.
-      await expect.poll(() => initiator.state).toBe('connected');
-      await expect.poll(() => joiner.state).toBe('connected');
+      // Native ICE/DTLS setup can exceed the default poll timeout on busy CI.
+      // WebKit can also report 'connected' after the data channel opens;
+      // recovery must wait for both peers to finish their initial connection.
+      await expect
+        .poll(
+          () => [
+            initiator.dataChannel?.readyState,
+            joiner.dataChannel?.readyState,
+            initiator.state,
+            joiner.state,
+          ],
+          { timeout: 5000 },
+        )
+        .toEqual(['open', 'open', 'connected', 'connected']);
 
       const target = role === 'initiator' ? initiator : joiner;
       const sendRecovery = vi.spyOn(
@@ -210,7 +218,7 @@ describe('call recovery and missed hangups through DO signaling', () => {
         .toBe(1);
       expect(message.mock.calls[0][0]).toEqual({ data: 'recovered' });
     },
-    10000,
+    15000,
   );
 
   it.each(['replayed', 'missing', 'late'])(
