@@ -8,7 +8,10 @@ import {
 import { createSignal } from 'solid-js';
 import { importGoogleContacts } from '../import/google-import.js';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { searchUsersByHandle } from '../../../stores/user-profile-store.js';
+import {
+  lookupRegisteredUserByEmail,
+  searchUsersByHandle,
+} from '../../../stores/user-profile-store.js';
 import { AddContactDialog } from './AddContactDialog';
 
 vi.mock('@shared/i18n/index.js', () => ({
@@ -29,10 +32,8 @@ vi.mock('../../../stores/user-profile-store.js', () => ({
   getLoggedInUserProfile: () => null,
   listIncomingContactRequests: vi.fn().mockResolvedValue([]),
   listOutgoingContactRequests: vi.fn().mockResolvedValue([]),
+  lookupRegisteredUserByEmail: vi.fn(),
   searchUsersByHandle: vi.fn(),
-}));
-vi.mock('../invites/manual-contact-invite.js', () => ({
-  inviteContactByEmail: vi.fn(),
 }));
 vi.mock('../invites/send-contact-invite.js', () => ({
   sendContactInvite: vi.fn(),
@@ -59,7 +60,7 @@ describe('AddContactDialog', () => {
     const [open, setOpen] = createSignal(true);
     render(() => <AddContactDialog open={open()} onOpenChange={setOpen} />);
     const input = await screen.findByRole('textbox', {
-      name: 'contact.add.enter_handle',
+      name: 'contact.add.search',
     });
     fireEvent.input(input, { target: { value: 'alice' } });
     fireEvent.submit(input.closest('form')!);
@@ -67,7 +68,7 @@ describe('AddContactDialog', () => {
     setOpen(false);
     setOpen(true);
     expect(
-      await screen.findByRole('textbox', { name: 'contact.add.enter_handle' }),
+      await screen.findByRole('textbox', { name: 'contact.add.search' }),
     ).toHaveProperty('value', '');
     finish([{ uid: 'alice', displayName: 'Late Alice', username: 'alice' }]);
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -86,7 +87,7 @@ describe('AddContactDialog', () => {
     );
     render(() => <AddContactDialog open onOpenChange={vi.fn()} />);
     const input = await screen.findByRole('textbox', {
-      name: 'contact.add.enter_handle',
+      name: 'contact.add.search',
     });
     fireEvent.input(input, { target: { value: 'old-query' } });
     fireEvent.click(
@@ -97,7 +98,7 @@ describe('AddContactDialog', () => {
     ).toHaveProperty('disabled', true);
     setUser({ uid: 'other' });
     expect(
-      screen.getByRole('textbox', { name: 'contact.add.enter_handle' }),
+      screen.getByRole('textbox', { name: 'contact.add.search' }),
     ).toHaveProperty('value', '');
     expect(
       screen.getByRole('button', { name: 'contact.import.google' }),
@@ -108,5 +109,28 @@ describe('AddContactDialog', () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByText('Old Account Contact')).toBeNull();
+  });
+
+  it('looks up an email in the same search and never opens a compose window', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+    vi.mocked(lookupRegisteredUserByEmail)
+      .mockResolvedValueOnce({ status: 'not_found', user: null })
+      .mockResolvedValueOnce({
+        status: 'found',
+        user: { uid: 'bob', displayName: 'Bob', username: 'bob' },
+      });
+    render(() => <AddContactDialog open onOpenChange={vi.fn()} />);
+    const input = await screen.findByRole('textbox', {
+      name: 'contact.add.search',
+    });
+    fireEvent.input(input, { target: { value: 'nobody@example.com' } });
+    fireEvent.submit(input.closest('form')!);
+    expect(await screen.findByText('contact.add.not_found')).toBeTruthy();
+    fireEvent.submit(input.closest('form')!);
+    expect(await screen.findByText('Bob')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'contact.invite' })).toBeTruthy();
+    expect(searchUsersByHandle).not.toHaveBeenCalledWith('nobody@example.com');
+    expect(openSpy).not.toHaveBeenCalled();
+    openSpy.mockRestore();
   });
 });

@@ -95,9 +95,11 @@ and a persistent `role="status"` for pending/results/errors. Import selection is
 keyed by email and survives filtering; select-all affects visible eligible rows.
 Successful/duplicate app invites and server-confirmed saved contacts become
 unavailable, while failures stay selected
-for retry. Email sends deselect only successful recipients. Username search
-retains previous results with disabled actions while refreshing to avoid
-collapsing the dialog. Feedback remains until the next action rather than
+for retry. Email sends deselect only successful recipients. One search box takes a
+username (partial match) or an email (exact match, only verified and discoverable
+accounts); a match gets an explicit Invite button, and no match offers the invite
+link. Search never opens email compose. It retains previous results with disabled
+actions while refreshing to avoid collapsing the dialog. Feedback remains until the next action rather than
 disappearing on a timer.
 
 Dialog content owns pending UI work. Cleanup invalidates late results and stops

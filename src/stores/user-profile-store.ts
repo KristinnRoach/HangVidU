@@ -77,7 +77,13 @@ type Discovery = {
     },
     opts?: { username?: string | null },
   ): Promise<void>;
-  lookupByEmail(email: string): Promise<unknown>;
+  lookupByEmail(
+    email: string,
+  ): Promise<
+    | { status: 'found'; user: UserSearchResult }
+    | { status: 'not_found'; user: null }
+    | { status: 'lookup_error'; user: null; error: unknown }
+  >;
   findByEmails(emails: string[]): Promise<unknown>;
   searchByHandle(handle: string): Promise<UserSearchResult[]>;
 };
