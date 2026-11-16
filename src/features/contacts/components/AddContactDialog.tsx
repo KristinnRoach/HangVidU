@@ -10,7 +10,6 @@ import {
   shareInvite,
 } from '@shared/utils/share-invite.js';
 import { getLoggedInUserId, useAuth } from '@auth';
-import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
 import { sendContactInvite } from '../invites/send-contact-invite.js';
 import {
   getAllContacts,
@@ -20,6 +19,7 @@ import {
   listIncomingContactRequests,
   listOutgoingContactRequests,
   getLoggedInUserProfile,
+  lookupRegisteredUserByEmail,
   searchUsersByHandle,
   type UserSearchResult,
 } from '../../../stores/user-profile-store.js';
@@ -33,27 +33,28 @@ import {
 type Tone = 'success' | 'error';
 type Status = { text: string; tone?: Tone };
 type ShareResult = { status: string };
-type HandleInviteStatus =
+type InviteStatus =
   | 'already_saved'
   | 'already_invited'
   | 'incoming_pending'
   | 'sent';
 
-const handleInviteLabels: Record<HandleInviteStatus, string> = {
+const inviteLabels: Record<InviteStatus, string> = {
   already_saved: 'contact.add.already_saved',
   already_invited: 'contact.add.already_invited',
   incoming_pending: 'contact.add.invited_you',
   sent: 'contact.invite.sent_one',
 };
 
-const emailInviteMessages: Record<string, [string, Tone?]> = {
-  not_found: ['contact.add.not_found_emailing'],
-  self: ['contact.add.self_error', 'error'],
-  already_saved: ['contact.add.already_saved'],
-  already_invited: ['contact.add.already_invited'],
-  permission_denied: ['contact.invite.permission_denied', 'error'],
-  lookup_error: ['contact.add.lookup_error', 'error'],
-};
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Email matches are exact and only cover verified, discoverable accounts.
+async function findUsers(query: string): Promise<UserSearchResult[]> {
+  if (!EMAIL_PATTERN.test(query)) return searchUsersByHandle(query);
+  const result = await lookupRegisteredUserByEmail(query);
+  if (result.status === 'lookup_error') throw result.error;
+  return result.user ? [result.user] : [];
+}
 
 type Props = {
   open: boolean;
@@ -120,16 +121,12 @@ function AddContactContent() {
     getLoggedInUserProfile()?.displayName ||
     t('contact.invite.sender_fallback');
 
-  const [emailInput, setEmailInput] = createSignal('');
-  const [emailSending, setEmailSending] = createSignal(false);
-  const [handleInput, setHandleInput] = createSignal('');
-  const [handleSearching, setHandleSearching] = createSignal(false);
-  const [handleResults, setHandleResults] = createSignal<UserSearchResult[]>(
-    [],
-  );
-  const [handleNotFound, setHandleNotFound] = createSignal(false);
-  const [handleInviteStatuses, setHandleInviteStatuses] = createSignal<
-    Record<string, HandleInviteStatus>
+  const [searchInput, setSearchInput] = createSignal('');
+  const [searching, setSearching] = createSignal(false);
+  const [results, setResults] = createSignal<UserSearchResult[]>([]);
+  const [notFound, setNotFound] = createSignal(false);
+  const [inviteStatuses, setInviteStatuses] = createSignal<
+    Record<string, InviteStatus>
   >({});
   const [requestingUserId, setRequestingUserId] = createSignal<string | null>(
     null,
@@ -199,48 +196,17 @@ function AddContactContent() {
     );
   }
 
-  // --- Manual email invite ---
-
-  async function handleManualEmailInvite() {
-    const email = emailInput().trim().toLowerCase();
-    if (!email || emailSending() || !isCurrent()) return;
-    setEmailInput(email);
-    setEmailSending(true);
+  async function handleSearch() {
+    if (searching() || !isCurrent()) return;
+    const query = searchInput().trim().replace(/^@+/, '');
     setStatus({ text: '' });
-
-    const result = await inviteContactByEmail(email, {
-      isCurrent,
-      onNotFound: () =>
-        openEmailComposeFallback([{ email }], userId!, senderName()),
-    });
-
-    if (!isCurrent()) return;
-    const message = emailInviteMessages[result.status];
-    if (result.status === 'sent') {
-      notify(`✓ ${t('contact.invite.sent_one')}`, 'success');
-    } else if (message) {
-      setStatus({ text: t(message[0]), tone: message[1] });
-    } else {
-      console.error(
-        '[AddContactDialog] Manual email invite error:',
-        (result as { error?: unknown }).error,
-      );
-      setStatus({ text: t('contact.add.email_error'), tone: 'error' });
-    }
-    setEmailSending(false);
-  }
-
-  async function handleSearchByHandle() {
-    if (handleSearching() || !isCurrent()) return;
-    const handle = handleInput().trim().replace(/^@+/, '');
-    setStatus({ text: '' });
-    setHandleNotFound(false);
-    if (!handle) {
-      setHandleResults([]);
-      setHandleInviteStatuses({});
+    setNotFound(false);
+    if (!query) {
+      setResults([]);
+      setInviteStatuses({});
       return;
     }
-    setHandleSearching(true);
+    setSearching(true);
     try {
       await hydrateContacts().catch((error) => {
         console.warn(
@@ -250,7 +216,7 @@ function AddContactContent() {
       });
       if (!isCurrent()) return;
       const [users, outgoingRequests, incomingRequests] = await Promise.all([
-        searchUsersByHandle(handle),
+        findUsers(query),
         listOutgoingContactRequests().catch((error) => {
           console.warn(
             '[AddContactDialog] Outgoing contact requests lookup failed:',
@@ -274,10 +240,10 @@ function AddContactContent() {
       const incomingIds = new Set(
         incomingRequests.map((request) => request.fromId),
       );
-      setHandleResults(users);
-      setHandleInviteStatuses(
+      setResults(users);
+      setInviteStatuses(
         Object.fromEntries(
-          users.flatMap((user): [string, HandleInviteStatus][] => {
+          users.flatMap((user): [string, InviteStatus][] => {
             if (contacts?.[user.uid]) return [[user.uid, 'already_saved']];
             if (incomingIds.has(user.uid))
               return [[user.uid, 'incoming_pending']];
@@ -287,24 +253,20 @@ function AddContactContent() {
           }),
         ),
       );
-      setHandleNotFound(users.length === 0);
+      setNotFound(users.length === 0);
     } catch (error) {
       if (!isCurrent()) return;
-      setHandleResults([]);
-      setHandleInviteStatuses({});
-      console.error('[AddContactDialog] Handle search error:', error);
+      setResults([]);
+      setInviteStatuses({});
+      console.error('[AddContactDialog] Search error:', error);
       setStatus({ text: t('contact.add.lookup_error'), tone: 'error' });
     } finally {
-      if (isCurrent()) setHandleSearching(false);
+      if (isCurrent()) setSearching(false);
     }
   }
 
   async function handleSendRequest(user: UserSearchResult) {
-    if (handleSearching() || requestingUserId() || !isCurrent()) return;
-    if (user.uid === getLoggedInUserId()) {
-      setStatus({ text: t('contact.add.self_error'), tone: 'error' });
-      return;
-    }
+    if (searching() || requestingUserId() || !isCurrent()) return;
     setRequestingUserId(user.uid);
     setStatus({ text: '' });
     try {
@@ -315,18 +277,18 @@ function AddContactContent() {
         result.status === 'already_saved'
       ) {
         const inviteStatus = result.status;
-        setHandleInviteStatuses((statuses) => ({
+        setInviteStatuses((statuses) => ({
           ...statuses,
           [user.uid]: inviteStatus,
         }));
-        setStatus({ text: t(handleInviteLabels[inviteStatus]) });
+        setStatus({ text: t(inviteLabels[inviteStatus]) });
         return;
       }
       if (result.status !== 'sent') {
         setStatus({ text: t('contact.add.email_error'), tone: 'error' });
         return;
       }
-      setHandleInviteStatuses((statuses) => ({
+      setInviteStatuses((statuses) => ({
         ...statuses,
         [user.uid]: 'sent',
       }));
@@ -390,27 +352,27 @@ function AddContactContent() {
         class='flex gap-2'
         onSubmit={(e) => {
           e.preventDefault();
-          void handleSearchByHandle();
+          void handleSearch();
         }}
       >
         <TextField
           class='flex-1'
-          label={t('contact.add.enter_handle')}
+          label={t('contact.add.search')}
           hideLabel
-          placeholder={t('contact.add.enter_handle')}
-          value={handleInput()}
-          onChange={setHandleInput}
+          placeholder={t('contact.add.search_placeholder')}
+          value={searchInput()}
+          onChange={setSearchInput}
           autocomplete='off'
           autocapitalize='none'
         />
-        <Button type='submit' loading={handleSearching()}>
-          {handleSearching() ? t('shared.searching') : t('shared.search')}
+        <Button type='submit' loading={searching()}>
+          {searching() ? t('shared.searching') : t('shared.search')}
         </Button>
       </form>
 
-      <Show when={handleNotFound()}>
+      <Show when={notFound()}>
         <div class='flex flex-wrap items-center justify-between gap-2 text-sm text-text-secondary'>
-          <span>{t('contact.add.handle_not_found')}</span>
+          <span>{t('contact.add.not_found')}</span>
           <Button
             variant='ghost'
             disabled={sharePending()}
@@ -421,16 +383,16 @@ function AddContactContent() {
         </div>
       </Show>
 
-      <Show when={handleResults().length > 0}>
-        <div class='flex flex-col gap-2' aria-busy={handleSearching()}>
-          <For each={handleResults()}>
+      <Show when={results().length > 0}>
+        <div class='flex flex-col gap-2' aria-busy={searching()}>
+          <For each={results()}>
             {(user) => {
-              const inviteStatus = () => handleInviteStatuses()[user.uid];
+              const inviteStatus = () => inviteStatuses()[user.uid];
               const inviteLabel = () => {
                 const current = inviteStatus();
                 if (requestingUserId() === user.uid) return t('shared.sending');
                 if (!current) return t('contact.invite');
-                const label = t(handleInviteLabels[current]);
+                const label = t(inviteLabels[current]);
                 return current === 'sent' ? `✓ ${label}` : label;
               };
               return (
@@ -446,7 +408,7 @@ function AddContactContent() {
                   <Button
                     variant={inviteStatus() ? 'secondary' : 'success'}
                     loading={requestingUserId() === user.uid}
-                    disabled={handleSearching() || Boolean(inviteStatus())}
+                    disabled={searching() || Boolean(inviteStatus())}
                     onClick={() => handleSendRequest(user)}
                   >
                     {inviteLabel()}
@@ -457,29 +419,6 @@ function AddContactContent() {
           </For>
         </div>
       </Show>
-
-      {/* type='email' lets the browser validate the address on submit. */}
-      <form
-        class='flex gap-2'
-        onSubmit={(e) => {
-          e.preventDefault();
-          void handleManualEmailInvite();
-        }}
-      >
-        <TextField
-          class='flex-1'
-          type='email'
-          label={t('contact.add.enter_email')}
-          hideLabel
-          placeholder={t('contact.add.enter_email')}
-          value={emailInput()}
-          onChange={setEmailInput}
-          autocomplete='email'
-        />
-        <Button type='submit' loading={emailSending()}>
-          {emailSending() ? t('shared.sending') : t('contact.invite')}
-        </Button>
-      </form>
 
       <hr class='my-2 border-border-primary' />
 
