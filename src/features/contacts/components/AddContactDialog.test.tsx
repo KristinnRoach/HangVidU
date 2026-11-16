@@ -80,7 +80,7 @@ describe('AddContactDialog', () => {
       await screen.findByRole('textbox', { name: 'contact.add.enter_handle' }),
     ).toHaveProperty('value', '');
     finish([{ uid: 'alice', displayName: 'Late Alice', username: 'alice' }]);
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByText('Late Alice')).toBeNull();
   });
 });

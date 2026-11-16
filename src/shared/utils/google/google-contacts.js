@@ -9,9 +9,13 @@ const OTHER_CONTACTS_URL = 'https://people.googleapis.com/v1/otherContacts';
  * Fetch contacts from Google People API.
  * Fetches from both "My Contacts" and "Other contacts" collections.
  * @param {string} accessToken - Google OAuth access token with contacts.readonly scope
+ * @param {{isCurrent?: () => boolean}} [options]
  * @returns {Promise<Array<{email: string, name: string}>>} - Array of contacts with email addresses
  */
-export async function fetchGoogleContacts(accessToken) {
+export async function fetchGoogleContacts(
+  accessToken,
+  { isCurrent = () => true } = {},
+) {
   if (!accessToken) {
     throw new Error('Access token is required');
   }
@@ -23,6 +27,7 @@ export async function fetchGoogleContacts(accessToken) {
     accessToken,
     CONNECTIONS_URL,
     'names,emailAddresses',
+    isCurrent,
   );
   console.log(`[GOOGLE CONTACTS] My Contacts: ${myContacts.length}`);
   contacts.push(...myContacts);
@@ -32,6 +37,7 @@ export async function fetchGoogleContacts(accessToken) {
     accessToken,
     OTHER_CONTACTS_URL,
     'names,emailAddresses',
+    isCurrent,
   );
   console.log(`[GOOGLE CONTACTS] Other Contacts: ${otherContacts.length}`);
   contacts.push(...otherContacts);
@@ -54,11 +60,17 @@ export async function fetchGoogleContacts(accessToken) {
 /**
  * Fetch contacts from a specific People API endpoint with pagination.
  */
-async function fetchFromEndpoint(accessToken, baseUrl, personFields) {
+async function fetchFromEndpoint(
+  accessToken,
+  baseUrl,
+  personFields,
+  isCurrent,
+) {
   const contacts = [];
   let nextPageToken = null;
 
   do {
+    if (!isCurrent()) break;
     const url = new URL(baseUrl);
     url.searchParams.set('pageSize', '100');
 

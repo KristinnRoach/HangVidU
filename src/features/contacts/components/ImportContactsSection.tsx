@@ -288,9 +288,17 @@ export default function ImportContactsSection(props: {
               selectedVisibleCount() < available().length
             }
             disabled={busy() || available().length === 0}
-            onChange={(checked) =>
-              available().forEach((contact) => select(contact.email, checked))
-            }
+            onChange={(checked) => {
+              const eligible = available();
+              setSelected((previous) => {
+                const next = new Set(previous);
+                for (const contact of eligible) {
+                  if (checked) next.add(contact.email);
+                  else next.delete(contact.email);
+                }
+                return next;
+              });
+            }}
           >
             {t('contact.select_all', { count: visible().length })}
           </Checkbox>

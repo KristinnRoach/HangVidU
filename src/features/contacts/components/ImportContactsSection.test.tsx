@@ -112,6 +112,14 @@ describe('ImportContactsSection', () => {
     expect(checkbox('Alice alice@example.com').checked).toBe(true);
     expect(checkbox('Guest guest@example.com').checked).toBe(true);
     expect(checkbox('Saved saved@example.com').disabled).toBe(true);
+    fireEvent.input(screen.getByRole('textbox', { name: 'contact.search' }), {
+      target: { value: 'Guest' },
+    });
+    fireEvent.click(checkbox('contact.select_all 1'));
+    expect(checkbox('Guest guest@example.com').checked).toBe(false);
+    expect(
+      screen.getByRole('button', { name: 'contact.invite.selected 1' }),
+    ).toHaveProperty('disabled', false);
   });
 
   it('records successful and duplicate invitations and leaves failures selected for retry', async () => {

@@ -31,7 +31,7 @@ export async function importGoogleContacts({
 
     if (!isCurrent()) return { status: 'stale', contacts: [] };
     onProgress({ step: 'fetching' });
-    const contacts = await fetchGoogleContacts(accessToken);
+    const contacts = await fetchGoogleContacts(accessToken, { isCurrent });
 
     if (!isCurrent()) return { status: 'stale', contacts: [] };
     if (contacts.length === 0) {
