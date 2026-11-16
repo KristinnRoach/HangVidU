@@ -93,14 +93,8 @@ export default function ImportContactsSection(props: {
           text: t('contact.import.found', { count: result.contacts.length }),
         });
       } else if (result.status !== 'stale') {
-        const key =
-          result.status === 'no_email'
-            ? 'no_email'
-            : result.status === 'cancelled'
-              ? 'cancelled'
-              : 'error';
         setStatus({
-          text: t(`contact.import.${key}`, {
+          text: t(`contact.import.${result.status}`, {
             error:
               result.status === 'error'
                 ? String(
@@ -110,7 +104,7 @@ export default function ImportContactsSection(props: {
                   )
                 : '',
           }),
-          error: key === 'error',
+          error: result.status === 'error',
         });
         setEmptyMessage(
           t(
@@ -119,14 +113,6 @@ export default function ImportContactsSection(props: {
               : 'contact.import.failed',
           ),
         );
-      }
-    } catch (error) {
-      if (isCurrent()) {
-        setStatus({
-          text: t('contact.import.error', { error: String(error) }),
-          error: true,
-        });
-        setEmptyMessage(t('contact.import.failed'));
       }
     } finally {
       if (isCurrent()) setImporting(false);

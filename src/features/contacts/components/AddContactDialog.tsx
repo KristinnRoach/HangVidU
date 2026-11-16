@@ -249,10 +249,8 @@ function AddContactContent() {
 
     const result = await inviteContactByEmail(email, {
       isCurrent,
-      onNotFound: async () => {
-        if (isCurrent())
-          openEmailComposeFallback([{ email }], userId!, senderName());
-      },
+      onNotFound: () =>
+        openEmailComposeFallback([{ email }], userId!, senderName()),
     });
 
     if (!isCurrent()) return;
@@ -515,7 +513,7 @@ function AddContactContent() {
 
       <ImportContactsSection
         onEmailFallback={(contacts) =>
-          openEmailComposeFallback(contacts, getLoggedInUserId()!, senderName())
+          openEmailComposeFallback(contacts, userId!, senderName())
         }
       />
 
