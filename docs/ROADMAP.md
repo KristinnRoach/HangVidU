@@ -69,6 +69,7 @@ component, removing replaced rules. A complete redesign or CSS migration is not 
 
 ## Later / outside the critical path
 
+- WhatsApp/Telegram invite buttons: removed from add-contact in favour of copy link and native share. `src/shared/utils/share-invite-presets.js` (tested, unwired) can be reconnected if users ask for one-tap provider sharing.
 - Older-message pagination: persistent chat currently exposes the latest 40 messages. Keep historical pages separate from live-message eviction.
 - Backend consolidation, broad JS-to-TS conversion, and full CSS migration are not prerequisites.
 - Expand experiments or introduce general frameworks only for a demonstrated need.

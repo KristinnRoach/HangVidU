@@ -5,10 +5,6 @@ import TextField from '../../../components/TextField';
 import { Share2, Copy } from 'lucide-solid';
 import { t as t_, useI18n } from '@shared/i18n/index.js';
 import {
-  getInviteShareProviders,
-  shareInviteViaProvider,
-} from '@shared/utils/share-invite-presets.js';
-import {
   buildReferralLink,
   copyInviteLink,
   shareInvite,
@@ -116,7 +112,6 @@ function AddContactContent() {
   onCleanup(() => {
     disposed = true;
   });
-  const shareProviders = getInviteShareProviders();
   const senderName = () =>
     getLoggedInUserProfile()?.displayName ||
     t('contact.invite.sender_fallback');
@@ -178,26 +173,6 @@ function AddContactContent() {
     t('contact.invite.share.copied'),
     'success',
   ];
-
-  function shareViaProvider(provider: { id: string; labelKey: string }) {
-    const name = t(provider.labelKey);
-    void share(
-      t('contact.invite.share.provider_opening', { provider: name }),
-      () =>
-        shareInviteViaProvider({
-          providerId: provider.id as 'whatsapp' | 'telegram',
-          senderName: senderName(),
-          userId: getLoggedInUserId(),
-        }),
-      {
-        opened: [t('contact.invite.share.provider_opened', { provider: name })],
-        copied: [
-          t('contact.invite.share.provider_copied', { provider: name }),
-          'success',
-        ],
-      },
-    );
-  }
 
   function shareGeneric() {
     void share(
@@ -454,18 +429,6 @@ function AddContactContent() {
         role='group'
         aria-label={t('contact.invite.share.presets_label')}
       >
-        <For each={shareProviders}>
-          {(provider) => (
-            <Button
-              disabled={sharePending()}
-              onClick={() => shareViaProvider(provider)}
-            >
-              {/* Provider icons are custom SVGs from share-invite-presets.js */}
-              <span innerHTML={provider.iconSvg} aria-hidden='true' />
-              {t(provider.labelKey)}
-            </Button>
-          )}
-        </For>
         <Button
           disabled={sharePending()}
           aria-label={t('contact.invite.share.label')}
