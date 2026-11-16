@@ -1,5 +1,7 @@
 import { createEffect, createSignal, on } from 'solid-js';
-import Modal from '../../../components/dialogs/Modal';
+import Button from '../../../components/Button';
+import Dialog from '../../../components/dialogs/Dialog';
+import TextField from '../../../components/TextField';
 import { validateUsername } from '@auth';
 import { useI18n } from '@shared/i18n';
 import {
@@ -7,7 +9,6 @@ import {
   getUserProfileById,
   suggestHandle,
 } from '../../../stores/user-profile-store.js';
-import styles from './HandleClaimPrompt.module.css';
 
 type UserLike = {
   uid?: string;
@@ -83,39 +84,37 @@ export function HandleClaimPrompt(props: { user: UserLike | null }) {
   }
 
   return (
-    <Modal
+    <Dialog
       open={open()}
       onOpenChange={(next) => (next ? setOpen(true) : dismiss())}
       title={t('handle.claim.title')}
     >
       <form
-        class={styles.form}
+        class='flex items-start gap-2'
         onSubmit={(event) => {
           event.preventDefault();
           void save();
         }}
       >
-        <div class={styles.row}>
-          <input
-            value={handle()}
-            onInput={(event) => setHandle(event.currentTarget.value)}
-            autocomplete='username'
-            autocapitalize='none'
-            aria-label={t('handle.claim.input')}
-          />
-          <button type='submit' disabled={saving()}>
-            {saving() ? t('shared.saving') : t('shared.save')}
-          </button>
-        </div>
-        <p class={styles.message} role='status'>
-          {message()}
-        </p>
-        <div class={styles.actions}>
-          <button type='button' onClick={dismiss} disabled={saving()}>
-            {t('shared.dismiss')}
-          </button>
-        </div>
+        <TextField
+          class='flex-1'
+          label={t('handle.claim.input')}
+          hideLabel
+          value={handle()}
+          onChange={setHandle}
+          error={message()}
+          autocomplete='username'
+          autocapitalize='none'
+        />
+        <Button type='submit' variant='primary' loading={saving()}>
+          {saving() ? t('shared.saving') : t('shared.save')}
+        </Button>
       </form>
-    </Modal>
+      <div class='flex justify-end'>
+        <Button variant='ghost' onClick={dismiss} disabled={saving()}>
+          {t('shared.dismiss')}
+        </Button>
+      </div>
+    </Dialog>
   );
 }

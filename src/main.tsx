@@ -61,6 +61,7 @@ render(
   () => (
     <ErrorBoundary
       fallback={(error) => {
+        console.error('[main] Unhandled render error:', error);
         Sentry.captureException(error);
         return <p>Something went wrong. Please reload the page.</p>;
       }}

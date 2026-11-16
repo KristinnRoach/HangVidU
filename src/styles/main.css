@@ -28,7 +28,5 @@
 @import './components/search.css' layer(app);
 @import './components/notifications.css' layer(app);
 @import './components/toast.css' layer(app);
-@import './components/dialog/call-ui.css' layer(app);
-@import './components/dialog/image-preview-dialog.css' layer(app);
 
 /* Todo: Review components to minimize redundant lines of CSS, simplify, consolidate and align styles to current system */

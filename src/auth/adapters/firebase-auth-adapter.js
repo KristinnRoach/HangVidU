@@ -42,15 +42,7 @@ export function getFirebaseRedirectResult() {
 }
 
 export function createGoogleAuthProvider() {
-  if (import.meta.env.DEV) {
-    const provider = new GoogleAuthProvider();
-    // Force the consent screen for standard button clicks
-    provider.setCustomParameters({
-      prompt: 'consent',
-    });
-  } else {
-    return new GoogleAuthProvider();
-  }
+  return new GoogleAuthProvider();
 }
 
 export function createGoogleCredential(idToken) {

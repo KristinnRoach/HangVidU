@@ -1,7 +1,7 @@
 import { createSignal } from 'solid-js';
 import { useI18n } from '@shared/i18n/index.js';
 import { UserPlus } from 'lucide-solid';
-import { AddContactModal } from './AddContactModal';
+import { AddContactDialog } from './AddContactDialog';
 
 export function AddContactButton() {
   const { t } = useI18n();
@@ -19,7 +19,7 @@ export function AddContactButton() {
         <UserPlus />
       </button>
 
-      <AddContactModal open={open()} onOpenChange={setOpen} />
+      <AddContactDialog open={open()} onOpenChange={setOpen} />
     </>
   );
 }

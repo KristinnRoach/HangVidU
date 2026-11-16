@@ -1,36 +1,91 @@
-import { Match, Switch } from 'solid-js';
+import { Match, onCleanup, onMount, Switch, type JSX } from 'solid-js';
 
+import { useI18n } from '@shared/i18n';
+import { callIndicators } from '@shared/utils/ui-utils/call-indicators';
+import Button from '../../../components/Button';
+import Dialog from '../../../components/dialogs/Dialog';
+import { ringtoneManager } from '../audio/ringtone-manager';
 import { useCallHandshake } from '../call-handshake.js';
-import { BusyCallDialog } from './dialogs/BusyCallDialog';
-import { IncomingCallDialog } from './dialogs/IncomingCallDialog';
-import { OutgoingCallDialog } from './dialogs/OutgoingCallDialog';
+
+/** A call prompt lives exactly as long as its ringtone. */
+function CallDialog(props: {
+  title: string;
+  description?: string;
+  footer?: JSX.Element;
+  ring: () => void;
+}) {
+  onMount(() => props.ring());
+  onCleanup(() => {
+    ringtoneManager.stop();
+    callIndicators.stopCallIndicators();
+  });
+
+  return (
+    <Dialog
+      open
+      title={props.title}
+      description={props.description}
+      footer={props.footer}
+    />
+  );
+}
 
 export function CallDialogs() {
+  const { t } = useI18n();
   const handshake = useCallHandshake();
+  const kind = (audioOnly?: boolean) =>
+    audioOnly ? t('message.audioCall') : t('message.videoCall');
 
   return (
     <Switch>
       <Match when={handshake.outgoingCall()}>
         {(call) => (
-          <OutgoingCallDialog
-            calleeName={call().calleeName}
-            audioOnly={call().audioOnly}
-            onCancel={handshake.cancelOutgoing}
+          <CallDialog
+            title={t('call.calling', {
+              name: call().calleeName || t('shared.contact'),
+            })}
+            description={`${kind(call().audioOnly)} · ${t('call.waiting')}`}
+            ring={() =>
+              void ringtoneManager.playOutgoing({ audioOnly: call().audioOnly })
+            }
+            footer={
+              <Button variant='danger' onClick={handshake.cancelOutgoing}>
+                {t('shared.cancel')}
+              </Button>
+            }
           />
         )}
       </Match>
       <Match when={handshake.isCalleeBusy()}>
-        <BusyCallDialog />
+        <CallDialog
+          title={t('call.busy')}
+          ring={() => void ringtoneManager.playBusy()}
+        />
       </Match>
       <Match when={handshake.incomingCall()}>
-        {(call) => (
-          <IncomingCallDialog
-            callerName={call().callerName}
-            audioOnly={call().audioOnly}
-            onAccept={handshake.acceptIncoming}
-            onDecline={handshake.declineIncoming}
-          />
-        )}
+        {(call) => {
+          const name = () => call().callerName || t('shared.unknown');
+          return (
+            <CallDialog
+              title={t('call.incoming', { name: name() })}
+              description={kind(call().audioOnly)}
+              ring={() => {
+                void ringtoneManager.playIncoming();
+                callIndicators.startCallIndicators(name());
+              }}
+              footer={
+                <>
+                  <Button variant='danger' onClick={handshake.declineIncoming}>
+                    {t('call.decline')}
+                  </Button>
+                  <Button variant='success' onClick={handshake.acceptIncoming}>
+                    {t('call.accept')}
+                  </Button>
+                </>
+              }
+            />
+          );
+        }}
       </Match>
     </Switch>
   );

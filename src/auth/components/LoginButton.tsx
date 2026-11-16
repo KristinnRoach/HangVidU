@@ -1,20 +1,18 @@
 import { LogIn } from 'lucide-solid';
 import { t } from '@shared/i18n/index.js';
-
-import styles from './SignInSheet.module.css';
+import { openSignIn } from './SignInDialog';
 
 export default function LoginButton(props: {
-  popoverTarget: string;
   textContent?: string;
   class?: string;
 }) {
   return (
     <button
       type='button'
-      popovertarget={props.popoverTarget}
-      class={props.class ? props.class : styles.openButton}
+      class={props.class}
       aria-label={t('auth.sign_in')}
       title={t('auth.sign_in')}
+      onClick={openSignIn}
     >
       {props.textContent ? props.textContent : <LogIn />}
     </button>

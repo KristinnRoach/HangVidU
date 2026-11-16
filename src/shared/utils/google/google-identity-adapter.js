@@ -112,16 +112,6 @@ export function disableGoogleAutoSignIn() {
 }
 
 /**
- * Render GIS sign-in button.
- *
- * @param {HTMLElement} containerEl
- * @param {object} options
- */
-export function renderGoogleSignInButton(containerEl, options) {
-  getGoogleAccountsOrThrow().id.renderButton(containerEl, options);
-}
-
-/**
  * Create OAuth token client.
  *
  * @param {object} config - GIS OAuth token client configuration.

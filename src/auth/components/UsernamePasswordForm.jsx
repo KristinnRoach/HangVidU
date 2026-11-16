@@ -5,7 +5,8 @@ import {
 } from '../password-auth.js';
 import { resolveErrorLookupKey } from '../shared/auth-error-codes.js';
 import { useI18n } from '@shared/i18n/index.js';
-import styles from './UsernamePasswordForm.module.css';
+import Button from '../../components/Button';
+import TextField from '../../components/TextField';
 
 const FRIENDLY_ERROR_KEYS = {
   // Domain codes thrown by password-auth.
@@ -28,10 +29,7 @@ function getFriendlyAuthErrorKey(error) {
   );
 }
 
-// Minimal sign-up / sign-in form. No dedicated styles yet — uses semantic
-// elements + native browser defaults. Replace with the chosen design when
-// the sustainable auth-UI strategy is picked.
-export default function UsernamePasswordForm(props) {
+export default function UsernamePasswordForm() {
   const { t } = useI18n();
   const [mode, setMode] = createSignal('signin'); // 'signin' | 'signup'
   const [identifier, setIdentifier] = createSignal('');
@@ -42,8 +40,15 @@ export default function UsernamePasswordForm(props) {
   const [error, setError] = createSignal('');
   const [busy, setBusy] = createSignal(false);
 
+  // Editing any field clears the previous attempt's error.
+  const edit = (set) => (value) => {
+    setError('');
+    set(value);
+  };
+
   async function onSubmit(e) {
     e.preventDefault();
+    if (busy()) return;
     setError('');
     setBusy(true);
     try {
@@ -62,90 +67,73 @@ export default function UsernamePasswordForm(props) {
       }
     } catch (err) {
       setError(t(getFriendlyAuthErrorKey(err)));
-      props.onAuthFailure?.();
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit} class={styles.form}>
+    <form onSubmit={onSubmit} class='flex w-full flex-col gap-3'>
       <Show
         when={mode() === 'signup'}
         fallback={
-          <input
-            type='text'
+          <TextField
+            label={t('auth.placeholder.identifier')}
+            hideLabel
             placeholder={t('auth.placeholder.identifier')}
             autocomplete='username'
+            autocapitalize='none'
             value={identifier()}
-            aria-invalid={!!error()}
-            aria-describedby={error() ? 'auth-password-error' : undefined}
-            onInput={(e) => {
-              setError('');
-              setIdentifier(e.currentTarget.value);
-            }}
+            onChange={edit(setIdentifier)}
             required
           />
         }
       >
-        <input
-          type='text'
+        <TextField
+          label={t('auth.placeholder.username')}
+          hideLabel
           placeholder={t('auth.placeholder.username')}
           autocomplete='username'
+          autocapitalize='none'
           value={username()}
-          aria-invalid={!!error()}
-          aria-describedby={error() ? 'auth-password-error' : undefined}
-          onInput={(e) => {
-            setError('');
-            setUsername(e.currentTarget.value);
-          }}
+          onChange={edit(setUsername)}
           required
         />
-        <input
+        <TextField
           type='email'
+          label={t('auth.placeholder.email')}
+          hideLabel
           placeholder={t('auth.placeholder.email')}
           autocomplete='email'
           value={email()}
-          onInput={(e) => {
-            setError('');
-            setEmail(e.currentTarget.value);
-          }}
+          onChange={edit(setEmail)}
         />
-        <input
-          type='text'
+        <TextField
+          label={t('auth.placeholder.display_name')}
+          hideLabel
           placeholder={t('auth.placeholder.display_name')}
           autocomplete='nickname'
           value={displayName()}
-          onInput={(e) => {
-            setError('');
-            setDisplayName(e.currentTarget.value);
-          }}
+          onChange={edit(setDisplayName)}
         />
       </Show>
-      <input
+      <TextField
         type='password'
+        label={t('auth.placeholder.password')}
+        hideLabel
         placeholder={t('auth.placeholder.password')}
         autocomplete={mode() === 'signup' ? 'new-password' : 'current-password'}
         value={password()}
-        aria-invalid={!!error()}
-        aria-describedby={error() ? 'auth-password-error' : undefined}
-        onInput={(e) => {
-          setError('');
-          setPassword(e.currentTarget.value);
-        }}
+        onChange={edit(setPassword)}
+        error={error()}
         required
       />
-      <button
-        class={styles.button + ' ' + styles.submit}
-        type='submit'
-        disabled={busy()}
-      >
+      <Button type='submit' variant='primary' loading={busy()}>
         {mode() === 'signup' ? t('auth.sign_up') : t('auth.sign_in')}
-      </button>
-
-      <button
-        class={styles.button + ' ' + styles.modeToggle}
-        type='button'
+      </Button>
+      <Button
+        variant='ghost'
+        disabled={busy()}
         onClick={() => {
           setError('');
           setMode(mode() === 'signup' ? 'signin' : 'signup');
@@ -154,13 +142,7 @@ export default function UsernamePasswordForm(props) {
         {mode() === 'signup'
           ? t('auth.toggle.to_signin')
           : t('auth.toggle.to_signup')}
-      </button>
-
-      <Show when={error()}>
-        <small id='auth-password-error' class={styles.error} role='alert'>
-          {error()}
-        </small>
-      </Show>
+      </Button>
     </form>
   );
 }

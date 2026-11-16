@@ -15,6 +15,16 @@ authed Cloud Function calls are in `src/push/`.
   (`signInWithAccountSelection`, `signOutUser`, `signUpWithUsername`, …).
 - There is no command bus: call the exported functions directly.
 
+## Sign-in UI
+
+The sign-in dialog uses a static Google button asset and calls
+`signInWithAccountSelection()` for Firebase popup authentication. One Tap runs
+separately; the dialog does not mount a GIS-rendered button or iframe.
+Password sign-in allows one pending attempt across dialog remounts; a failed
+attempt preserves any stable auth state received from Firebase in the meantime.
+The button image is the dark pill from Google's
+[approved branding assets](https://developers.google.com/identity/branding-guidelines).
+
 ## State Boundary
 
 - `auth-state.js` is the provider-agnostic state store + lifecycle events.
