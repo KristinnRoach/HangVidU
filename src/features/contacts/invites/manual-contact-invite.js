@@ -10,17 +10,21 @@ import { sendContactInvite } from './send-contact-invite.js';
  * Invite one contact by email unless it resolves to the current user or an already-saved contact.
  *
  * @param {string} email
- * @param {{ onNotFound?: () => void | Promise<void> }} [options]
+ * @param {{ onNotFound?: () => void | Promise<void>, isCurrent?: () => boolean }} [options]
  * @returns {Promise<
  *   | { ok: true, status: 'not_found' }
- *   | { ok: false, status: 'lookup_error' | 'self' | 'already_saved' | 'error', error?: unknown }
+ *   | { ok: false, status: 'stale' | 'lookup_error' | 'self' | 'already_saved' | 'error', error?: unknown }
  *   | Awaited<ReturnType<typeof sendContactInvite>>
  * >}
  */
-export async function inviteContactByEmail(email, { onNotFound } = {}) {
+export async function inviteContactByEmail(
+  email,
+  { onNotFound, isCurrent = () => true } = {},
+) {
   try {
     const lookupResult = await lookupRegisteredUserByEmail(email);
 
+    if (!isCurrent()) return { ok: false, status: 'stale' };
     if (lookupResult.status === 'lookup_error') {
       return {
         ok: false,
@@ -40,6 +44,7 @@ export async function inviteContactByEmail(email, { onNotFound } = {}) {
     }
 
     await hydrateContacts();
+    if (!isCurrent()) return { ok: false, status: 'stale' };
     const savedContacts = getAllContacts();
     if (savedContacts && savedContacts[user.uid]) {
       return { ok: false, status: 'already_saved' };

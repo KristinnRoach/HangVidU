@@ -57,10 +57,12 @@ Tailwind v4 is the default for new UI. Existing global CSS and CSS Modules remai
 until their components are migrated. All shared tokens live in
 [src/styles/theme.css](../../src/styles/theme.css): colours, shadows, text shadows,
 and the font family are Tailwind theme variables, which legacy CSS and CSS Modules
-read through `var()`. The legacy spacing, radius, font-size, z-index, and
-transition variables stay in plain `:root` until a design pass settles one scale.
-Use theme tokens for recurring visual roles and Tailwind defaults for ordinary
-spacing and sizing.
+read through `var()`. Use Tailwind's default spacing, font-size, and radius scales
+in migrated UI:
+`gap-2`/`p-3`, `text-sm`/`text-xs`, and `rounded-md` for controls or `rounded-lg`
+for dialogs. Legacy spacing/font-size variables and `--legacy-radius-*` remain
+in `:root` for unmigrated components; they must not override Tailwind's scales.
+Keep recurring colours and effects in this theme file, not feature CSS.
 
 [src/styles/main.css](../../src/styles/main.css) declares layers in order:
 `theme < base < app < utilities`. Legacy global CSS is in `app`, so utilities can
@@ -71,10 +73,30 @@ Keep necessary dynamic values local; do not recreate a parallel theme with liter
 
 `components/dialogs/Dialog.tsx` and `components/TextField.tsx` wrap
 [Kobalte](https://kobalte.dev) primitives for focus, keyboard, dismissal, and aria
-wiring. `components/Button.tsx` styles a native button. All three use Tailwind.
+wiring. `components/Button.tsx` and `components/Checkbox.tsx` style native controls.
+These shared controls own appearance, focus, disabled, invalid, and loading
+states. Screens supply layout (`flex`, widths, gaps), labels, and actions; avoid
+restyling control colours, padding, or typography at call sites. Add a variant
+only when a real use needs it. Button's `loading` disables repeat activation and
+sets `aria-busy`; pair it with a useful pending label or status message.
 
 Every dialog is a `Dialog`: pass `open`, `title`, the body as children, and
 optional `description`/`footer`. `onOpenChange` makes it dismissible; omit it for
 a prompt that must be answered through its own actions (call dialogs). Content
-mounts only while open, so keep state outside the dialog body. There are no
-native `<dialog>` or `popover` elements left; do not add one.
+mounts only while open. Keep transient form state inside a child component so
+closing resets it; keep state outside only when it must survive dismissal. There
+are no native `<dialog>` or `popover` elements left; do not add one.
+
+The add-contact flow (`features/contacts/components/AddContactDialog.tsx` and
+`ImportContactsSection.tsx`) is the reference: shared controls, layout utilities,
+and a persistent `role="status"` for pending/results/errors. Import selection is
+keyed by email and survives filtering; select-all affects visible eligible rows.
+Successful/duplicate app invites become unavailable, while failures stay selected
+for retry. Email sends deselect only successful recipients. Feedback remains
+until the next action rather than disappearing on a timer.
+
+Dialog content owns pending UI work. Cleanup invalidates late results and stops
+remaining batch operations; already-issued requests may finish. Check the
+lifetime after authorization and between requests before starting more work or
+opening an email fallback. Services keep optional lifetime guards for this
+purpose; UI state and selection stay in the Solid component.

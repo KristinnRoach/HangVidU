@@ -25,7 +25,6 @@
 
 @import './components/conversations-list.css' layer(app);
 @import '../lib/reactions/reactions.css' layer(app);
-@import './components/search.css' layer(app);
 @import './components/notifications.css' layer(app);
 @import './components/toast.css' layer(app);
 

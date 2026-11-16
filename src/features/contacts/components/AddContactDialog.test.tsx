@@ -1,6 +1,13 @@
-import { cleanup, render, screen } from '@solidjs/testing-library';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { searchUsersByHandle } from '../../../stores/user-profile-store.js';
 import { AddContactDialog } from './AddContactDialog';
 
 vi.mock('@shared/i18n/index.js', () => ({
@@ -13,12 +20,12 @@ vi.mock('@auth', () => ({
 }));
 vi.mock('../../../stores/contacts-store.js', () => ({
   getAllContacts: () => ({}),
-  hydrateContacts: vi.fn(),
+  hydrateContacts: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('../../../stores/user-profile-store.js', () => ({
   getLoggedInUserProfile: () => null,
-  listIncomingContactRequests: vi.fn(),
-  listOutgoingContactRequests: vi.fn(),
+  listIncomingContactRequests: vi.fn().mockResolvedValue([]),
+  listOutgoingContactRequests: vi.fn().mockResolvedValue([]),
   searchUsersByHandle: vi.fn(),
 }));
 vi.mock('../invites/manual-contact-invite.js', () => ({
@@ -30,13 +37,6 @@ vi.mock('../invites/send-contact-invite.js', () => ({
 vi.mock('../import/google-import.js', () => ({
   importGoogleContacts: vi.fn(),
 }));
-vi.mock('./import-contacts-component.js', () => ({
-  createImportContactsComponent: () => {
-    const element = document.createElement('div');
-    element.textContent = 'Import contacts';
-    return { element, reset: vi.fn() };
-  },
-}));
 
 describe('AddContactDialog', () => {
   afterEach(cleanup);
@@ -45,10 +45,42 @@ describe('AddContactDialog', () => {
     const [open, setOpen] = createSignal(true);
     render(() => <AddContactDialog open={open()} onOpenChange={setOpen} />);
 
-    expect(await screen.findByText('Import contacts')).toBeTruthy();
+    expect(
+      await screen.findByRole('button', { name: 'contact.import.google' }),
+    ).toBeTruthy();
     setOpen(false);
-    expect(screen.queryByText('Import contacts')).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'contact.import.google' }),
+    ).toBeNull();
     setOpen(true);
-    expect(await screen.findByText('Import contacts')).toBeTruthy();
+    expect(
+      await screen.findByRole('button', { name: 'contact.import.google' }),
+    ).toBeTruthy();
+  });
+  it('resets form state on close and rejects a late handle search after reopening', async () => {
+    let finish!: (
+      users: { uid: string; displayName: string; username: string }[],
+    ) => void;
+    vi.mocked(searchUsersByHandle).mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const [open, setOpen] = createSignal(true);
+    render(() => <AddContactDialog open={open()} onOpenChange={setOpen} />);
+    const input = await screen.findByRole('textbox', {
+      name: 'contact.add.enter_handle',
+    });
+    fireEvent.input(input, { target: { value: 'alice' } });
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(searchUsersByHandle).toHaveBeenCalled());
+    setOpen(false);
+    setOpen(true);
+    expect(
+      await screen.findByRole('textbox', { name: 'contact.add.enter_handle' }),
+    ).toHaveProperty('value', '');
+    finish([{ uid: 'alice', displayName: 'Late Alice', username: 'alice' }]);
+    await Promise.resolve();
+    expect(screen.queryByText('Late Alice')).toBeNull();
   });
 });

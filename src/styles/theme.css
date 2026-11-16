@@ -8,10 +8,9 @@
    Tailwind's default theme (spacing, neutral-*, text-xs, ...) is the
    baseline. Names are carried over from the legacy set for now.
 
-   :root = variables with no Tailwind namespace, plus the legacy
-   spacing, radius and font-size scales, which stay outside @theme
-   until the design slice settles one scale. Being unlayered, the
-   --radius-* values here already override Tailwind's (rounded-md is 5px).
+   :root = layout/transition variables and explicitly named legacy scales.
+   New UI uses Tailwind's spacing, typography, and radius scales. Legacy
+   radii are prefixed so they cannot override rounded-* utilities.
    ============================================ */
 
 @theme static {
@@ -66,11 +65,8 @@
   --content-width: clamp(200px, 100%, 680px);
   --topbar-height: 50px;
 
-  --radius-sm: 4px;
-  --radius-md: 5px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-full: 50%;
+  --legacy-radius-md: 5px;
+  --legacy-radius-lg: 8px;
 
   /* Typography */
   --font-size-xs: 12px;

@@ -52,7 +52,7 @@ export default function TextField(props: TextFieldProps) {
       </KTextField.Label>
       <KTextField.Input
         {...input}
-        class='min-w-0 rounded-md border border-border-primary bg-transparent px-2.5 py-1.5 text-sm text-inherit focus-visible:border-primary focus-visible:outline-none data-invalid:border-danger'
+        class='min-w-0 w-full rounded-md border border-border-primary bg-transparent px-2.5 py-1.5 text-sm text-inherit focus-visible:border-primary focus-visible:outline-none data-invalid:border-danger'
       />
       <KTextField.ErrorMessage role='alert' class='text-sm text-danger'>
         {local.error}

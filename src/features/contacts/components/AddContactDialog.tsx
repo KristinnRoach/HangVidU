@@ -1,14 +1,4 @@
-// The import-contacts section is mounted as a vanilla JS island via ref.
-// TODO: Port import-contacts-component.js to SolidJS (ImportContactsSection.tsx)
-
-import {
-  createSignal,
-  createEffect,
-  For,
-  Show,
-  onMount,
-  onCleanup,
-} from 'solid-js';
+import { createSignal, For, Show, onCleanup } from 'solid-js';
 import Button from '../../../components/Button';
 import Dialog from '../../../components/dialogs/Dialog';
 import TextField from '../../../components/TextField';
@@ -23,8 +13,7 @@ import {
   copyInviteLink,
   shareInvite,
 } from '@shared/utils/share-invite.js';
-import { getAuthState, getLoggedInUserId } from '@auth';
-import { requestGmailSendAccess } from '@shared/utils/google/gis-tokens.js';
+import { getLoggedInUserId } from '@auth';
 import { inviteContactByEmail } from '../invites/manual-contact-invite.js';
 import { sendContactInvite } from '../invites/send-contact-invite.js';
 import {
@@ -38,10 +27,7 @@ import {
   searchUsersByHandle,
   type UserSearchResult,
 } from '../../../stores/user-profile-store.js';
-import { sendBulkEmailsViaGmail } from '@shared/utils/google/gmail-send.js';
-import { filterImportableContacts } from '../import/import-contacts-utils.js';
-import { createImportContactsComponent } from './import-contacts-component.js';
-import { importGoogleContacts as importGoogleContactsFlow } from '../import/google-import.js';
+import ImportContactsSection from './ImportContactsSection';
 import { createDebouncedAsyncAction } from '../utils/createDebouncedAsyncAction';
 import {
   showErrorToast,
@@ -93,6 +79,25 @@ function openEmailComposeFallback(
 
 export function AddContactDialog(props: Props) {
   const { t } = useI18n();
+  return (
+    <Dialog
+      open={props.open}
+      onOpenChange={props.onOpenChange}
+      title={t('contact.add.title')}
+    >
+      <AddContactContent />
+    </Dialog>
+  );
+}
+
+function AddContactContent() {
+  const { t } = useI18n();
+  const userId = getLoggedInUserId();
+  let disposed = false;
+  const isCurrent = () => !disposed && getLoggedInUserId() === userId;
+  onCleanup(() => {
+    disposed = true;
+  });
   const shareProviders = getInviteShareProviders();
   const senderName = () =>
     getLoggedInUserProfile()?.displayName ||
@@ -114,124 +119,6 @@ export function AddContactDialog(props: Props) {
   const [status, setStatus] = createSignal<StatusState>({ text: '', type: '' });
   const [sharePending, setSharePending] = createSignal(false);
 
-  let importComponent: ReturnType<typeof createImportContactsComponent> | null =
-    null;
-  let allContacts: unknown[] = [];
-  let importContainer: HTMLDivElement | undefined;
-
-  onMount(() => {
-    importComponent = createImportContactsComponent({
-      onPlatformSelect: async (platform: string) => {
-        if (platform === 'google') await handleGoogleContactsImport();
-      },
-      onSearchChange: (query: string) => {
-        importComponent?.renderContacts(
-          filterImportableContacts(allContacts, query),
-        );
-      },
-      onInviteContact: async (contact: any) => {
-        return sendContactInvite(contact.user.uid, contact.user.displayName);
-      },
-      onInviteSelected: async (contacts: any[]) => {
-        let count = 0;
-        let alreadyInvitedCount = 0;
-        for (const contact of contacts) {
-          const result = await sendContactInvite(
-            contact.user.uid,
-            contact.user.displayName,
-          );
-          if (result.status === 'sent') {
-            count++;
-            continue;
-          }
-          if (result.status === 'already_invited') {
-            alreadyInvitedCount++;
-            continue;
-          }
-          console.error(
-            '[AddContactDialog] Failed to invite:',
-            contact.name,
-            result.error,
-          );
-        }
-        if (count === 0) {
-          return {
-            ok: false,
-            status: alreadyInvitedCount > 0 ? 'already_invited' : 'failed',
-            count,
-            alreadyInvitedCount,
-          };
-        }
-        if (count < contacts.length) {
-          return { ok: true, status: 'partial', count, alreadyInvitedCount };
-        }
-        return { ok: true, status: 'sent', count };
-      },
-      onEmailSelected: async (contacts: any[]) => {
-        try {
-          const accessToken = await requestGmailSendAccess({
-            hint: getAuthState().user?.email ?? undefined,
-          });
-          const referralLink = buildReferralLink(getLoggedInUserId());
-          const subject = t('contact.invite.subject');
-          const body = t('contact.invite.body', {
-            name: senderName(),
-            link: referralLink,
-          });
-          const results = await sendBulkEmailsViaGmail(
-            accessToken,
-            contacts,
-            subject,
-            body,
-          );
-          if (results.sent > 0) {
-            showSuccessToast(
-              t('contact.invite.sent_emails', { count: results.sent }),
-            );
-          }
-          if (results.failed > 0) {
-            showErrorToast(t('contact.invite.failed_emails'));
-            console.warn(
-              `[AddContactDialog] Partial failure - ${results.failed} emails failed:`,
-              results.errors,
-            );
-          }
-          return results.sent > 0
-            ? { ok: true, status: 'sent', count: results.sent }
-            : { ok: false, status: 'failed' };
-        } catch (err: any) {
-          console.error('[AddContactDialog] Gmail send error:', err);
-          if (err.message === 'Authorization cancelled') {
-            showErrorToast(t('contact.invite.permission_denied'));
-            openEmailComposeFallback(
-              contacts,
-              getLoggedInUserId()!,
-              senderName(),
-            );
-            return { ok: false, status: 'permission_denied' };
-          }
-          showErrorToast(
-            t('contact.invite.failed_detail', { error: err.message }),
-          );
-          return { ok: false, status: 'error' };
-        }
-      },
-    });
-    importContainer?.appendChild(importComponent.element);
-  });
-
-  // Reset the vanilla island when the dialog closes
-  createEffect(() => {
-    if (!props.open) {
-      importComponent?.reset?.();
-      allContacts = [];
-      setHandleInput('');
-      setHandleResults([]);
-      setHandleInviteStatuses({});
-      setStatus({ text: '', type: '' });
-    }
-  });
-
   // --- Share actions ---
 
   const debouncedShare = createDebouncedAsyncAction(
@@ -246,7 +133,12 @@ export function AddContactDialog(props: Props) {
       if (type === 'copy') return runCopyLink();
       return runPresetShare(providerId!);
     },
-    { waitMs: 600, onPendingChange: setSharePending },
+    {
+      waitMs: 600,
+      onPendingChange: (value) => {
+        if (isCurrent()) setSharePending(value);
+      },
+    },
   );
 
   onCleanup(() => debouncedShare.cancel());
@@ -257,6 +149,7 @@ export function AddContactDialog(props: Props) {
       senderName: senderName(),
       userId: getLoggedInUserId(),
     });
+    if (!isCurrent()) return result;
     const statusConfig: Record<
       string,
       { toast: ((msg: string) => void) | null; type: string }
@@ -291,6 +184,7 @@ export function AddContactDialog(props: Props) {
       senderName: senderName(),
       userId: getLoggedInUserId(),
     });
+    if (!isCurrent()) return result;
     if (result.status === 'opened') {
       setStatus({
         text: t('contact.invite.share.provider_opened', {
@@ -319,6 +213,7 @@ export function AddContactDialog(props: Props) {
     const result = await copyInviteLink({
       userId: getLoggedInUserId() as string,
     });
+    if (!isCurrent()) return result;
     if (result.status === 'copied') {
       showSuccessToast(t('contact.invite.share.copied'));
       setStatus({ text: t('contact.invite.share.copied'), type: 'success' });
@@ -336,6 +231,7 @@ export function AddContactDialog(props: Props) {
     try {
       await debouncedShare({ type, providerId });
     } catch (err) {
+      if (!isCurrent()) return;
       console.error('[AddContactDialog] Share error:', err);
       showErrorToast(t('contact.invite.share.copy_failed'));
       setStatus({ text: t('contact.invite.share.copy_failed'), type: 'error' });
@@ -346,20 +242,20 @@ export function AddContactDialog(props: Props) {
 
   async function handleManualEmailInvite() {
     const email = emailInput().trim().toLowerCase();
-    if (!email) return;
+    if (!email || emailSending() || !isCurrent()) return;
     setEmailInput(email);
     setEmailSending(true);
     setStatus({ text: '', type: '' });
 
     const result = await inviteContactByEmail(email, {
-      onNotFound: async () =>
-        openEmailComposeFallback(
-          [{ email }],
-          getLoggedInUserId()!,
-          senderName(),
-        ),
+      isCurrent,
+      onNotFound: async () => {
+        if (isCurrent())
+          openEmailComposeFallback([{ email }], userId!, senderName());
+      },
     });
 
+    if (!isCurrent()) return;
     if (result.status === 'sent') {
       showSuccessToast(t('contact.invite.sent_one'));
       setStatus({ text: `✓ ${t('contact.invite.sent_one')}`, type: 'success' });
@@ -387,6 +283,7 @@ export function AddContactDialog(props: Props) {
   }
 
   async function handleSearchByHandle() {
+    if (handleSearching() || !isCurrent()) return;
     const handle = handleInput().trim().replace(/^@+/, '');
     setHandleResults([]);
     setStatus({ text: '', type: '' });
@@ -399,6 +296,7 @@ export function AddContactDialog(props: Props) {
           error,
         );
       });
+      if (!isCurrent()) return;
       const [users, outgoingRequests, incomingRequests] = await Promise.all([
         searchUsersByHandle(handle),
         listOutgoingContactRequests().catch((error) => {
@@ -416,6 +314,7 @@ export function AddContactDialog(props: Props) {
           return [];
         }),
       ]);
+      if (!isCurrent()) return;
       const contacts = getAllContacts();
       const outgoingIds = new Set(
         outgoingRequests.map((request) => request.toId),
@@ -440,15 +339,16 @@ export function AddContactDialog(props: Props) {
         setStatus({ text: t('contact.add.handle_not_found'), type: 'info' });
       }
     } catch (error) {
+      if (!isCurrent()) return;
       console.error('[AddContactDialog] Handle search error:', error);
       setStatus({ text: t('contact.add.lookup_error'), type: 'error' });
     } finally {
-      setHandleSearching(false);
+      if (isCurrent()) setHandleSearching(false);
     }
   }
 
   async function handleSendRequest(user: UserSearchResult) {
-    if (!user?.uid || requestingUserId()) return;
+    if (!user?.uid || requestingUserId() || !isCurrent()) return;
     if (user.uid === getLoggedInUserId()) {
       setStatus({ text: t('contact.add.self_error'), type: 'error' });
       return;
@@ -461,6 +361,7 @@ export function AddContactDialog(props: Props) {
         return;
       }
       const result = await sendContactInvite(user.uid, user.displayName);
+      if (!isCurrent()) return;
       if (result.status === 'already_invited') {
         setHandleInviteStatuses((statuses) => ({
           ...statuses,
@@ -480,65 +381,12 @@ export function AddContactDialog(props: Props) {
       showSuccessToast(t('contact.invite.sent_one'));
       setStatus({ text: `✓ ${t('contact.invite.sent_one')}`, type: 'success' });
     } catch (error) {
+      if (!isCurrent()) return;
       console.error('[AddContactDialog] Contact request error:', error);
       setStatus({ text: t('contact.add.email_error'), type: 'error' });
     } finally {
-      setRequestingUserId(null);
+      if (isCurrent()) setRequestingUserId(null);
     }
-  }
-
-  // --- Google contacts import ---
-
-  async function handleGoogleContactsImport() {
-    importComponent?.prepareForImport();
-    allContacts = [];
-
-    const result = await importGoogleContactsFlow({
-      onProgress: ({ step, count }: { step: string; count?: number }) => {
-        if (step === 'requesting') {
-          importComponent?.setStatus(t('contact.import.requesting'), 'loading');
-          return;
-        }
-        if (step === 'fetching') {
-          importComponent?.setStatus(t('contact.import.fetching'), 'loading');
-          return;
-        }
-        if (step === 'checking') {
-          importComponent?.setStatus(
-            t('contact.import.found_checking', { count: count ?? 0 }),
-            'loading',
-          );
-        }
-      },
-    });
-
-    if (result.status === 'success') {
-      allContacts = result.contacts;
-      importComponent?.setStatus(
-        t('contact.import.found', { count: allContacts.length }),
-        'success',
-      );
-      importComponent?.renderContacts(allContacts);
-      return;
-    }
-    if (result.status === 'no_email') {
-      importComponent?.setStatus(t('contact.import.no_email'), 'not-found');
-      importComponent?.renderEmptyState(t('contact.import.none'));
-      return;
-    }
-    if (result.status === 'cancelled') {
-      importComponent?.setStatus(t('contact.import.cancelled'), 'cancelled');
-      importComponent?.renderEmptyState(t('contact.import.failed'));
-      return;
-    }
-    const importErr =
-      result.status === 'error' ? (result.error as any) : undefined;
-    console.error('[AddContactDialog] Import error:', importErr);
-    importComponent?.setStatus(
-      t('contact.import.error', { error: importErr?.message }),
-      'error',
-    );
-    importComponent?.renderEmptyState(t('contact.import.failed'));
   }
 
   const statusTone = () =>
@@ -547,11 +395,7 @@ export function AddContactDialog(props: Props) {
     ] ?? '';
 
   return (
-    <Dialog
-      open={props.open}
-      onOpenChange={props.onOpenChange}
-      title={t('contact.add.title')}
-    >
+    <>
       <form
         class='flex gap-2'
         onSubmit={(e) => {
@@ -669,13 +513,10 @@ export function AddContactDialog(props: Props) {
 
       <hr class='border-border-primary' />
 
-      {/* Vanilla JS island — replace with ImportContactsSection.tsx when ported.
-          Dialog content mounts only while open, so re-attach on each mount. */}
-      <div
-        ref={(el) => {
-          importContainer = el;
-          if (importComponent) el.appendChild(importComponent.element);
-        }}
+      <ImportContactsSection
+        onEmailFallback={(contacts) =>
+          openEmailComposeFallback(contacts, getLoggedInUserId()!, senderName())
+        }
       />
 
       {/* Stays mounted so screen readers announce changes to it. */}
@@ -685,6 +526,6 @@ export function AddContactDialog(props: Props) {
       >
         {status().text}
       </div>
-    </Dialog>
+    </>
   );
 }
