@@ -39,14 +39,36 @@ export async function handlePushEvent(event) {
   }
 
   try {
-    const clients = await self.clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true,
-    });
+    const clients = await getWindowClients();
     clients.forEach((client) =>
       client.postMessage({ type: 'PUSH_NOTIFICATION_SHOWN' }),
     );
+
+    // Android can ignore the page's immediate close() and leave the notification
+    // in the shade. Close it from the SW after the heads-up/sound has played,
+    // only while the app is still focused, so background delivery is unchanged.
+    if (!clients.some(isFocusedVisible)) return;
+    await new Promise((resolve) =>
+      setTimeout(resolve, FOREGROUND_CLOSE_DELAY_MS),
+    );
+    if (!(await getWindowClients()).some(isFocusedVisible)) return;
+
+    const tag = presentation.tag || '';
+    const notifications = await self.registration.getNotifications();
+    notifications
+      .filter((n) => n.tag === tag && (tag || n.title === presentation.title))
+      .forEach((n) => n.close());
   } catch (error) {
     console.warn('[SW] foreground notification cleanup failed', error);
   }
+}
+
+const FOREGROUND_CLOSE_DELAY_MS = 4000;
+
+function getWindowClients() {
+  return self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+}
+
+function isFocusedVisible(client) {
+  return client.focused && client.visibilityState === 'visible';
 }

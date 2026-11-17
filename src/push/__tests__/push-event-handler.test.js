@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vite-plus/test';
 
 import { handlePushEvent } from '../sw/index.js';
 
@@ -51,6 +58,58 @@ describe('handlePushEvent', () => {
     );
     expect(postMessage).toHaveBeenCalledWith({
       type: 'PUSH_NOTIFICATION_SHOWN',
+    });
+  });
+
+  describe('foreground auto-close', () => {
+    const messagePush = {
+      data: {
+        json: () => ({
+          title: 'Alice',
+          body: 'hi',
+          data: { type: 'message', senderId: 'alice' },
+        }),
+      },
+    };
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    function setup(client) {
+      const close = vi.fn();
+      const other = vi.fn();
+      self.clients.matchAll.mockResolvedValue([{ postMessage, ...client }]);
+      self.registration.getNotifications = vi.fn().mockResolvedValue([
+        { tag: 'message_alice', title: 'Alice', close },
+        { tag: 'message_bob', title: 'Bob', close: other },
+      ]);
+      return { close, other };
+    }
+
+    it('closes the shown notification after a delay when the app is focused', async () => {
+      const { close, other } = setup({
+        focused: true,
+        visibilityState: 'visible',
+      });
+
+      const done = handlePushEvent(messagePush);
+      await vi.runAllTimersAsync();
+      await done;
+
+      expect(showNotification).toHaveBeenCalled();
+      expect(close).toHaveBeenCalledOnce();
+      expect(other).not.toHaveBeenCalled();
+    });
+
+    it('leaves the notification when the app is in the background', async () => {
+      const { close } = setup({ focused: false, visibilityState: 'hidden' });
+
+      const done = handlePushEvent(messagePush);
+      await vi.runAllTimersAsync();
+      await done;
+
+      expect(showNotification).toHaveBeenCalled();
+      expect(close).not.toHaveBeenCalled();
     });
   });
 });
