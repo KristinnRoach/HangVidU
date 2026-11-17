@@ -7,7 +7,7 @@ import { createEffect, onCleanup } from 'solid-js';
  * encode, so an uncapped group call multiplies upload and encoder load. A 1:1
  * call keeps the browser's own rate control. */
 const MESH_VIDEO_UPLOAD_BPS = 1_500_000;
-const STATS_INTERVAL_MS = 30_000;
+const STATS_INTERVAL_MS = 10_000;
 
 /** A listed connection can already be closed before its member leaves. */
 function openPeerConnections(room: P2PRoom): RTCPeerConnection[] {
@@ -46,38 +46,70 @@ export async function capVideoSenders(room: P2PRoom): Promise<void> {
   }
 }
 
-/** Samples what limits outgoing video, so group-call lag can be attributed to
- * CPU or bandwidth before choosing a fix such as an SFU. */
+/** Samples what limits outgoing video and how each peer is reached, so
+ * group-call lag can be attributed to CPU, bandwidth or a TURN relay before
+ * choosing a fix such as an SFU. */
 async function reportSendQuality(room: P2PRoom): Promise<void> {
   const pcs = openPeerConnections(room);
-  const remotePeers = pcs.length;
   for (const pc of pcs) {
     const stats = await pc.getStats();
-    stats.forEach((report) => {
-      if (report.type !== 'outbound-rtp' || report.kind !== 'video') return;
+    const reports = [...stats.values()];
+    const pair = reports.find(
+      (report) =>
+        report.type === 'candidate-pair' &&
+        report.nominated &&
+        report.state === 'succeeded',
+    );
+    const attributes = {
+      remote_peers: pcs.length,
+      route: stats.get(pair?.localCandidateId)?.candidateType ?? 'unknown',
+    };
+    if (pair?.currentRoundTripTime !== undefined) {
+      metrics.distribution('call.peer_rtt', pair.currentRoundTripTime * 1000, {
+        unit: 'millisecond',
+        attributes,
+      });
+    }
+    if (pair?.availableOutgoingBitrate !== undefined) {
+      metrics.distribution(
+        'call.peer_send_estimate',
+        pair.availableOutgoingBitrate,
+        { attributes },
+      );
+    }
+    for (const report of reports) {
+      if (report.type !== 'outbound-rtp' || report.kind !== 'video') continue;
       metrics.count('call.video_send_sample', 1, {
         attributes: {
-          remote_peers: remotePeers,
+          ...attributes,
           limitation: report.qualityLimitationReason ?? 'unknown',
         },
       });
       if (report.frameHeight) {
         metrics.distribution('call.video_send_height', report.frameHeight, {
-          attributes: { remote_peers: remotePeers },
+          attributes,
         });
       }
-    });
+    }
   }
 }
 
 /** Keeps outgoing video within the mesh budget for the owning call's lifetime. */
 export function trackSendQuality(p2p: SolidP2PRoom): void {
   // The budget depends on the peer count, so rebalance on every connection
-  // change. Sender parameters survive track replacement.
+  // change. Passes run in order, so a slow update can't overwrite a newer cap.
+  // Sender parameters survive track replacement.
   createEffect(() => {
     const room = p2p.room();
     if (!room) return;
-    const rebalance = () => void capVideoSenders(room);
+    let passes = Promise.resolve();
+    const rebalance = () => {
+      passes = passes
+        .then(() => capVideoSenders(room))
+        .catch((error: unknown) =>
+          console.warn('[call] video bitrate cap failed:', error),
+        );
+    };
     rebalance();
     const unsubscribers = [
       room.on('peerConnection', rebalance),
