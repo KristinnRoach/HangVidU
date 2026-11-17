@@ -27,6 +27,7 @@ const maskMocks = vi.hoisted(() => ({
   createFaceMask: vi.fn<typeof createFaceMask>(),
   preloadFaceMask: vi.fn(async () => {}),
 }));
+vi.mock('./send-quality', () => ({ trackSendQuality: () => {} }));
 vi.mock('../experimental/face-mask', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../experimental/face-mask')>()),
   isFaceMaskSupported: maskMocks.isFaceMaskSupported,

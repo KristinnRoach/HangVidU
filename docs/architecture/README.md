@@ -49,7 +49,8 @@ A call is a signaling room, and knowing its random ID is what grants access.
 The room's Durable Object owns admission: at most `ROOM_MEMBER_LIMIT` accounts,
 each with one joined endpoint. Peer IDs identify endpoints (`uid:uuid`), so a
 newer window or device replaces the account's previous endpoint instead of
-taking another slot.
+taking another slot. Calls are a P2P mesh, so each sender splits a fixed camera
+upload budget across its peers and samples outbound video stats to Sentry.
 
 Persistent messages combine HTTP writes/history with live conversation-channel
 updates. The selected conversation store also owns drafts and optimistic send
