@@ -1,7 +1,9 @@
 import { reloadPageWhenAllowed } from './reload-page.js';
 
 // TODO: Consider reverting to 30min once migration has settled.
-const UPDATE_CHECK_INTERVAL = 20 * 60 * 1000;
+// Preview watch reuses the normal SW update/reload flow after each rebuild.
+const UPDATE_CHECK_INTERVAL =
+  import.meta.env.VITE_PREVIEW_WATCH === '1' ? 3_000 : 20 * 60 * 1000;
 
 let updateCheckIntervalId = null;
 let visibilityAbortController = null;
@@ -116,7 +118,6 @@ function visibilityChangeCheck() {
 
 /**
  * Starts periodic update checks while the app is open.
- * Checks every UPDATE_CHECK_INTERVAL (30 minutes).
  */
 function startPeriodicUpdateChecks() {
   if (updateCheckIntervalId !== null) {
