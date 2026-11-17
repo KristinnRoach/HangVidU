@@ -46,8 +46,10 @@ write path. `@kidlib/p2p` owns WebRTC mechanics; the call feature supplies signa
 and application behaviour.
 
 A call is a signaling room, and knowing its random ID is what grants access.
-The room's Durable Object owns admission: at most `ROOM_MEMBER_LIMIT` accounts,
-each with one joined endpoint. Peer IDs identify endpoints (`uid:uuid`), so a
+The room's Durable Object is the only admission authority: at most
+`ROOM_MEMBER_LIMIT` accounts, each with one joined endpoint. Clients set no
+`memberCapacity`, because the client check would count an endpoint that is
+about to be replaced as another member. Peer IDs identify endpoints (`uid:uuid`), so a
 newer window or device replaces the account's previous endpoint instead of
 taking another slot. Calls are a P2P mesh, so each sender splits a fixed camera
 upload budget across its peers and samples outbound video and connection stats to Sentry.

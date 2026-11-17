@@ -259,8 +259,8 @@ export class SignalingRoom extends DurableObject<Env> {
     }
   }
 
-  /** Joined peers in join order, with their presence data. @kidlib/p2p admits
-   * the first `memberCapacity` members of this list. The local peer is included
+  /** Joined peers in join order, with their presence data. Only admitted
+   * peers are joined, so clients connect to every listed member. The local peer is included
    * (its own socket is in getWebSockets()), so self mute toggles round-trip back. */
   private presenceMembers(): PresenceMember[] {
     return this.ctx

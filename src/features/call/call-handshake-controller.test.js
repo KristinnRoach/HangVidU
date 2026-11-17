@@ -632,7 +632,6 @@ describe('CallHandshakeController', () => {
       expect.objectContaining({
         roomId: 'room-1',
         peerId: expect.stringMatching(/^callee-id:/),
-        memberCapacity: 2,
         dataChannel: true,
         iceRecovery: {},
         iceServersProvider: expect.any(Function),

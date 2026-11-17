@@ -7,7 +7,6 @@ export {
   endpointPeerId,
   REPLACED_CLOSE_CODE,
   ROOM_FULL_ERROR,
-  ROOM_MEMBER_LIMIT,
 } from '../../shared/signaling/protocol';
 export type {
   PeerId,

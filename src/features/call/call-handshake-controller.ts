@@ -150,7 +150,6 @@ export type IncomingCallNotificationDetails = {
 };
 
 type EnterRoomOptions = {
-  memberCapacity?: number;
   autoExitOnEmpty?: boolean;
   signal?: AbortSignal;
 };
@@ -691,11 +690,7 @@ export class CallHandshakeController {
     localUID: string,
     audioOnly = false,
     getLocalStream?: () => Promise<MediaStream>,
-    {
-      memberCapacity = 2,
-      autoExitOnEmpty = true,
-      signal,
-    }: EnterRoomOptions = {},
+    { autoExitOnEmpty = true, signal }: EnterRoomOptions = {},
   ) {
     const localStream = await (
       getLocalStream ?? (() => this.getCallLocalStream(audioOnly, signal))
@@ -730,7 +725,6 @@ export class CallHandshakeController {
             .getVideoTracks()
             .some((track) => track.readyState === 'live' && track.enabled),
         },
-        memberCapacity,
         dataChannel: true,
         iceServersProvider: provideIceServers,
         iceRecovery: {},

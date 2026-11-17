@@ -25,7 +25,6 @@ vi.mock('@shared/p2p-context.js', () => ({
 vi.mock('@realtime', () => ({
   createRoomSignaling: mocks.createRoomSignaling,
   endpointPeerId: (uid) => `${uid}:endpoint`,
-  ROOM_MEMBER_LIMIT: 4,
 }));
 vi.mock('@auth', () => ({
   signInAsGuest: mocks.signInAsGuest,

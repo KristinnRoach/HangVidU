@@ -3,11 +3,7 @@
 import { createSignal, createEffect, on, Show } from 'solid-js';
 
 import { useP2PContext } from '@shared/p2p-context.js';
-import {
-  createRoomSignaling,
-  endpointPeerId,
-  ROOM_MEMBER_LIMIT,
-} from '@realtime';
+import { createRoomSignaling, endpointPeerId } from '@realtime';
 import { signInAsGuest } from '@auth';
 import { t } from '@shared/i18n';
 import {
@@ -132,7 +128,6 @@ export function CallLobby() {
         roomId: id,
         peerId: endpointPeerId(uid),
         createSignaling: createRoomSignaling,
-        memberCapacity: ROOM_MEMBER_LIMIT,
         dataChannel: true,
         // Guest calls use the same stable publication slots and initial media
         // presence as contact calls. Without these, remote video is hidden
