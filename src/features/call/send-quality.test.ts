@@ -16,22 +16,19 @@ function fakeSender(maxBitrate?: number) {
 }
 
 function fakeRoom(senders: ReturnType<typeof fakeSender>[]) {
-  const pairs = new Map(
+  const connections = new Map(
     senders.map((sender, i) => [
       `peer-${i}`,
       {
-        peer: {
-          pc: {
-            getTransceivers: () => [
-              { receiver: { track: { kind: 'audio' } }, sender: null },
-              { receiver: { track: { kind: 'video' } }, sender },
-            ],
-          },
-        },
+        connectionState: 'connected',
+        getTransceivers: () => [
+          { receiver: { track: { kind: 'audio' } }, sender: null },
+          { receiver: { track: { kind: 'video' } }, sender },
+        ],
       },
     ]),
   );
-  return { pairs } as unknown as P2PRoom;
+  return { peerConnections: () => connections } as unknown as P2PRoom;
 }
 
 describe('capVideoSenders', () => {

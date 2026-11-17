@@ -1,7 +1,7 @@
 import type { P2PRoom } from '@kidlib/p2p';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import { metrics } from '@sentry/browser';
-import { createEffect, on, onCleanup } from 'solid-js';
+import { createEffect, onCleanup } from 'solid-js';
 
 /** Camera upload shared by a mesh call's remote peers. Each peer gets its own
  * encode, so an uncapped group call multiplies upload and encoder load. A 1:1
@@ -9,13 +9,11 @@ import { createEffect, on, onCleanup } from 'solid-js';
 const MESH_VIDEO_UPLOAD_BPS = 1_500_000;
 const STATS_INTERVAL_MS = 30_000;
 
-// ponytail: @kidlib/p2p does not type a session's RTCPeerConnection; read it
-// here until the library exposes one.
-function peerConnections(room: P2PRoom): RTCPeerConnection[] {
-  return [...room.pairs.values()].flatMap((pair) => {
-    const pc = (pair as { peer?: { pc?: RTCPeerConnection | null } }).peer?.pc;
-    return pc ? [pc] : [];
-  });
+/** A listed connection can already be closed before its member leaves. */
+function openPeerConnections(room: P2PRoom): RTCPeerConnection[] {
+  return [...room.peerConnections().values()].filter(
+    (pc) => pc.connectionState !== 'closed',
+  );
 }
 
 function videoSenders(pc: RTCPeerConnection): RTCRtpSender[] {
@@ -29,7 +27,7 @@ function videoSenders(pc: RTCPeerConnection): RTCRtpSender[] {
  * browser lowers resolution or frame rate itself, so screen shares keep full
  * resolution when they fit. */
 export async function capVideoSenders(room: P2PRoom): Promise<void> {
-  const pcs = peerConnections(room);
+  const pcs = openPeerConnections(room);
   const maxBitrate =
     pcs.length > 1 ? Math.round(MESH_VIDEO_UPLOAD_BPS / pcs.length) : undefined;
   const updates = pcs.flatMap(videoSenders).flatMap((sender) => {
@@ -51,7 +49,7 @@ export async function capVideoSenders(room: P2PRoom): Promise<void> {
 /** Samples what limits outgoing video, so group-call lag can be attributed to
  * CPU or bandwidth before choosing a fix such as an SFU. */
 async function reportSendQuality(room: P2PRoom): Promise<void> {
-  const pcs = peerConnections(room);
+  const pcs = openPeerConnections(room);
   const remotePeers = pcs.length;
   for (const pc of pcs) {
     const stats = await pc.getStats();
@@ -74,11 +72,19 @@ async function reportSendQuality(room: P2PRoom): Promise<void> {
 
 /** Keeps outgoing video within the mesh budget for the owning call's lifetime. */
 export function trackSendQuality(p2p: SolidP2PRoom): void {
-  createEffect(
-    on([p2p.room, p2p.dataChannels], ([room]) => {
-      if (room) void capVideoSenders(room);
-    }),
-  );
+  // The budget depends on the peer count, so rebalance on every connection
+  // change. Sender parameters survive track replacement.
+  createEffect(() => {
+    const room = p2p.room();
+    if (!room) return;
+    const rebalance = () => void capVideoSenders(room);
+    rebalance();
+    const unsubscribers = [
+      room.on('peerConnection', rebalance),
+      room.on('memberLeft', rebalance),
+    ];
+    onCleanup(() => unsubscribers.forEach((unsubscribe) => unsubscribe()));
+  });
   const timer = setInterval(() => {
     const room = p2p.room();
     if (room) {
