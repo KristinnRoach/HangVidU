@@ -1,18 +1,23 @@
-import type {
-  CreateRoomSignalingOptions,
-  P2PRoomPeerSignalingOptions,
-  P2PRoomPresenceData,
-  P2PRoomPresenceMember,
-  P2PRoomPresenceSnapshot,
-  P2PRoomSignaling,
-  RtcSignalingSource,
+import {
+  RoomFullError,
+  type CreateRoomSignalingOptions,
+  type P2PRoomPeerSignalingOptions,
+  type P2PRoomPresenceData,
+  type P2PRoomPresenceMember,
+  type P2PRoomPresenceSnapshot,
+  type P2PRoomSignaling,
+  type RtcSignalingSource,
 } from '@kidlib/p2p';
 import { getLoggedInUserToken } from '@auth';
 import {
   createSignalingSocket,
   type SignalingSocket,
 } from '../signaling-socket';
-import type { RelayChannel, ServerMessage } from '../protocol';
+import {
+  ROOM_FULL_ERROR,
+  type RelayChannel,
+  type ServerMessage,
+} from '../protocol';
 import { buildHangViduWebSocketUrl } from '../../infra/hangvidu-api-url';
 
 /**
@@ -131,7 +136,11 @@ export function createDoRoomSignaling({
         return;
       case 'error':
         if (registration && message.requestId === registration.requestId)
-          rejectJoin(new Error(message.message));
+          rejectJoin(
+            message.message === ROOM_FULL_ERROR
+              ? new RoomFullError()
+              : new Error(message.message),
+          );
         console.warn('[signaling] worker error:', message.message);
         return;
     }
@@ -140,6 +149,13 @@ export function createDoRoomSignaling({
   // Restore presence (peerId + latest data) after every (re)connect.
   socket.onOpen(() => {
     if (registration) socket.send(joinMessage(registration));
+  });
+
+  // This account joined the room from another endpoint. Report an empty room
+  // so the local room drops its peers and ends like any other lost call.
+  socket.onReplaced(() => {
+    rejectJoin(new Error('signaling replaced by another endpoint'));
+    peersHandlers.forEach((h) => h({ members: [] }));
   });
 
   function subscribeRelay(

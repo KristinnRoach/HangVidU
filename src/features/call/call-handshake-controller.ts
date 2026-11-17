@@ -4,6 +4,7 @@ import {
   getCallService,
 } from './call-service.js';
 import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
+import { endpointPeerId } from '@realtime';
 import {
   captureMessage,
   flush,
@@ -715,7 +716,7 @@ export class CallHandshakeController {
     try {
       room = await this.p2p.join({
         roomId,
-        peerId: localUID,
+        peerId: endpointPeerId(localUID),
         createSignaling: this.createSignaling,
         // Keep room ownership/cleanup while making the acquired tracks available
         // when the reserved publication slots are declared before negotiation.

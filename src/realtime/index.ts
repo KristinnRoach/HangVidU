@@ -14,6 +14,7 @@ export {
   type WireMessage,
 } from './conversation-protocol.js';
 
+export { endpointPeerId, ROOM_MEMBER_LIMIT } from './protocol';
 export type {
   PeerId,
   RelayChannel,

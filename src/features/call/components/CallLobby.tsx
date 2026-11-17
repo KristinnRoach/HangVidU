@@ -3,7 +3,11 @@
 import { createSignal, createEffect, on, Show } from 'solid-js';
 
 import { useP2PContext } from '@shared/p2p-context.js';
-import { createRoomSignaling } from '@realtime';
+import {
+  createRoomSignaling,
+  endpointPeerId,
+  ROOM_MEMBER_LIMIT,
+} from '@realtime';
 import { signInAsGuest } from '@auth';
 import { t } from '@shared/i18n';
 import {
@@ -111,16 +115,11 @@ export function CallLobby() {
         signInAsGuest(),
         streamPromise,
       ]);
-      // peerId must be unique per tab, not per user: the anonymous session is
-      // shared by all tabs of a browser profile, and the signaling DO keys
-      // peers by peerId. The full UID binds the tab ID to its authenticated
-      // owner; the UUID lets tabs participate separately.
-      const peerId = `${uid}:${crypto.randomUUID()}`;
       const room = await p2p.join({
         roomId: id,
-        peerId,
+        peerId: endpointPeerId(uid),
         createSignaling: createRoomSignaling,
-        memberCapacity: 4,
+        memberCapacity: ROOM_MEMBER_LIMIT,
         dataChannel: true,
         // Guest calls use the same stable publication slots and initial media
         // presence as contact calls. Without these, remote video is hidden

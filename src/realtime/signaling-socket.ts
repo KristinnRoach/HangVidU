@@ -1,4 +1,8 @@
-import type { ClientMessage, ServerMessage } from './protocol';
+import {
+  REPLACED_CLOSE_CODE,
+  type ClientMessage,
+  type ServerMessage,
+} from './protocol';
 import { subscribeToWakeSignals } from './wake-signals';
 
 /**
@@ -14,6 +18,9 @@ export interface SignalingSocket {
   clearQueue(match?: (message: ClientMessage) => boolean): void;
   onMessage(handler: (message: ServerMessage) => void): () => void;
   onOpen(handler: () => void): () => void;
+  /** The server handed this socket's role to a newer connection. The socket
+   * stays closed; reconnecting would displace that connection in turn. */
+  onReplaced(handler: () => void): () => void;
   close(): void;
 }
 
@@ -33,6 +40,7 @@ export function createSignalingSocket(
   const maxBackoff = options.maxBackoffMs ?? 10_000;
   const messageHandlers = new Set<(m: ServerMessage) => void>();
   const openHandlers = new Set<() => void>();
+  const replacedHandlers = new Set<() => void>();
   const sendQueue: ClientMessage[] = [];
 
   let ws: WebSocket | null = null;
@@ -70,8 +78,13 @@ export function createSignalingSocket(
       }
       messageHandlers.forEach((h) => h(message));
     });
-    socket.addEventListener('close', () => {
+    socket.addEventListener('close', (event) => {
       if (ws === socket) ws = null;
+      if (event.code === REPLACED_CLOSE_CODE) {
+        replacedHandlers.forEach((h) => h());
+        close();
+        return;
+      }
       scheduleReconnect();
     });
     socket.addEventListener('error', () => socket.close());
@@ -97,6 +110,19 @@ export function createSignalingSocket(
     void connect();
   });
 
+  function close(): void {
+    if (closed) return;
+    closed = true;
+    unsubscribeWake();
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    sendQueue.length = 0;
+    messageHandlers.clear();
+    openHandlers.clear();
+    replacedHandlers.clear();
+    ws?.close();
+    ws = null;
+  }
+
   void connect();
 
   return {
@@ -118,15 +144,10 @@ export function createSignalingSocket(
       openHandlers.add(handler);
       return () => openHandlers.delete(handler);
     },
-    close() {
-      closed = true;
-      unsubscribeWake();
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      sendQueue.length = 0;
-      messageHandlers.clear();
-      openHandlers.clear();
-      ws?.close();
-      ws = null;
+    onReplaced(handler) {
+      replacedHandlers.add(handler);
+      return () => replacedHandlers.delete(handler);
     },
+    close,
   };
 }

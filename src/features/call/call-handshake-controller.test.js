@@ -631,7 +631,7 @@ describe('CallHandshakeController', () => {
     expect(p2p.join).toHaveBeenCalledWith(
       expect.objectContaining({
         roomId: 'room-1',
-        peerId: 'callee-id',
+        peerId: expect.stringMatching(/^callee-id:/),
         memberCapacity: 2,
         dataChannel: true,
         iceRecovery: {},

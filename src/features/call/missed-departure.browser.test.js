@@ -118,7 +118,7 @@ function createNetwork({ replay, autoOpen = true }) {
       this.peerId = null;
       this.readyState = Socket.CLOSED;
       if (hadPresence) broadcast();
-      this.dispatch('close');
+      this.dispatch('close', {});
     }
   }
   return { Socket, sockets, departures };
@@ -268,9 +268,10 @@ describe('call recovery and missed hangups through DO signaling', () => {
       });
       controller.acceptIncoming();
       await expect.poll(() => p2p.state(), { timeout: 5000 }).toBe('joined');
-      const calleeSocket = network.sockets.find(
-        (ws) => ws.peerId === 'callee-id',
+      const calleeSocket = network.sockets.find((ws) =>
+        ws.peerId?.startsWith('callee-id:'),
       );
+      const calleePeerId = calleeSocket.peerId;
       const remote = new P2PRoom({
         peerId: 'caller-id',
         roomId: 'room-1',
@@ -316,7 +317,7 @@ describe('call recovery and missed hangups through DO signaling', () => {
         if (delivery === 'late') {
           network.sockets.at(-1).receive({
             t: 'peers',
-            peers: [{ peerId: 'callee-id' }],
+            peers: [{ peerId: calleePeerId }],
             departed: ['caller-id'],
           });
           // p2p classifies the first disappearance only; a later correction

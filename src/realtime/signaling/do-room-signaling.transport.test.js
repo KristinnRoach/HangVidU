@@ -54,10 +54,10 @@ class FakeWebSocket {
     this.dispatch('message', { data: JSON.stringify(message) });
   }
 
-  close() {
+  close(code) {
     if (this.readyState === FakeWebSocket.CLOSED) return;
     this.readyState = FakeWebSocket.CLOSED;
-    this.dispatch('close');
+    this.dispatch('close', { code });
   }
 }
 
@@ -155,6 +155,14 @@ describe('createDoRoomSignaling over the real signaling socket', () => {
         data: { muted: true },
       },
     ]);
+  });
+
+  it('stays closed after the server replaces this endpoint', async () => {
+    const first = await connected();
+    first.open();
+    first.close(4000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(FakeWebSocket.instances).toEqual([first]);
   });
 
   it('re-joins before replaying queued SDP, ICE and restart requests', async () => {

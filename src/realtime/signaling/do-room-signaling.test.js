@@ -14,6 +14,7 @@ vi.mock('../signaling-socket', () => ({
   createSignalingSocket: vi.fn(() => {
     const messageHandlers = new Set();
     const openHandlers = new Set();
+    const replacedHandlers = new Set();
     socket = {
       sent: [],
       emit: (m) => messageHandlers.forEach((h) => h(m)),
@@ -22,6 +23,7 @@ vi.mock('../signaling-socket', () => ({
         socket.isOpen = true;
         openHandlers.forEach((h) => h());
       },
+      replace: () => replacedHandlers.forEach((h) => h()),
       closed: false,
     };
     return {
@@ -36,6 +38,10 @@ vi.mock('../signaling-socket', () => ({
         openHandlers.add(h);
         return () => openHandlers.delete(h);
       },
+      onReplaced: (h) => {
+        replacedHandlers.add(h);
+        return () => replacedHandlers.delete(h);
+      },
       close: () => {
         socket.closed = true;
       },
@@ -48,6 +54,7 @@ vi.mock('../../auth/index.js', () => ({
 }));
 
 const { createDoRoomSignaling } = await import('./do-room-signaling.ts');
+const { isRoomFullError } = await import('@kidlib/p2p');
 
 describe('createDoRoomSignaling', () => {
   beforeEach(() => {
@@ -122,6 +129,31 @@ describe('createDoRoomSignaling', () => {
       requestId: 'join-request',
     });
     await rejected;
+    socket.sent.length = 0;
+    socket.open();
+    expect(socket.sent).toEqual([]);
+  });
+
+  it('rejects a full room with RoomFullError', async () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    const joined = signaling.join('peer-a');
+    socket.emit({
+      t: 'error',
+      message: 'room full',
+      requestId: 'join-request',
+    });
+    await expect(joined).rejects.toSatisfy(isRoomFullError);
+  });
+
+  it('reports an empty room and stops rejoining once replaced', async () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    const snapshots = [];
+    signaling.onPeers((snapshot) => snapshots.push(snapshot));
+    const joined = signaling.join('peer-a');
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+    await joined;
+    socket.replace();
+    expect(snapshots).toEqual([{ members: [] }]);
     socket.sent.length = 0;
     socket.open();
     expect(socket.sent).toEqual([]);

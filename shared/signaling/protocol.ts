@@ -12,6 +12,23 @@
 
 export type PeerId = string;
 
+/** A fresh ID for one call endpoint (window or device) of an account. The
+ * worker only admits IDs prefixed by the socket's authenticated UID. */
+export function endpointPeerId(uid: string): PeerId {
+  return `${uid}:${crypto.randomUUID()}`;
+}
+
+/** Joined endpoints a room admits. Mesh calls degrade quickly beyond this. */
+export const ROOM_MEMBER_LIMIT = 4;
+
+/** `error.message` for a join rejected because the room is at capacity. */
+export const ROOM_FULL_ERROR = 'room full';
+
+/** Close code for a socket whose account joined the room from another endpoint.
+ * The client must not reconnect, or the two endpoints would keep displacing
+ * each other. */
+export const REPLACED_CLOSE_CODE = 4000;
+
 /** Payload bucket for relayed messages. Add values to extend; never reshape. */
 export type RelayChannel = 'sdp' | 'ice' | 'ice-restart';
 
