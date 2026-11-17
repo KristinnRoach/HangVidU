@@ -4,9 +4,9 @@ Start with [AGENTS.md](../../AGENTS.md) for conventions and the
 [roadmap](../ROADMAP.md) for priorities. Deployment and Sentry instructions live in
 [Operations](OPERATIONS.md).
 
-`vpr dev` starts Vite over HTTPS on port 5173 and the local API together. Use `vpr dev:mobile` to expose the frontend at `https://dev.hangvidu.com` through the Cloudflare tunnel, using the production API.
+`vpr dev` starts Vite over HTTPS on port 5173 and the local API together.
 
-`vpr preview` builds the app and starts a production preview on port 4173 with the tunnel. Use `vpr preview:local` for a preview without the tunnel.
+`vpr preview` builds the app and starts a production preview on port 4173, exposed at `https://dev.hangvidu.com` through the Cloudflare tunnel and using the production API. Use it for phone testing: it runs the built service worker, which `vpr dev` does not. `vpr preview:watch` does the same but rebuilds on every save (a few seconds; the phone may need a second reload to pick up the new service worker). Use `vpr preview:local` for a preview without the tunnel.
 
 Local HTTPS needs a trusted certificate. Install [mkcert](https://github.com/FiloSottile/mkcert#installation), then run once from the repository root:
 
@@ -15,9 +15,7 @@ mkdir -p .certs
 vpr setup:dev-certs
 ```
 
-The mobile dev tunnel connects to that HTTPS origin and disables origin certificate verification because the certificate is local-only.
-
-The tunnel uses the named tunnel `vidu-dev`. One-time setup: `cloudflared tunnel login`, then `cloudflared tunnel create vidu-dev` and `cloudflared tunnel route dns vidu-dev dev.hangvidu.com`. The mobile dev script points directly at `https://localhost:5173`; preview uses local tunnel ingress configured for `http://localhost:4173`. Run only one tunnel command at a time.
+The tunnel uses the named tunnel `vidu-dev`. One-time setup: `cloudflared tunnel login`, then `cloudflared tunnel create vidu-dev` and `cloudflared tunnel route dns vidu-dev dev.hangvidu.com`. Preview uses local tunnel ingress (`~/.cloudflared/config.yml`) configured for `http://localhost:4173`. Run only one tunnel command at a time.
 
 ### Environment configuration
 
