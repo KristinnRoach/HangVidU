@@ -166,7 +166,8 @@ type HangUpReason =
   | 'reconnect-timeout'
   | 'connect-timeout'
   | 'enter-room-error'
-  | 'accept-error';
+  | 'accept-error'
+  | 'membership-lost';
 
 type CallFailureKind =
   | 'room-resolve-failed'

@@ -45,6 +45,18 @@ interface RelaySubscription {
   handler: (data: unknown) => void;
 }
 
+const membershipLostHandlers = new Set<(roomId: string) => void>();
+
+/** Called when this endpoint loses its room for good: another endpoint of the
+ * same account replaced it, or the server refused to readmit it after a
+ * reconnect. */
+export function onRoomMembershipLost(
+  handler: (roomId: string) => void,
+): () => void {
+  membershipLostHandlers.add(handler);
+  return () => membershipLostHandlers.delete(handler);
+}
+
 function signalingUrl(roomId: string): string {
   return buildHangViduWebSocketUrl(
     `/rooms/${encodeURIComponent(roomId)}/signal`,
@@ -156,10 +168,11 @@ export function createDoRoomSignaling({
     if (registration) socket.send(joinMessage(registration));
   });
 
-  // An empty room makes the local room drop its peers and end like any other
-  // lost call.
+  // The empty room drops this room's peers; the owner ends the call even when
+  // no peers had connected yet.
   function reportMembershipLost() {
     peersHandlers.forEach((h) => h({ members: [] }));
+    membershipLostHandlers.forEach((h) => h(roomId));
   }
 
   // This account joined the room from another endpoint.

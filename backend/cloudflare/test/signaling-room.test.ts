@@ -215,14 +215,16 @@ describe('SignalingRoom', () => {
     await runInDurableObject(
       env.SIGNALING_ROOM.getByName('upgrade-dupes'),
       (_instance, state) => {
-        const idle = state
-          .getWebSockets()
-          .find((ws) => !ws.deserializeAttachment()?.peerId)!;
+        const sockets = state.getWebSockets();
+        const joined = sockets.find(
+          (ws) => ws.deserializeAttachment()?.peerId,
+        )!;
+        const idle = sockets.find((ws) => ws !== joined)!;
         // Model a second endpoint joined under the earlier multi-endpoint rule.
         idle.serializeAttachment({
           ownerUid: 'owner',
           peerId: `owner:${crypto.randomUUID()}`,
-          joinedAt: Date.now() * 1000,
+          joinedAt: joined.deserializeAttachment().joinedAt + 1,
         });
       },
     );

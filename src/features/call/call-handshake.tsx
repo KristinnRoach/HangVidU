@@ -12,7 +12,7 @@ import {
 
 import { getAuthProviderProfileSeed, useAuth } from '@auth';
 import { useP2PContext } from '@shared/p2p-context.js';
-import { createRoomSignaling } from '@realtime';
+import { createRoomSignaling, onRoomMembershipLost } from '@realtime';
 import { subscribe } from '@shared/events/index.js';
 import {
   getAppReloadAllowed,
@@ -199,6 +199,12 @@ export function CallHandshakeProvider(props: ParentProps) {
     onCalleeBusy: setIsCalleeBusy,
     onReconnectStatus: setReconnectStatus,
   });
+
+  onCleanup(
+    onRoomMembershipLost((roomId) => {
+      if (p2p.room()?.roomId === roomId) controller.hangUp('membership-lost');
+    }),
+  );
 
   const incomingCall = (): MailboxInvite | null => {
     const state = handshakeState();

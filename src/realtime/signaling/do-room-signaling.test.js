@@ -53,7 +53,8 @@ vi.mock('../../auth/index.js', () => ({
   getLoggedInUserToken: vi.fn(async () => 'test-token'),
 }));
 
-const { createDoRoomSignaling } = await import('./do-room-signaling.ts');
+const { createDoRoomSignaling, onRoomMembershipLost } =
+  await import('./do-room-signaling.ts');
 const { isRoomFullError } = await import('@kidlib/p2p');
 
 describe('createDoRoomSignaling', () => {
@@ -152,8 +153,12 @@ describe('createDoRoomSignaling', () => {
     const joined = signaling.join('peer-a');
     socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
     await joined;
+    const lost = vi.fn();
+    const unsubscribe = onRoomMembershipLost(lost);
     socket.replace();
+    unsubscribe();
     expect(snapshots).toEqual([{ members: [] }]);
+    expect(lost).toHaveBeenCalledWith('room-1');
     socket.sent.length = 0;
     socket.open();
     expect(socket.sent).toEqual([]);
