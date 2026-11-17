@@ -72,44 +72,69 @@ describe('handlePushEvent', () => {
       },
     };
 
-    beforeEach(() => vi.useFakeTimers());
+    let client;
+    let shown;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      client = { postMessage, focused: true, visibilityState: 'visible' };
+      shown = [];
+      self.clients.matchAll.mockImplementation(async () => [client]);
+      // Same tag replaces the existing notification, like the real API.
+      showNotification.mockImplementation(async (title, options) => {
+        shown = shown.filter((n) => n.tag !== options.tag);
+        shown.push({ tag: options.tag, data: options.data, close: vi.fn() });
+      });
+      self.registration.getNotifications = vi.fn(async () => [...shown]);
+    });
     afterEach(() => vi.useRealTimers());
 
-    function setup(client) {
-      const close = vi.fn();
-      const other = vi.fn();
-      self.clients.matchAll.mockResolvedValue([{ postMessage, ...client }]);
-      self.registration.getNotifications = vi.fn().mockResolvedValue([
-        { tag: 'message_alice', title: 'Alice', close },
-        { tag: 'message_bob', title: 'Bob', close: other },
-      ]);
-      return { close, other };
-    }
-
     it('closes the shown notification after a delay when the app is focused', async () => {
-      const { close, other } = setup({
-        focused: true,
-        visibilityState: 'visible',
+      const done = handlePushEvent(messagePush);
+      await vi.advanceTimersByTimeAsync(3999);
+      expect(shown[0].close).not.toHaveBeenCalled();
+
+      await vi.runAllTimersAsync();
+      await done;
+      expect(shown[0].close).toHaveBeenCalledOnce();
+    });
+
+    it('leaves the notification when the app is in the background', async () => {
+      client = { postMessage, focused: false, visibilityState: 'hidden' };
+
+      const done = handlePushEvent(messagePush);
+      await vi.runAllTimersAsync();
+      await done;
+
+      expect(shown[0].close).not.toHaveBeenCalled();
+    });
+
+    it('leaves the notification when the app is backgrounded during enumeration', async () => {
+      self.registration.getNotifications = vi.fn(async () => {
+        client = { postMessage, focused: false, visibilityState: 'hidden' };
+        return [...shown];
       });
 
       const done = handlePushEvent(messagePush);
       await vi.runAllTimersAsync();
       await done;
 
-      expect(showNotification).toHaveBeenCalled();
-      expect(close).toHaveBeenCalledOnce();
-      expect(other).not.toHaveBeenCalled();
+      expect(shown[0].close).not.toHaveBeenCalled();
     });
 
-    it('leaves the notification when the app is in the background', async () => {
-      const { close } = setup({ focused: false, visibilityState: 'hidden' });
+    it('does not let an older push close a newer same-tag notification early', async () => {
+      const first = handlePushEvent(messagePush);
+      await vi.advanceTimersByTimeAsync(3900);
+      const second = handlePushEvent(messagePush);
+      await vi.advanceTimersByTimeAsync(200);
+      await first;
 
-      const done = handlePushEvent(messagePush);
+      expect(shown).toHaveLength(1);
+      expect(shown[0].close).not.toHaveBeenCalled();
+
       await vi.runAllTimersAsync();
-      await done;
-
-      expect(showNotification).toHaveBeenCalled();
-      expect(close).not.toHaveBeenCalled();
+      await second;
+      expect(shown[0].close).toHaveBeenCalledOnce();
     });
   });
 });

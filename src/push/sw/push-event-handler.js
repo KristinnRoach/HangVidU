@@ -27,6 +27,10 @@ export async function handlePushEvent(event) {
     payload,
     import.meta.env.BASE_URL,
   );
+  // Tags identify replacements, not deliveries; this lets the delayed close
+  // target only the notification this push showed.
+  const pushId = crypto.randomUUID();
+  presentation.options.data = { ...presentation.options.data, pushId };
 
   try {
     await self.registration.showNotification(
@@ -44,19 +48,19 @@ export async function handlePushEvent(event) {
       client.postMessage({ type: 'PUSH_NOTIFICATION_SHOWN' }),
     );
 
-    // Android can ignore the page's immediate close() and leave the notification
-    // in the shade. Close it from the SW after the heads-up/sound has played,
-    // only while the app is still focused, so background delivery is unchanged.
+    // Android and iOS can ignore the page's immediate close() and leave the
+    // notification in the shade. Close it from the SW after the heads-up/sound
+    // has played, only while the app is still focused, so background delivery
+    // is unchanged.
     if (!clients.some(isFocusedVisible)) return;
     await new Promise((resolve) =>
       setTimeout(resolve, FOREGROUND_CLOSE_DELAY_MS),
     );
+    const notifications = await self.registration.getNotifications();
     if (!(await getWindowClients()).some(isFocusedVisible)) return;
 
-    const tag = presentation.tag || '';
-    const notifications = await self.registration.getNotifications();
     notifications
-      .filter((n) => n.tag === tag && (tag || n.title === presentation.title))
+      .filter((n) => n.data?.pushId === pushId)
       .forEach((n) => n.close());
   } catch (error) {
     console.warn('[SW] foreground notification cleanup failed', error);
