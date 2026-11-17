@@ -743,7 +743,8 @@ export class CallHandshakeController {
         startTimeoutMs: START_TIMEOUT_MS,
         connectedTimeoutMs: CONNECTED_TIMEOUT_MS,
         signal,
-        onError: ({ error }) => this.handleRoomError(error, roomId),
+        onError: ({ error, memberId }) =>
+          this.handleRoomError(error, roomId, memberId),
         onIceReconnecting: ({ attempt, maxAttempts, reason, nextDelayMs }) => {
           metrics.count('call.ice_reconnect_attempt', 1);
           console.warn(
@@ -1151,7 +1152,11 @@ export class CallHandshakeController {
    * is a dead call, not a blip — @kidlib/p2p has already closed that member.
    * Show a bounded failure message, then exit to the lobby so the user can retry.
    */
-  private handleRoomError(error: unknown, roomId: string): void {
+  private handleRoomError(
+    error: unknown,
+    roomId: string,
+    memberId?: string,
+  ): void {
     const message = error instanceof Error ? error.message : String(error);
     console.log('[call] room error', { message });
     const code = (error as { code?: unknown } | null)?.code;
@@ -1164,6 +1169,14 @@ export class CallHandshakeController {
     };
     console.warn(detail, '[call] connection failed');
     reportCallFailure('connect-failed', detail, code);
+    // In a mesh, one member's failed connection must not end the call for
+    // the members that did connect.
+    const room = this.p2p.room();
+    if (
+      room &&
+      [...room.peerConnections().keys()].some((id) => id !== memberId)
+    )
+      return;
     this.clearReconnectTimers();
     this.clearConnectFailureTimeout();
     this.onReconnectStatus('connect-failed');
