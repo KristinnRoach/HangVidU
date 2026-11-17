@@ -8,6 +8,7 @@ Keep HangVidU straightforward to maintain as features are added.
 
 - **Current:** Step 2 complete. Keep Solid, Kobalte, and Tailwind. The add-contact flow is the reference for shared controls, theme tokens, selection, status feedback, and dialog-scoped async work.
 - **Next UI slice:** Replace the imperative toast UI with a Solid/Kobalte toast using the existing theme ([#775](https://github.com/KristinnRoach/HangVidU/issues/775)); remove its replaced stylesheet. Continue component by component as features need them.
+- **Group calls:** Four-person room admission is implemented. Validate calls at capacity on representative devices and networks, including when someone leaves or reconnects.
 - **Separate follow-up:** [Failed-message recovery (#758)](https://github.com/KristinnRoach/HangVidU/issues/758).
 
 Update this block in the same PR when progress or the next step changes. Keep it
