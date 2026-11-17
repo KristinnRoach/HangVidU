@@ -60,6 +60,23 @@ export class SignalingRoom extends DurableObject<Env> {
       removedLegacyPeer = this.clearSocketPresence(ws) || removedLegacyPeer;
       ws.close(4001, 'reconnect to authenticate');
     }
+    // Earlier releases let an account join from several endpoints. Keep its
+    // newest one, as a fresh join would.
+    const owners = new Set<string | undefined>();
+    const newestFirst = this.joinedSockets().sort(
+      (a, b) =>
+        (this.getSocketState(b).joinedAt ?? 0) -
+        (this.getSocketState(a).joinedAt ?? 0),
+    );
+    for (const ws of newestFirst) {
+      const { ownerUid } = this.getSocketState(ws);
+      if (owners.has(ownerUid)) {
+        this.retire(ws);
+        removedLegacyPeer = true;
+      } else {
+        owners.add(ownerUid);
+      }
+    }
     if (removedLegacyPeer) this.broadcastPeers();
   }
 

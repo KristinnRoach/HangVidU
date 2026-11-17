@@ -135,12 +135,17 @@ export function createDoRoomSignaling({
         }
         return;
       case 'error':
-        if (registration && message.requestId === registration.requestId)
+        if (registration && message.requestId === registration.requestId) {
+          // Without a pending join this was a rejoin after reconnect, so the
+          // room already counts this endpoint as a member.
+          const wasMember = !pendingJoin;
           rejectJoin(
             message.message === ROOM_FULL_ERROR
               ? new RoomFullError()
               : new Error(message.message),
           );
+          if (wasMember) reportMembershipLost();
+        }
         console.warn('[signaling] worker error:', message.message);
         return;
     }
@@ -151,11 +156,16 @@ export function createDoRoomSignaling({
     if (registration) socket.send(joinMessage(registration));
   });
 
-  // This account joined the room from another endpoint. Report an empty room
-  // so the local room drops its peers and ends like any other lost call.
+  // An empty room makes the local room drop its peers and end like any other
+  // lost call.
+  function reportMembershipLost() {
+    peersHandlers.forEach((h) => h({ members: [] }));
+  }
+
+  // This account joined the room from another endpoint.
   socket.onReplaced(() => {
     rejectJoin(new Error('signaling replaced by another endpoint'));
-    peersHandlers.forEach((h) => h({ members: [] }));
+    reportMembershipLost();
   });
 
   function subscribeRelay(

@@ -159,6 +159,25 @@ describe('createDoRoomSignaling', () => {
     expect(socket.sent).toEqual([]);
   });
 
+  it('reports an empty room when a rejoin after reconnect is refused', async () => {
+    const signaling = createDoRoomSignaling({ roomId: 'room-1' });
+    const snapshots = [];
+    signaling.onPeers((snapshot) => snapshots.push(snapshot));
+    const joined = signaling.join('peer-a');
+    socket.emit({ t: 'joined', peerId: 'peer-a', requestId: 'join-request' });
+    await joined;
+    socket.open();
+    socket.emit({
+      t: 'error',
+      message: 'room full',
+      requestId: 'join-request',
+    });
+    expect(snapshots).toEqual([{ members: [] }]);
+    socket.sent.length = 0;
+    socket.open();
+    expect(socket.sent).toEqual([]);
+  });
+
   it('rejects an admission timeout and withdraws queued membership', async () => {
     vi.useFakeTimers();
     const signaling = createDoRoomSignaling({ roomId: 'room-1' });

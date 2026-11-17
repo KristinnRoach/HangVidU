@@ -205,6 +205,34 @@ describe('SignalingRoom', () => {
     });
   });
 
+  it('keeps only the newest endpoint per account on wake', async () => {
+    const older = await connect('upgrade-dupes', 'owner');
+    await older.next();
+    older.send({ t: 'join', peerId: 'owner' });
+    await older.next();
+    const newer = await connect('upgrade-dupes', 'owner');
+    await newer.next();
+    await runInDurableObject(
+      env.SIGNALING_ROOM.getByName('upgrade-dupes'),
+      (_instance, state) => {
+        const idle = state
+          .getWebSockets()
+          .find((ws) => !ws.deserializeAttachment()?.peerId)!;
+        // Model a second endpoint joined under the earlier multi-endpoint rule.
+        idle.serializeAttachment({
+          ownerUid: 'owner',
+          peerId: `owner:${crypto.randomUUID()}`,
+          joinedAt: Date.now() * 1000,
+        });
+      },
+    );
+    await evictDurableObject(env.SIGNALING_ROOM.getByName('upgrade-dupes'));
+    const observer = await connect('upgrade-dupes', 'observer');
+    const snapshot = await observer.next();
+    expect(snapshot.t === 'peers' && snapshot.peers).toHaveLength(1);
+    expect(await older.closed).toBe(REPLACED_CLOSE_CODE);
+  });
+
   it('acknowledges this socket and request only after broadcasting current presence', async () => {
     const peer = await connect('admission', 'owner', true);
     await peer.next();
