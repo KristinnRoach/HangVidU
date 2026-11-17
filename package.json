@@ -61,7 +61,7 @@
     "play:boundaries": "pnpm play:boundaries:scan && fkill :8082 --silent; python3 -m http.server 8082 --directory . & sleep 0.5 && open http://localhost:8082/playgrounds/boundary-rules.html && wait",
     "preview": "pnpm kill:silent && pnpm build && concurrently -k -n preview,tunnel \"vp preview\" \"cloudflared tunnel run vidu-dev\"",
     "preview:local": "pnpm build && vp preview",
-    "preview:watch": "pnpm kill:silent && pnpm p2p:prod && VITE_HANGVIDU_API_URL=https://api.hangvidu.com vp build && VITE_HANGVIDU_API_URL=https://api.hangvidu.com concurrently -k -n build,preview,tunnel \"vp build --watch\" \"vp preview\" \"cloudflared tunnel run vidu-dev\"",
+    "preview:watch": "pnpm kill:silent && pnpm p2p:prod && VITE_PREVIEW_WATCH=1 VITE_HANGVIDU_API_URL=https://api.hangvidu.com vp build && VITE_PREVIEW_WATCH=1 VITE_HANGVIDU_API_URL=https://api.hangvidu.com concurrently -k -n build,preview,tunnel \"vp build --watch\" \"vp preview\" \"cloudflared tunnel run vidu-dev\"",
     "lint": "vp lint && pnpm lint:cf",
     "ts": "vp check --no-fmt --no-lint",
     "test": "vp test",
