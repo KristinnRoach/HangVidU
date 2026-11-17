@@ -134,6 +134,26 @@ describe('SignalingRoom', () => {
     });
   });
 
+  it('refuses a resume once another endpoint of the account has joined', async () => {
+    const first = 'owner:11111111-1111-4111-8111-111111111111';
+    const second = 'owner:22222222-2222-4222-8222-222222222222';
+    const b = await connect('resume', 'owner');
+    await b.next();
+    b.send({ t: 'join', peerId: second });
+    await b.next();
+    const a = await connect('resume', 'owner');
+    await a.next();
+    a.send({ t: 'join', peerId: first, requestId: 'r1', resume: true });
+    expect(await a.next()).toEqual({
+      t: 'error',
+      message: 'endpoint replaced',
+      requestId: 'r1',
+    });
+    a.send({ t: 'join', peerId: second, requestId: 'r2', resume: true });
+    expect(memberIds(await a.next())).toEqual([second]);
+    expect(await b.closed).toBe(REPLACED_CLOSE_CODE);
+  });
+
   it('rejects a join beyond the member limit but admits a returning account', async () => {
     const owners = Array.from(
       { length: ROOM_MEMBER_LIMIT },

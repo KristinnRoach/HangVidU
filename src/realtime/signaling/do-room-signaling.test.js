@@ -80,7 +80,7 @@ describe('createDoRoomSignaling', () => {
     socket.sent.length = 0;
     socket.open(); // simulate (re)connect
     expect(socket.sent).toEqual([
-      { t: 'join', peerId: 'peer-a', requestId: 'join-request' },
+      { t: 'join', peerId: 'peer-a', requestId: 'join-request', resume: true },
     ]);
   });
 
@@ -303,6 +303,7 @@ describe('createDoRoomSignaling', () => {
         peerId: 'peer-a',
         requestId: 'join-request',
         data: { muted: true },
+        resume: true,
       },
     ]);
   });
@@ -325,6 +326,7 @@ describe('createDoRoomSignaling', () => {
         peerId: 'peer-a',
         requestId: 'join-request',
         data: { muted: true },
+        resume: true,
       },
     ]);
   });

@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import {
+  ENDPOINT_REPLACED_ERROR,
   isClientMessage,
   REPLACED_CLOSE_CODE,
   ROOM_FULL_ERROR,
@@ -161,6 +162,14 @@ export class SignalingRoom extends DurableObject<Env> {
             other !== ws &&
             this.getSocketState(other).ownerUid === state.ownerUid,
         );
+        // A resuming endpoint was offline while another endpoint took over.
+        if (
+          message.resume &&
+          previous.some(
+            (other) => this.getSocketState(other).peerId !== message.peerId,
+          )
+        )
+          return this.sendError(ws, ENDPOINT_REPLACED_ERROR, message.requestId);
         const others = this.joinedSockets().filter(
           (other) => other !== ws && !previous.includes(other),
         );

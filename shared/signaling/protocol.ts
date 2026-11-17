@@ -24,6 +24,10 @@ export const ROOM_MEMBER_LIMIT = 4;
 /** `error.message` for a join rejected because the room is at capacity. */
 export const ROOM_FULL_ERROR = 'room full';
 
+/** `error.message` for a resume refused because another endpoint of the
+ * account joined while this one was disconnected. */
+export const ENDPOINT_REPLACED_ERROR = 'endpoint replaced';
+
 /** Close code for a socket whose account joined the room from another endpoint.
  * The client must not reconnect, or the two endpoints would keep displacing
  * each other. */
@@ -54,7 +58,15 @@ export interface PresenceMember {
  * optional so older clients that omit it are still accepted.
  */
 export type ClientMessage =
-  | { t: 'join'; peerId: PeerId; data?: PresenceData; requestId?: string }
+  | {
+      t: 'join';
+      peerId: PeerId;
+      data?: PresenceData;
+      requestId?: string;
+      /** Rejoin after a reconnect. It yields to a newer endpoint of the account
+       * instead of replacing it. */
+      resume?: boolean;
+    }
   | { t: 'leave' }
   | { t: 'presence'; data: PresenceData }
   | { t: 'relay'; to: PeerId; channel: RelayChannel; data: unknown };
@@ -86,6 +98,7 @@ export function isClientMessage(value: unknown): value is ClientMessage {
           (typeof m.requestId === 'string' &&
             m.requestId.length > 0 &&
             m.requestId.length <= 128)) &&
+        (m.resume === undefined || typeof m.resume === 'boolean') &&
         isPresenceDataOrAbsent(m.data)
       );
     case 'leave':

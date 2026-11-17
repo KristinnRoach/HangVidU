@@ -153,6 +153,7 @@ describe('createDoRoomSignaling over the real signaling socket', () => {
         peerId: 'peer-a',
         requestId: 'req-1',
         data: { muted: true },
+        resume: true,
       },
     ]);
   });
@@ -183,7 +184,7 @@ describe('createDoRoomSignaling over the real signaling socket', () => {
     second.open();
 
     expect(second.sent).toEqual([
-      { t: 'join', peerId: 'peer-a', requestId: 'req-1' },
+      { t: 'join', peerId: 'peer-a', requestId: 'req-1', resume: true },
       {
         t: 'relay',
         to: 'peer-b',

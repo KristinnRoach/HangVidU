@@ -54,12 +54,16 @@ async function reportSendQuality(room: P2PRoom): Promise<void> {
   for (const pc of pcs) {
     const stats = await pc.getStats();
     const reports = [...stats.values()];
-    const pair = reports.find(
-      (report) =>
-        report.type === 'candidate-pair' &&
-        report.nominated &&
-        report.state === 'succeeded',
-    );
+    // Firefox has no selectedCandidatePairId; its nominated pair is the one used.
+    const transport = reports.find((report) => report.type === 'transport');
+    const pair =
+      stats.get(transport?.selectedCandidatePairId) ??
+      reports.find(
+        (report) =>
+          report.type === 'candidate-pair' &&
+          report.nominated &&
+          report.state === 'succeeded',
+      );
     const attributes = {
       remote_peers: pcs.length,
       route: stats.get(pair?.localCandidateId)?.candidateType ?? 'unknown',

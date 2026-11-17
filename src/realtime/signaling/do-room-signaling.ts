@@ -163,9 +163,15 @@ export function createDoRoomSignaling({
     }
   });
 
-  // Restore presence (peerId + latest data) after every (re)connect.
+  // Restore presence (peerId + latest data) after every (re)connect. Once
+  // admitted, the rejoin is a resume, so it can't take the slot back from a
+  // newer endpoint of this account.
   socket.onOpen(() => {
-    if (registration) socket.send(joinMessage(registration));
+    if (!registration) return;
+    socket.send({
+      ...joinMessage(registration),
+      ...(pendingJoin ? {} : { resume: true }),
+    });
   });
 
   // The empty room drops this room's peers; the owner ends the call even when
