@@ -13,21 +13,19 @@ const mocks = vi.hoisted(() => ({
   p2p: {
     state: vi.fn(() => 'idle'),
     room: vi.fn(),
-    join: vi.fn(),
     dispose: vi.fn(),
     error: vi.fn(),
     errorKind: vi.fn(),
   },
   signInAsGuest: vi.fn(),
-  createRoomSignaling: vi.fn(),
+  joinRoomLink: vi.fn(),
 }));
 
 vi.mock('@shared/p2p-context.js', () => ({
   useP2PContext: () => mocks.p2p,
 }));
-vi.mock('@realtime', () => ({
-  createRoomSignaling: mocks.createRoomSignaling,
-  endpointPeerId: (uid) => `${uid}:endpoint`,
+vi.mock('../call-handshake.js', () => ({
+  useCallHandshake: () => ({ joinRoomLink: mocks.joinRoomLink }),
 }));
 vi.mock('@auth', () => ({
   signInAsGuest: mocks.signInAsGuest,
@@ -106,7 +104,7 @@ describe('CallLobby', () => {
     window.history.replaceState(null, '', '/');
     setupMediaDevices();
     mocks.signInAsGuest.mockResolvedValue('guest-user');
-    mocks.p2p.join.mockResolvedValue({ roomId: 'guest-room' });
+    mocks.joinRoomLink.mockResolvedValue(undefined);
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -129,36 +127,11 @@ describe('CallLobby', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(link));
     fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
 
-    await waitFor(() => expect(mocks.p2p.join).toHaveBeenCalledOnce());
-    expect(mocks.p2p.join.mock.calls[0][0].roomId).toBe(roomId);
+    await waitFor(() => expect(mocks.joinRoomLink).toHaveBeenCalledOnce());
+    expect(mocks.joinRoomLink.mock.calls[0][0]).toBe(roomId);
     expect(new URLSearchParams(window.location.search).get('publicRoom')).toBe(
       roomId,
     );
-  });
-
-  it('joins guest calls with initial presence and stable media slots', async () => {
-    const { camera, localStream, microphone } = setupMediaDevices();
-    mocks.signInAsGuest.mockResolvedValue('guest-user');
-    mocks.p2p.join.mockResolvedValue({ roomId: 'guest-room' });
-
-    const { getByRole } = render(() => <CallLobby />);
-    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
-
-    await waitFor(() => expect(mocks.p2p.join).toHaveBeenCalledOnce());
-    const options = mocks.p2p.join.mock.calls[0][0];
-    expect(options).toEqual(
-      expect.objectContaining({
-        createSignaling: mocks.createRoomSignaling,
-        localTrackSlots: [
-          { id: 'microphone', kind: 'audio', track: microphone },
-          { id: 'primary-video', kind: 'video', track: camera },
-        ],
-        presenceData: { micOn: true, cameraOn: true },
-      }),
-    );
-    await expect(options.getLocalStream()).resolves.toBe(localStream);
-    expect(microphone.stop).not.toHaveBeenCalled();
-    expect(camera.stop).not.toHaveBeenCalled();
   });
 
   it('stops acquired media when joining a guest call fails', async () => {
@@ -166,12 +139,12 @@ describe('CallLobby', () => {
     const joinError = new Error('signaling unavailable');
     vi.spyOn(console, 'error').mockImplementation(() => {});
     mocks.signInAsGuest.mockResolvedValue('guest-user');
-    mocks.p2p.join.mockRejectedValue(joinError);
+    mocks.joinRoomLink.mockRejectedValue(joinError);
 
     const { getByRole } = render(() => <CallLobby />);
     fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
 
-    await waitFor(() => expect(mocks.p2p.join).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.joinRoomLink).toHaveBeenCalledOnce());
     await waitFor(() => expect(microphone.stop).toHaveBeenCalledOnce());
     expect(camera.stop).toHaveBeenCalledOnce();
   });
@@ -181,7 +154,7 @@ describe('CallLobby', () => {
     const [state, setState] = createSignal('idle');
     mocks.p2p.state.mockImplementation(state);
     mocks.signInAsGuest.mockResolvedValue('guest-user');
-    mocks.p2p.join.mockImplementationOnce(async ({ roomId }) => {
+    mocks.joinRoomLink.mockImplementationOnce(async (roomId) => {
       mocks.p2p.room.mockReturnValue({ roomId });
       mocks.p2p.errorKind.mockReturnValue('room-full');
       setState('full');
@@ -225,6 +198,6 @@ describe('CallLobby', () => {
     failSignIn(new Error('auth unavailable'));
     await waitFor(() => expect(microphone.stop).toHaveBeenCalledOnce());
     expect(camera.stop).toHaveBeenCalledOnce();
-    expect(mocks.p2p.join).not.toHaveBeenCalled();
+    expect(mocks.joinRoomLink).not.toHaveBeenCalled();
   });
 });

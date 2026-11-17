@@ -686,6 +686,17 @@ export class CallHandshakeController {
     return conversationId;
   }
 
+  /** Room-link calls skip the invite handshake but share the call room setup. */
+  joinRoomLink = async (
+    roomId: string,
+    localUID: string,
+    localStream: MediaStream,
+  ): Promise<void> => {
+    await this.enterRoom(roomId, localUID, false, () =>
+      Promise.resolve(localStream),
+    );
+  };
+
   private async enterRoom(
     roomId: string,
     localUID: string,

@@ -3,14 +3,13 @@
 import { createSignal, createEffect, on, Show } from 'solid-js';
 
 import { useP2PContext } from '@shared/p2p-context.js';
-import { createRoomSignaling, endpointPeerId } from '@realtime';
 import { signInAsGuest } from '@auth';
 import { t } from '@shared/i18n';
 import {
   getAudioConstraints,
   getVideoConstraints,
 } from '../media-constraints.js';
-import { createCallLocalTrackSlots } from '../call-media.js';
+import { useCallHandshake } from '../call-handshake.js';
 
 const buttonClass =
   'rounded-md px-4 py-2 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60';
@@ -47,6 +46,7 @@ function publicRoomIdFromUrl(link = window.location.href): string | null {
 
 export function CallLobby() {
   const p2p = useP2PContext();
+  const { joinRoomLink } = useCallHandshake();
 
   // Set when the visitor arrived via an invite link; cleared once that
   // call ends (the room link is single-use).
@@ -124,27 +124,7 @@ export function CallLobby() {
         signInAsGuest(),
         streamPromise,
       ]);
-      const room = await p2p.join({
-        roomId: id,
-        peerId: endpointPeerId(uid),
-        createSignaling: createRoomSignaling,
-        dataChannel: true,
-        // Guest calls use the same stable publication slots and initial media
-        // presence as contact calls. Without these, remote video is hidden
-        // until another control publishes presence, and camera replacement
-        // fails because the primary-video slot does not exist.
-        getLocalStream: () => Promise.resolve(acquiredStream),
-        localTrackSlots: createCallLocalTrackSlots(acquiredStream),
-        presenceData: {
-          micOn: acquiredStream
-            .getAudioTracks()
-            .some((track) => track.readyState === 'live' && track.enabled),
-          cameraOn: acquiredStream
-            .getVideoTracks()
-            .some((track) => track.readyState === 'live' && track.enabled),
-        },
-      });
-      if (!room) throw p2p.error() ?? new Error('Room join returned no room');
+      await joinRoomLink(id, uid, acquiredStream);
     } catch (err) {
       // Sign-in or signaling can fail before p2p invokes getLocalStream and
       // assumes ownership of the tracks, possibly before capture resolves.

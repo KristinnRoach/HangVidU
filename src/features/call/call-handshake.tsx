@@ -35,6 +35,11 @@ import type {
 
 type CallHandshakeContextValue = {
   startCall: (details: StartCallDetails) => Promise<void>;
+  joinRoomLink: (
+    roomId: string,
+    localUID: string,
+    localStream: MediaStream,
+  ) => Promise<void>;
   hangUp: () => void;
 
   /** Local media for the active call; undefined while idle or connecting. */
@@ -218,6 +223,7 @@ export function CallHandshakeProvider(props: ParentProps) {
 
   const value: CallHandshakeContextValue = {
     startCall: controller.startCall,
+    joinRoomLink: controller.joinRoomLink,
     // Wrap so a click handler's MouseEvent can't leak in as the hangUp reason.
     hangUp: () => controller.hangUp('user'),
     media,
