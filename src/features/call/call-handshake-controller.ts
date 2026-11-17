@@ -786,6 +786,11 @@ export class CallHandshakeController {
           if (autoExitOnEmpty) this.cancelReconnectGrace();
         },
         onDataChannelOpen: () => {
+          // A member that connects cancels a pending connect-failure exit.
+          if (this.connectFailedTimeoutId != null) {
+            this.clearConnectFailureTimeout();
+            this.onReconnectStatus('connected');
+          }
           // Per join, so callee setup counts too (it has no outgoing call).
           if (!connectRecorded) {
             connectRecorded = true;

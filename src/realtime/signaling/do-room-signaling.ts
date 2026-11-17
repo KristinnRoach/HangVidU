@@ -78,6 +78,9 @@ export function createDoRoomSignaling({
 
   // Retained after admission so reconnects restore the same registration.
   let registration: RoomRegistration | null = null;
+  // The server can't tell a lost join from an admitted one whose ack was
+  // lost, so every retransmission is a resume.
+  let joinSent = false;
   let pendingJoin:
     | {
         resolve: () => void;
@@ -170,8 +173,9 @@ export function createDoRoomSignaling({
     if (!registration) return;
     socket.send({
       ...joinMessage(registration),
-      ...(pendingJoin ? {} : { resume: true }),
+      ...(joinSent ? { resume: true } : {}),
     });
+    joinSent = true;
   });
 
   // The empty room drops this room's peers; the owner ends the call even when
@@ -219,7 +223,11 @@ export function createDoRoomSignaling({
       });
       // Not queued: onOpen sends it from `registration`, so a cancelled join
       // can't be replayed by a later connect.
-      if (socket.isOpen()) socket.send(joinMessage(registration));
+      joinSent = false;
+      if (socket.isOpen()) {
+        socket.send(joinMessage(registration));
+        joinSent = true;
+      }
       return ack;
     },
 

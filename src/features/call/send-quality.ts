@@ -54,10 +54,15 @@ async function reportSendQuality(room: P2PRoom): Promise<void> {
   for (const pc of pcs) {
     const stats = await pc.getStats();
     const reports = [...stats.values()];
-    // Firefox has no selectedCandidatePairId; its nominated pair is the one used.
+    // Firefox has no selectedCandidatePairId; fall back to its selected pair,
+    // then to a nominated one.
     const transport = reports.find((report) => report.type === 'transport');
     const pair =
       stats.get(transport?.selectedCandidatePairId) ??
+      reports.find(
+        (report) =>
+          report.type === 'candidate-pair' && report.selected === true,
+      ) ??
       reports.find(
         (report) =>
           report.type === 'candidate-pair' &&
