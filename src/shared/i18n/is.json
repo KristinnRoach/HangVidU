@@ -48,6 +48,8 @@
   "call.lobby.join": "Taka þátt",
   "call.lobby.link_copied": "Hlekkur afritaður",
   "call.lobby.copy_link": "Afrita hlekk",
+  "call.lobby.paste_link": "Límdu gestasímtalshlekk hér",
+  "call.lobby.error.link": "Sláðu inn gildan gestasímtalshlekk.",
   "call.lobby.invite_label": "Boðshlekkur",
   "call.lobby.send_link_hint": "Deildu hlekknum og taktu svo þátt þegar hentar.",
   "call.lobby.invited": "Þér hefur verið boðið í myndsímtal.",

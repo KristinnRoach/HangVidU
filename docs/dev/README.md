@@ -8,7 +8,7 @@ Start with [AGENTS.md](../../AGENTS.md) for conventions and the
 
 `vpr preview` builds the app and starts a production preview on port 4173, exposed at `https://dev.hangvidu.com` through the Cloudflare tunnel and using the production API. Use it for phone testing: it runs the built service worker, which `vpr dev` does not. `vpr preview:watch` rebuilds on source changes and checks for updates every 3 seconds, automatically reloading when the app is safe to interrupt. Use `vpr preview:local` for a preview without the tunnel.
 
-To test a group call, give each participant its own account or browser profile. Tabs in one profile share a guest account, and a room admits one endpoint per account.
+To test a group call, create a guest call and share its link. Participants can open the link or paste it into the guest lobby, including in the installed PWA. Give each participant its own account or browser profile. Tabs in one profile share a guest account, and a room admits one endpoint per account.
 
 Local HTTPS needs a trusted certificate. Install [mkcert](https://github.com/FiloSottile/mkcert#installation), then run once from the repository root:
 

@@ -97,6 +97,40 @@ describe('CallLobby', () => {
     expect(getByRole('status').textContent).toBe('call.lobby.link_copied');
   });
 
+  it('joins a pasted invite without needing an address bar', async () => {
+    window.history.replaceState(null, '', '/');
+    setupMediaDevices();
+    mocks.signInAsGuest.mockResolvedValue('guest-user');
+    mocks.p2p.join.mockResolvedValue({ roomId: 'guest-room' });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    const { getByRole } = render(() => <CallLobby />);
+    const input = getByRole('textbox', { name: 'call.lobby.invite_label' });
+    fireEvent.input(input, { target: { value: 'not a call link' } });
+    expect(getByRole('button', { name: 'call.lobby.join' }).disabled).toBe(
+      true,
+    );
+    expect(getByRole('alert').textContent).toBe('call.lobby.error.link');
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+
+    const roomId = '87654321-1234-1234-1234-123456789abc';
+    const link = `https://dev.hangvidu.com/?publicRoom=${roomId}`;
+    fireEvent.input(input, { target: { value: ` ${link} ` } });
+    fireEvent.click(getByRole('button', { name: 'call.lobby.copy_link' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(link));
+    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
+
+    await waitFor(() => expect(mocks.p2p.join).toHaveBeenCalledOnce());
+    expect(mocks.p2p.join.mock.calls[0][0].roomId).toBe(roomId);
+    expect(new URLSearchParams(window.location.search).get('publicRoom')).toBe(
+      roomId,
+    );
+  });
+
   it('joins guest calls with initial presence and stable media slots', async () => {
     const { camera, localStream, microphone } = setupMediaDevices();
     mocks.signInAsGuest.mockResolvedValue('guest-user');
