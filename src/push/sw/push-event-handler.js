@@ -27,6 +27,10 @@ export async function handlePushEvent(event) {
     payload,
     import.meta.env.BASE_URL,
   );
+  // Tags identify replacements, not deliveries; this lets the delayed close
+  // target only the notification this push showed.
+  const pushId = crypto.randomUUID();
+  presentation.options.data = { ...presentation.options.data, pushId };
 
   try {
     await self.registration.showNotification(
@@ -39,14 +43,36 @@ export async function handlePushEvent(event) {
   }
 
   try {
-    const clients = await self.clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true,
-    });
+    const clients = await getWindowClients();
     clients.forEach((client) =>
       client.postMessage({ type: 'PUSH_NOTIFICATION_SHOWN' }),
     );
+
+    // Android and iOS can ignore the page's immediate close() and leave the
+    // notification in the shade. Close it from the SW after the heads-up/sound
+    // has played, only while the app is still focused, so background delivery
+    // is unchanged.
+    if (!clients.some(isFocusedVisible)) return;
+    await new Promise((resolve) =>
+      setTimeout(resolve, FOREGROUND_CLOSE_DELAY_MS),
+    );
+    const notifications = await self.registration.getNotifications();
+    if (!(await getWindowClients()).some(isFocusedVisible)) return;
+
+    notifications
+      .filter((n) => n.data?.pushId === pushId)
+      .forEach((n) => n.close());
   } catch (error) {
     console.warn('[SW] foreground notification cleanup failed', error);
   }
+}
+
+const FOREGROUND_CLOSE_DELAY_MS = 4000;
+
+function getWindowClients() {
+  return self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+}
+
+function isFocusedVisible(client) {
+  return client.focused && client.visibilityState === 'visible';
 }
