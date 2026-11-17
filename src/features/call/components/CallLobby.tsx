@@ -154,6 +154,16 @@ export function CallLobby() {
       );
       console.error('[CallLobby] Failed to join guest room:', err);
       setError(joinErrorMessage(err, p2p.errorKind()));
+      // Failed joins can leave a watched room behind, hiding the lobby error.
+      const state = p2p.state();
+      if (
+        (state === 'full' || state === 'error') &&
+        p2p.room()?.roomId === id
+      ) {
+        void p2p.dispose().catch((error: unknown) => {
+          console.warn('[CallLobby] Failed to dispose rejected room:', error);
+        });
+      }
       setJoining(false);
     }
   }

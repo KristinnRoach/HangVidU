@@ -101,9 +101,7 @@ export class SignalingRoom extends DurableObject<Env> {
       peerId: null,
     } satisfies SocketState);
 
-    // Presence snapshot on connect. The P2PRoomSignaling contract requires
-    // watchers (connected, not joined) to know current occupancy — the client
-    // room checks capacity against it before and after joining.
+    // Watchers (connected, not joined) also receive the current presence.
     const recentDepartures = await this.recentlyDeparted();
     const peers = this.presenceMembers();
     const departed = recentDepartures.filter(

@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, waitFor } from '@solidjs/testing-library';
+import { createSignal } from 'solid-js';
 import {
   afterEach,
   beforeEach,
@@ -11,7 +12,9 @@ import {
 const mocks = vi.hoisted(() => ({
   p2p: {
     state: vi.fn(() => 'idle'),
+    room: vi.fn(),
     join: vi.fn(),
+    dispose: vi.fn(),
     error: vi.fn(),
     errorKind: vi.fn(),
   },
@@ -66,6 +69,9 @@ function setupMediaDevices() {
 describe('CallLobby', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.p2p.state.mockReturnValue('idle');
+    mocks.p2p.room.mockReset();
+    mocks.p2p.errorKind.mockReset();
     window.history.replaceState(
       null,
       '',
@@ -168,6 +174,38 @@ describe('CallLobby', () => {
     await waitFor(() => expect(mocks.p2p.join).toHaveBeenCalledOnce());
     await waitFor(() => expect(microphone.stop).toHaveBeenCalledOnce());
     expect(camera.stop).toHaveBeenCalledOnce();
+  });
+
+  it('returns to the lobby with a retryable message when the room is full', async () => {
+    setupMediaDevices();
+    const [state, setState] = createSignal('idle');
+    mocks.p2p.state.mockImplementation(state);
+    mocks.signInAsGuest.mockResolvedValue('guest-user');
+    mocks.p2p.join.mockImplementationOnce(async ({ roomId }) => {
+      mocks.p2p.room.mockReturnValue({ roomId });
+      mocks.p2p.errorKind.mockReturnValue('room-full');
+      setState('full');
+      throw new Error('room full');
+    });
+    mocks.p2p.dispose.mockImplementationOnce(async () => {
+      mocks.p2p.room.mockReturnValue(undefined);
+      mocks.p2p.errorKind.mockReturnValue(undefined);
+      setState('idle');
+    });
+
+    const { getByRole } = render(() => (
+      <div hidden={state() !== 'idle'}>
+        <CallLobby />
+      </div>
+    ));
+    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
+
+    await waitFor(() => {
+      expect(getByRole('alert').textContent).toBe('call.lobby.error.full');
+    });
+    expect(getByRole('button', { name: 'call.lobby.join' }).disabled).toBe(
+      false,
+    );
   });
 
   it('starts capture within the tap and stops it when guest sign-in fails', async () => {
