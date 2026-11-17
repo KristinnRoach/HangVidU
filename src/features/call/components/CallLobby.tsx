@@ -3,14 +3,13 @@
 import { createSignal, createEffect, on, Show } from 'solid-js';
 
 import { useP2PContext } from '@shared/p2p-context.js';
-import { createRoomSignaling } from '@realtime';
 import { signInAsGuest } from '@auth';
 import { t } from '@shared/i18n';
 import {
   getAudioConstraints,
   getVideoConstraints,
 } from '../media-constraints.js';
-import { createCallLocalTrackSlots } from '../call-media.js';
+import { useCallHandshake } from '../call-handshake.js';
 
 const buttonClass =
   'rounded-md px-4 py-2 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60';
@@ -33,13 +32,21 @@ function joinErrorMessage(err: unknown, kind: string | undefined): string {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function publicRoomIdFromUrl(): string | null {
-  const raw = new URLSearchParams(window.location.search).get('publicRoom');
-  return raw && UUID_RE.test(raw) ? raw : null;
+function publicRoomIdFromUrl(link = window.location.href): string | null {
+  try {
+    const url = new URL(link.trim());
+    const raw = url.searchParams.get('publicRoom');
+    return /^https?:$/.test(url.protocol) && raw && UUID_RE.test(raw)
+      ? raw
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function CallLobby() {
   const p2p = useP2PContext();
+  const { joinRoomLink } = useCallHandshake();
 
   // Set when the visitor arrived via an invite link; cleared once that
   // call ends (the room link is single-use).
@@ -47,7 +54,10 @@ export function CallLobby() {
     publicRoomIdFromUrl(),
   );
 
-  const [roomId, setRoomId] = createSignal<string | null>(invitedRoomId());
+  const [link, setLink] = createSignal(
+    invitedRoomId() ? window.location.href : '',
+  );
+  const roomId = () => publicRoomIdFromUrl(link());
   const [copied, setCopied] = createSignal(false);
   const [joining, setJoining] = createSignal(false);
   const [callEnded, setCallEnded] = createSignal(false);
@@ -66,7 +76,7 @@ export function CallLobby() {
           const url = new URL(window.location.href);
           url.searchParams.delete('publicRoom');
           window.history.replaceState(null, '', url);
-          setRoomId(null);
+          setLink('');
           setInvitedRoomId(null);
           setCallEnded(true);
         }
@@ -79,14 +89,14 @@ export function CallLobby() {
     const url = new URL(window.location.href);
     url.searchParams.set('publicRoom', id);
     window.history.replaceState(null, '', url);
-    setRoomId(id);
+    setLink(url.href);
     setCallEnded(false);
     void copyLink();
   }
 
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(link().trim());
       setCopied(true);
     } catch {
       setCopied(false);
@@ -96,6 +106,9 @@ export function CallLobby() {
   async function joinRoom() {
     const id = roomId();
     if (!id || joining()) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('publicRoom', id);
+    window.history.replaceState(null, '', url);
     setJoining(true);
     setCallEnded(false);
     setError(null);
@@ -111,33 +124,7 @@ export function CallLobby() {
         signInAsGuest(),
         streamPromise,
       ]);
-      // peerId must be unique per tab, not per user: the anonymous session is
-      // shared by all tabs of a browser profile, and the signaling DO keys
-      // peers by peerId. The full UID binds the tab ID to its authenticated
-      // owner; the UUID lets tabs participate separately.
-      const peerId = `${uid}:${crypto.randomUUID()}`;
-      const room = await p2p.join({
-        roomId: id,
-        peerId,
-        createSignaling: createRoomSignaling,
-        memberCapacity: 4,
-        dataChannel: true,
-        // Guest calls use the same stable publication slots and initial media
-        // presence as contact calls. Without these, remote video is hidden
-        // until another control publishes presence, and camera replacement
-        // fails because the primary-video slot does not exist.
-        getLocalStream: () => Promise.resolve(acquiredStream),
-        localTrackSlots: createCallLocalTrackSlots(acquiredStream),
-        presenceData: {
-          micOn: acquiredStream
-            .getAudioTracks()
-            .some((track) => track.readyState === 'live' && track.enabled),
-          cameraOn: acquiredStream
-            .getVideoTracks()
-            .some((track) => track.readyState === 'live' && track.enabled),
-        },
-      });
-      if (!room) throw p2p.error() ?? new Error('Room join returned no room');
+      await joinRoomLink(id, uid, acquiredStream);
     } catch (err) {
       // Sign-in or signaling can fail before p2p invokes getLocalStream and
       // assumes ownership of the tracks, possibly before capture resolves.
@@ -147,6 +134,16 @@ export function CallLobby() {
       );
       console.error('[CallLobby] Failed to join guest room:', err);
       setError(joinErrorMessage(err, p2p.errorKind()));
+      // Failed joins can leave a watched room behind, hiding the lobby error.
+      const state = p2p.state();
+      if (
+        (state === 'full' || state === 'error') &&
+        p2p.room()?.roomId === id
+      ) {
+        void p2p.dispose().catch((error: unknown) => {
+          console.warn('[CallLobby] Failed to dispose rejected room:', error);
+        });
+      }
       setJoining(false);
     }
   }
@@ -155,7 +152,7 @@ export function CallLobby() {
     <div class='flex w-full flex-col items-center gap-3'>
       <div class='flex flex-wrap items-center justify-center gap-2'>
         <Show
-          when={roomId()}
+          when={link().trim()}
           fallback={
             <div class='flex flex-col items-center gap-2'>
               <p>{t('call.lobby.ephemeral_prompt')}</p>
@@ -173,7 +170,7 @@ export function CallLobby() {
             type='button'
             class={primaryButtonClass}
             onClick={joinRoom}
-            disabled={joining()}
+            disabled={joining() || !roomId()}
           >
             {joining() ? t('call.lobby.joining') : t('call.lobby.join')}
           </button>
@@ -181,6 +178,7 @@ export function CallLobby() {
             type='button'
             class={`${buttonClass} border border-primary/60 text-primary hover:bg-primary/10`}
             onClick={copyLink}
+            disabled={joining() || !roomId()}
           >
             {t('call.lobby.copy_link')}
           </button>
@@ -193,16 +191,27 @@ export function CallLobby() {
         </span>
       </Show>
 
+      <input
+        class='w-full max-w-md rounded-md border border-primary/50 bg-transparent px-2 py-2 text-center text-sm text-neutral-400'
+        type='text'
+        value={link()}
+        placeholder={t('call.lobby.paste_link')}
+        disabled={joining()}
+        onInput={(event) => {
+          setLink(event.currentTarget.value);
+          setInvitedRoomId(null);
+          setCopied(false);
+          setError(null);
+        }}
+        aria-label={t('call.lobby.invite_label')}
+        onFocus={(e) => e.currentTarget.select()}
+      />
+      <Show when={link().trim() && !roomId()}>
+        <p class='text-sm text-red-400' role='alert'>
+          {t('call.lobby.error.link')}
+        </p>
+      </Show>
       <Show when={roomId() && !invitedRoomId()}>
-        {/* Clipboard write can fail silently — always show the link itself. */}
-        <input
-          class='w-full max-w-md rounded-md border border-primary/50 bg-transparent px-2 py-2 text-center text-sm text-neutral-400'
-          type='text'
-          readonly
-          value={window.location.href}
-          aria-label={t('call.lobby.invite_label')}
-          onFocus={(e) => e.currentTarget.select()}
-        />
         <p class={hintClass}>{t('call.lobby.send_link_hint')}</p>
       </Show>
       <Show when={invitedRoomId() && !joining()}>

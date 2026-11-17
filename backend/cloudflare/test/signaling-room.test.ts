@@ -5,7 +5,11 @@ import {
   runInDurableObject,
 } from 'cloudflare:test';
 import { describe, expect, it } from 'vite-plus/test';
-import type { ServerMessage } from '../../../shared/signaling/protocol';
+import {
+  REPLACED_CLOSE_CODE,
+  ROOM_MEMBER_LIMIT,
+  type ServerMessage,
+} from '../../../shared/signaling/protocol';
 
 /** Open a hibernatable WS straight to the DO (bypasses the Worker auth layer). */
 async function connect(
@@ -32,9 +36,14 @@ async function connect(
     else queue.push(msg);
   });
 
+  const closed = new Promise<number>((resolve) =>
+    ws.addEventListener('close', (e: CloseEvent) => resolve(e.code)),
+  );
+
   return {
     send: (m: unknown) => ws.send(JSON.stringify(m)),
     close: () => ws.close(),
+    closed,
     next: () =>
       new Promise<ServerMessage>((resolve) => {
         const m = queue.shift();
@@ -99,29 +108,70 @@ describe('SignalingRoom', () => {
     expect(memberIds(await victim.next())).toEqual(['victim']);
   });
 
-  it('keeps two same-owner tabs separate and authorizes IDs after leave', async () => {
+  it('replaces an account endpoint and keeps its place in join order', async () => {
     const first = 'owner:11111111-1111-4111-8111-111111111111';
     const second = 'owner:22222222-2222-4222-8222-222222222222';
-    const a = await connect('tabs', 'owner');
+    const a = await connect('endpoints', 'owner');
     await a.next();
     a.send({ t: 'join', peerId: first });
     await a.next();
-    a.send({ t: 'presence', data: { muted: true } });
-    await a.next();
-    const b = await connect('tabs', 'owner');
+    const other = await connect('endpoints', 'other');
+    await other.next();
+    other.send({ t: 'join', peerId: 'other' });
+    await other.next();
+    const b = await connect('endpoints', 'owner');
     await b.next();
     b.send({ t: 'join', peerId: second });
-    expect(memberIds(await b.next())).toEqual([first, second]);
-    await a.next();
-    a.send({ t: 'leave' });
-    expect(memberIds(await a.next())).toEqual([second]);
-    a.send({ t: 'join', peerId: first });
-    expect(memberIds(await a.next())).toEqual([first, second]);
-    a.send({ t: 'join', peerId: 'victim' });
-    expect(await a.next()).toEqual({
+    expect(await b.next()).toEqual({
+      t: 'peers',
+      peers: [{ peerId: second }, { peerId: 'other' }],
+    });
+    expect(await a.closed).toBe(REPLACED_CLOSE_CODE);
+    b.send({ t: 'join', peerId: 'victim' });
+    expect(await b.next()).toEqual({
       t: 'error',
       message: 'unauthorized peerId',
     });
+  });
+
+  it('refuses a resume once another endpoint of the account has joined', async () => {
+    const first = 'owner:11111111-1111-4111-8111-111111111111';
+    const second = 'owner:22222222-2222-4222-8222-222222222222';
+    const b = await connect('resume', 'owner');
+    await b.next();
+    b.send({ t: 'join', peerId: second });
+    await b.next();
+    const a = await connect('resume', 'owner');
+    await a.next();
+    a.send({ t: 'join', peerId: first, requestId: 'r1', resume: true });
+    expect(await a.next()).toEqual({
+      t: 'error',
+      message: 'endpoint replaced',
+      requestId: 'r1',
+    });
+    a.send({ t: 'join', peerId: second, requestId: 'r2', resume: true });
+    expect(memberIds(await a.next())).toEqual([second]);
+    expect(await b.closed).toBe(REPLACED_CLOSE_CODE);
+  });
+
+  it('rejects a join beyond the member limit but admits a returning account', async () => {
+    const owners = Array.from(
+      { length: ROOM_MEMBER_LIMIT },
+      (_, i) => `member-${i}`,
+    );
+    await joinAll('full', owners);
+    const late = await connect('full', 'late');
+    await late.next();
+    late.send({ t: 'join', peerId: 'late', requestId: 'r1' });
+    expect(await late.next()).toEqual({
+      t: 'error',
+      message: 'room full',
+      requestId: 'r1',
+    });
+    const returning = await connect('full', owners[0]);
+    await returning.next();
+    returning.send({ t: 'join', peerId: owners[0] });
+    expect(memberIds(await returning.next())).toEqual(owners);
   });
 
   it('requires a trusted owner on upgrade', async () => {
@@ -173,6 +223,36 @@ describe('SignalingRoom', () => {
       channel: 'sdp',
       data: 'private',
     });
+  });
+
+  it('keeps only the newest endpoint per account on wake', async () => {
+    const older = await connect('upgrade-dupes', 'owner');
+    await older.next();
+    older.send({ t: 'join', peerId: 'owner' });
+    await older.next();
+    const newer = await connect('upgrade-dupes', 'owner');
+    await newer.next();
+    await runInDurableObject(
+      env.SIGNALING_ROOM.getByName('upgrade-dupes'),
+      (_instance, state) => {
+        const sockets = state.getWebSockets();
+        const joined = sockets.find(
+          (ws) => ws.deserializeAttachment()?.peerId,
+        )!;
+        const idle = sockets.find((ws) => ws !== joined)!;
+        // Model a second endpoint joined under the earlier multi-endpoint rule.
+        idle.serializeAttachment({
+          ownerUid: 'owner',
+          peerId: `owner:${crypto.randomUUID()}`,
+          joinedAt: joined.deserializeAttachment().joinedAt + 1,
+        });
+      },
+    );
+    await evictDurableObject(env.SIGNALING_ROOM.getByName('upgrade-dupes'));
+    const observer = await connect('upgrade-dupes', 'observer');
+    const snapshot = await observer.next();
+    expect(snapshot.t === 'peers' && snapshot.peers).toHaveLength(1);
+    expect(await older.closed).toBe(REPLACED_CLOSE_CODE);
   });
 
   it('acknowledges this socket and request only after broadcasting current presence', async () => {

@@ -25,6 +25,9 @@ vi.mock('../signaling-socket', () => ({
       onOpen() {
         return () => {};
       },
+      onReplaced() {
+        return () => {};
+      },
       clearQueue() {},
       close() {
         handlers.clear();

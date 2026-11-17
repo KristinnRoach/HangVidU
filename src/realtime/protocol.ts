@@ -3,6 +3,11 @@
  * definition lives in `shared/signaling/protocol.ts` (shared with the worker);
  * client code imports it from here so the cross-boundary path stays in one spot.
  */
+export {
+  endpointPeerId,
+  REPLACED_CLOSE_CODE,
+  ROOM_FULL_ERROR,
+} from '../../shared/signaling/protocol';
 export type {
   PeerId,
   RelayChannel,

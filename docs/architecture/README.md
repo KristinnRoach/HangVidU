@@ -45,6 +45,15 @@ and local storage for guests; old RTDB contacts are migration input, not an app
 write path. `@kidlib/p2p` owns WebRTC mechanics; the call feature supplies signaling
 and application behaviour.
 
+A call is a signaling room, and knowing its random ID is what grants access.
+The room's Durable Object is the only admission authority: at most
+`ROOM_MEMBER_LIMIT` accounts, each with one joined endpoint. Clients set no
+`memberCapacity`, because the client check would count an endpoint that is
+about to be replaced as another member. Peer IDs identify endpoints (`uid:uuid`), so a
+newer window or device replaces the account's previous endpoint, ending its call, instead of
+taking another slot. An endpoint that reconnects after such a takeover yields to it. Calls are a P2P mesh, so each sender splits a fixed camera
+upload budget across its peers and samples outbound video and connection stats to Sentry.
+
 Persistent messages combine HTTP writes/history with live conversation-channel
 updates. The selected conversation store also owns drafts and optimistic send
 state. Private messaging is not implemented by that persistence-oriented path.

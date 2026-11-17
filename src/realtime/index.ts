@@ -4,7 +4,10 @@
 // the shared wire protocol, and the P2PRoomSignaling backend adapters. Cross-
 // module consumers import from here, not from subpaths.
 
-export { createRoomSignaling } from './signaling/index.js';
+export {
+  createRoomSignaling,
+  onRoomMembershipLost,
+} from './signaling/index.js';
 export { createConversationChannel } from './conversation-channel.js';
 export { closeUserMailbox, subscribeToUserMailbox } from './user-mailbox.js';
 export { subscribeToWakeSignals } from './wake-signals.js';
@@ -14,6 +17,7 @@ export {
   type WireMessage,
 } from './conversation-protocol.js';
 
+export { endpointPeerId } from './protocol';
 export type {
   PeerId,
   RelayChannel,

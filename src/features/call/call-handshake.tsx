@@ -12,7 +12,7 @@ import {
 
 import { getAuthProviderProfileSeed, useAuth } from '@auth';
 import { useP2PContext } from '@shared/p2p-context.js';
-import { createRoomSignaling } from '@realtime';
+import { createRoomSignaling, onRoomMembershipLost } from '@realtime';
 import { subscribe } from '@shared/events/index.js';
 import {
   getAppReloadAllowed,
@@ -35,6 +35,11 @@ import type {
 
 type CallHandshakeContextValue = {
   startCall: (details: StartCallDetails) => Promise<void>;
+  joinRoomLink: (
+    roomId: string,
+    localUID: string,
+    localStream: MediaStream,
+  ) => Promise<void>;
   hangUp: () => void;
 
   /** Local media for the active call; undefined while idle or connecting. */
@@ -200,6 +205,12 @@ export function CallHandshakeProvider(props: ParentProps) {
     onReconnectStatus: setReconnectStatus,
   });
 
+  onCleanup(
+    onRoomMembershipLost((roomId) => {
+      if (p2p.room()?.roomId === roomId) controller.hangUp('membership-lost');
+    }),
+  );
+
   const incomingCall = (): MailboxInvite | null => {
     const state = handshakeState();
     return state && state.direction === 'incoming' ? state.call : null;
@@ -212,6 +223,7 @@ export function CallHandshakeProvider(props: ParentProps) {
 
   const value: CallHandshakeContextValue = {
     startCall: controller.startCall,
+    joinRoomLink: controller.joinRoomLink,
     // Wrap so a click handler's MouseEvent can't leak in as the hangUp reason.
     hangUp: () => controller.hangUp('user'),
     media,

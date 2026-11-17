@@ -1,18 +1,23 @@
-import type {
-  CreateRoomSignalingOptions,
-  P2PRoomPeerSignalingOptions,
-  P2PRoomPresenceData,
-  P2PRoomPresenceMember,
-  P2PRoomPresenceSnapshot,
-  P2PRoomSignaling,
-  RtcSignalingSource,
+import {
+  RoomFullError,
+  type CreateRoomSignalingOptions,
+  type P2PRoomPeerSignalingOptions,
+  type P2PRoomPresenceData,
+  type P2PRoomPresenceMember,
+  type P2PRoomPresenceSnapshot,
+  type P2PRoomSignaling,
+  type RtcSignalingSource,
 } from '@kidlib/p2p';
 import { getLoggedInUserToken } from '@auth';
 import {
   createSignalingSocket,
   type SignalingSocket,
 } from '../signaling-socket';
-import type { RelayChannel, ServerMessage } from '../protocol';
+import {
+  ROOM_FULL_ERROR,
+  type RelayChannel,
+  type ServerMessage,
+} from '../protocol';
 import { buildHangViduWebSocketUrl } from '../../infra/hangvidu-api-url';
 
 /**
@@ -40,6 +45,18 @@ interface RelaySubscription {
   handler: (data: unknown) => void;
 }
 
+const membershipLostHandlers = new Set<(roomId: string) => void>();
+
+/** Called when this endpoint loses its room for good: another endpoint of the
+ * same account replaced it, or the server refused to readmit it after a
+ * reconnect. */
+export function onRoomMembershipLost(
+  handler: (roomId: string) => void,
+): () => void {
+  membershipLostHandlers.add(handler);
+  return () => membershipLostHandlers.delete(handler);
+}
+
 function signalingUrl(roomId: string): string {
   return buildHangViduWebSocketUrl(
     `/rooms/${encodeURIComponent(roomId)}/signal`,
@@ -61,6 +78,9 @@ export function createDoRoomSignaling({
 
   // Retained after admission so reconnects restore the same registration.
   let registration: RoomRegistration | null = null;
+  // The server can't tell a lost join from an admitted one whose ack was
+  // lost, so every retransmission is a resume.
+  let joinSent = false;
   let pendingJoin:
     | {
         resolve: () => void;
@@ -130,16 +150,45 @@ export function createDoRoomSignaling({
         }
         return;
       case 'error':
-        if (registration && message.requestId === registration.requestId)
-          rejectJoin(new Error(message.message));
+        if (registration && message.requestId === registration.requestId) {
+          // Without a pending join this was a rejoin after reconnect, so the
+          // room already counts this endpoint as a member.
+          const wasMember = !pendingJoin;
+          rejectJoin(
+            message.message === ROOM_FULL_ERROR
+              ? new RoomFullError()
+              : new Error(message.message),
+          );
+          if (wasMember) reportMembershipLost();
+        }
         console.warn('[signaling] worker error:', message.message);
         return;
     }
   });
 
-  // Restore presence (peerId + latest data) after every (re)connect.
+  // Restore presence (peerId + latest data) after every (re)connect. Once
+  // admitted, the rejoin is a resume, so it can't take the slot back from a
+  // newer endpoint of this account.
   socket.onOpen(() => {
-    if (registration) socket.send(joinMessage(registration));
+    if (!registration) return;
+    socket.send({
+      ...joinMessage(registration),
+      ...(joinSent ? { resume: true } : {}),
+    });
+    joinSent = true;
+  });
+
+  // The empty room drops this room's peers; the owner ends the call even when
+  // no peers had connected yet.
+  function reportMembershipLost() {
+    peersHandlers.forEach((h) => h({ members: [] }));
+    membershipLostHandlers.forEach((h) => h(roomId));
+  }
+
+  // This account joined the room from another endpoint.
+  socket.onReplaced(() => {
+    rejectJoin(new Error('signaling replaced by another endpoint'));
+    reportMembershipLost();
   });
 
   function subscribeRelay(
@@ -174,7 +223,11 @@ export function createDoRoomSignaling({
       });
       // Not queued: onOpen sends it from `registration`, so a cancelled join
       // can't be replayed by a later connect.
-      if (socket.isOpen()) socket.send(joinMessage(registration));
+      joinSent = false;
+      if (socket.isOpen()) {
+        socket.send(joinMessage(registration));
+        joinSent = true;
+      }
       return ack;
     },
 

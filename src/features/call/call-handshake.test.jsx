@@ -53,7 +53,10 @@ vi.mock('./call-handshake-controller.js', () => ({
 vi.mock('../../shared/p2p-context.js', () => ({
   useP2PContext: () => ({ state: (...args) => mocks.p2pState(...args) }),
 }));
-vi.mock('@realtime', () => ({ createRoomSignaling: vi.fn() }));
+vi.mock('@realtime', () => ({
+  createRoomSignaling: vi.fn(),
+  onRoomMembershipLost: vi.fn(() => () => {}),
+}));
 vi.mock('@auth', () => ({
   getAuthProviderProfileSeed: vi.fn(() => null),
   getAuthState: vi.fn(() => ({ isLoggedIn: false })),

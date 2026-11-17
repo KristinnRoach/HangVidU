@@ -54,10 +54,10 @@ class FakeWebSocket {
     this.dispatch('message', { data: JSON.stringify(message) });
   }
 
-  close() {
+  close(code) {
     if (this.readyState === FakeWebSocket.CLOSED) return;
     this.readyState = FakeWebSocket.CLOSED;
-    this.dispatch('close');
+    this.dispatch('close', { code });
   }
 }
 
@@ -153,8 +153,17 @@ describe('createDoRoomSignaling over the real signaling socket', () => {
         peerId: 'peer-a',
         requestId: 'req-1',
         data: { muted: true },
+        resume: true,
       },
     ]);
+  });
+
+  it('stays closed after the server replaces this endpoint', async () => {
+    const first = await connected();
+    first.open();
+    first.close(4000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(FakeWebSocket.instances).toEqual([first]);
   });
 
   it('re-joins before replaying queued SDP, ICE and restart requests', async () => {
@@ -175,7 +184,7 @@ describe('createDoRoomSignaling over the real signaling socket', () => {
     second.open();
 
     expect(second.sent).toEqual([
-      { t: 'join', peerId: 'peer-a', requestId: 'req-1' },
+      { t: 'join', peerId: 'peer-a', requestId: 'req-1', resume: true },
       {
         t: 'relay',
         to: 'peer-b',

@@ -4,6 +4,7 @@ import {
   getCallService,
 } from './call-service.js';
 import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
+import { endpointPeerId } from '@realtime';
 import {
   captureMessage,
   flush,
@@ -149,7 +150,6 @@ export type IncomingCallNotificationDetails = {
 };
 
 type EnterRoomOptions = {
-  memberCapacity?: number;
   autoExitOnEmpty?: boolean;
   signal?: AbortSignal;
 };
@@ -166,7 +166,8 @@ type HangUpReason =
   | 'reconnect-timeout'
   | 'connect-timeout'
   | 'enter-room-error'
-  | 'accept-error';
+  | 'accept-error'
+  | 'membership-lost';
 
 type CallFailureKind =
   | 'room-resolve-failed'
@@ -685,16 +686,23 @@ export class CallHandshakeController {
     return conversationId;
   }
 
+  /** Room-link calls skip the invite handshake but share the call room setup. */
+  joinRoomLink = async (
+    roomId: string,
+    localUID: string,
+    localStream: MediaStream,
+  ): Promise<void> => {
+    await this.enterRoom(roomId, localUID, false, () =>
+      Promise.resolve(localStream),
+    );
+  };
+
   private async enterRoom(
     roomId: string,
     localUID: string,
     audioOnly = false,
     getLocalStream?: () => Promise<MediaStream>,
-    {
-      memberCapacity = 2,
-      autoExitOnEmpty = true,
-      signal,
-    }: EnterRoomOptions = {},
+    { autoExitOnEmpty = true, signal }: EnterRoomOptions = {},
   ) {
     const localStream = await (
       getLocalStream ?? (() => this.getCallLocalStream(audioOnly, signal))
@@ -715,7 +723,7 @@ export class CallHandshakeController {
     try {
       room = await this.p2p.join({
         roomId,
-        peerId: localUID,
+        peerId: endpointPeerId(localUID),
         createSignaling: this.createSignaling,
         // Keep room ownership/cleanup while making the acquired tracks available
         // when the reserved publication slots are declared before negotiation.
@@ -729,14 +737,14 @@ export class CallHandshakeController {
             .getVideoTracks()
             .some((track) => track.readyState === 'live' && track.enabled),
         },
-        memberCapacity,
         dataChannel: true,
         iceServersProvider: provideIceServers,
         iceRecovery: {},
         startTimeoutMs: START_TIMEOUT_MS,
         connectedTimeoutMs: CONNECTED_TIMEOUT_MS,
         signal,
-        onError: ({ error }) => this.handleRoomError(error, roomId),
+        onError: ({ error, memberId }) =>
+          this.handleRoomError(error, roomId, memberId),
         onIceReconnecting: ({ attempt, maxAttempts, reason, nextDelayMs }) => {
           metrics.count('call.ice_reconnect_attempt', 1);
           console.warn(
@@ -778,6 +786,11 @@ export class CallHandshakeController {
           if (autoExitOnEmpty) this.cancelReconnectGrace();
         },
         onDataChannelOpen: () => {
+          // A member that connects cancels a pending connect-failure exit.
+          if (this.connectFailedTimeoutId != null) {
+            this.clearConnectFailureTimeout();
+            this.onReconnectStatus('connected');
+          }
           // Per join, so callee setup counts too (it has no outgoing call).
           if (!connectRecorded) {
             connectRecorded = true;
@@ -1144,7 +1157,11 @@ export class CallHandshakeController {
    * is a dead call, not a blip — @kidlib/p2p has already closed that member.
    * Show a bounded failure message, then exit to the lobby so the user can retry.
    */
-  private handleRoomError(error: unknown, roomId: string): void {
+  private handleRoomError(
+    error: unknown,
+    roomId: string,
+    memberId?: string,
+  ): void {
     const message = error instanceof Error ? error.message : String(error);
     console.log('[call] room error', { message });
     const code = (error as { code?: unknown } | null)?.code;
@@ -1157,6 +1174,14 @@ export class CallHandshakeController {
     };
     console.warn(detail, '[call] connection failed');
     reportCallFailure('connect-failed', detail, code);
+    // In a mesh, one member's failed connection must not end the call for
+    // the members that did connect.
+    const room = this.p2p.room();
+    if (
+      room &&
+      [...room.peerConnections().keys()].some((id) => id !== memberId)
+    )
+      return;
     this.clearReconnectTimers();
     this.clearConnectFailureTimeout();
     this.onReconnectStatus('connect-failed');

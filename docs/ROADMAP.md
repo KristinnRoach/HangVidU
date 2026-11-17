@@ -43,7 +43,8 @@ component, removing replaced rules. A complete redesign or CSS migration is not 
 
 - **Outcome:** Multiple participants can join and remain in a call independently.
 - **Scope:** Invitations, participant identity/layout, media controls, and per-participant connection feedback.
-- **Decide:** Initial participant limit, access/invitation model, and whether the current P2P approach meets those needs.
+- **Decided:** Up to 4 participants on the P2P mesh. Knowing a room ID grants access, with one endpoint per account ([architecture](architecture/README.md#data-and-transport)).
+- **Decide:** How people are added to a running call, and what measurements would justify an SFU or a higher limit.
 - **Done when:** Calls work at the chosen limit on representative devices/networks, including a participant leaving or reconnecting while others continue.
 
 ## 4. User settings

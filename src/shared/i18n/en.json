@@ -48,6 +48,8 @@
   "call.lobby.join": "Join call",
   "call.lobby.link_copied": "Link copied",
   "call.lobby.copy_link": "Copy link",
+  "call.lobby.paste_link": "Paste a guest call link",
+  "call.lobby.error.link": "Enter a valid guest call link.",
   "call.lobby.invite_label": "Invite link",
   "call.lobby.send_link_hint": "Share this link, then join when you're ready.",
   "call.lobby.invited": "You've been invited to a video call.",

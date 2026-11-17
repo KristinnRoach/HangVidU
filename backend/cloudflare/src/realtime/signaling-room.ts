@@ -1,6 +1,10 @@
 import { DurableObject } from 'cloudflare:workers';
 import {
+  ENDPOINT_REPLACED_ERROR,
   isClientMessage,
+  REPLACED_CLOSE_CODE,
+  ROOM_FULL_ERROR,
+  ROOM_MEMBER_LIMIT,
   type ClientMessage,
   type PeerId,
   type PresenceData,
@@ -22,9 +26,22 @@ const DEPARTURE_REPLAY_MS = 30_000;
 // Bound storage and snapshot size even under repeated guest-ID join/leave churn.
 const MAX_RECENT_DEPARTURES = 256;
 const DEPARTURES_KEY = 'recent-departures';
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Endpoints use `uid:uuid`, so the account is bound to the ID. A bare UID is
+ * still accepted from clients that predate per-endpoint IDs. */
+function ownsPeerId(ownerUid: string, peerId: PeerId): boolean {
+  if (peerId === ownerUid) return true;
+  const prefix = `${ownerUid}:`;
+  return (
+    peerId.startsWith(prefix) && UUID_PATTERN.test(peerId.slice(prefix.length))
+  );
+}
 
 /**
  * One instance per room (keyed by roomId). A dumb relay:
+ *   - admits up to ROOM_MEMBER_LIMIT accounts, one joined endpoint each
  *   - tracks presence (joined peers + their self-asserted presence data)
  *   - forwards `relay` messages to the addressed peer
  * It never inspects SDP/ICE contents, and treats presence `data` as opaque.
@@ -43,6 +60,23 @@ export class SignalingRoom extends DurableObject<Env> {
       if (this.getSocketState(ws).ownerUid) continue;
       removedLegacyPeer = this.clearSocketPresence(ws) || removedLegacyPeer;
       ws.close(4001, 'reconnect to authenticate');
+    }
+    // Earlier releases let an account join from several endpoints. Keep its
+    // newest one, as a fresh join would.
+    const owners = new Set<string | undefined>();
+    const newestFirst = this.joinedSockets().sort(
+      (a, b) =>
+        (this.getSocketState(b).joinedAt ?? 0) -
+        (this.getSocketState(a).joinedAt ?? 0),
+    );
+    for (const ws of newestFirst) {
+      const { ownerUid } = this.getSocketState(ws);
+      if (owners.has(ownerUid)) {
+        this.retire(ws);
+        removedLegacyPeer = true;
+      } else {
+        owners.add(ownerUid);
+      }
     }
     if (removedLegacyPeer) this.broadcastPeers();
   }
@@ -67,9 +101,7 @@ export class SignalingRoom extends DurableObject<Env> {
       peerId: null,
     } satisfies SocketState);
 
-    // Presence snapshot on connect. The P2PRoomSignaling contract requires
-    // watchers (connected, not joined) to know current occupancy — the client
-    // room checks capacity against it before and after joining.
+    // Watchers (connected, not joined) also receive the current presence.
     const recentDepartures = await this.recentlyDeparted();
     const peers = this.presenceMembers();
     const departed = recentDepartures.filter(
@@ -116,31 +148,46 @@ export class SignalingRoom extends DurableObject<Env> {
     const message = parsed as ClientMessage;
     switch (message.t) {
       case 'join': {
-        // Contact calls use the UID; guest tabs use UID:UUID. Check even when
-        // the ID is vacant, so first registration cannot squat another UID.
-        const suffix = message.peerId.slice(state.ownerUid.length + 1);
-        const ownsId =
-          message.peerId === state.ownerUid ||
-          (message.peerId.startsWith(`${state.ownerUid}:`) &&
-            /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-              suffix,
-            ));
-        if (!ownsId)
+        // Checked even when the ID is vacant, so a first registration cannot
+        // squat another account's ID.
+        if (!ownsPeerId(state.ownerUid, message.peerId))
           return this.sendError(ws, 'unauthorized peerId', message.requestId);
-        // A reconnecting member keeps its place in join order, so a newcomer
-        // cannot rank ahead of it for the last capacity slot.
-        const joinedAt =
-          this.earliestJoinOrder(message.peerId) ?? this.nextJoinOrder();
-        if (!this.replaceExistingPeerSocket(ws, message.peerId)) {
-          return this.sendError(ws, 'peerId in use', message.requestId);
-        }
-        await this.recentlyDeparted({ clear: message.peerId });
+        // One endpoint per account: this join takes over the account's slot
+        // and join order from its previous socket, whether that is the same
+        // endpoint reconnecting or another window or device.
+        const previous = this.joinedSockets().filter(
+          (other) =>
+            other !== ws &&
+            this.getSocketState(other).ownerUid === state.ownerUid,
+        );
+        // A resuming endpoint was offline while another endpoint took over.
+        if (
+          message.resume &&
+          previous.some(
+            (other) => this.getSocketState(other).peerId !== message.peerId,
+          )
+        )
+          return this.sendError(ws, ENDPOINT_REPLACED_ERROR, message.requestId);
+        const others = this.joinedSockets().filter(
+          (other) => other !== ws && !previous.includes(other),
+        );
+        if (others.length >= ROOM_MEMBER_LIMIT)
+          return this.sendError(ws, ROOM_FULL_ERROR, message.requestId);
+        const heldOrders = [ws, ...previous].flatMap(
+          (socket) => this.getSocketState(socket).joinedAt ?? [],
+        );
+        const joinedAt = heldOrders.length
+          ? Math.min(...heldOrders)
+          : this.nextJoinOrder();
+        for (const other of previous) this.retire(other);
+        // Admission is synchronous, so no concurrent join can take this slot.
         this.setPeerState(ws, {
           peerId: message.peerId,
           data: message.data,
           joinedAt,
         });
         this.broadcastPeers();
+        await this.recentlyDeparted({ clear: message.peerId });
         this.send(ws, {
           t: 'joined',
           peerId: message.peerId,
@@ -219,39 +266,26 @@ export class SignalingRoom extends DurableObject<Env> {
     }
   }
 
-  /** Joined peers in join order, with their presence data. @kidlib/p2p admits
-   * the first `memberCapacity` members of this list. The local peer is included
+  /** Joined peers in join order, with their presence data. Only admitted
+   * peers are joined, so clients connect to every listed member. The local peer is included
    * (its own socket is in getWebSockets()), so self mute toggles round-trip back. */
   private presenceMembers(): PresenceMember[] {
-    const byPeerId = new Map<
-      PeerId,
-      { member: PresenceMember; joinedAt: number }
-    >();
-    for (const ws of this.ctx.getWebSockets()) {
-      const { peerId, data, joinedAt = 0 } = this.getSocketState(ws);
-      if (!peerId) continue;
-      const existing = byPeerId.get(peerId);
-      if (existing && existing.joinedAt > joinedAt) continue;
-      byPeerId.set(peerId, {
-        member: data ? { peerId, data } : { peerId },
-        joinedAt,
-      });
-    }
-    return [...byPeerId.values()]
-      .sort((a, b) => a.joinedAt - b.joinedAt)
-      .map(({ member }) => member);
+    return this.ctx
+      .getWebSockets()
+      .map((ws) => this.getSocketState(ws))
+      .filter((state) => state.peerId !== null)
+      .sort((a, b) => (a.joinedAt ?? 0) - (b.joinedAt ?? 0))
+      .map(({ peerId, data }) =>
+        data
+          ? { peerId: peerId as PeerId, data }
+          : { peerId: peerId as PeerId },
+      );
   }
 
-  private earliestJoinOrder(peerId: PeerId): number | undefined {
-    let earliest: number | undefined;
-    for (const ws of this.ctx.getWebSockets()) {
-      const state = this.getSocketState(ws);
-      if (state.peerId !== peerId || state.joinedAt === undefined) continue;
-      if (earliest === undefined || state.joinedAt < earliest) {
-        earliest = state.joinedAt;
-      }
-    }
-    return earliest;
+  private joinedSockets(): WebSocket[] {
+    return this.ctx
+      .getWebSockets()
+      .filter((ws) => this.getSocketState(ws).peerId !== null);
   }
 
   /** Also cleans up rooms that receive no further sockets or messages. */
@@ -291,42 +325,20 @@ export class SignalingRoom extends DurableObject<Env> {
     });
   }
 
-  private findSocket(peerId: PeerId): WebSocket | null {
-    let target: WebSocket | null = null;
-    let targetJoinedAt = -1;
-    for (const ws of this.ctx.getWebSockets()) {
-      const state = this.getSocketState(ws);
-      if (state.peerId !== peerId) continue;
-      const joinedAt = state.joinedAt ?? 0;
-      if (target && targetJoinedAt > joinedAt) continue;
-      target = ws;
-      targetJoinedAt = joinedAt;
-    }
-    return target;
+  private findSocket(peerId: PeerId): WebSocket | undefined {
+    return this.joinedSockets().find(
+      (ws) => this.getSocketState(ws).peerId === peerId,
+    );
   }
 
-  private replaceExistingPeerSocket(
-    current: WebSocket,
-    peerId: PeerId,
-  ): boolean {
-    const ownerUid = this.getSocketState(current).ownerUid;
-    const existing = this.ctx
-      .getWebSockets()
-      .filter(
-        (ws) => ws !== current && this.getSocketState(ws).peerId === peerId,
-      );
-    if (existing.some((ws) => this.getSocketState(ws).ownerUid !== ownerUid)) {
-      return false;
+  /** Detach first, so the delayed close callback cannot broadcast stale presence. */
+  private retire(ws: WebSocket): void {
+    this.clearSocketPresence(ws);
+    try {
+      ws.close(REPLACED_CLOSE_CODE, 'replaced by newer connection');
+    } catch {
+      // Already closing.
     }
-    for (const ws of existing) {
-      this.clearSocketPresence(ws);
-      try {
-        ws.close(4000, 'replaced by newer connection');
-      } catch {
-        // Attachment is already detached from routing.
-      }
-    }
-    return true;
   }
 
   private clearPeerPresence(peerId: PeerId | null): void {

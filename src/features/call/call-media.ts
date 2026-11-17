@@ -15,6 +15,7 @@ import {
   getAudioConstraints,
   getVideoConstraints,
 } from './media-constraints.js';
+import { trackSendQuality } from './send-quality';
 
 export const MICROPHONE_SLOT_ID = 'microphone';
 export const PRIMARY_VIDEO_SLOT_ID = 'primary-video';
@@ -83,6 +84,7 @@ export function createCallLocalTrackSlots(
 
 export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const localStream = () => p2p.localStream();
+  trackSendQuality(p2p);
   const ownedCameraTracks = new Set<MediaStreamTrack>();
   const [micOn, setMicOn] = createSignal(false);
   const [micRecoveryPending, setMicRecoveryPending] = createSignal(false);
