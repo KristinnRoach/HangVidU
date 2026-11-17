@@ -6,7 +6,9 @@ Start with [AGENTS.md](../../AGENTS.md) for conventions and the
 
 `vpr dev` starts Vite over HTTPS on port 5173 and the local API together.
 
-`vpr preview` builds the app and starts a production preview on port 4173, exposed at `https://dev.hangvidu.com` through the Cloudflare tunnel and using the production API. Use it for phone testing: it runs the built service worker, which `vpr dev` does not. `vpr preview:watch` does the same but rebuilds on every save (a few seconds; the phone may need a second reload to pick up the new service worker). Use `vpr preview:local` for a preview without the tunnel.
+`vpr preview` builds the app and starts a production preview on port 4173, exposed at `https://dev.hangvidu.com` through the Cloudflare tunnel and using the production API. Use it for phone testing: it runs the built service worker, which `vpr dev` does not. Use `vpr preview:local` for a preview without the tunnel.
+
+`vpr preview:watch` rebuilds when source files change (a few seconds), but does not provide live reload. After the rebuild finishes, refresh the browser page or background and foreground the installed PWA to trigger a service-worker update check. The phone may need a second reload to pick up the new service worker. While left open, the app also checks for updates every 20 minutes.
 
 Local HTTPS needs a trusted certificate. Install [mkcert](https://github.com/FiloSottile/mkcert#installation), then run once from the repository root:
 
