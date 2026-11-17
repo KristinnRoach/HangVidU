@@ -350,7 +350,6 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       https: true,
       host: true,
-      allowedHosts: ['dev.hangvidu.com'],
 
       proxy: {
         // Proxy Firebase Auth handler and init.json requests
