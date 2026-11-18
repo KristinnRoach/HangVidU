@@ -48,6 +48,8 @@ type CallHandshakeContextValue = {
   reconnectStatus: Accessor<CallReconnectStatus>;
   incomingCall: Accessor<MailboxInvite | null>;
   outgoingCall: Accessor<OutgoingCall | null>;
+  /** Whether the account has an endpoint in the current call room. */
+  isInCall: (uid: string) => boolean;
   cancelOutgoing: () => void;
   acceptIncoming: () => void;
   declineIncoming: () => void;
@@ -231,6 +233,8 @@ export function CallHandshakeProvider(props: ParentProps) {
     reconnectStatus,
     incomingCall,
     outgoingCall,
+    // Peer IDs are `uid:uuid` endpoints (endpointPeerId).
+    isInCall: (uid) => p2p.members().some((id) => id.startsWith(`${uid}:`)),
     cancelOutgoing: controller.cancelOutgoing,
     acceptIncoming: controller.acceptIncoming,
     declineIncoming: controller.declineIncoming,

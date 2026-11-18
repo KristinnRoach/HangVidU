@@ -93,6 +93,11 @@
     color: rgb(62, 189, 62);
     cursor: pointer;
 
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
     & .lucide-icon {
       rotate: 0deg;
       transition: all 0.2s ease;
@@ -101,7 +106,7 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .contact-call-btn:hover,
+  .contact-call-btn:not(:disabled):hover,
   .contact-name:hover {
     background: none;
     scale: 1.125;
