@@ -26,6 +26,7 @@
   "call.invite_busy": "{name} er á tali",
   "call.invite_declined": "{name} hafnaði símtalinu",
   "call.invite_unanswered": "{name} svaraði ekki",
+  "call.invite_failed": "Ekki tókst að bjóða {name}. Reyndu aftur.",
   "call.calling": "Hringi í {name}...",
   "call.waiting": "Bíður svars...",
   "call.waiting_peer": "Bíður eftir að hinn aðilinn tengist...",

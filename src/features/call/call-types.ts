@@ -15,8 +15,8 @@ export type OutgoingCall = {
 
 /** How an outgoing invite ended without a join, shown briefly. */
 export type InviteOutcome = {
-  call: OutgoingCall;
-  result: 'busy' | 'declined' | 'unanswered';
+  call: Pick<OutgoingCall, 'calleeName' | 'joinRoomId'>;
+  result: 'busy' | 'declined' | 'unanswered' | 'failed';
 };
 
 export type StartCallDetails = {

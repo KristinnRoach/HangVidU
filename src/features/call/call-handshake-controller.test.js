@@ -7,6 +7,7 @@ import {
   vi,
 } from 'vite-plus/test';
 import { P2P_ERROR_CODES } from '@kidlib/p2p';
+import { flush } from '@sentry/browser';
 
 const mocks = vi.hoisted(() => ({
   incomingCallback: undefined,
@@ -1285,6 +1286,7 @@ describe('CallHandshakeController', () => {
       invite: {
         callInviteId: CALL_INVITE_ID,
         roomId: 'room-1',
+        joinRoomId: 'live-room',
         callerId: 'caller-id',
         callerName: 'Caller',
         audioOnly: false,
@@ -1298,7 +1300,7 @@ describe('CallHandshakeController', () => {
     // The caller stops ringing instead of waiting for the invite to expire.
     await vi.waitFor(() =>
       expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledWith(
-        expect.objectContaining({ responseType: 'rejected' }),
+        expect.objectContaining({ roomId: 'room-1', responseType: 'rejected' }),
       ),
     );
     expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledOnce();
@@ -1309,10 +1311,10 @@ describe('CallHandshakeController', () => {
         '[call] accept-failed',
         expect.objectContaining({
           fingerprint: ['call-failure', 'accept-failed', 'Error'],
-          tags: expect.objectContaining({ 'call.room': 'room-1' }),
+          tags: expect.objectContaining({ 'call.room': 'live-room' }),
           extra: expect.objectContaining({
             message: 'camera blocked',
-            roomId: 'room-1',
+            roomId: 'live-room',
           }),
         }),
       ),
@@ -1384,19 +1386,23 @@ describe('CallHandshakeController', () => {
       expect.objectContaining({ roomId: 'room-ac', joinRoomId: 'room-ab' }),
     );
 
-    await mocks.responseCallback?.({
-      callInviteId: CALL_INVITE_ID,
+    const [{ callInviteId }] = mocks.sendOutgoingCallInvite.mock.calls[0];
+    await mocks.responseCallback({
+      callInviteId,
       roomId: 'room-ac',
       responseType: 'accepted',
       by: 'callee-c',
       respondedAt: Date.now(),
     });
+    expect(mocks.ackCallResponse).toHaveBeenCalledWith('room-ac', callInviteId);
     expect(p2p.join).not.toHaveBeenCalled();
     expect(p2p.dispose).not.toHaveBeenCalled();
   });
 
   it('joins the invite join room when accepting an add-to-call invite', async () => {
-    const p2p = createP2PMock({ join: vi.fn(() => new Promise(() => {})) });
+    const p2p = createP2PMock({
+      join: vi.fn().mockResolvedValue({ roomId: 'room-ab', members: [] }),
+    });
     const controller = createController(p2p);
 
     controller.init();
@@ -1416,6 +1422,117 @@ describe('CallHandshakeController', () => {
     expect(p2p.join).toHaveBeenCalledWith(
       expect.objectContaining({ roomId: 'room-ab' }),
     );
+    await vi.waitFor(() => {
+      expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledExactlyOnceWith(
+        {
+          callInviteId: CALL_INVITE_ID,
+          roomId: 'room-ac',
+          callerId: 'caller-id',
+          responseType: 'accepted',
+        },
+      );
+    });
+  });
+
+  it.each(['resolve', 'send'])(
+    'keeps the live call when the invite fails to %s',
+    async (step) => {
+      const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      const p2p = createP2PMock({
+        state: () => 'joined',
+        room: () => ({ roomId: 'live-room' }),
+      });
+      const onInviteOutcome = vi.fn();
+      const controller = createController(p2p, { onInviteOutcome });
+      const operation =
+        step === 'resolve'
+          ? mocks.resolveDirectConversationId
+          : mocks.sendOutgoingCallInvite;
+      operation.mockRejectedValueOnce(new Error('Network failed'));
+
+      await controller.startCall({
+        calleeId: 'cleo',
+        calleeName: 'Cleo',
+        audioOnly: false,
+      });
+
+      expect(onInviteOutcome).toHaveBeenLastCalledWith({
+        call: expect.objectContaining({
+          calleeName: 'Cleo',
+          joinRoomId: 'live-room',
+        }),
+        result: 'failed',
+      });
+      expect(alert).not.toHaveBeenCalled();
+      expect(flush).not.toHaveBeenCalled();
+      expect(p2p.dispose).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps a newer invite ringing when a cancelled send fails', async () => {
+    const p2p = createP2PMock({
+      state: () => 'joined',
+      room: () => ({ roomId: 'live-room' }),
+    });
+    const onStateChange = vi.fn();
+    const onInviteOutcome = vi.fn();
+    const controller = createController(p2p, {
+      onStateChange,
+      onInviteOutcome,
+    });
+    const send = deferred();
+    mocks.sendOutgoingCallInvite.mockReturnValueOnce(send.promise);
+    const first = controller.startCall({
+      calleeId: 'cleo',
+      calleeName: 'Cleo',
+      audioOnly: false,
+    });
+    await vi.waitFor(() =>
+      expect(mocks.sendOutgoingCallInvite).toHaveBeenCalledOnce(),
+    );
+    controller.cancelOutgoing();
+
+    crypto.randomUUID.mockReturnValue('new-invite');
+    await controller.startCall({
+      calleeId: 'alice',
+      calleeName: 'Alice',
+      audioOnly: false,
+    });
+    send.reject(new Error('Network failed'));
+    await first;
+
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      direction: 'outgoing',
+      call: expect.objectContaining({ callInviteId: 'new-invite' }),
+    });
+    expect(onInviteOutcome).toHaveBeenLastCalledWith(null);
+    await mocks.responseCallback({
+      callInviteId: 'new-invite',
+      roomId: 'room-1',
+      responseType: 'accepted',
+    });
+    expect(mocks.ackCallResponse).toHaveBeenCalledWith('room-1', 'new-invite');
+  });
+
+  it('does not send an invite if the caller hangs up while resolving it', async () => {
+    const controller = createController(
+      createP2PMock({
+        state: () => 'joined',
+        room: () => ({ roomId: 'live-room' }),
+      }),
+    );
+    const room = deferred();
+    mocks.resolveDirectConversationId.mockReturnValueOnce(room.promise);
+    const call = controller.startCall({
+      calleeId: 'cleo',
+      calleeName: 'Cleo',
+      audioOnly: false,
+    });
+    controller.hangUp();
+    room.resolve('conversation-room');
+    await call;
+
+    expect(mocks.sendOutgoingCallInvite).not.toHaveBeenCalled();
   });
 
   it('keeps the mailbox invite when its notification copy arrives later', async () => {

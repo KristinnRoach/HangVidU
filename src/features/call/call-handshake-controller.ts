@@ -554,10 +554,21 @@ export class CallHandshakeController {
         err,
       );
       void stopStreamWhenReady();
+      if (joinRoomId) {
+        void reportCallStartFailure('room-resolve-failed', err, {
+          roomId: joinRoomId,
+        });
+        if (mediaAttempt === this.outgoingMediaAttempt) {
+          this.showInviteOutcome({ calleeName, joinRoomId }, 'failed');
+        }
+        return;
+      }
       await reportCallStartFailure('room-resolve-failed', err);
-      this.alertCallStartFailed(
-        'Error: Failed to resolve conversationId. Try again.',
-      );
+      if (mediaAttempt === this.outgoingMediaAttempt) {
+        this.alertCallStartFailed(
+          'Error: Failed to resolve conversationId. Try again.',
+        );
+      }
       return;
     }
     if (mediaAttempt !== this.outgoingMediaAttempt) {
@@ -666,12 +677,29 @@ export class CallHandshakeController {
         joinRoomId,
       });
     } catch (err) {
+      console.error('Error sending outgoing call invite:', err);
+      const reported = reportCallStartFailure('invite-send-failed', err, {
+        roomId,
+      });
+      const state = this._handshakeState;
+      if (
+        responseReceived ||
+        state?.direction !== 'outgoing' ||
+        state.call.callInviteId !== nextOutgoingCall.callInviteId
+      )
+        return;
+
       this.clearOutgoingCallTracking();
       this.stopPendingOutgoingLocalStream();
       this.setHandshakeState(null);
-      console.error('Error sending outgoing call invite:', err);
-      await reportCallStartFailure('invite-send-failed', err, { roomId });
-      this.alertCallStartFailed('Error sending call invite. Try again.');
+      if (joinRoomId) {
+        this.showInviteOutcome(nextOutgoingCall, 'failed');
+      } else {
+        await reported;
+        if (mediaAttempt === this.outgoingMediaAttempt) {
+          this.alertCallStartFailed('Error sending call invite. Try again.');
+        }
+      }
       return;
     }
 
@@ -1008,13 +1036,10 @@ export class CallHandshakeController {
     }
     const { signal } = abortController;
     let acceptSent = false;
-    this.enterRoom(
-      state.call.joinRoomId ?? state.call.roomId,
-      localUID,
-      state.call.audioOnly ?? false,
-      undefined,
-      { signal },
-    )
+    const roomId = state.call.joinRoomId ?? state.call.roomId;
+    this.enterRoom(roomId, localUID, state.call.audioOnly ?? false, undefined, {
+      signal,
+    })
       .then(() => {
         if (this.isExpired(state.call) && !signal.aborted) {
           abortController.abort(
@@ -1068,7 +1093,7 @@ export class CallHandshakeController {
         // Callee media, join and accept-response failures all land here;
         // the error name (e.g. NotAllowedError) tells them apart.
         void reportCallStartFailure('accept-failed', err, {
-          roomId: state.call.roomId,
+          roomId,
           audioOnly: state.call.audioOnly ?? false,
         }).then((permissions) => {
           if (err instanceof Error && err.name === 'NotAllowedError') {
@@ -1133,6 +1158,7 @@ export class CallHandshakeController {
   };
 
   hangUp = (reason: HangUpReason = 'user'): void => {
+    this.outgoingMediaAttempt += 1;
     // The peer's side learns this leave is intentional from the signaling
     // `leave` the room sends during dispose() — the DO tags it as a `left`
     // departure, so their `onAlone` exits immediately instead of showing
@@ -1279,7 +1305,7 @@ export class CallHandshakeController {
   }
 
   private showInviteOutcome(
-    call: OutgoingCall,
+    call: InviteOutcome['call'],
     result: InviteOutcome['result'],
   ): void {
     this.onInviteOutcome({ call, result });
