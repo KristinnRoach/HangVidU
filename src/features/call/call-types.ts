@@ -8,6 +8,8 @@ export type OutgoingCall = {
   callerName: string;
   audioOnly: boolean;
   roomId: string;
+  /** Set when ringing a contact into the caller's live call room. */
+  joinRoomId?: string;
   startedAt: number;
 };
 

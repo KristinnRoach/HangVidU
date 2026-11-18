@@ -38,7 +38,10 @@ export function CallDialogs() {
 
   return (
     <Switch>
-      <Match when={handshake.outgoingCall()}>
+      {/* Ringing a contact into a live call shows in the call view instead. */}
+      <Match
+        when={!handshake.outgoingCall()?.joinRoomId && handshake.outgoingCall()}
+      >
         {(call) => (
           <CallDialog
             title={t('call.calling', {

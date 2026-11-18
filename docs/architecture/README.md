@@ -58,7 +58,7 @@ The room's Durable Object is the only admission authority: at most
 `memberCapacity`, because the client check would count an endpoint that is
 about to be replaced as another member. Peer IDs identify endpoints (`uid:uuid`), so a
 newer window or device replaces the account's previous endpoint, ending its call, instead of
-taking another slot. An endpoint that reconnects after such a takeover yields to it. Calls are a P2P mesh, so each sender splits a fixed camera
+taking another slot. An endpoint that reconnects after such a takeover yields to it. A contact invite is keyed and authorized by the caller–callee conversation (`roomId`); one sent from inside a call also carries `joinRoomId`, the live room the callee joins. Calls are a P2P mesh, so each sender splits a fixed camera
 upload budget across its peers and samples outbound video and connection stats to Sentry.
 
 Persistent messages combine HTTP writes/history with live conversation-channel

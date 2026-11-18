@@ -505,6 +505,15 @@ export class CallHandshakeController {
       console.warn('Cannot start outgoing call before login is ready');
       return;
     }
+    // Calling from inside a call rings the contact into the current room,
+    // reusing its media. One pending invite at a time.
+    const joinRoomId =
+      this.p2p.state() === 'idle'
+        ? undefined
+        : (this.p2p.room()?.roomId ?? undefined);
+    if (this.p2p.state() !== 'idle' && (!joinRoomId || this._handshakeState)) {
+      return;
+    }
     const svc = this.initService(localUID);
     this.stopPendingOutgoingLocalStream();
     const mediaAttempt = ++this.outgoingMediaAttempt;
@@ -515,7 +524,9 @@ export class CallHandshakeController {
     // iOS requires getUserMedia to start within the tap's transient user
     // activation — kick it off before any network awaits or it throws
     // NotAllowedError whenever the roomId resolve is slow.
-    const localStreamPromise = this.getCallLocalStream(audioOnly);
+    const localStreamPromise = joinRoomId
+      ? Promise.resolve(undefined)
+      : this.getCallLocalStream(audioOnly);
     const stopStreamWhenReady = () =>
       localStreamPromise.then(
         (stream) => this.stopMediaStream(stream),
@@ -549,11 +560,12 @@ export class CallHandshakeController {
       callerId: localUID,
       callerName,
       roomId,
+      joinRoomId,
       audioOnly,
       startedAt: Date.now(),
     };
 
-    let localStream: MediaStream;
+    let localStream: MediaStream | undefined;
     try {
       localStream = await localStreamPromise;
       if (mediaAttempt !== this.outgoingMediaAttempt) {
@@ -585,6 +597,8 @@ export class CallHandshakeController {
       this.clearOutgoingCallTracking();
       try {
         if (response.responseType === 'accepted') {
+          // Added to the live room: the callee joins us, nothing to enter.
+          if (nextOutgoingCall.joinRoomId) return;
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
           }
@@ -593,7 +607,7 @@ export class CallHandshakeController {
             response.roomId,
             localUID,
             nextOutgoingCall.audioOnly,
-            () => Promise.resolve(localStream),
+            () => Promise.resolve(localStream!),
           );
         } else if (response.responseType === 'busy') {
           publish('evt:call:invite:busy', nextOutgoingCall);
@@ -641,6 +655,7 @@ export class CallHandshakeController {
         calleeId,
         callerName,
         audioOnly,
+        joinRoomId,
       });
     } catch (err) {
       this.clearOutgoingCallTracking();
@@ -878,8 +893,8 @@ export class CallHandshakeController {
     setCallRoomContext(undefined);
   }
 
-  private stopMediaStream(stream: MediaStream): void {
-    stream.getTracks().forEach((track) => track.stop());
+  private stopMediaStream(stream: MediaStream | undefined): void {
+    stream?.getTracks().forEach((track) => track.stop());
   }
 
   private stopPendingOutgoingLocalStream(): void {
@@ -985,7 +1000,7 @@ export class CallHandshakeController {
     const { signal } = abortController;
     let acceptSent = false;
     this.enterRoom(
-      state.call.roomId,
+      state.call.joinRoomId ?? state.call.roomId,
       localUID,
       state.call.audioOnly ?? false,
       undefined,
@@ -1124,6 +1139,11 @@ export class CallHandshakeController {
       memberCount: this.p2p.members().length,
       state: this.p2p.state(),
     });
+    // A contact still ringing into this room would join it empty.
+    const pending = this._handshakeState;
+    if (pending?.direction === 'outgoing' && pending.call.joinRoomId) {
+      this.cancelOutgoing();
+    }
     this.publishCompletedCall();
     this.resetReconnectState();
     this.clearRoomContext();

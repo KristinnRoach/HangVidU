@@ -820,6 +820,37 @@ describe('call invite retention', () => {
     }
   });
 
+  it('delivers the live call room an invite asks the callee to join', async () => {
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+
+    const res = await jsonPost('/calls/invite', callerToken, {
+      callInviteId: `invite-${crypto.randomUUID()}`,
+      conversationId: convoId,
+      calleeId,
+      joinRoomId: 'live-room',
+    });
+    expect(res.status).toBe(200);
+
+    const mailbox = await connectMailbox(calleeToken);
+    try {
+      expect(await mailbox.next()).toMatchObject({
+        t: 'invite',
+        invite: { roomId: convoId, joinRoomId: 'live-room' },
+      });
+    } finally {
+      mailbox.close();
+    }
+  });
+
   it('does not replay a pending invite after caller cancel', async () => {
     const callInviteId = `invite-${crypto.randomUUID()}`;
     const callerId = `caller-${crypto.randomUUID()}`;

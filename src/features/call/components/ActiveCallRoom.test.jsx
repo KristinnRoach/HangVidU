@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({ capturing: vi.fn() }));
 vi.mock('../call-handshake.js', () => ({
   useCallHandshake: () => ({
     reconnectStatus: () => 'connected',
+    outgoingCall: () => null,
+    cancelOutgoing: () => {},
   }),
 }));
 vi.mock('@shared/p2p-context.js', () => ({

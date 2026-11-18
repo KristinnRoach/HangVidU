@@ -6,6 +6,7 @@ import { ActiveCallControls } from './CallControls';
 import { useCallHandshake } from '../call-handshake.js';
 import type { CallMedia } from '../call-media';
 import { useP2PContext } from '@shared/p2p-context.js';
+import Button from '../../../components/Button';
 import { t } from '@shared/i18n';
 
 import styles from './ActiveCallRoom.module.css';
@@ -15,7 +16,9 @@ export function ActiveCallRoom(props: {
   holdTopBar: AutoHideController['hold'];
 }) {
   const p2p = useP2PContext();
-  const { reconnectStatus } = useCallHandshake();
+  const { reconnectStatus, outgoingCall, cancelOutgoing } = useCallHandshake();
+  const ringingIntoRoom = () =>
+    outgoingCall()?.joinRoomId ? outgoingCall() : null;
   createEffect(() => {
     if (props.media.faceMaskCapturing()) onCleanup(props.holdTopBar('hidden'));
   });
@@ -43,6 +46,24 @@ export function ActiveCallRoom(props: {
         remoteAudioMuted={remoteAudioMuted()}
         media={props.media}
       />
+
+      <Show when={ringingIntoRoom()}>
+        {(call) => (
+          <div
+            role='status'
+            class='absolute top-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full bg-bg-darker py-1 pr-1 pl-4 text-sm text-text-primary'
+          >
+            {t('call.calling', { name: call().calleeName })}
+            <Button
+              variant='danger'
+              class='rounded-full'
+              onClick={cancelOutgoing}
+            >
+              {t('shared.cancel')}
+            </Button>
+          </div>
+        )}
+      </Show>
 
       <Show when={reconnectStatus() !== 'connected'}>
         <div class={styles.reconnecting} role='status' aria-live='polite'>

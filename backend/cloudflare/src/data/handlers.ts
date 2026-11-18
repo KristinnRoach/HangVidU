@@ -224,12 +224,19 @@ export async function handleDataRequest(
       return json({ error: 'callInviteId too long' }, 400, cors);
     }
     const callInviteId = suppliedCallInviteId ?? crypto.randomUUID();
+    // Knowing a room ID grants access, so passing the caller's live room on is
+    // the same trust as sharing a room link.
+    const joinRoomId = str(body?.joinRoomId);
+    if (joinRoomId && joinRoomId.length > MAX_CALL_INVITE_ID_LENGTH) {
+      return json({ error: 'joinRoomId too long' }, 400, cors);
+    }
     const expiresAt = numOrUndef(body?.expiresAt) ?? startedAt + CALLING_TTL_MS;
     await env.USER_MAILBOX.getByName(calleeId).deliver({
       t: 'invite',
       invite: {
         callInviteId,
         roomId: conversationId,
+        ...(joinRoomId ? { joinRoomId } : {}),
         callerId,
         calleeId,
         callerName: str(body?.callerName) ?? undefined,

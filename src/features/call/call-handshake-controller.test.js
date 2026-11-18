@@ -1362,6 +1362,62 @@ describe('CallHandshakeController', () => {
     );
   });
 
+  it('rings a contact into the live room without new media or a rejoin', async () => {
+    mocks.getLoggedInUserId.mockReturnValue('caller-id');
+    mocks.resolveDirectConversationId.mockResolvedValue('room-ac');
+    const p2p = createP2PMock({
+      state: vi.fn(() => 'joined'),
+      room: vi.fn(() => ({ roomId: 'room-ab' })),
+    });
+    const controller = createController(p2p, {
+      getCallerName: () => 'Caller',
+    });
+
+    await controller.startCall({
+      calleeId: 'callee-c',
+      calleeName: 'C',
+      audioOnly: false,
+    });
+
+    expect(mocks.getUserMedia).not.toHaveBeenCalled();
+    expect(mocks.sendOutgoingCallInvite).toHaveBeenCalledWith(
+      expect.objectContaining({ roomId: 'room-ac', joinRoomId: 'room-ab' }),
+    );
+
+    await mocks.responseCallback?.({
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-ac',
+      responseType: 'accepted',
+      by: 'callee-c',
+      respondedAt: Date.now(),
+    });
+    expect(p2p.join).not.toHaveBeenCalled();
+    expect(p2p.dispose).not.toHaveBeenCalled();
+  });
+
+  it('joins the invite join room when accepting an add-to-call invite', async () => {
+    const p2p = createP2PMock({ join: vi.fn(() => new Promise(() => {})) });
+    const controller = createController(p2p);
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-ac',
+        joinRoomId: 'room-ab',
+        callerId: 'caller-id',
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+
+    expect(p2p.join).toHaveBeenCalledWith(
+      expect.objectContaining({ roomId: 'room-ab' }),
+    );
+  });
+
   it('publishes declined when the callee rejects', async () => {
     mocks.getLoggedInUserId.mockReturnValue('caller-id');
     const controller = createController(createP2PMock({ join: vi.fn() }), {

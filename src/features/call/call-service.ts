@@ -178,16 +178,19 @@ export class CallService {
     calleeId,
     callerName,
     audioOnly,
+    joinRoomId,
   }: {
     callInviteId: string;
     roomId: string;
     calleeId: string;
     callerName: string;
     audioOnly: boolean;
+    joinRoomId?: string;
   }): Promise<void> {
     await this.post('/calls/invite', {
       callInviteId,
       conversationId: roomId,
+      joinRoomId,
       calleeId,
       callerName,
       audioOnly,
