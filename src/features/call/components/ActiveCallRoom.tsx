@@ -58,8 +58,8 @@ export function ActiveCallRoom(props: {
     if (props.media.faceMaskCapturing()) onCleanup(props.holdTopBar('hidden'));
   });
 
-  // Room-link (guest) calls carry ?publicRoom= in the URL; contact calls don't.
-  // Only those can re-share the page URL as an invite.
+  // Room-link calls use a fresh ID. Contact calls reuse a conversation ID
+  // across calls, so exposing it in an invite would also expose future calls.
   const isRoomLinkCall = new URLSearchParams(window.location.search).has(
     'publicRoom',
   );
@@ -171,7 +171,7 @@ function CopyRoomLink() {
   return (
     <>
       <Button
-        variant='success'
+        variant='secondary'
         class='pointer-events-auto size-11 shrink-0'
         aria-label={t('call.copy_invite_link')}
         title={t('call.copy_invite_link')}

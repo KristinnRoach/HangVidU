@@ -74,6 +74,7 @@ it('submits the first eligible search result and closes the picker', async () =>
   mocks.roomState.mockReturnValue('joined');
   render(() => <ActiveCallRoom media={media} holdTopBar={() => () => {}} />);
 
+  expect(screen.queryByRole('button', { name: 'Copy invite link' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Add caller' }));
   await screen.findByRole('dialog', { name: 'Add caller' });
   expect(screen.queryByRole('button', { name: 'Sam' })).toBeNull();
@@ -148,7 +149,8 @@ it('reports how an add-invite ended in the call view, not as a dialog', () => {
   mocks.inviteOutcome = () => null;
 });
 
-it('keeps invite copying available after someone joins and offers a manual fallback', async () => {
+it('lets a signed-in participant copy a room link after someone joins', async () => {
+  mocks.user.mockReturnValue({ uid: 'signed-in-user' });
   window.history.replaceState(
     null,
     '',
@@ -170,6 +172,8 @@ it('keeps invite copying available after someone joins and offers a manual fallb
   try {
     render(() => <ActiveCallRoom media={media} holdTopBar={() => () => {}} />);
     const copy = screen.getByRole('button', { name: 'Copy invite link' });
+    expect(copy.classList.contains('bg-bg-secondary')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Add caller' })).toBeTruthy();
     setStreams([{}]);
     expect(screen.getByRole('button', { name: 'Copy invite link' })).toBe(copy);
     fireEvent.click(copy);

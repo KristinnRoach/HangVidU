@@ -762,6 +762,9 @@ export class CallHandshakeController {
       this.stopMediaStream(localStream);
       throw signal.reason;
     }
+    if (import.meta.env.DEV || import.meta.env.VITE_PREVIEW_WATCH === '1') {
+      for (const track of localStream.getAudioTracks()) track.enabled = false;
+    }
     this.resetReconnectState();
     // Searchable on every event/log/metric until the call ends.
     this.roomContextOwner = signal ?? {};

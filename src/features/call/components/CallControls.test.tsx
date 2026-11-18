@@ -158,8 +158,7 @@ describe('ActiveCallControls', () => {
         onRemoteAudioMutedChange={() => {}}
       />
     ));
-    // Device loss occurs after mounting (dev mode mutes on mount).
-    setMicEnabled.mockClear();
+    expect(setMicEnabled).not.toHaveBeenCalled();
     setPending(true);
     expect(getByRole('status', { name: 'Recovering microphone' })).toBeTruthy();
     fireEvent.click(
