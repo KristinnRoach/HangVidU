@@ -30,6 +30,7 @@ import { createCallMedia, type CallMedia } from './call-media';
 import type {
   CallHandshakeState,
   CallReconnectStatus,
+  InviteOutcome,
   OutgoingCall,
   StartCallDetails,
 } from './call-types.js';
@@ -45,8 +46,7 @@ type CallHandshakeContextValue = {
 
   /** Local media for the active call; undefined while idle or connecting. */
   media: Accessor<CallMedia | undefined>;
-  /** The call whose callee just answered busy, shown briefly. */
-  busyCall: Accessor<OutgoingCall | null>;
+  inviteOutcome: Accessor<InviteOutcome | null>;
   reconnectStatus: Accessor<CallReconnectStatus>;
   incomingCall: Accessor<MailboxInvite | null>;
   outgoingCall: Accessor<OutgoingCall | null>;
@@ -142,7 +142,9 @@ export function CallHandshakeProvider(props: ParentProps) {
   const auth = useAuth();
   const [handshakeState, setHandshakeState] =
     createSignal<CallHandshakeState>(null);
-  const [busyCall, setBusyCall] = createSignal<OutgoingCall | null>(null);
+  const [inviteOutcome, setInviteOutcome] = createSignal<InviteOutcome | null>(
+    null,
+  );
   const [reconnectStatus, setReconnectStatus] =
     createSignal<CallReconnectStatus>('connected');
   let releaseReloadHold: (() => void) | undefined;
@@ -206,7 +208,7 @@ export function CallHandshakeProvider(props: ParentProps) {
       );
     },
     onStateChange: setHandshakeState,
-    onCalleeBusy: setBusyCall,
+    onInviteOutcome: setInviteOutcome,
     onReconnectStatus: setReconnectStatus,
   });
 
@@ -232,7 +234,7 @@ export function CallHandshakeProvider(props: ParentProps) {
     // Wrap so a click handler's MouseEvent can't leak in as the hangUp reason.
     hangUp: () => controller.hangUp('user'),
     media,
-    busyCall,
+    inviteOutcome,
     reconnectStatus,
     incomingCall,
     outgoingCall,

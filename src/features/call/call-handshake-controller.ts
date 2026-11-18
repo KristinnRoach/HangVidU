@@ -30,6 +30,7 @@ import { createCallLocalTrackSlots } from './call-media.js';
 import type {
   CallHandshakeState,
   CallReconnectStatus,
+  InviteOutcome,
   OutgoingCall,
   StartCallDetails,
 } from './call-types.js';
@@ -117,7 +118,7 @@ type CallHandshakeControllerOptions = {
   createSignaling: CreateRoomSignaling;
   getCallerName: () => string;
   onStateChange: (state: CallHandshakeState) => void;
-  onCalleeBusy: (call: OutgoingCall | null) => void;
+  onInviteOutcome: (outcome: InviteOutcome | null) => void;
   onReconnectStatus: (status: CallReconnectStatus) => void;
 };
 
@@ -307,7 +308,7 @@ export class CallHandshakeController {
   private readonly createSignaling: CreateRoomSignaling;
   private readonly getCallerName: () => string;
   private readonly onStateChange: (state: CallHandshakeState) => void;
-  private readonly onCalleeBusy: (call: OutgoingCall | null) => void;
+  private readonly onInviteOutcome: (outcome: InviteOutcome | null) => void;
   private readonly onReconnectStatus: (status: CallReconnectStatus) => void;
 
   private _handshakeState: CallHandshakeState = null;
@@ -318,7 +319,9 @@ export class CallHandshakeController {
   private roomContextOwner: object | undefined;
   private incomingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
-  private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  private inviteOutcomeResetTimeoutId:
+    | ReturnType<typeof setTimeout>
+    | undefined;
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private reconnectFailedTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private connectFailedTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -334,14 +337,14 @@ export class CallHandshakeController {
     createSignaling,
     getCallerName,
     onStateChange,
-    onCalleeBusy,
+    onInviteOutcome,
     onReconnectStatus,
   }: CallHandshakeControllerOptions) {
     this.p2p = p2p;
     this.createSignaling = createSignaling;
     this.getCallerName = getCallerName;
     this.onStateChange = onStateChange;
-    this.onCalleeBusy = onCalleeBusy;
+    this.onInviteOutcome = onInviteOutcome;
     this.onReconnectStatus = onReconnectStatus;
   }
 
@@ -585,7 +588,7 @@ export class CallHandshakeController {
     }
 
     this.setHandshakeState({ direction: 'outgoing', call: nextOutgoingCall });
-    this.onCalleeBusy(null);
+    this.onInviteOutcome(null);
     this.scheduleOutgoingCallTimeout(svc, nextOutgoingCall);
 
     let responseReceived = false;
@@ -615,14 +618,10 @@ export class CallHandshakeController {
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
           }
-          this.onCalleeBusy(nextOutgoingCall);
-          this.clearCalleeBusyResetTimeout();
-          this.calleeBusyResetTimeoutId = setTimeout(() => {
-            this.calleeBusyResetTimeoutId = undefined;
-            this.onCalleeBusy(null);
-          }, 2_500);
+          this.showInviteOutcome(nextOutgoingCall, 'busy');
         } else {
           publish('evt:call:invite:declined', nextOutgoingCall);
+          this.showInviteOutcome(nextOutgoingCall, 'declined');
           this.stopMediaStream(localStream);
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
@@ -932,6 +931,7 @@ export class CallHandshakeController {
           ),
         );
       publish('evt:call:invite:unanswered', call);
+      this.showInviteOutcome(call, 'unanswered');
     }, CALLING_TTL_MS);
   }
 
@@ -942,7 +942,7 @@ export class CallHandshakeController {
     this.clearOutgoingCallTracking();
     this.stopPendingOutgoingLocalStream();
     this.setHandshakeState(null);
-    this.onCalleeBusy(null);
+    this.onInviteOutcome(null);
     publish('evt:call:invite:unanswered', state.call);
     svc
       .cancelOutgoingCall({
@@ -1269,10 +1269,22 @@ export class CallHandshakeController {
     this.outgoingCallTimeoutId = undefined;
   }
 
-  private clearCalleeBusyResetTimeout(): void {
-    if (!this.calleeBusyResetTimeoutId) return;
-    clearTimeout(this.calleeBusyResetTimeoutId);
-    this.calleeBusyResetTimeoutId = undefined;
+  private showInviteOutcome(
+    call: OutgoingCall,
+    result: InviteOutcome['result'],
+  ): void {
+    this.onInviteOutcome({ call, result });
+    this.clearInviteOutcomeResetTimeout();
+    this.inviteOutcomeResetTimeoutId = setTimeout(() => {
+      this.inviteOutcomeResetTimeoutId = undefined;
+      this.onInviteOutcome(null);
+    }, 2_500);
+  }
+
+  private clearInviteOutcomeResetTimeout(): void {
+    if (!this.inviteOutcomeResetTimeoutId) return;
+    clearTimeout(this.inviteOutcomeResetTimeoutId);
+    this.inviteOutcomeResetTimeoutId = undefined;
   }
 
   private clearOutgoingCallTracking(): void {
@@ -1288,13 +1300,13 @@ export class CallHandshakeController {
     this.unsubscribeIncomingCall?.();
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();
-    this.clearCalleeBusyResetTimeout();
+    this.clearInviteOutcomeResetTimeout();
     this.resetReconnectState();
     this.stopPendingOutgoingLocalStream();
     this.publishCompletedCall();
     this.clearRoomContext();
     this.setHandshakeState(null);
-    this.onCalleeBusy(null);
+    this.onInviteOutcome(null);
     void this.p2p.dispose().catch((err) => {
       console.warn('[call] p2p dispose failed on cleanup:', err);
     });

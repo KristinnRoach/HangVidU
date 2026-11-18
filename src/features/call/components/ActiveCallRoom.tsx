@@ -16,11 +16,17 @@ export function ActiveCallRoom(props: {
   holdTopBar: AutoHideController['hold'];
 }) {
   const p2p = useP2PContext();
-  const { reconnectStatus, outgoingCall, busyCall, cancelOutgoing } =
+  const { reconnectStatus, outgoingCall, inviteOutcome, cancelOutgoing } =
     useCallHandshake();
+  // Inviting a contact into this call is reported here, not in a dialog.
   const ringingIntoRoom = () =>
     outgoingCall()?.joinRoomId ? outgoingCall() : null;
-  const busyIntoRoom = () => (busyCall()?.joinRoomId ? busyCall() : null);
+  const inviteNotice = () => {
+    const outcome = inviteOutcome();
+    return outcome?.call.joinRoomId
+      ? t(`call.invite_${outcome.result}`, { name: outcome.call.calleeName })
+      : null;
+  };
   createEffect(() => {
     if (props.media.faceMaskCapturing()) onCleanup(props.holdTopBar('hidden'));
   });
@@ -49,31 +55,29 @@ export function ActiveCallRoom(props: {
         media={props.media}
       />
 
-      <Show when={ringingIntoRoom() ?? busyIntoRoom()}>
-        {(call) => (
-          <div
-            role='status'
-            class='absolute top-16 left-1/2 z-10 flex min-h-9 -translate-x-1/2 items-center gap-3 rounded-full bg-bg-darker py-1 pr-1 pl-4 text-sm text-text-primary'
+      <Show when={ringingIntoRoom() || inviteNotice()}>
+        <div
+          role='status'
+          class='absolute top-16 left-1/2 z-10 flex min-h-9 -translate-x-1/2 items-center gap-3 rounded-full bg-bg-darker py-1 pr-1 pl-4 text-sm text-text-primary'
+        >
+          <Show
+            when={ringingIntoRoom()}
+            fallback={<span class='pr-3'>{inviteNotice()}</span>}
           >
-            <Show
-              when={ringingIntoRoom()}
-              fallback={
-                <span class='pr-3'>
-                  {t('call.busy_name', { name: call().calleeName })}
-                </span>
-              }
-            >
-              {t('call.calling', { name: call().calleeName })}
-              <Button
-                variant='danger'
-                class='rounded-full'
-                onClick={cancelOutgoing}
-              >
-                {t('shared.cancel')}
-              </Button>
-            </Show>
-          </div>
-        )}
+            {(call) => (
+              <>
+                {t('call.calling', { name: call().calleeName })}
+                <Button
+                  variant='danger'
+                  class='rounded-full'
+                  onClick={cancelOutgoing}
+                >
+                  {t('shared.cancel')}
+                </Button>
+              </>
+            )}
+          </Show>
+        </div>
       </Show>
 
       <Show when={reconnectStatus() !== 'connected'}>

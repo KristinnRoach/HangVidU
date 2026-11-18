@@ -59,7 +59,12 @@ export function CallDialogs() {
           />
         )}
       </Match>
-      <Match when={handshake.busyCall() && !handshake.busyCall()?.joinRoomId}>
+      <Match
+        when={
+          handshake.inviteOutcome()?.result === 'busy' &&
+          !handshake.inviteOutcome()?.call.joinRoomId
+        }
+      >
         <CallDialog
           title={t('call.busy')}
           ring={() => void ringtoneManager.playBusy()}

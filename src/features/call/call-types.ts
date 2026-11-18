@@ -13,6 +13,12 @@ export type OutgoingCall = {
   startedAt: number;
 };
 
+/** How an outgoing invite ended without a join, shown briefly. */
+export type InviteOutcome = {
+  call: OutgoingCall;
+  result: 'busy' | 'declined' | 'unanswered';
+};
+
 export type StartCallDetails = {
   calleeId: string;
   calleeName: string;

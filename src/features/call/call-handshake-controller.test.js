@@ -117,7 +117,7 @@ function createController(p2p, overrides = {}) {
     createSignaling: vi.fn(),
     getCallerName: () => 'Callee',
     onStateChange: vi.fn(),
-    onCalleeBusy: vi.fn(),
+    onInviteOutcome: vi.fn(),
     onReconnectStatus: vi.fn(),
     ...overrides,
   });
@@ -1420,8 +1420,10 @@ describe('CallHandshakeController', () => {
 
   it('publishes declined when the callee rejects', async () => {
     mocks.getLoggedInUserId.mockReturnValue('caller-id');
+    const onInviteOutcome = vi.fn();
     const controller = createController(createP2PMock({ join: vi.fn() }), {
       getCallerName: () => 'Caller',
+      onInviteOutcome,
     });
 
     await controller.startCall({
@@ -1441,6 +1443,10 @@ describe('CallHandshakeController', () => {
       'evt:call:invite:declined',
       expect.objectContaining({ roomId: 'room-1', callerId: 'caller-id' }),
     );
+    expect(onInviteOutcome).toHaveBeenLastCalledWith({
+      call: expect.objectContaining({ calleeId: 'callee-id' }),
+      result: 'declined',
+    });
   });
 
   it('publishes busy when the callee is already in a call', async () => {

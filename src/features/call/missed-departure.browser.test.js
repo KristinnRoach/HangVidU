@@ -254,7 +254,7 @@ describe('call recovery and missed hangups through DO signaling', () => {
         createSignaling: createRoomSignaling,
         getCallerName: () => 'Callee',
         onStateChange() {},
-        onCalleeBusy() {},
+        onInviteOutcome() {},
         onReconnectStatus,
       });
       const hangUp = vi.spyOn(controller, 'hangUp');

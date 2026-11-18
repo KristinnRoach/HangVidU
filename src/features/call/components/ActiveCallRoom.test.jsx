@@ -4,12 +4,15 @@ import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { createAutoHide } from '@shared/createAutoHide';
 import { ActiveCallRoom } from './ActiveCallRoom';
 
-const mocks = vi.hoisted(() => ({ capturing: vi.fn(), busyCall: () => null }));
+const mocks = vi.hoisted(() => ({
+  capturing: vi.fn(),
+  inviteOutcome: () => null,
+}));
 vi.mock('../call-handshake.js', () => ({
   useCallHandshake: () => ({
     reconnectStatus: () => 'connected',
     outgoingCall: () => null,
-    busyCall: () => mocks.busyCall(),
+    inviteOutcome: () => mocks.inviteOutcome(),
     cancelOutgoing: () => {},
   }),
 }));
@@ -59,12 +62,18 @@ it('releases the top-bar hold when the call room unmounts during setup', () => {
   expect(release).toHaveBeenCalledOnce();
 });
 
-it('shows a busy add-invite in the call view, not as a dialog', () => {
+it('reports how an add-invite ended in the call view, not as a dialog', () => {
   mocks.capturing.mockReturnValue(false);
-  mocks.busyCall = () => ({ calleeName: 'Cleo', joinRoomId: 'room' });
+  const call = { calleeName: 'Cleo', joinRoomId: 'room' };
+  const [outcome, setOutcome] = createSignal({ call, result: 'busy' });
+  mocks.inviteOutcome = outcome;
   const { getByRole } = render(() => (
     <ActiveCallRoom media={media} holdTopBar={() => () => {}} />
   ));
   expect(getByRole('status').textContent).toBe('Cleo is busy');
-  mocks.busyCall = () => null;
+  setOutcome({ call, result: 'declined' });
+  expect(getByRole('status').textContent).toBe('Cleo declined');
+  setOutcome({ call, result: 'unanswered' });
+  expect(getByRole('status').textContent).toBe('No answer from Cleo');
+  mocks.inviteOutcome = () => null;
 });
