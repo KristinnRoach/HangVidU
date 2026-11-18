@@ -1,4 +1,11 @@
-import { cleanup, fireEvent, render, waitFor } from '@solidjs/testing-library';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
 import {
   afterEach,
@@ -36,6 +43,7 @@ vi.mock('@components/base-legacy/toast.js', () => ({
 }));
 vi.mock('@shared/i18n', () => ({
   t: (key) => key,
+  useI18n: () => ({ t: (key) => key }),
 }));
 
 const { CallLobby } = await import('./CallLobby');
@@ -161,42 +169,86 @@ describe('CallLobby', () => {
     expect(copiedText).toBe(window.location.href);
   });
 
-  it('shows a single join action for a direct invite and resets after hangup', async () => {
-    const { localStream } = setupMediaDevices();
-    const [state, setState] = createSignal('idle');
-    mocks.p2p.state.mockImplementation(state);
-    mocks.signInAsGuest.mockResolvedValue('guest-user');
-    mocks.joinRoomLink.mockImplementationOnce(async () => setState('joined'));
+  it.each([
+    { audience: 'guest', homeHidden: false },
+    { audience: 'signed-in user', homeHidden: true },
+  ])(
+    'opens the address-bar invite dialog for a $audience',
+    async ({ homeHidden }) => {
+      const { localStream } = setupMediaDevices();
+      const [state, setState] = createSignal('idle');
+      mocks.p2p.state.mockImplementation(state);
+      const uid = homeHidden ? 'signed-in-user' : 'guest-user';
+      mocks.signInAsGuest.mockResolvedValue(uid);
+      mocks.joinRoomLink.mockImplementationOnce(async () => setState('joined'));
+      const writeText = vi.fn();
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText },
+      });
 
-    const { getByRole, queryByRole } = render(() => <CallLobby />);
-    expect(queryByRole('textbox')).toBeNull();
-    const join = getByRole('button', { name: 'call.lobby.join' });
-    expect(join.classList.contains('bg-success')).toBe(true);
-    const writeText = vi.fn();
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText },
-    });
-    fireEvent.click(join);
-    await waitFor(() =>
+      render(() => (
+        <div hidden={homeHidden || state() !== 'idle'}>
+          <CallLobby />
+        </div>
+      ));
+      const dialog = await screen.findByRole('dialog', {
+        name: 'call.lobby.invited',
+      });
+      const join = within(dialog).getByRole('button', {
+        name: 'call.lobby.join',
+      });
+      const dismiss = within(dialog).getByRole('button', {
+        name: 'shared.dismiss',
+      });
+      expect(
+        join.compareDocumentPosition(dismiss) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(join.classList.contains('bg-success')).toBe(true);
+      fireEvent.click(join);
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
       expect(mocks.joinRoomLink).toHaveBeenCalledExactlyOnceWith(
         '12345678-1234-1234-1234-123456789abc',
-        'guest-user',
+        uid,
         localStream,
-      ),
+      );
+      expect(window.location.search).toContain('publicRoom=');
+      expect(writeText).not.toHaveBeenCalled();
+      expect(mocks.showSuccessToast).not.toHaveBeenCalled();
+
+      setState('idle');
+      expect(window.location.search).toBe('');
+      expect(screen.queryByRole('dialog')).toBeNull();
+      if (!homeHidden) {
+        expect(
+          screen.getByRole('button', { name: 'call.lobby.start' }).disabled,
+        ).toBe(false);
+        expect(screen.getByRole('status').textContent).toBe('call.lobby.ended');
+      }
+    },
+  );
+
+  it('dismisses the invite and removes only its URL parameter', async () => {
+    window.history.replaceState(
+      { view: 'home' },
+      '',
+      '/?publicRoom=12345678-1234-1234-1234-123456789abc&keep=yes#top',
+    );
+    render(() => <CallLobby />);
+    const dialog = await screen.findByRole('dialog', {
+      name: 'call.lobby.invited',
+    });
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'shared.dismiss' }),
     );
 
-    expect(writeText).not.toHaveBeenCalled();
-    expect(mocks.showSuccessToast).not.toHaveBeenCalled();
-    setState('idle');
-    expect(window.location.search).toBe('');
-    expect(getByRole('button', { name: 'call.lobby.start' }).disabled).toBe(
-      false,
-    );
-    expect(
-      getByRole('textbox', { name: 'call.lobby.invite_label' }),
-    ).toBeTruthy();
-    expect(getByRole('status').textContent).toBe('call.lobby.ended');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(window.location.search + window.location.hash).toBe('?keep=yes#top');
+    expect(window.history.state).toEqual({ view: 'home' });
+    expect(mocks.signInAsGuest).not.toHaveBeenCalled();
+    expect(mocks.joinRoomLink).not.toHaveBeenCalled();
   });
 
   it('joins a pasted invite without needing an address bar', async () => {
@@ -274,19 +326,21 @@ describe('CallLobby', () => {
       setState('idle');
     });
 
-    const { getByRole } = render(() => (
+    render(() => (
       <div hidden={state() !== 'idle'}>
         <CallLobby />
       </div>
     ));
-    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
+    fireEvent.click(screen.getByRole('button', { name: 'call.lobby.join' }));
 
     await waitFor(() => {
-      expect(getByRole('alert').textContent).toBe('call.lobby.error.full');
+      expect(screen.getByRole('alert').textContent).toBe(
+        'call.lobby.error.full',
+      );
     });
-    expect(getByRole('button', { name: 'call.lobby.join' }).disabled).toBe(
-      false,
-    );
+    expect(
+      screen.getByRole('button', { name: 'call.lobby.join' }).disabled,
+    ).toBe(false);
   });
 
   it('starts capture within the tap and stops it when guest sign-in fails', async () => {
@@ -299,8 +353,8 @@ describe('CallLobby', () => {
       }),
     );
 
-    const { getByRole } = render(() => <CallLobby />);
-    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
+    render(() => <CallLobby />);
+    fireEvent.click(screen.getByRole('button', { name: 'call.lobby.join' }));
     expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledOnce();
 
     failSignIn(new Error('auth unavailable'));

@@ -5,6 +5,7 @@ import { signInAsGuest } from '@auth';
 import { t } from '@shared/i18n';
 import Button from '@components/Button';
 import { showSuccessToast } from '@components/base-legacy/toast.js';
+import Dialog from '@components/dialogs/Dialog';
 import TextField from '@components/TextField';
 import {
   getAudioConstraints,
@@ -81,8 +82,8 @@ export function CallLobby() {
   const [joining, setJoining] = createSignal(false);
   const [callEnded, setCallEnded] = createSignal(false);
   const [error, setError] = createSignal<string>();
-  const roomId = () => invite() ?? publicRoomIdFromUrl(link());
-  const isJoiningInvite = () => Boolean(invite() || link().trim());
+  const roomId = () => publicRoomIdFromUrl(link());
+  const isJoiningInvite = () => Boolean(link().trim());
   const invalidLink = () => isJoiningInvite() && !roomId();
 
   let pendingCapture: Promise<MediaStream> | undefined;
@@ -95,16 +96,27 @@ export function CallLobby() {
   }
   onCleanup(releasePendingCapture);
 
+  function clearRoomLink() {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('publicRoom')) return false;
+    url.searchParams.delete('publicRoom');
+    window.history.replaceState(window.history.state, '', url);
+    return true;
+  }
+
+  function dismissInvite() {
+    if (joining()) return;
+    clearRoomLink();
+    setInvite(null);
+    setError(undefined);
+  }
+
   createEffect(
     on(p2p.state, (state, previous) => {
       if (state !== 'idle' || previous !== 'joined') return;
 
-      const url = new URL(window.location.href);
-      if (!url.searchParams.has('publicRoom')) return;
-      url.searchParams.delete('publicRoom');
-      window.history.replaceState(null, '', url);
+      if (invite() || !clearRoomLink()) return;
       setLink('');
-      setInvite(null);
       setCallEnded(true);
     }),
   );
@@ -132,6 +144,7 @@ export function CallLobby() {
       // The handshake owns the stream from this point, including failed joins.
       pendingCapture = undefined;
       await joinRoomLink(id, uid, stream);
+      setInvite(null);
       return url.href;
     } catch (err) {
       releasePendingCapture();
@@ -157,33 +170,78 @@ export function CallLobby() {
     }
   }
 
+  function ConnectionFeedback() {
+    return (
+      <>
+        <div role='status' class='text-sm text-text-secondary empty:absolute'>
+          {joining()
+            ? t('call.lobby.permission_hint')
+            : callEnded()
+              ? t('call.lobby.ended')
+              : undefined}
+        </div>
+        <Show when={error()}>
+          <p class='text-sm text-danger' role='alert'>
+            {error()}
+          </p>
+        </Show>
+      </>
+    );
+  }
+
   return (
-    <form
-      class='relative mx-auto flex w-full max-w-98 flex-col gap-2'
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (joining() || invalidLink()) return;
-        const id = roomId();
-        const started = connect(id);
-        if (!id) void copyStartedInvite(started);
-      }}
+    <Show
+      when={!invite()}
+      fallback={
+        // The portal keeps URL invites available when the public home is hidden.
+        <Dialog
+          open
+          title={t('call.lobby.invited')}
+          hideCloseButton
+          onOpenChange={(open) => {
+            if (!open) dismissInvite();
+          }}
+        >
+          <Button
+            variant='success'
+            loading={joining()}
+            disabled={p2p.state() !== 'idle'}
+            onClick={() => {
+              const id = invite();
+              if (id && !joining() && p2p.state() === 'idle') void connect(id);
+            }}
+          >
+            {joining() ? t('call.lobby.joining') : t('call.lobby.join')}
+          </Button>
+          <Button variant='ghost' disabled={joining()} onClick={dismissInvite}>
+            {t('shared.dismiss')}
+          </Button>
+          <ConnectionFeedback />
+        </Dialog>
+      }
     >
-      <Show when={invite()}>
-        <p class='text-sm text-text-secondary'>{t('call.lobby.invited')}</p>
-      </Show>
-      <Button
-        type='submit'
-        variant={isJoiningInvite() ? 'success' : 'primary'}
-        loading={joining()}
-        disabled={invalidLink()}
+      <form
+        class='mx-auto flex w-full max-w-98 flex-col gap-2'
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (joining() || invalidLink()) return;
+          const id = roomId();
+          const started = connect(id);
+          if (!id) void copyStartedInvite(started);
+        }}
       >
-        {joining()
-          ? t('call.lobby.joining')
-          : isJoiningInvite()
-            ? t('call.lobby.join')
-            : t('call.lobby.start')}
-      </Button>
-      <Show when={!invite()}>
+        <Button
+          type='submit'
+          variant={isJoiningInvite() ? 'success' : 'primary'}
+          loading={joining()}
+          disabled={invalidLink()}
+        >
+          {joining()
+            ? t('call.lobby.joining')
+            : isJoiningInvite()
+              ? t('call.lobby.join')
+              : t('call.lobby.start')}
+        </Button>
         <TextField
           label={t('call.lobby.invite_label')}
           hideLabel
@@ -197,19 +255,8 @@ export function CallLobby() {
             setCallEnded(false);
           }}
         />
-      </Show>
-      <div role='status' class='text-sm text-text-secondary empty:absolute'>
-        {joining()
-          ? t('call.lobby.permission_hint')
-          : callEnded()
-            ? t('call.lobby.ended')
-            : undefined}
-      </div>
-      <Show when={error()}>
-        <p class='text-sm text-danger' role='alert'>
-          {error()}
-        </p>
-      </Show>
-    </form>
+        <ConnectionFeedback />
+      </form>
+    </Show>
   );
 }
