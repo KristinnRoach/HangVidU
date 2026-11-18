@@ -16,11 +16,8 @@
   border-radius: 12px;
 
   overflow-y: auto;
-  /* max-height: 88dvh; */
-  /* width: clamp(100%, 400px, 100%); */
-
-  width: fit-content;
-  height: minmax(100%, 100svh);
+  width: clamp(200px, auto, 90svw);
+  /* max-height: 89svh; */
 
   & .conversations-list {
     display: flex;

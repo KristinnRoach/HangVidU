@@ -62,7 +62,7 @@
   --spacing-2xl: 24px;
 
   /* Sizing */
-  --content-width: clamp(200px, 100%, 680px);
+  --content-width: clamp(200px, 100%, 800px);
   --topbar-height: 50px;
 
   --legacy-radius-md: 5px;

@@ -6,6 +6,8 @@ import googleSignIn from '../assets/google-sign-in-dark.png';
 export default function GoogleSignInButton() {
   const { t } = useI18n();
   const { isLoading } = useAuth();
+  const width = 220;
+  const height = width / 4.5; // org 360 x 80
 
   return (
     <button
@@ -19,8 +21,9 @@ export default function GoogleSignInButton() {
     >
       <img
         src={googleSignIn}
-        width={180}
-        height={40}
+        width={width}
+        height={height}
+        class='rounded-full'
         alt={t('auth.sign_in_with_google')}
       />
     </button>

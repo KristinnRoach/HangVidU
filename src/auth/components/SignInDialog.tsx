@@ -21,7 +21,7 @@ export default function SignInDialog() {
 
   return (
     <Dialog open={open()} onOpenChange={setOpen} title={t('auth.sign_in')}>
-      <div class='flex flex-col items-center gap-4 py-2'>
+      <div class='flex flex-col items-center gap-4 pt-2 pb-4 border-b border-b-border-primary'>
         <GoogleSignInButton />
 
         <div class='flex w-full items-center gap-2 text-sm text-text-secondary before:h-px before:flex-1 before:bg-border-primary after:h-px after:flex-1 after:bg-border-primary'>
@@ -43,7 +43,7 @@ export default function SignInDialog() {
       </div>
 
       {/* Both controls pin themselves to the bottom corners of this row. */}
-      <div class='relative h-8 border-t border-border-primary'>
+      <div class='flex justify-between h-8'>
         <LocaleToggle />
         <LegalFooter />
       </div>

@@ -8,7 +8,7 @@ export default function LegalFooter() {
   return (
     <footer
       id='legal-footer'
-      class='absolute right-3 bottom-2 flex items-center gap-2 text-xs text-neutral-400'
+      class='flex items-center gap-2 text-xs text-neutral-400'
     >
       <a
         class={linkClass}
