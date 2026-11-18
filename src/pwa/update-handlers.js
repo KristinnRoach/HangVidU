@@ -1,9 +1,8 @@
 import { reloadPageWhenAllowed } from './reload-page.js';
 
+const PREVIEW_WATCH = import.meta.env.VITE_PREVIEW_WATCH === '1';
 // TODO: Consider reverting to 30min once migration has settled.
-// Preview watch reuses the normal SW update/reload flow after each rebuild.
-const UPDATE_CHECK_INTERVAL =
-  import.meta.env.VITE_PREVIEW_WATCH === '1' ? 3_000 : 20 * 60 * 1000;
+const UPDATE_CHECK_INTERVAL = PREVIEW_WATCH ? 3_000 : 20 * 60 * 1000;
 
 let updateCheckIntervalId = null;
 let visibilityAbortController = null;
@@ -180,7 +179,10 @@ export async function setupUpdateHandler() {
     const updateSW = registerSW({
       immediate: true,
       onNeedReload() {
-        void reloadPageWhenAllowed({ reason: 'sw-update-reload' });
+        void reloadPageWhenAllowed({
+          reason: 'sw-update-reload',
+          whenAllowed: PREVIEW_WATCH ? () => Promise.resolve() : undefined,
+        });
       },
       onNeedRefresh() {
         console.info('[PWA] New version available');

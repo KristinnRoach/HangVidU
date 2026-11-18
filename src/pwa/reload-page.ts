@@ -1,5 +1,6 @@
 import {
   PAGE_RELOAD_REASON_KEY,
+  reloadApp,
   whenAppReloadAllowed,
 } from '@shared/app-reload/index.js';
 
@@ -19,7 +20,7 @@ let pendingReload: Promise<void> | null = null;
 export function reloadPageWhenAllowed({
   reason = 'sw-update-reload',
   whenAllowed = whenAppReloadAllowed,
-  reload = () => window.location.reload(),
+  reload = reloadApp,
 }: ReloadPageOptions = {}): Promise<void> {
   if (pendingReload) return pendingReload;
 
