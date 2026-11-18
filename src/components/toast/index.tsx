@@ -1,5 +1,5 @@
 import { Toast, toaster } from '@kobalte/core/toast';
-import { Check, CircleAlert, Info, TriangleAlert, X } from 'lucide-solid';
+import { Check, CircleAlert, Info, X } from 'lucide-solid';
 import { onCleanup, splitProps, type ComponentProps, type JSX } from 'solid-js';
 import { Dynamic, Portal } from 'solid-js/web';
 import { t } from '@shared/i18n';
@@ -8,7 +8,6 @@ import Button from '../Button';
 const tones = {
   info: { icon: Info, color: 'text-primary' },
   success: { icon: Check, color: 'text-success' },
-  warning: { icon: TriangleAlert, color: 'text-text-secondary' },
   error: { icon: CircleAlert, color: 'text-danger' },
 };
 

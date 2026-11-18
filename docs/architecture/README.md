@@ -109,8 +109,8 @@ are no native `<dialog>` or `popover` elements left; do not add one.
 
 **Toasts**
 
-- Call `showToast(message, { tone })` from `@components/toast` in Solid or JS. Tone defaults to `info`. Use `success`, `warning`, or `error` to match the feedback.
-- Use toasts for brief feedback. Keep form results and retry guidance available inline. For an optional action, pass `action: { label, run }` with a localized button label.
+- Call `showToast(message, { tone })` from `@components/toast` in Solid or JS. Tone defaults to `info`. Use `success` or `error` to match the feedback.
+- Use toasts for brief feedback. Keep form results and retry guidance available inline, including browser permission guidance in the notification panel. For an optional action, pass `action: { label, run }` with a localized button label.
 - The app mounts one `ToastHost` above dialogs. Kobalte owns announcements, dismissal, and the six-second default. Alt+T focuses the list. Use `duration` in milliseconds when a message needs more time.
 - Style the host and tones in [the toast module](../../src/components/toast/index.tsx). Use Tailwind utilities and shared theme tokens. Keep placement and appearance out of call sites.
 

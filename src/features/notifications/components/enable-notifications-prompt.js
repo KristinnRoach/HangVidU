@@ -54,6 +54,18 @@ export function showEnableNotificationsPrompt() {
     return inAppNotificationManager.notifications.get(NOTIFICATION_ID);
   }
 
+  let pending = false;
+  let getGuidance = () => '';
+
+  function updateFeedback() {
+    const button = notification.querySelector('.notification-btn');
+    button.disabled = pending;
+    button.textContent = t(
+      pending ? 'notification.enable.enabling' : 'shared.enable',
+    );
+    notification.querySelector('[role="status"]').textContent = getGuidance();
+  }
+
   const notification = createNotification({
     template: buildTemplate({
       header: `
@@ -65,6 +77,7 @@ export function showEnableNotificationsPrompt() {
         <p class="notification-message">
           [[t:notification.enable.body]]
         </p>
+        <p class="notification-detail" role="status"></p>
       `,
       actions: `
         <button class="notification-btn notification-btn-primary" onclick="handleEnable">
@@ -75,10 +88,11 @@ export function showEnableNotificationsPrompt() {
     className: 'notification enable-notifications-notification',
     templateFns: { t: { resolve: t, onChange: onLocaleChange } },
     handlers: {
-      handleEnable: async (e) => {
-        const btn = e.target;
-        btn.disabled = true;
-        btn.textContent = t('notification.enable.enabling');
+      handleEnable: async () => {
+        if (pending) return;
+        pending = true;
+        getGuidance = () => '';
+        updateFeedback();
 
         try {
           const pushController = getPushNotifications();
@@ -89,6 +103,7 @@ export function showEnableNotificationsPrompt() {
           }
 
           const result = await pushController.requestPermission();
+          if (!notification.isConnected) return;
 
           if (result.state === 'granted') {
             showToast(t('notification.enable.success'), { tone: 'success' });
@@ -103,22 +118,16 @@ export function showEnableNotificationsPrompt() {
                 '[ENABLE NOTIFICATIONS] Push setup failed:',
                 result.error || result,
               );
-              showToast(
+              getGuidance = () =>
                 t(
                   result.browser === 'Brave'
                     ? 'notification.enable.failed_push_setup.brave'
                     : 'notification.enable.failed_push_setup',
-                ),
-                { tone: 'error' },
-              );
-              btn.disabled = false;
-              btn.textContent = t('shared.enable');
+                );
               return;
             }
             if (result.reason === 'permission-timeout') {
-              showToast(t('notification.enable.timeout'), { tone: 'error' });
-              btn.disabled = false;
-              btn.textContent = t('shared.enable');
+              getGuidance = () => t('notification.enable.timeout');
               return;
             }
           }
@@ -130,20 +139,14 @@ export function showEnableNotificationsPrompt() {
           }
 
           if (result.state === 'denied') {
-            showToast(getBlockedMessage(result.browser, result.reason), {
-              tone: 'warning',
-            });
-            inAppNotificationManager.remove(NOTIFICATION_ID);
-            return;
+            getGuidance = () =>
+              getBlockedMessage(result.browser, result.reason);
           }
-
-          // Dismissed or unknown state - keep notification for retry
-          btn.disabled = false;
-          btn.textContent = t('shared.enable');
         } catch (error) {
           console.error('[ENABLE NOTIFICATIONS] Failed:', error);
-          btn.disabled = false;
-          btn.textContent = t('shared.enable');
+        } finally {
+          pending = false;
+          if (notification.isConnected) updateFeedback();
         }
       },
       handleDismiss: () => {
@@ -153,6 +156,7 @@ export function showEnableNotificationsPrompt() {
     },
   });
 
+  notification.onRender(updateFeedback);
   inAppNotificationManager.add(NOTIFICATION_ID, notification);
 
   return notification;
