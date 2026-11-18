@@ -28,6 +28,8 @@ type ParticipantMediaProps = {
   audioEnabled?: boolean;
   remoteAudioMuted?: boolean;
   screenShare?: boolean;
+  groupTile?: boolean;
+  fillGroupSlot?: boolean;
 };
 
 type MediaTrackStatus = 'off' | 'connecting' | 'interrupted' | 'connected';
@@ -101,15 +103,19 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       ? height * 0.4
       : Math.min(200, height * 0.3);
     const w = Math.min(maxWidth, width - 2 * GAP, maxHeight * videoAspect());
-    return { width: `${w}px`, height: `${w / videoAspect()}px` };
+    return {
+      '--preview-width': `${w}px`,
+      '--preview-height': `${w / videoAspect()}px`,
+    };
   });
-  // The video is always object-fit: contain, then scaled up toward a full
-  // fill. max(r, 1/r) is exactly the scale that makes contain cover the frame;
+  // Direct calls use object-fit: contain, then scale up toward a full fill.
+  // max(r, 1/r) is exactly the scale that makes contain cover the frame;
   // capping it at 1.35 (~26% source cropping) keeps the remainder letterboxed
   // instead of chopping the sides off a landscape source on a portrait screen.
   // ponytail: 1.35 is the one tuning knob, adjust from real-device feedback.
   const videoScale = createMemo(() => {
     if (
+      props.groupTile ||
       props.screenShare ||
       props.previewUncropped ||
       variant() === 'self-preview'
@@ -317,6 +323,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
         '--video-scale': videoScale(),
       }}
       classList={{
+        [styles.groupTile!]: props.groupTile,
+        [styles.fillGroupSlot!]: props.fillGroupSlot,
         [styles.selfPreview!]: variant() === 'self-preview',
         [styles.screenShare!]: props.screenShare,
         [styles.uncropped!]: props.previewUncropped,

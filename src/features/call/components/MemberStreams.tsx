@@ -16,6 +16,7 @@ type MemberStreamsProps = {
 
 export function MemberStreams(props: MemberStreamsProps) {
   const p2p = useP2PContext();
+  const isGroup = () => p2p.memberCount() > 2;
   // cameraOn flag published by that member via room member data
   // (undefined until their first publish → treated as camera off).
   const memberCameraOn = (memberId: string) =>
@@ -31,13 +32,7 @@ export function MemberStreams(props: MemberStreamsProps) {
       ?.screenShare === true;
 
   return (
-    <div
-      classList={{
-        [styles.roomMembers!]: true,
-        [styles.direct!]: p2p.memberCount() <= 2,
-        [styles.group!]: p2p.memberCount() > 2,
-      }}
-    >
+    <div class={styles.roomMembers} classList={{ [styles.group!]: isGroup() }}>
       <Show when={p2p.localStream()}>
         {/* Solid uses callback arity to identify render functions. */}
         {/* oxlint-disable-next-line no-unused-vars */}
@@ -45,6 +40,7 @@ export function MemberStreams(props: MemberStreamsProps) {
           <ParticipantMedia
             stream={props.media.faceMaskPreview?.() ?? p2p.localStream()!}
             variant='self-preview'
+            fillGroupSlot={isGroup() && p2p.remoteMemberStreams().length === 3}
             videoEnabled={props.media.cameraOn() || props.media.screenSharing()}
             audioEnabled={props.media.micOn()}
             screenShare={props.media.screenSharing()}
@@ -68,6 +64,7 @@ export function MemberStreams(props: MemberStreamsProps) {
             audioEnabled={memberMicOn(stream.memberId)}
             screenShare={memberScreenShare(stream.memberId)}
             remoteAudioMuted={props.remoteAudioMuted}
+            groupTile={isGroup()}
             previewUncropped={capturingFrom(props.media, stream.stream)}
             overlay={(aspect) => (
               <>

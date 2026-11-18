@@ -171,11 +171,15 @@ describe('ParticipantMedia', () => {
           value: height,
         });
         video.dispatchEvent(new Event('resize'));
-        expect(
-          parseFloat(surface.style.width) / parseFloat(surface.style.height),
-        ).toBeCloseTo(width / height);
-        expect(parseFloat(surface.style.width)).toBeLessThanOrEqual(120);
-        expect(parseFloat(surface.style.height)).toBeLessThanOrEqual(200);
+        const previewWidth = parseFloat(
+          surface.style.getPropertyValue('--preview-width'),
+        );
+        const previewHeight = parseFloat(
+          surface.style.getPropertyValue('--preview-height'),
+        );
+        expect(previewWidth / previewHeight).toBeCloseTo(width / height);
+        expect(previewWidth).toBeLessThanOrEqual(120);
+        expect(previewHeight).toBeLessThanOrEqual(200);
       }
     } finally {
       vi.unstubAllGlobals();
