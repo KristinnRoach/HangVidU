@@ -66,7 +66,7 @@ function setupMediaDevices() {
 
 describe('CallLobby', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mocks.p2p.state.mockReturnValue('idle');
     mocks.p2p.room.mockReset();
     mocks.p2p.errorKind.mockReset();
@@ -79,25 +79,57 @@ describe('CallLobby', () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     window.history.replaceState(null, '', '/');
   });
 
-  it('copies a new guest-call link and keeps the copy action available', async () => {
+  it('starts a new guest call in one submission', async () => {
     window.history.replaceState(null, '', '/');
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText },
-    });
+    const { localStream } = setupMediaDevices();
+    mocks.signInAsGuest.mockResolvedValue('guest-user');
+    mocks.joinRoomLink.mockResolvedValue(undefined);
 
-    const { getByRole } = render(() => <CallLobby />);
+    const { getByRole, getAllByRole } = render(() => <CallLobby />);
+    expect(getAllByRole('button')).toHaveLength(1);
     fireEvent.click(getByRole('button', { name: 'call.lobby.start' }));
 
-    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-    const copyButton = getByRole('button', { name: 'call.lobby.copy_link' });
-    fireEvent.click(copyButton);
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
-    expect(getByRole('status').textContent).toBe('call.lobby.link_copied');
+    await waitFor(() => expect(mocks.joinRoomLink).toHaveBeenCalledOnce());
+    const id = new URLSearchParams(window.location.search).get('publicRoom');
+    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(mocks.joinRoomLink).toHaveBeenCalledWith(
+      id,
+      'guest-user',
+      localStream,
+    );
+  });
+
+  it('shows a single join action for a direct invite and resets after hangup', async () => {
+    const { localStream } = setupMediaDevices();
+    const [state, setState] = createSignal('idle');
+    mocks.p2p.state.mockImplementation(state);
+    mocks.signInAsGuest.mockResolvedValue('guest-user');
+    mocks.joinRoomLink.mockImplementationOnce(async () => setState('joined'));
+
+    const { getByRole, queryByRole } = render(() => <CallLobby />);
+    expect(queryByRole('textbox')).toBeNull();
+    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
+    await waitFor(() =>
+      expect(mocks.joinRoomLink).toHaveBeenCalledExactlyOnceWith(
+        '12345678-1234-1234-1234-123456789abc',
+        'guest-user',
+        localStream,
+      ),
+    );
+
+    setState('idle');
+    expect(window.location.search).toBe('');
+    expect(getByRole('button', { name: 'call.lobby.start' }).disabled).toBe(
+      false,
+    );
+    expect(
+      getByRole('textbox', { name: 'call.lobby.invite_label' }),
+    ).toBeTruthy();
+    expect(getByRole('status').textContent).toBe('call.lobby.ended');
   });
 
   it('joins a pasted invite without needing an address bar', async () => {
@@ -105,12 +137,6 @@ describe('CallLobby', () => {
     setupMediaDevices();
     mocks.signInAsGuest.mockResolvedValue('guest-user');
     mocks.joinRoomLink.mockResolvedValue(undefined);
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText },
-    });
-
     const { getByRole } = render(() => <CallLobby />);
     const input = getByRole('textbox', { name: 'call.lobby.invite_label' });
     fireEvent.input(input, { target: { value: 'not a call link' } });
@@ -123,9 +149,10 @@ describe('CallLobby', () => {
     const roomId = '87654321-1234-1234-1234-123456789abc';
     const link = `https://dev.hangvidu.com/?publicRoom=${roomId}`;
     fireEvent.input(input, { target: { value: ` ${link} ` } });
-    fireEvent.click(getByRole('button', { name: 'call.lobby.copy_link' }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith(link));
-    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
+    expect(getByRole('button', { name: 'call.lobby.join' }).disabled).toBe(
+      false,
+    );
+    input.form.requestSubmit();
 
     await waitFor(() => expect(mocks.joinRoomLink).toHaveBeenCalledOnce());
     expect(mocks.joinRoomLink.mock.calls[0][0]).toBe(roomId);
@@ -134,23 +161,30 @@ describe('CallLobby', () => {
     );
   });
 
-  it('stops acquired media when joining a guest call fails', async () => {
-    const { camera, microphone } = setupMediaDevices();
-    const joinError = new Error('signaling unavailable');
+  it('lets the host retry without leaving a failed room link in the address', async () => {
+    window.history.replaceState(null, '', '/?test=1');
+    setupMediaDevices();
     vi.spyOn(console, 'error').mockImplementation(() => {});
     mocks.signInAsGuest.mockResolvedValue('guest-user');
-    mocks.joinRoomLink.mockRejectedValue(joinError);
+    mocks.joinRoomLink.mockRejectedValueOnce(
+      new Error('signaling unavailable'),
+    );
 
-    const { getByRole } = render(() => <CallLobby />);
-    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
+    const { findByRole, getByRole } = render(() => <CallLobby />);
+    fireEvent.click(getByRole('button', { name: 'call.lobby.start' }));
 
-    await waitFor(() => expect(mocks.joinRoomLink).toHaveBeenCalledOnce());
-    await waitFor(() => expect(microphone.stop).toHaveBeenCalledOnce());
-    expect(camera.stop).toHaveBeenCalledOnce();
+    expect((await findByRole('alert')).textContent).toBe(
+      'call.lobby.error.generic',
+    );
+    expect(window.location.search).toBe('?test=1');
+    expect(getByRole('button', { name: 'call.lobby.start' }).disabled).toBe(
+      false,
+    );
   });
 
   it('returns to the lobby with a retryable message when the room is full', async () => {
     setupMediaDevices();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     const [state, setState] = createSignal('idle');
     mocks.p2p.state.mockImplementation(state);
     mocks.signInAsGuest.mockResolvedValue('guest-user');

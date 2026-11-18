@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   inviteOutcome: () => null,
   user: vi.fn(() => null),
   roomState: vi.fn(() => 'idle'),
+  remoteMemberStreams: vi.fn(() => [{}]),
   startCall: vi.fn(),
 }));
 vi.mock('@auth', () => ({
@@ -45,7 +46,7 @@ vi.mock('../call-handshake.js', () => ({
 vi.mock('@shared/p2p-context.js', () => ({
   useP2PContext: () => ({
     state: mocks.roomState,
-    remoteMemberStreams: () => [{}],
+    remoteMemberStreams: mocks.remoteMemberStreams,
   }),
 }));
 vi.mock('./MemberStreams', () => ({ MemberStreams: () => null }));
@@ -58,6 +59,8 @@ afterEach(() => {
   vi.useRealTimers();
   mocks.user.mockReset();
   mocks.roomState.mockReset();
+  mocks.remoteMemberStreams.mockReset();
+  window.history.replaceState(null, '', '/');
 });
 
 it('submits the first eligible search result and closes the picker', async () => {
@@ -138,4 +141,46 @@ it('reports how an add-invite ended in the call view, not as a dialog', () => {
   setOutcome({ call, result: 'unanswered' });
   expect(getByRole('status').textContent).toBe('No answer from Cleo');
   mocks.inviteOutcome = () => null;
+});
+
+it('offers manual invite sharing if copying the guest-call link fails', async () => {
+  window.history.replaceState(
+    null,
+    '',
+    '/?publicRoom=12345678-1234-1234-1234-123456789abc',
+  );
+  mocks.roomState.mockReturnValue('joined');
+  mocks.remoteMemberStreams.mockReturnValue([]);
+  const writeText = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('clipboard denied'))
+    .mockResolvedValueOnce(undefined);
+  const clipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  });
+
+  try {
+    const { getByRole, findByRole } = render(() => (
+      <ActiveCallRoom media={media} holdTopBar={() => () => {}} />
+    ));
+    const copy = getByRole('button', { name: 'Copy invite link' });
+    fireEvent.click(copy);
+
+    const input = await findByRole('textbox', {
+      name: 'Copy this link manually',
+    });
+    expect(input.readOnly).toBe(true);
+    expect(input.value).toBe(window.location.href);
+
+    fireEvent.click(copy);
+    await waitFor(() =>
+      expect(getByRole('status').textContent).toBe('Link copied'),
+    );
+    expect(writeText).toHaveBeenCalledWith(window.location.href);
+  } finally {
+    if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard);
+    else delete navigator.clipboard;
+  }
 });

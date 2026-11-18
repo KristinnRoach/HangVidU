@@ -16,6 +16,7 @@ type TextFieldProps = InputAttributes & {
   class?: string;
   disabled?: boolean;
   required?: boolean;
+  readOnly?: boolean;
   label: string;
   /** Visually hide the label; it still names the input for assistive tech. */
   hideLabel?: boolean;
@@ -35,6 +36,7 @@ export default function TextField(props: TextFieldProps) {
     'class',
     'disabled',
     'required',
+    'readOnly',
   ]);
 
   return (
@@ -45,6 +47,7 @@ export default function TextField(props: TextFieldProps) {
       validationState={local.error ? 'invalid' : 'valid'}
       disabled={local.disabled}
       required={local.required}
+      readOnly={local.readOnly}
     >
       <KTextField.Label
         class={local.hideLabel ? 'sr-only' : 'text-sm text-text-secondary'}

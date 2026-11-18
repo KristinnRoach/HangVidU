@@ -62,15 +62,15 @@ export function ActiveCallRoom(props: {
   const isRoomLinkCall = new URLSearchParams(window.location.search).has(
     'publicRoom',
   );
-  const [copied, setCopied] = createSignal(false);
+  const [copyResult, setCopyResult] = createSignal<'copied' | 'failed'>();
   const [remoteAudioMuted, setRemoteAudioMuted] = createSignal(false);
 
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
+      setCopyResult('copied');
     } catch {
-      setCopied(false);
+      setCopyResult('failed');
     }
   }
 
@@ -135,11 +135,19 @@ export function ActiveCallRoom(props: {
             {isRoomLinkCall ? t('call.room_empty') : t('call.waiting_peer')}
           </p>
           <Show when={isRoomLinkCall}>
-            <button type='button' onClick={copyLink}>
-              {copied()
-                ? t('call.lobby.link_copied')
-                : t('call.copy_invite_link')}
-            </button>
+            <Button onClick={copyLink}>{t('call.copy_invite_link')}</Button>
+            <Show when={copyResult() === 'failed'}>
+              <TextField
+                label={t('call.copy_invite_manually')}
+                value={window.location.href}
+                onChange={() => {}}
+                onFocus={(event) => event.currentTarget.select()}
+                readOnly
+              />
+            </Show>
+            <span role='status' class='text-sm empty:absolute'>
+              {copyResult() === 'copied' ? t('call.link_copied') : undefined}
+            </span>
           </Show>
         </div>
       </Show>

@@ -166,6 +166,21 @@ describe('CallHandshakeController', () => {
     vi.restoreAllMocks();
   });
 
+  it('stops guest media if the room rejects the join before taking ownership', async () => {
+    const error = new Error('signaling unavailable');
+    const p2p = createP2PMock({ join: vi.fn().mockRejectedValue(error) });
+    const controller = createController(p2p);
+    const stream = createMediaStream({ video: true });
+
+    await expect(
+      controller.joinRoomLink('room-1', 'guest-id', stream),
+    ).rejects.toBe(error);
+
+    for (const track of stream.getTracks()) {
+      expect(track.stop).toHaveBeenCalledOnce();
+    }
+  });
+
   it('dismisses a matching incoming call when another device handles it', () => {
     const onStateChange = vi.fn();
     const controller = createController(createP2PMock(), { onStateChange });
