@@ -22,6 +22,8 @@ import {
 } from '../experimental/face-mask';
 import type { Mock } from 'vite-plus/test';
 
+type FaceMaskOptions = Parameters<typeof createFaceMask>[2];
+
 const maskMocks = vi.hoisted(() => ({
   isFaceMaskSupported: vi.fn(() => true),
   createFaceMask: vi.fn<typeof createFaceMask>(),
@@ -951,7 +953,7 @@ describe('experimental face mask lifecycle', () => {
       ]);
       let ready!: () => void;
       maskMocks.createFaceMask.mockImplementation(
-        (_camera, signal, { onCaptureReady } = {}) =>
+        (_camera, signal, { onCaptureReady }: FaceMaskOptions = {}) =>
           new Promise((resolve, reject) => {
             ready = () => onCaptureReady!(() => resolve(mask));
             signal!.addEventListener(
@@ -1158,7 +1160,7 @@ describe('experimental face mask lifecycle', () => {
   it('keeps the camera live until capture and allows cancellation', async () => {
     const { camera, mask, room, media, dispose } = setup();
     maskMocks.createFaceMask.mockImplementation(
-      (_camera, signal, { onCaptureReady } = {}) =>
+      (_camera, signal, { onCaptureReady }: FaceMaskOptions = {}) =>
         new Promise((resolve, reject) => {
           onCaptureReady!(() => resolve(mask));
           signal!.addEventListener(
