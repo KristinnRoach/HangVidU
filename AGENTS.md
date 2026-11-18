@@ -39,3 +39,5 @@ Avoid redundant searches, repeated checks without new evidence, and unnecessary 
 ## Toolchain
 
 This project uses [Vite+](https://viteplus.dev/guide/) (`vp`). Commands and validation steps are in the [development guide](docs/dev/README.md).
+
+`vpr preview:watch` uses the production API. When a change can't be tested that way (for example, undeployed Worker changes), say so once per session, and again only if later changes affect it; otherwise say nothing.
