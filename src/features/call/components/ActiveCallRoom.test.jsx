@@ -26,6 +26,8 @@ vi.mock('@stores/contacts-store', () => ({
     byId: {
       cleo: { contactId: 'cleo', displayName: 'Cleo' },
       sam: { contactId: 'sam', displayName: 'Sam' },
+      ana: { contactId: 'ana', displayName: 'Ana' },
+      alice: { contactId: 'alice', displayName: 'Alice' },
     },
   }),
   getContactLabel: (contact) => contact.displayName,
@@ -58,7 +60,7 @@ afterEach(() => {
   mocks.roomState.mockReset();
 });
 
-it('invites an eligible contact into the call and closes the picker', async () => {
+it('submits the first eligible search result and closes the picker', async () => {
   mocks.capturing.mockReturnValue(false);
   mocks.user.mockReturnValue({ uid: 'caller' });
   mocks.roomState.mockReturnValue('joined');
@@ -67,14 +69,26 @@ it('invites an eligible contact into the call and closes the picker', async () =
   fireEvent.click(screen.getByRole('button', { name: 'Add caller' }));
   await screen.findByRole('dialog', { name: 'Add caller' });
   expect(screen.queryByRole('button', { name: 'Sam' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Cleo' }));
+  expect(screen.getByRole('button', { name: 'Ana' })).toBeTruthy();
+  const search = screen.getByRole('textbox', { name: 'Search...' });
+  fireEvent.input(search, { target: { value: 'missing' } });
+  search.form.requestSubmit();
+  expect(mocks.startCall).not.toHaveBeenCalled();
+
+  fireEvent.input(search, { target: { value: 'A' } });
+  expect(screen.queryByRole('button', { name: 'Cleo' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Sam' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Alice' })).toBeTruthy();
+  search.form.requestSubmit();
 
   expect(mocks.startCall).toHaveBeenCalledExactlyOnceWith({
-    calleeId: 'cleo',
-    calleeName: 'Cleo',
+    calleeId: 'alice',
+    calleeName: 'Alice',
     audioOnly: false,
   });
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  fireEvent.click(screen.getByRole('button', { name: 'Add caller' }));
+  await screen.findByRole('button', { name: 'Cleo' });
 });
 
 it('holds the top bar hidden throughout setup and resumes after setup ends', () => {

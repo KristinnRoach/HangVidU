@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-solid';
+import { UserPlus } from 'lucide-solid';
 import {
   For,
   Match,
@@ -14,10 +14,12 @@ import { useAuth } from '@auth';
 import Button from '@components/Button';
 import Dialog from '@components/dialogs/Dialog';
 import { Spinner } from '@components/Spinner';
+import TextField from '@components/TextField';
 import {
   getContactsStore,
   getContactLabel,
   hydrateContacts,
+  type Contact,
 } from '@stores/contacts-store';
 
 import { MemberStreams } from './MemberStreams';
@@ -25,7 +27,7 @@ import { ActiveCallControls } from './CallControls';
 import { useCallHandshake } from '../call-handshake.js';
 import type { CallMedia } from '../call-media';
 import { useP2PContext } from '@shared/p2p-context.js';
-import { t } from '@shared/i18n';
+import { getLocale, t } from '@shared/i18n';
 
 import styles from './ActiveCallRoom.module.css';
 
@@ -79,14 +81,14 @@ export function ActiveCallRoom(props: {
         media={props.media}
       />
 
-      <div class='pointer-events-none absolute inset-x-2 top-[calc(var(--topbar-height)+0.5rem)] z-10 flex flex-col items-end gap-2'>
+      <div class='pointer-events-none absolute inset-x-(--gap) top-(--call-overlay-top) z-10 grid grid-cols-[minmax(2.75rem,1fr)_minmax(0,max-content)_minmax(2.75rem,1fr)] items-start gap-2 transition-[top] duration-(--duration-default) ease-(--easing-default) motion-reduce:transition-none'>
         <Show when={invitePickerOwner()} keyed>
           <InviteCaller />
         </Show>
         <Show when={ringingIntoRoom() || inviteNotice()}>
           <div
             role='status'
-            class='pointer-events-auto flex min-h-9 items-center gap-3 self-center rounded-full bg-bg-darker py-1 pr-1 pl-4 text-sm text-text-primary'
+            class='pointer-events-auto col-start-2 row-start-1 flex min-h-11 items-center gap-2 rounded-full bg-bg-darker py-1 pr-1 pl-4 text-sm wrap-anywhere text-text-primary'
           >
             <Show
               when={ringingIntoRoom()}
@@ -94,10 +96,10 @@ export function ActiveCallRoom(props: {
             >
               {(call) => (
                 <>
-                  {t('call.calling', { name: call().calleeName })}
+                  <span>{t('call.calling', { name: call().calleeName })}</span>
                   <Button
                     variant='danger'
-                    class='rounded-full'
+                    class='shrink-0 rounded-full'
                     onClick={cancelOutgoing}
                   >
                     {t('shared.cancel')}
@@ -154,67 +156,101 @@ export function ActiveCallRoom(props: {
 }
 
 function InviteCaller() {
-  const { startCall, isCallDisabled } = useCallHandshake();
-  const contacts = getContactsStore();
   const [open, setOpen] = createSignal(false);
-  const eligibleContacts = createMemo(() =>
-    Object.values(contacts.byId).filter(
-      ({ contactId }) => !isCallDisabled(contactId),
-    ),
-  );
 
   return (
     <>
       <Button
         variant='success'
-        class='pointer-events-auto min-h-11'
+        class='pointer-events-auto col-start-3 row-start-1 size-11 justify-self-end'
+        aria-label={t('call.add_caller')}
+        title={t('call.add_caller')}
         aria-haspopup='dialog'
         onClick={() => setOpen(true)}
       >
-        <Plus size={18} aria-hidden='true' />
-        {t('call.add_caller')}
+        <UserPlus size={20} class='shrink-0' aria-hidden='true' />
       </Button>
       <Dialog open={open()} onOpenChange={setOpen} title={t('call.add_caller')}>
-        <Switch fallback={<Spinner />}>
-          <Match when={contacts.status === 'ready'}>
-            <Show
-              when={eligibleContacts().length}
-              fallback={
-                <p class='text-sm'>{t('call.no_invitable_contacts')}</p>
-              }
-            >
-              <div class='flex flex-col gap-2'>
-                <For each={eligibleContacts()}>
-                  {(contact) => {
-                    const name = () =>
-                      getContactLabel(contact) ?? t('contact.no_name');
-                    return (
-                      <Button
-                        class='justify-start wrap-anywhere text-left'
-                        onClick={() => {
-                          setOpen(false);
-                          void startCall({
-                            calleeId: contact.contactId,
-                            calleeName: name(),
-                            audioOnly: false,
-                          });
-                        }}
-                      >
-                        {name()}
-                      </Button>
-                    );
-                  }}
-                </For>
-              </div>
-            </Show>
-          </Match>
-          <Match when={contacts.status === 'error'}>
-            <Button onClick={() => void hydrateContacts().catch(() => {})}>
-              {t('call.retry_contacts')}
-            </Button>
-          </Match>
-        </Switch>
+        <InviteCallerContacts close={() => setOpen(false)} />
       </Dialog>
     </>
+  );
+}
+
+function InviteCallerContacts(props: { close: () => void }) {
+  const { startCall, isCallDisabled } = useCallHandshake();
+  const contacts = getContactsStore();
+  const [query, setQuery] = createSignal('');
+  const name = (contact: Contact) =>
+    getContactLabel(contact) ?? t('contact.no_name');
+  const eligibleContacts = createMemo(() => {
+    const locale = getLocale();
+    return Object.values(contacts.byId)
+      .filter(({ contactId }) => !isCallDisabled(contactId))
+      .sort((a, b) => name(a).localeCompare(name(b), locale));
+  });
+  const matches = createMemo(() => {
+    const term = query().trim().toLowerCase();
+    return eligibleContacts().filter((contact) =>
+      name(contact).toLowerCase().includes(term),
+    );
+  });
+
+  function invite(contact: Contact) {
+    props.close();
+    void startCall({
+      calleeId: contact.contactId,
+      calleeName: name(contact),
+      audioOnly: false,
+    });
+  }
+
+  return (
+    <Switch fallback={<Spinner />}>
+      <Match when={contacts.status === 'ready'}>
+        <Show
+          when={eligibleContacts().length}
+          fallback={<p class='text-sm'>{t('call.no_invitable_contacts')}</p>}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const firstMatch = matches()[0];
+              if (firstMatch) invite(firstMatch);
+            }}
+          >
+            <TextField
+              label={t('contact.search')}
+              hideLabel
+              placeholder={t('contact.search')}
+              value={query()}
+              onChange={setQuery}
+            />
+          </form>
+          <Show
+            when={matches().length}
+            fallback={<p class='text-sm'>{t('contact.search.no_matches')}</p>}
+          >
+            <div class='flex flex-col gap-2'>
+              <For each={matches()}>
+                {(contact) => (
+                  <Button
+                    class='justify-start wrap-anywhere text-left'
+                    onClick={() => invite(contact)}
+                  >
+                    {name(contact)}
+                  </Button>
+                )}
+              </For>
+            </div>
+          </Show>
+        </Show>
+      </Match>
+      <Match when={contacts.status === 'error'}>
+        <Button onClick={() => void hydrateContacts().catch(() => {})}>
+          {t('call.retry_contacts')}
+        </Button>
+      </Match>
+    </Switch>
   );
 }

@@ -88,6 +88,7 @@
   "contact.import.google": "Import from Google Contacts",
   "contact.import.facebook": "Import from Facebook (Coming soon)",
   "contact.search": "Search...",
+  "contact.search.no_matches": "No matching contacts.",
   "contact.import.requesting": "Requesting access...",
   "contact.import.fetching": "Fetching contacts...",
   "contact.import.no_email": "No contacts with email addresses found.",

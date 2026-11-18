@@ -38,7 +38,7 @@
 .selfPreview {
   position: absolute;
   overflow: visible;
-  top: var(--preview-top, var(--gap));
+  top: var(--call-overlay-top);
   left: var(--gap);
 
   width: var(--preview-width, clamp(120px, 25%, 300px));
@@ -69,9 +69,10 @@
   object-fit: contain;
 }
 
-/* The top bar overlays calls. Keep the preview below it while visible. */
-:global(#top-bar[data-visible='true']) ~ :global(#main-content) .selfPreview {
-  --preview-top: calc(var(--topbar-height) + var(--gap));
+@media (prefers-reduced-motion: reduce) {
+  .selfPreview {
+    transition: none;
+  }
 }
 
 @container call-room (aspect-ratio >= 1) {
