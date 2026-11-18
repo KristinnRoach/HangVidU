@@ -84,7 +84,6 @@ export function createCallLocalTrackSlots(
 
 export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const localStream = () => p2p.localStream();
-  trackSendQuality(p2p);
   const ownedCameraTracks = new Set<MediaStreamTrack>();
   const [micOn, setMicOn] = createSignal(false);
   const [micRecoveryPending, setMicRecoveryPending] = createSignal(false);
@@ -106,6 +105,7 @@ export function createCallMedia(p2p: SolidP2PRoom): CallMedia {
   const [cameraPending, setCameraPending] = createSignal(false);
   const [cameraSwitchAvailable, setCameraSwitchAvailable] = createSignal(false);
   const [screenSharing, setScreenSharing] = createSignal(false);
+  trackSendQuality(p2p, screenSharing);
   // hide screen-share on mobile — getDisplayMedia exists on iOS but
   // only shares the HangVidU app itself, so it's useless. Re-enable when mobile
   // screen capture actually works.
