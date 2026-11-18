@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   roomState: vi.fn(() => 'idle'),
   remoteMemberStreams: vi.fn(() => [{}]),
   startCall: vi.fn(),
+  showSuccessToast: vi.fn(),
 }));
 vi.mock('@auth', () => ({
   useAuth: () => ({ user: mocks.user, isLoggingOut: () => false }),
@@ -49,6 +50,9 @@ vi.mock('@shared/p2p-context.js', () => ({
     remoteMemberStreams: mocks.remoteMemberStreams,
   }),
 }));
+vi.mock('@components/base-legacy/toast.js', () => ({
+  showSuccessToast: mocks.showSuccessToast,
+}));
 vi.mock('./MemberStreams', () => ({ MemberStreams: () => null }));
 vi.mock('./CallControls', () => ({ ActiveCallControls: () => null }));
 
@@ -60,6 +64,7 @@ afterEach(() => {
   mocks.user.mockReset();
   mocks.roomState.mockReset();
   mocks.remoteMemberStreams.mockReset();
+  mocks.showSuccessToast.mockClear();
   window.history.replaceState(null, '', '/');
 });
 
@@ -143,14 +148,15 @@ it('reports how an add-invite ended in the call view, not as a dialog', () => {
   mocks.inviteOutcome = () => null;
 });
 
-it('offers manual invite sharing if copying the guest-call link fails', async () => {
+it('keeps invite copying available after someone joins and offers a manual fallback', async () => {
   window.history.replaceState(
     null,
     '',
     '/?publicRoom=12345678-1234-1234-1234-123456789abc',
   );
   mocks.roomState.mockReturnValue('joined');
-  mocks.remoteMemberStreams.mockReturnValue([]);
+  const [streams, setStreams] = createSignal([]);
+  mocks.remoteMemberStreams.mockImplementation(streams);
   const writeText = vi
     .fn()
     .mockRejectedValueOnce(new Error('clipboard denied'))
@@ -162,22 +168,28 @@ it('offers manual invite sharing if copying the guest-call link fails', async ()
   });
 
   try {
-    const { getByRole, findByRole } = render(() => (
-      <ActiveCallRoom media={media} holdTopBar={() => () => {}} />
-    ));
-    const copy = getByRole('button', { name: 'Copy invite link' });
+    render(() => <ActiveCallRoom media={media} holdTopBar={() => () => {}} />);
+    const copy = screen.getByRole('button', { name: 'Copy invite link' });
+    setStreams([{}]);
+    expect(screen.getByRole('button', { name: 'Copy invite link' })).toBe(copy);
     fireEvent.click(copy);
 
-    const input = await findByRole('textbox', {
+    const input = await screen.findByRole('textbox', {
       name: 'Copy this link manually',
     });
     expect(input.readOnly).toBe(true);
     expect(input.value).toBe(window.location.href);
 
-    fireEvent.click(copy);
-    await waitFor(() =>
-      expect(getByRole('status').textContent).toBe('Link copied'),
+    expect(mocks.showSuccessToast).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Copy invite link' }),
     );
+    await waitFor(() => {
+      expect(mocks.showSuccessToast).toHaveBeenCalledExactlyOnceWith(
+        'Link copied',
+      );
+    });
     expect(writeText).toHaveBeenCalledWith(window.location.href);
   } finally {
     if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard);

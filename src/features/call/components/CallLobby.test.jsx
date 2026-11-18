@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   },
   signInAsGuest: vi.fn(),
   joinRoomLink: vi.fn(),
+  showSuccessToast: vi.fn(),
 }));
 
 vi.mock('@shared/p2p-context.js', () => ({
@@ -29,6 +30,9 @@ vi.mock('../call-handshake.js', () => ({
 }));
 vi.mock('@auth', () => ({
   signInAsGuest: mocks.signInAsGuest,
+}));
+vi.mock('@components/base-legacy/toast.js', () => ({
+  showSuccessToast: mocks.showSuccessToast,
 }));
 vi.mock('@shared/i18n', () => ({
   t: (key) => key,
@@ -65,6 +69,7 @@ function setupMediaDevices() {
 }
 
 describe('CallLobby', () => {
+  const clipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.p2p.state.mockReturnValue('idle');
@@ -80,6 +85,9 @@ describe('CallLobby', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard);
+    else delete navigator.clipboard;
     window.history.replaceState(null, '', '/');
   });
 
@@ -91,7 +99,12 @@ describe('CallLobby', () => {
 
     const { getByRole, getAllByRole } = render(() => <CallLobby />);
     expect(getAllByRole('button')).toHaveLength(1);
-    fireEvent.click(getByRole('button', { name: 'call.lobby.start' }));
+    const start = getByRole('button', { name: 'call.lobby.start' });
+    const input = getByRole('textbox', { name: 'call.lobby.invite_label' });
+    expect(
+      start.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(start);
 
     await waitFor(() => expect(mocks.joinRoomLink).toHaveBeenCalledOnce());
     const id = new URLSearchParams(window.location.search).get('publicRoom');
@@ -103,6 +116,51 @@ describe('CallLobby', () => {
     );
   });
 
+  it('auto-copies only after the new room starts and shows a success toast', async () => {
+    window.history.replaceState(null, '', '/');
+    setupMediaDevices();
+    mocks.signInAsGuest.mockResolvedValue('guest-user');
+    let finishJoin;
+    mocks.joinRoomLink.mockReturnValue(
+      new Promise((resolve) => {
+        finishJoin = resolve;
+      }),
+    );
+    let copiedText;
+    vi.stubGlobal(
+      'ClipboardItem',
+      class ClipboardItem {
+        constructor(data) {
+          this.data = data;
+        }
+      },
+    );
+    const write = vi.fn(async ([item]) => {
+      const blob = await item.data['text/plain'];
+      copiedText = await blob.text();
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { write },
+    });
+
+    const { getByRole } = render(() => <CallLobby />);
+    fireEvent.click(getByRole('button', { name: 'call.lobby.start' }));
+    expect(write).toHaveBeenCalledOnce();
+    expect(mocks.joinRoomLink).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.joinRoomLink).toHaveBeenCalledOnce());
+    expect(copiedText).toBeUndefined();
+    expect(mocks.showSuccessToast).not.toHaveBeenCalled();
+
+    finishJoin();
+    await waitFor(() => {
+      expect(mocks.showSuccessToast).toHaveBeenCalledExactlyOnceWith(
+        'call.link_copied',
+      );
+    });
+    expect(copiedText).toBe(window.location.href);
+  });
+
   it('shows a single join action for a direct invite and resets after hangup', async () => {
     const { localStream } = setupMediaDevices();
     const [state, setState] = createSignal('idle');
@@ -112,7 +170,14 @@ describe('CallLobby', () => {
 
     const { getByRole, queryByRole } = render(() => <CallLobby />);
     expect(queryByRole('textbox')).toBeNull();
-    fireEvent.click(getByRole('button', { name: 'call.lobby.join' }));
+    const join = getByRole('button', { name: 'call.lobby.join' });
+    expect(join.classList.contains('bg-success')).toBe(true);
+    const writeText = vi.fn();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    fireEvent.click(join);
     await waitFor(() =>
       expect(mocks.joinRoomLink).toHaveBeenCalledExactlyOnceWith(
         '12345678-1234-1234-1234-123456789abc',
@@ -121,6 +186,8 @@ describe('CallLobby', () => {
       ),
     );
 
+    expect(writeText).not.toHaveBeenCalled();
+    expect(mocks.showSuccessToast).not.toHaveBeenCalled();
     setState('idle');
     expect(window.location.search).toBe('');
     expect(getByRole('button', { name: 'call.lobby.start' }).disabled).toBe(
@@ -169,6 +236,11 @@ describe('CallLobby', () => {
     mocks.joinRoomLink.mockRejectedValueOnce(
       new Error('signaling unavailable'),
     );
+    const writeText = vi.fn();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
 
     const { findByRole, getByRole } = render(() => <CallLobby />);
     fireEvent.click(getByRole('button', { name: 'call.lobby.start' }));
@@ -177,6 +249,8 @@ describe('CallLobby', () => {
       'call.lobby.error.generic',
     );
     expect(window.location.search).toBe('?test=1');
+    expect(writeText).not.toHaveBeenCalled();
+    expect(mocks.showSuccessToast).not.toHaveBeenCalled();
     expect(getByRole('button', { name: 'call.lobby.start' }).disabled).toBe(
       false,
     );

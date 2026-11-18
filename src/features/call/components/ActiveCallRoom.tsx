@@ -1,4 +1,4 @@
-import { UserPlus } from 'lucide-solid';
+import { Link2, UserPlus } from 'lucide-solid';
 import {
   For,
   Match,
@@ -12,6 +12,7 @@ import {
 import type { AutoHideController } from '@shared/createAutoHide';
 import { useAuth } from '@auth';
 import Button from '@components/Button';
+import { showSuccessToast } from '@components/base-legacy/toast.js';
 import Dialog from '@components/dialogs/Dialog';
 import { Spinner } from '@components/Spinner';
 import TextField from '@components/TextField';
@@ -62,17 +63,7 @@ export function ActiveCallRoom(props: {
   const isRoomLinkCall = new URLSearchParams(window.location.search).has(
     'publicRoom',
   );
-  const [copyResult, setCopyResult] = createSignal<'copied' | 'failed'>();
   const [remoteAudioMuted, setRemoteAudioMuted] = createSignal(false);
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopyResult('copied');
-    } catch {
-      setCopyResult('failed');
-    }
-  }
 
   return (
     <div class={styles.room}>
@@ -82,9 +73,20 @@ export function ActiveCallRoom(props: {
       />
 
       <div class='pointer-events-none absolute inset-x-(--gap) top-(--call-overlay-top) z-10 grid grid-cols-[minmax(2.75rem,1fr)_minmax(0,max-content)_minmax(2.75rem,1fr)] items-start gap-2 transition-[top] duration-(--duration-default) ease-(--easing-default) motion-reduce:transition-none'>
-        <Show when={invitePickerOwner()} keyed>
-          <InviteCaller />
-        </Show>
+        <div class='col-start-3 row-start-1 flex justify-end gap-2'>
+          <Show
+            when={
+              isRoomLinkCall &&
+              p2p.state() === 'joined' &&
+              !props.media.faceMaskCapturing()
+            }
+          >
+            <CopyRoomLink />
+          </Show>
+          <Show when={invitePickerOwner()} keyed>
+            <InviteCaller />
+          </Show>
+        </div>
         <Show when={ringingIntoRoom() || inviteNotice()}>
           <div
             role='status'
@@ -134,21 +136,6 @@ export function ActiveCallRoom(props: {
           <p>
             {isRoomLinkCall ? t('call.room_empty') : t('call.waiting_peer')}
           </p>
-          <Show when={isRoomLinkCall}>
-            <Button onClick={copyLink}>{t('call.copy_invite_link')}</Button>
-            <Show when={copyResult() === 'failed'}>
-              <TextField
-                label={t('call.copy_invite_manually')}
-                value={window.location.href}
-                onChange={() => {}}
-                onFocus={(event) => event.currentTarget.select()}
-                readOnly
-              />
-            </Show>
-            <span role='status' class='text-sm empty:absolute'>
-              {copyResult() === 'copied' ? t('call.link_copied') : undefined}
-            </span>
-          </Show>
         </div>
       </Show>
 
@@ -163,6 +150,52 @@ export function ActiveCallRoom(props: {
   );
 }
 
+function CopyRoomLink() {
+  const link = window.location.href;
+  const [manualCopy, setManualCopy] = createSignal(false);
+  let active = true;
+  onCleanup(() => {
+    active = false;
+  });
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(link);
+    } catch {
+      if (active) setManualCopy(true);
+      return;
+    }
+    if (active) showSuccessToast(t('call.link_copied'));
+  }
+
+  return (
+    <>
+      <Button
+        variant='success'
+        class='pointer-events-auto size-11 shrink-0'
+        aria-label={t('call.copy_invite_link')}
+        title={t('call.copy_invite_link')}
+        onClick={copyLink}
+      >
+        <Link2 size={20} class='shrink-0' aria-hidden='true' />
+      </Button>
+      <Dialog
+        open={manualCopy()}
+        onOpenChange={setManualCopy}
+        title={t('call.copy_invite_link')}
+      >
+        <TextField
+          label={t('call.copy_invite_manually')}
+          value={link}
+          onChange={() => {}}
+          onFocus={(event) => event.currentTarget.select()}
+          readOnly
+        />
+      </Dialog>
+    </>
+  );
+}
+
 function InviteCaller() {
   const [open, setOpen] = createSignal(false);
 
@@ -170,7 +203,7 @@ function InviteCaller() {
     <>
       <Button
         variant='success'
-        class='pointer-events-auto col-start-3 row-start-1 size-11 justify-self-end'
+        class='pointer-events-auto size-11 shrink-0'
         aria-label={t('call.add_caller')}
         title={t('call.add_caller')}
         aria-haspopup='dialog'

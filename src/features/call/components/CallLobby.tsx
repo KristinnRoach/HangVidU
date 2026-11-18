@@ -4,6 +4,7 @@ import { useP2PContext } from '@shared/p2p-context.js';
 import { signInAsGuest } from '@auth';
 import { t } from '@shared/i18n';
 import Button from '@components/Button';
+import { showSuccessToast } from '@components/base-legacy/toast.js';
 import TextField from '@components/TextField';
 import {
   getAudioConstraints,
@@ -38,6 +39,37 @@ function publicRoomIdFromUrl(link: string): string | null {
   }
 }
 
+async function copyStartedInvite(started: Promise<string | undefined>) {
+  const clipboard = navigator.clipboard;
+  if (!clipboard) return;
+
+  try {
+    if (clipboard.write && typeof ClipboardItem !== 'undefined') {
+      // Safari needs write() during the submit gesture. Provide the link only
+      // once the call starts, so a failed start leaves the clipboard alone.
+      const text = started.then((url) => {
+        if (!url || window.location.href !== url) {
+          throw new Error('Guest call is no longer active');
+        }
+        return new Blob([url], { type: 'text/plain' });
+      });
+      // Some browsers reject the write before reading its payload.
+      void text.catch(() => {});
+      await clipboard.write([new ClipboardItem({ 'text/plain': text })]);
+    } else {
+      const url = await started;
+      if (!url || window.location.href !== url) return;
+      await clipboard.writeText(url);
+    }
+
+    if (window.location.href === (await started)) {
+      showSuccessToast(t('call.link_copied'));
+    }
+  } catch {
+    // The call toolbar still offers a manual copy action.
+  }
+}
+
 export function CallLobby() {
   const p2p = useP2PContext();
   const { joinRoomLink } = useCallHandshake();
@@ -50,7 +82,8 @@ export function CallLobby() {
   const [callEnded, setCallEnded] = createSignal(false);
   const [error, setError] = createSignal<string>();
   const roomId = () => invite() ?? publicRoomIdFromUrl(link());
-  const invalidLink = () => Boolean(link().trim() && !roomId());
+  const isJoiningInvite = () => Boolean(invite() || link().trim());
+  const invalidLink = () => isJoiningInvite() && !roomId();
 
   let pendingCapture: Promise<MediaStream> | undefined;
   function releasePendingCapture() {
@@ -76,9 +109,8 @@ export function CallLobby() {
     }),
   );
 
-  async function connect() {
-    if (joining() || invalidLink()) return;
-    const id = roomId() ?? crypto.randomUUID();
+  async function connect(invitedRoomId: string | null) {
+    const id = invitedRoomId ?? crypto.randomUUID();
     setJoining(true);
     setCallEnded(false);
     setError(undefined);
@@ -100,6 +132,7 @@ export function CallLobby() {
       // The handshake owns the stream from this point, including failed joins.
       pendingCapture = undefined;
       await joinRoomLink(id, uid, stream);
+      return url.href;
     } catch (err) {
       releasePendingCapture();
       console.error('[CallLobby] Failed to join guest room:', err);
@@ -129,41 +162,42 @@ export function CallLobby() {
       class='relative mx-auto flex w-full max-w-98 flex-col gap-2'
       onSubmit={(event) => {
         event.preventDefault();
-        void connect();
+        if (joining() || invalidLink()) return;
+        const id = roomId();
+        const started = connect(id);
+        if (!id) void copyStartedInvite(started);
       }}
     >
-      <Show
-        when={invite()}
-        fallback={
-          <TextField
-            label={t('call.lobby.invite_label')}
-            hideLabel
-            value={link()}
-            placeholder={t('call.lobby.paste_link')}
-            disabled={joining()}
-            error={invalidLink() ? t('call.lobby.error.link') : undefined}
-            onChange={(value) => {
-              setLink(value);
-              setError(undefined);
-              setCallEnded(false);
-            }}
-          />
-        }
-      >
+      <Show when={invite()}>
         <p class='text-sm text-text-secondary'>{t('call.lobby.invited')}</p>
       </Show>
       <Button
         type='submit'
-        variant='primary'
+        variant={isJoiningInvite() ? 'success' : 'primary'}
         loading={joining()}
         disabled={invalidLink()}
       >
         {joining()
           ? t('call.lobby.joining')
-          : invite() || link().trim()
+          : isJoiningInvite()
             ? t('call.lobby.join')
             : t('call.lobby.start')}
       </Button>
+      <Show when={!invite()}>
+        <TextField
+          label={t('call.lobby.invite_label')}
+          hideLabel
+          value={link()}
+          placeholder={t('call.lobby.paste_link')}
+          disabled={joining()}
+          error={invalidLink() ? t('call.lobby.error.link') : undefined}
+          onChange={(value) => {
+            setLink(value);
+            setError(undefined);
+            setCallEnded(false);
+          }}
+        />
+      </Show>
       <div role='status' class='text-sm text-text-secondary empty:absolute'>
         {joining()
           ? t('call.lobby.permission_hint')
