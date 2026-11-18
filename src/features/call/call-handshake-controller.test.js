@@ -1418,6 +1418,34 @@ describe('CallHandshakeController', () => {
     );
   });
 
+  it('keeps the mailbox invite when its notification copy arrives later', async () => {
+    const p2p = createP2PMock({ join: vi.fn(() => new Promise(() => {})) });
+    const controller = createController(p2p);
+
+    controller.init();
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-ac',
+        joinRoomId: 'room-ab',
+        callerId: 'caller-id',
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+    controller.showIncomingCallFromNotification({
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-ac',
+      callerId: 'caller-id',
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+
+    expect(p2p.join).toHaveBeenCalledWith(
+      expect.objectContaining({ roomId: 'room-ab' }),
+    );
+  });
+
   it('publishes declined when the callee rejects', async () => {
     mocks.getLoggedInUserId.mockReturnValue('caller-id');
     const onInviteOutcome = vi.fn();

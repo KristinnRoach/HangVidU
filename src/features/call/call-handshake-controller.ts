@@ -435,6 +435,15 @@ export class CallHandshakeController {
       !details.callerId
     )
       return;
+    // The mailbox invite is authoritative (notifications don't carry
+    // joinRoomId), so a notification copy never replaces it.
+    const current = this._handshakeState;
+    if (
+      current &&
+      current.direction !== 'outgoing' &&
+      current.call.callInviteId === details.callInviteId
+    )
+      return;
     const startedAt = details.startedAt ?? Date.now();
     const call: MailboxInvite = {
       callInviteId: details.callInviteId,
