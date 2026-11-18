@@ -148,12 +148,12 @@ export function CallLobby() {
   }
 
   return (
-    <div class='flex flex-col gap-3'>
-      <div class='flex flex-wrap items-center justify-center gap-2'>
+    <div class='flex flex-col gap-2'>
+      <div class='flex flex-wrap gap-2'>
         <Show
           when={link().trim()}
           fallback={
-            <div class='flex flex-col items-center gap-2'>
+            <div class='flex w-full flex-col gap-2'>
               <p class='text-base'>{t('call.lobby.ephemeral_prompt')}</p>
               <Button variant='primary' onClick={createRoom}>
                 {t('call.lobby.start')}
@@ -163,13 +163,18 @@ export function CallLobby() {
         >
           <Button
             variant='primary'
+            class='flex-1'
             onClick={joinRoom}
             loading={joining()}
             disabled={!roomId()}
           >
             {joining() ? t('call.lobby.joining') : t('call.lobby.join')}
           </Button>
-          <Button onClick={copyLink} disabled={joining() || !roomId()}>
+          <Button
+            class='flex-1'
+            onClick={copyLink}
+            disabled={joining() || !roomId()}
+          >
             {t('call.lobby.copy_link')}
           </Button>
         </Show>
