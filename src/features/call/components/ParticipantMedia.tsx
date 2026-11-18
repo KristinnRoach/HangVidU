@@ -275,13 +275,14 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       element.defaultMuted = shouldMute;
       if (shouldMute) element.setAttribute('muted', '');
       else element.removeAttribute('muted');
-      element.autoplay = true;
       element.setAttribute('playsinline', 'true');
     };
     configureVideo(video);
 
     const attachedVideo = video;
     let disposed = false;
+    // Playback starts via play(). A native autoplay attribute makes iOS show
+    // its own controls in Low Power Mode, over the call video.
     void playback
       .attach(attachedVideo, stream, { muted: shouldMute })
       .then((started) => {
@@ -338,7 +339,6 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
         ref={video}
         class={styles.media}
         hidden={status().video !== 'connected'}
-        autoplay
         muted={shouldMutePlayback()}
       />
 

@@ -323,15 +323,20 @@ describe('ParticipantMedia', () => {
     );
   });
 
-  it('shows the continue-call prompt only for autoplay-gesture rejections', async () => {
+  it('starts inline playback without native autoplay and offers a retry when blocked', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    HTMLMediaElement.prototype.play.mockRejectedValue(
+    const play = HTMLMediaElement.prototype.play;
+    play.mockRejectedValueOnce(
       Object.assign(new Error('gesture required'), {
         name: 'NotAllowedError',
       }),
     );
     const stream = new FakeStream([new FakeTrack('video')]);
     const { container } = render(() => <ParticipantMedia stream={stream} />);
+    const video = container.querySelector('video');
+    expect(video.autoplay).toBe(false);
+    expect(video.controls).toBe(false);
+    expect(video.playsInline).toBe(true);
 
     await waitFor(() => {
       expect(container.querySelector('button')?.textContent).toBe(
@@ -343,6 +348,9 @@ describe('ParticipantMedia', () => {
       name: 'NotAllowedError',
       message: 'gesture required',
     });
+
+    container.querySelector('button').click();
+    await waitFor(() => expect(container.querySelector('button')).toBeNull());
   });
 
   it('ignores transient play() rejections like AbortError', async () => {
