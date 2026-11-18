@@ -39,8 +39,9 @@ For both room-link and contact calls, `MemberStreams` switches to equal-sized
 remote tiles above two members. Tiles meet edge to edge in a stack in tall
 rooms and in two columns in wider rooms. With three remote streams in a wider
 room, the self-preview fills the top-left tile. Group cameras center-crop to fill
-their tiles. Screen shares and mask capture fit the full frame. Direct remote
-video uses `ParticipantMedia`'s capped zoom.
+their tiles. A floating camera preview sizes to the source aspect and fills its
+box while dimensions update. Screen shares and mask capture fit the full frame.
+Direct remote video uses `ParticipantMedia`'s capped zoom.
 
 ## Data and transport
 

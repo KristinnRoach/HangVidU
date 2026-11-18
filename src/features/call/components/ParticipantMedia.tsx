@@ -91,8 +91,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     onCleanup(() => observer.disconnect());
   });
   const [videoAspect, setVideoAspect] = createSignal(4 / 3);
-  // Fit the preview box to the source aspect so it has no empty bands. Mirrors
-  // the .selfPreview clamps, which stay as the fallback until first measurement.
+  // Size the preview to the source aspect. CSS keeps the camera filling the box
+  // while the browser reports new dimensions after rotation or a camera switch.
   const previewSize = createMemo(() => {
     const { width, height } = bounds();
     if (!width || !height) return undefined;

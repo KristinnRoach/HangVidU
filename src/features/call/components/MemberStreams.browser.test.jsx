@@ -59,6 +59,8 @@ it('fills adjoining group tiles with cameras and contains screen shares', () => 
 
 it('uses the first cell for the same self-preview in wide four-person calls', () => {
   const local = new MediaStream();
+  const [sharing, setSharing] = createSignal(false);
+  const [capturing, setCapturing] = createSignal(false);
   const [peers, setPeers] = createSignal(
     ['a', 'b', 'c'].map((memberId) => ({
       memberId,
@@ -74,7 +76,11 @@ it('uses the first cell for the same self-preview in wide four-person calls', ()
   const media = {
     cameraOn: () => false,
     micOn: () => false,
-    screenSharing: () => false,
+    screenSharing: sharing,
+    faceMaskCapturing: capturing,
+    faceMaskCaptureTrack: () => undefined,
+    faceMaskOutline: () => false,
+    remoteCaptureAvailable: () => false,
   };
   const { container } = render(() => (
     <div style={{ width: '600px', height: '360px' }}>
@@ -94,8 +100,20 @@ it('uses the first cell for the same self-preview in wide four-person calls', ()
 
   Object.assign(frame.style, { width: '393px', height: '852px' });
   expect(getComputedStyle(self.parentElement).position).toBe('absolute');
+  expect(getComputedStyle(self).objectFit).toBe('cover');
   Object.assign(frame.style, { width: '600px', height: '360px' });
   setPeers(peers().slice(0, 2));
   expect(container.querySelector('video')).toBe(self);
   expect(getComputedStyle(self.parentElement).position).toBe('absolute');
+
+  setPeers(peers().slice(0, 1));
+  expect(getComputedStyle(self).objectFit).toBe('cover');
+  expect(getComputedStyle(topRight).objectFit).toBe('contain');
+
+  setSharing(true);
+  expect(getComputedStyle(self).objectFit).toBe('contain');
+  setSharing(false);
+  expect(getComputedStyle(self).objectFit).toBe('cover');
+  setCapturing(true);
+  expect(getComputedStyle(self).objectFit).toBe('contain');
 });

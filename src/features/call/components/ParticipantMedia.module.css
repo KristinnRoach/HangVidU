@@ -20,13 +20,9 @@
   user-select: none;
 }
 
-.media,
-.selfPreview {
+.media {
   object-fit: contain;
   object-position: center center;
-}
-
-.media {
   transform: scale(var(--video-scale, 1));
 }
 
@@ -34,7 +30,8 @@
   border-radius: 0;
 }
 
-.groupTile:not(.screenShare, .uncropped) .media {
+.groupTile:not(.screenShare, .uncropped) .media,
+.selfPreview:not(.screenShare, .uncropped) .media {
   object-fit: cover;
 }
 
@@ -84,10 +81,6 @@
     width: 100%;
     height: 100%;
     border-radius: 0;
-  }
-
-  .fillGroupSlot:not(.screenShare, .uncropped) .media {
-    object-fit: cover;
   }
 }
 
