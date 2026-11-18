@@ -9,6 +9,8 @@ export function pwaPlugin(basePath = '/') {
     srcDir: 'src',
     filename: 'sw.js',
     injectManifest: {
+      // Load the optional detector only after call media is flowing.
+      globIgnores: ['**/face-mask-model-*.js'],
       // The sw build runs after sentryVitePlugin's delete hook, so its map
       // would ship to production. The sw isn't Sentry-instrumented anyway.
       sourcemap: false,

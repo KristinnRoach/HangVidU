@@ -1,6 +1,6 @@
 # Experimental face mask
 
-The face-mask button appears on browsers with canvas capture and WebGL support. It stays disabled until a call data channel is open, the local camera is live, and remote media has arrived. Libraries and the face model preload once per call; showing the button alone does not load them.
+The face-mask button appears on browsers with canvas capture and WebGL APIs. It stays disabled until a call data channel is open, the local camera is live, and remote media has arrived. Once media is flowing, the p5 renderer and TensorFlow.js face detector load in parallel. The detector code is excluded from the service worker's precache. It uses WebGL because WebGPU video uploads have failed on iOS Safari. A failed backend initialization hides the button for the current call.
 
 Opening setup defaults to automatic detection and the remote camera when exactly one eligible remote camera is available; otherwise it uses the local camera. Screen shares are excluded. Remote automatic capture waits for repeated face detections spanning at least 300 ms, then captures on a fresh detection result. Missing detection or restarting capture resets the wait. Set `FACE_MASK_AUTO_CAPTURE_HOLD_MS` to `0` in `face-mask.ts` to disable this guard; it also applies to local automatic capture when the countdown is disabled. Local automatic capture counts down 3, 2, 1 while detection continues, restarting if the face disappears, then captures into a private animated preview. Set `FACE_MASK_LOCAL_COUNTDOWN` to `false` in `face-mask.ts` to disable the local countdown. The normal camera remains published until **Apply mask**. The remote stream is never modified, and animation always follows the local camera.
 
@@ -8,7 +8,7 @@ One icon toolbar stays on the local preview through setup and preview. The local
 
 Manual alignment shows a fixed frontal face guide with eye and outer-lip contours on the selected source with the whole video frame visible. Capture can sample an image or object without detecting a face. Automatic mode shows no outline. Each activation starts fresh in automatic mode; removing the applied mask restores the normal camera and releases its rendering resources.
 
-Errors appear on the local preview with Retry and Dismiss. Source-video startup and face detection can take time. Startup and detection have a 30-second timeout, and capture starts a fresh timeout to prepare the output. Waiting for Apply has no timeout. Libraries and the model are reused until page reload.
+Errors appear on the local preview with Retry and Dismiss. Setup displays “Loading mask assets…” while it waits for the renderer or model, then shows the capture status. Startup and detection have a 30-second timeout, and capture starts a fresh timeout to prepare the output. Waiting for Apply has no timeout. The renderer and model are reused until page reload. A retry reuses whichever one already loaded successfully.
 
 On mobile, the source video must have drawable pixels before capture. It plays in a nearly transparent 1px viewport area rather than being fully invisible. Canvas pixel density is fixed at 1. With `faceMaskStyle.outside.globalAlpha` set to `0`, losing face tracking can produce a black frame.
 

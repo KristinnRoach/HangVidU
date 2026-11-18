@@ -22,11 +22,9 @@ const FACE_MASK_FOLLOW_SPEED = 1; // 0–1 per frame: 1 = instant; lower = smoot
 type Graphics = { canvas: HTMLCanvasElement };
 
 type Face = { keypoints: { x: number; y: number }[] };
-type Mesh = {
-  ready: Promise<unknown>;
-  detect: (video: HTMLVideoElement) => Promise<Face[]>;
-  getTriangles: () => number[][];
-};
+type Mesh = Awaited<
+  ReturnType<typeof import('./face-mask-model').createFaceMesh>
+>;
 // Only the small p5 surface used by this experiment.
 type Sketch = {
   setup: () => void;
@@ -54,13 +52,7 @@ type Sketch = {
   endShape: () => void;
   remove: () => void;
 };
-type Libraries = {
-  p5: new (sketch: (p: Sketch) => void, container: HTMLElement) => Sketch;
-  ml5: {
-    tf: { setBackend: (backend: 'webgl') => Promise<boolean> };
-    faceMesh: (options: { maxFaces: number }) => Mesh | Promise<Mesh>;
-  };
-};
+type P5 = new (sketch: (p: Sketch) => void, container: HTMLElement) => Sketch;
 // Check APIs without allocating a WebGL context during call setup. Actual
 // renderer/model failures are handled separately and leave the camera intact.
 export function isFaceMaskSupported() {
@@ -72,57 +64,45 @@ export function isFaceMaskSupported() {
   );
 }
 
-let libraries: Promise<Libraries> | undefined;
+let renderer: Promise<P5> | undefined;
 
-function loadScript(src: string, integrity: string) {
-  return new Promise<void>((resolve, reject) => {
+function loadRenderer() {
+  renderer ??= new Promise<P5>((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = src;
-    script.integrity = integrity;
+    script.src =
+      'https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.13/p5.min.js';
+    script.integrity =
+      'sha384-+4pFSzqrHIcjFoiZQ8s1jUHqNylTGybto+iELDyMA+UQ0UhpTH0B92zF4Bg0mawP';
     script.crossOrigin = 'anonymous';
-    script.onload = () => resolve();
-    script.onerror = () => {
+    const failed = () => {
       script.remove();
-      reject(new Error('Could not load face mask libraries'));
+      reject(new Error('Could not load face mask renderer'));
     };
+    script.onload = () => {
+      const { p5 } = window as Window & { p5?: P5 };
+      if (typeof p5 === 'function') resolve(p5);
+      else failed();
+    };
+    script.onerror = failed;
     document.head.append(script);
-  });
-}
-
-function loadLibraries() {
-  libraries ??= (async () => {
-    await loadScript(
-      'https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.13/p5.min.js',
-      'sha384-+4pFSzqrHIcjFoiZQ8s1jUHqNylTGybto+iELDyMA+UQ0UhpTH0B92zF4Bg0mawP',
-    );
-    await loadScript(
-      'https://unpkg.com/ml5@1.4.0/dist/ml5.min.js',
-      'sha384-WhQsp6wxLjcueRBZ1VznJM97KGBK+r4P+L3yOCLEUk/H/4uAm9leYfoLx+Fauci2',
-    );
-    const libs = window as unknown as Partial<Libraries>;
-    if (
-      typeof libs.p5 !== 'function' ||
-      typeof libs.ml5?.faceMesh !== 'function'
-    )
-      throw new Error('Could not load face mask libraries');
-    return libs as Libraries;
-  })().catch((error) => {
-    libraries = undefined;
+  }).catch((error) => {
+    renderer = undefined;
     throw error;
   });
-  return libraries;
+  return renderer;
 }
 
-let faceModel: Promise<{ libs: Libraries; mesh: Mesh }> | undefined;
+let faceModel: Promise<Mesh> | undefined;
 
 export class FaceMaskInitializationError extends Error {}
 
-export function preloadFaceMask() {
+function loadModel() {
   faceModel ??= (async () => {
-    const libs = await loadLibraries();
-    // ml5 prefers WebGPU; tfjs's WebGPU upload throws RangeError on iOS Safari.
+    const { initializeWebGL, createFaceMesh } =
+      await import('./face-mask-model');
+    // TensorFlow.js WebGPU video uploads have thrown RangeError on iOS Safari.
     try {
-      if (!(await libs.ml5.tf.setBackend('webgl')))
+      if (!(await initializeWebGL()))
         throw new Error('WebGL backend unavailable');
     } catch (cause) {
       throw new FaceMaskInitializationError(
@@ -130,10 +110,7 @@ export function preloadFaceMask() {
         { cause },
       );
     }
-    // Without a global p5 at ml5 load time, ml5 returns a Promise<Mesh>.
-    const mesh = await libs.ml5.faceMesh({ maxFaces: 1 });
-    await mesh.ready;
-    return { libs, mesh };
+    return createFaceMesh();
   })().catch((error) => {
     faceModel = undefined;
     throw error;
@@ -141,10 +118,15 @@ export function preloadFaceMask() {
   return faceModel;
 }
 
+export function preloadFaceMask() {
+  return Promise.all([loadRenderer(), loadModel()]);
+}
+
 export type FaceMask = { track: MediaStreamTrack; dispose: () => void };
 
 export type FaceMaskCaptureStatus =
   | 'preparing'
+  | 'loading'
   | 'searching'
   | 3
   | 2
@@ -185,7 +167,6 @@ export async function createFaceMask(
   document.body.append(container);
   let detectionGeneration = 0;
   let sketch: Sketch | undefined;
-  let mesh: Mesh | undefined;
   let detection: ReturnType<typeof faceMaskDetection<Face[]>> | undefined;
   let healthTimer: ReturnType<typeof setInterval> | undefined;
   let removeHealthListener: (() => void) | undefined;
@@ -194,13 +175,12 @@ export async function createFaceMask(
   let styledMaskTexture: Graphics | undefined;
   let output: MediaStreamTrack | undefined;
   let disposed = false;
-  let stage = 'Loading libraries';
+  let stage = 'Starting camera input';
   const progress = (next: string) => {
     stage = next;
-    console.info('[FaceMask]', next);
+    if (import.meta.env.DEV) console.info('[FaceMask]', next);
     onProgress(next);
   };
-  progress(stage);
   onCaptureStatus('preparing');
   let timer: ReturnType<typeof setTimeout> | undefined;
   let countdownTimer: ReturnType<typeof setTimeout> | undefined;
@@ -303,10 +283,11 @@ export async function createFaceMask(
         }
         video.width = video.videoWidth;
         video.height = video.videoHeight;
-        progress('Loading libraries');
-        const { libs, mesh: readyMesh } = await preloadFaceMask();
+        progress('Loading mask assets');
+        onCaptureStatus('loading');
+        const [P5, mesh] = await preloadFaceMask();
         if (disposed) return;
-        mesh = readyMesh;
+        onCaptureStatus('preparing');
         detection = faceMaskDetection(mesh);
         const width = FRAME_WIDTH;
         const height = Math.round(
@@ -393,7 +374,7 @@ export async function createFaceMask(
           countdownTimer = setTimeout(advanceCountdown, 1000);
         };
         let canvas: HTMLCanvasElement;
-        let triangles: number[][] = [];
+        const triangles = mesh.triangles;
         const publish = () => {
           if (output) return;
           output = canvas.captureStream(20).getVideoTracks()[0];
@@ -560,7 +541,7 @@ export async function createFaceMask(
         };
 
         progress('Starting renderer');
-        sketch = new libs.p5((p) => {
+        sketch = new P5((p) => {
           p.setup = guard(() => {
             // Output pixels should not depend on the screen's Retina density.
             // At density 3, every buffer otherwise contains nine times as many pixels.
@@ -579,7 +560,6 @@ export async function createFaceMask(
             maskContext = styledMaskTexture.canvas.getContext('2d')!;
             p.frameRate(20);
             p.textureMode(p.NORMAL);
-            triangles = mesh!.getTriangles();
             if (outlineMode() && onCaptureReady) {
               clearTimeout(timer);
               onCaptureReady(capture);

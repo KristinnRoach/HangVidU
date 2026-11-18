@@ -1,4 +1,4 @@
-// One scheduler per reused model: cancellation cannot interrupt ml5 inference.
+// One scheduler per reused model: cancellation cannot interrupt inference.
 // A new capture must wait for the previous inference rather than overlap it.
 type Model<T> = { detect: (video: HTMLVideoElement) => Promise<T> };
 type Request<T> = {
