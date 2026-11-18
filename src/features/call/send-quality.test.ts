@@ -3,7 +3,7 @@ import type { P2PRoom } from '@kidlib/p2p';
 import { capVideoSenders } from './send-quality';
 
 function fakeSender(maxBitrate?: number) {
-  let parameters: { encodings: { maxBitrate?: number }[] } = {
+  let parameters: { encodings: RTCRtpEncodingParameters[] } = {
     encodings: [maxBitrate ? { maxBitrate } : {}],
   };
   return {
@@ -12,6 +12,7 @@ function fakeSender(maxBitrate?: number) {
       parameters = next;
     }),
     maxBitrate: () => parameters.encodings[0]?.maxBitrate,
+    maxFramerate: () => parameters.encodings[0]?.maxFramerate,
   };
 }
 
@@ -34,7 +35,7 @@ function fakeRoom(senders: ReturnType<typeof fakeSender>[]) {
 describe('capVideoSenders', () => {
   it('splits the upload budget across mesh peers', async () => {
     const senders = [fakeSender(), fakeSender(), fakeSender()];
-    await capVideoSenders(fakeRoom(senders));
+    await capVideoSenders(fakeRoom(senders), false);
     expect(senders.map((sender) => sender.maxBitrate())).toEqual([
       500_000, 500_000, 500_000,
     ]);
@@ -42,7 +43,51 @@ describe('capVideoSenders', () => {
 
   it('removes the cap when the call is back to one peer', async () => {
     const sender = fakeSender(500_000);
-    await capVideoSenders(fakeRoom([sender]));
+    await capVideoSenders(fakeRoom([sender]), false);
     expect(sender.maxBitrate()).toBeUndefined();
+  });
+
+  it('caps camera frame rate at four people and restores it for smaller calls', async () => {
+    const senders = [fakeSender(), fakeSender(), fakeSender()];
+    await capVideoSenders(fakeRoom(senders), false);
+    expect(senders.map((sender) => sender.maxFramerate())).toEqual([
+      20, 20, 20,
+    ]);
+
+    await capVideoSenders(fakeRoom(senders.slice(0, 2)), false);
+    expect(senders[0]?.maxFramerate()).toBeUndefined();
+    expect(senders[0]?.maxBitrate()).toBe(750_000);
+  });
+
+  it('removes the frame-rate cap during screen sharing and reapplies it on return', async () => {
+    const senders = [fakeSender(), fakeSender(), fakeSender()];
+    const room = fakeRoom(senders);
+    await capVideoSenders(room, false);
+    await capVideoSenders(room, true);
+    expect(senders.map((sender) => sender.maxFramerate())).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(senders[0]?.maxBitrate()).toBe(500_000);
+
+    await capVideoSenders(room, false);
+    expect(senders[0]?.maxFramerate()).toBe(20);
+  });
+
+  it('keeps the upload limit if the frame-rate cap is rejected', async () => {
+    const sender = fakeSender();
+    sender.setParameters.mockRejectedValueOnce(new Error('Unsupported'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await capVideoSenders(
+        fakeRoom([sender, fakeSender(), fakeSender()]),
+        false,
+      );
+      expect(sender.maxBitrate()).toBe(500_000);
+      expect(sender.maxFramerate()).toBeUndefined();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

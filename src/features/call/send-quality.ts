@@ -1,12 +1,13 @@
 import type { P2PRoom } from '@kidlib/p2p';
 import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import { metrics } from '@sentry/browser';
-import { createEffect, onCleanup } from 'solid-js';
+import { createEffect, onCleanup, type Accessor } from 'solid-js';
 
 /** Camera upload shared by a mesh call's remote peers. Each peer gets its own
  * encode, so an uncapped group call multiplies upload and encoder load. A 1:1
  * call keeps the browser's own rate control. */
 const MESH_VIDEO_UPLOAD_BPS = 1_500_000;
+const FOUR_PERSON_CAMERA_FPS = 20;
 const STATS_INTERVAL_MS = 10_000;
 
 /** A listed connection can already be closed before its member leaves. */
@@ -23,25 +24,54 @@ function videoSenders(pc: RTCPeerConnection): RTCRtpSender[] {
     .map((transceiver) => transceiver.sender);
 }
 
-/** Splits the camera upload budget across connected peers. Under the cap the
- * browser lowers resolution or frame rate itself, so screen shares keep full
- * resolution when they fit. */
-export async function capVideoSenders(room: P2PRoom): Promise<void> {
+/** Splits the upload budget across peers and limits camera work at capacity. */
+export async function capVideoSenders(
+  room: P2PRoom,
+  screenSharing: boolean,
+): Promise<void> {
   const pcs = openPeerConnections(room);
   const maxBitrate =
     pcs.length > 1 ? Math.round(MESH_VIDEO_UPLOAD_BPS / pcs.length) : undefined;
-  const updates = pcs.flatMap(videoSenders).flatMap((sender) => {
+  const maxFramerate =
+    pcs.length >= 3 && !screenSharing ? FOUR_PERSON_CAMERA_FPS : undefined;
+  const updates = pcs.flatMap(videoSenders).map(async (sender) => {
     const parameters = sender.getParameters();
     const [encoding] = parameters.encodings ?? [];
-    if (!encoding || encoding.maxBitrate === maxBitrate) return [];
+    if (
+      !encoding ||
+      (encoding.maxBitrate === maxBitrate &&
+        encoding.maxFramerate === maxFramerate)
+    )
+      return;
+
+    const bitrateChanged = encoding.maxBitrate !== maxBitrate;
     if (maxBitrate === undefined) delete encoding.maxBitrate;
     else encoding.maxBitrate = maxBitrate;
-    return [sender.setParameters(parameters)];
+    if (maxFramerate === undefined) delete encoding.maxFramerate;
+    else encoding.maxFramerate = maxFramerate;
+    try {
+      await sender.setParameters(parameters);
+    } catch (error) {
+      // Keep the upload limit if the browser rejects the frame-rate cap.
+      if (
+        bitrateChanged &&
+        maxBitrate !== undefined &&
+        maxFramerate !== undefined
+      ) {
+        const fallback = sender.getParameters();
+        const [fallbackEncoding] = fallback.encodings;
+        if (fallbackEncoding) {
+          fallbackEncoding.maxBitrate = maxBitrate;
+          await sender.setParameters(fallback);
+        }
+      }
+      throw error;
+    }
   });
   const results = await Promise.allSettled(updates);
   for (const result of results) {
     if (result.status === 'rejected') {
-      console.warn('[call] video bitrate cap failed:', result.reason);
+      console.warn('[call] video send limits failed:', result.reason);
     }
   }
 }
@@ -104,7 +134,10 @@ async function reportSendQuality(room: P2PRoom): Promise<void> {
 }
 
 /** Keeps outgoing video within the mesh budget for the owning call's lifetime. */
-export function trackSendQuality(p2p: SolidP2PRoom): void {
+export function trackSendQuality(
+  p2p: SolidP2PRoom,
+  screenSharing: Accessor<boolean>,
+): void {
   // The budget depends on the peer count, so rebalance on every connection
   // change. Passes run in order, so a slow update can't overwrite a newer cap.
   // Sender parameters survive track replacement.
@@ -114,12 +147,18 @@ export function trackSendQuality(p2p: SolidP2PRoom): void {
     let passes = Promise.resolve();
     const rebalance = () => {
       passes = passes
-        .then(() => capVideoSenders(room))
+        .then(() => {
+          if (p2p.room() === room)
+            return capVideoSenders(room, screenSharing());
+        })
         .catch((error: unknown) =>
-          console.warn('[call] video bitrate cap failed:', error),
+          console.warn('[call] video send limits failed:', error),
         );
     };
-    rebalance();
+    createEffect(() => {
+      screenSharing();
+      rebalance();
+    });
     const unsubscribers = [
       room.on('peerConnection', rebalance),
       room.on('memberLeft', rebalance),

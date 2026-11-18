@@ -60,6 +60,8 @@ about to be replaced as another member. Peer IDs identify endpoints (`uid:uuid`)
 newer window or device replaces the account's previous endpoint, ending its call, instead of
 taking another slot. An endpoint that reconnects after such a takeover yields to it. A contact invite is keyed and authorized by the caller–callee conversation (`roomId`); one sent from inside a call also carries `joinRoomId`, the live room the callee joins. Calls are a P2P mesh, so each sender splits a fixed camera
 upload budget across its peers and samples outbound video and connection stats to Sentry.
+At four participants, outgoing camera video is capped at 20 fps to reduce encoder load.
+Screen sharing keeps the same upload budget and uses the browser's frame-rate control.
 
 Persistent messages combine HTTP writes/history with live conversation-channel
 updates. The selected conversation store also owns drafts and optimistic send
