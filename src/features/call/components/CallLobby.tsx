@@ -13,7 +13,7 @@ import {
 } from '../media-constraints.js';
 import { useCallHandshake } from '../call-handshake.js';
 
-const hintClass = 'text-sm text-text-secondary';
+const hintClass = 'px-1 text-sm text-text-secondary';
 
 function joinErrorMessage(err: unknown, kind: string | undefined): string {
   if (kind === 'room-full') return t('call.lobby.error.full');
@@ -148,18 +148,21 @@ export function CallLobby() {
   }
 
   return (
-    <div class='flex flex-col gap-2'>
-      <div class='flex flex-wrap gap-2'>
+    <div class='flex w-full max-w-98 flex-col gap-4 mx-auto'>
+      <div class='flex flex-wrap gap-4'>
         <Show
           when={link().trim()}
           fallback={
-            <div class='flex w-full flex-col gap-2'>
+            <div class='flex w-full flex-col gap-4'>
               <p class='text-base'>{t('call.lobby.ephemeral_prompt')}</p>
-              <Button onClick={createRoom}>{t('call.lobby.start')}</Button>
+              <Button variant='secondary' onClick={createRoom}>
+                {t('call.lobby.start')}
+              </Button>
             </div>
           }
         >
           <Button
+            variant='primary'
             class='flex-1'
             onClick={joinRoom}
             loading={joining()}
@@ -168,7 +171,7 @@ export function CallLobby() {
             {joining() ? t('call.lobby.joining') : t('call.lobby.join')}
           </Button>
           <Button
-            variant='ghost'
+            variant='secondary'
             class='flex-1'
             onClick={copyLink}
             disabled={joining() || !roomId()}
