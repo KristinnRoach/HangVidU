@@ -101,13 +101,13 @@ export function ActiveCallRoom(props: {
       >
         <div class={styles.waiting}>
           <p>
-            {isRoomLinkCall
-              ? 'Room is empty...'
-              : 'Waiting for the other person to connect...'}
+            {isRoomLinkCall ? t('call.room_empty') : t('call.waiting_peer')}
           </p>
           <Show when={isRoomLinkCall}>
             <button type='button' onClick={copyLink}>
-              {copied() ? 'Link copied' : 'Copy invite link'}
+              {copied()
+                ? t('call.lobby.link_copied')
+                : t('call.copy_invite_link')}
             </button>
           </Show>
         </div>
