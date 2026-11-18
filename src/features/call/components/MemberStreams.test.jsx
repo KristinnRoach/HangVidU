@@ -184,6 +184,9 @@ describe('MemberStreams', () => {
     expect(getByText('Preparing…').parentElement.parentElement).toBe(
       videos[0].parentElement,
     );
+    setStatus('loading');
+    expect(getByRole('status').textContent).toBe('Loading mask assets…');
+    expect(getByRole('button', { name: 'Cancel mask' }).disabled).toBe(false);
     setStatus('searching');
     expect(getByText('Detecting face', { selector: 'span' })).toBeDefined();
     setStatus('captured');

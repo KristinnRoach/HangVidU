@@ -132,6 +132,7 @@ function FaceMaskControls(props: { media: CallMedia }) {
     if (preview()) return undefined;
     const status = props.media.faceMaskCaptureStatus?.() ?? 'searching';
     if (status === 'captured') return 'Preparing preview…';
+    if (status === 'loading') return 'Loading mask assets…';
     if (props.media.faceMaskOutline())
       return props.media.faceMaskCaptureReady() ? 'Align image' : 'Preparing…';
     if (typeof status === 'number') return 'About to capture…';
