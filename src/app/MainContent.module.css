@@ -54,6 +54,9 @@
 }
 
 .footer {
+  position: relative;
+  width: var(--content-width);
+  margin-inline: auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
