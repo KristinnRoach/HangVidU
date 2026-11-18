@@ -45,7 +45,7 @@ component, removing replaced rules. A complete redesign or CSS migration is not 
 - **Outcome:** Multiple participants can join and remain in a call independently.
 - **Scope:** Invitations, participant identity/layout, media controls, and per-participant connection feedback.
 - **Decided:** Up to 4 participants on the P2P mesh. Knowing a room ID grants access, with one endpoint per account ([architecture](architecture/README.md#data-and-transport)).
-- **Decided:** Any participant can add a contact by calling them from the contacts list during a call; the invite carries the live room ID. Room links remain the way to add guests.
+- **Decided:** Signed-in participants can invite a contact with **Add caller** in the call view or by calling them from the contacts list during a call. The invite carries the live room ID. Room links remain the way to add guests.
 - **Decide:** Who else may invite (host roles), and what measurements would justify an SFU or a higher limit.
 - **Done when:** Calls work at the chosen limit on representative devices/networks, including a participant leaving or reconnecting while others continue.
 

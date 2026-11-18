@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render } from '@solidjs/testing-library';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
 import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { createAutoHide } from '@shared/createAutoHide';
@@ -7,6 +13,22 @@ import { ActiveCallRoom } from './ActiveCallRoom';
 const mocks = vi.hoisted(() => ({
   capturing: vi.fn(),
   inviteOutcome: () => null,
+  user: vi.fn(() => null),
+  roomState: vi.fn(() => 'idle'),
+  startCall: vi.fn(),
+}));
+vi.mock('@auth', () => ({
+  useAuth: () => ({ user: mocks.user, isLoggingOut: () => false }),
+}));
+vi.mock('@stores/contacts-store', () => ({
+  getContactsStore: () => ({
+    status: 'ready',
+    byId: {
+      cleo: { contactId: 'cleo', displayName: 'Cleo' },
+      sam: { contactId: 'sam', displayName: 'Sam' },
+    },
+  }),
+  getContactLabel: (contact) => contact.displayName,
 }));
 vi.mock('../call-handshake.js', () => ({
   useCallHandshake: () => ({
@@ -14,10 +36,15 @@ vi.mock('../call-handshake.js', () => ({
     outgoingCall: () => null,
     inviteOutcome: () => mocks.inviteOutcome(),
     cancelOutgoing: () => {},
+    startCall: mocks.startCall,
+    isCallDisabled: (uid) => uid === 'sam',
   }),
 }));
 vi.mock('@shared/p2p-context.js', () => ({
-  useP2PContext: () => ({ state: () => 'idle' }),
+  useP2PContext: () => ({
+    state: mocks.roomState,
+    remoteMemberStreams: () => [{}],
+  }),
 }));
 vi.mock('./MemberStreams', () => ({ MemberStreams: () => null }));
 vi.mock('./CallControls', () => ({ ActiveCallControls: () => null }));
@@ -27,6 +54,27 @@ const media = { faceMaskCapturing: () => mocks.capturing() };
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  mocks.user.mockReset();
+  mocks.roomState.mockReset();
+});
+
+it('invites an eligible contact into the call and closes the picker', async () => {
+  mocks.capturing.mockReturnValue(false);
+  mocks.user.mockReturnValue({ uid: 'caller' });
+  mocks.roomState.mockReturnValue('joined');
+  render(() => <ActiveCallRoom media={media} holdTopBar={() => () => {}} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add caller' }));
+  await screen.findByRole('dialog', { name: 'Add caller' });
+  expect(screen.queryByRole('button', { name: 'Sam' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Cleo' }));
+
+  expect(mocks.startCall).toHaveBeenCalledExactlyOnceWith({
+    calleeId: 'cleo',
+    calleeName: 'Cleo',
+    audioOnly: false,
+  });
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 });
 
 it('holds the top bar hidden throughout setup and resumes after setup ends', () => {
