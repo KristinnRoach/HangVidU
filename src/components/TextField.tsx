@@ -8,6 +8,7 @@ type InputAttributes = Pick<
   | 'placeholder'
   | 'autocomplete'
   | 'autocapitalize'
+  | 'onFocus'
   | 'onKeyDown'
 >;
 
