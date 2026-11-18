@@ -155,14 +155,11 @@ export function CallLobby() {
           fallback={
             <div class='flex w-full flex-col gap-2'>
               <p class='text-base'>{t('call.lobby.ephemeral_prompt')}</p>
-              <Button variant='primary' onClick={createRoom}>
-                {t('call.lobby.start')}
-              </Button>
+              <Button onClick={createRoom}>{t('call.lobby.start')}</Button>
             </div>
           }
         >
           <Button
-            variant='primary'
             class='flex-1'
             onClick={joinRoom}
             loading={joining()}
@@ -171,6 +168,7 @@ export function CallLobby() {
             {joining() ? t('call.lobby.joining') : t('call.lobby.join')}
           </Button>
           <Button
+            variant='ghost'
             class='flex-1'
             onClick={copyLink}
             disabled={joining() || !roomId()}

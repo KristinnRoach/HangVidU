@@ -6,7 +6,7 @@ import { openSignIn } from './SignInDialog';
 export default function LoginButton(props: { showLabel?: boolean }) {
   return (
     <Button
-      variant='ghost'
+      variant={props.showLabel ? 'primary' : 'ghost'}
       aria-label={t('auth.sign_in')}
       title={t('auth.sign_in')}
       onClick={openSignIn}
