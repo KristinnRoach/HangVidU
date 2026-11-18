@@ -4,7 +4,7 @@ import { useP2PContext } from '@shared/p2p-context.js';
 import { signInAsGuest } from '@auth';
 import { t } from '@shared/i18n';
 import Button from '@components/Button';
-import { showSuccessToast } from '@components/base-legacy/toast.js';
+import { showToast } from '@components/toast';
 import Dialog from '@components/dialogs/Dialog';
 import TextField from '@components/TextField';
 import {
@@ -64,7 +64,7 @@ async function copyStartedInvite(started: Promise<string | undefined>) {
     }
 
     if (window.location.href === (await started)) {
-      showSuccessToast(t('call.link_copied'));
+      showToast(t('call.link_copied'), { tone: 'success' });
     }
   } catch {
     // The call toolbar still offers a manual copy action.

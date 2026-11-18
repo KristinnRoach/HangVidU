@@ -26,7 +26,7 @@ const mocks = vi.hoisted(() => ({
   },
   signInAsGuest: vi.fn(),
   joinRoomLink: vi.fn(),
-  showSuccessToast: vi.fn(),
+  showToast: vi.fn(),
 }));
 
 vi.mock('@shared/p2p-context.js', () => ({
@@ -38,8 +38,8 @@ vi.mock('../call-handshake.js', () => ({
 vi.mock('@auth', () => ({
   signInAsGuest: mocks.signInAsGuest,
 }));
-vi.mock('@components/base-legacy/toast.js', () => ({
-  showSuccessToast: mocks.showSuccessToast,
+vi.mock('@components/toast', () => ({
+  showToast: mocks.showToast,
 }));
 vi.mock('@shared/i18n', () => ({
   t: (key) => key,
@@ -158,12 +158,13 @@ describe('CallLobby', () => {
     expect(mocks.joinRoomLink).not.toHaveBeenCalled();
     await waitFor(() => expect(mocks.joinRoomLink).toHaveBeenCalledOnce());
     expect(copiedText).toBeUndefined();
-    expect(mocks.showSuccessToast).not.toHaveBeenCalled();
+    expect(mocks.showToast).not.toHaveBeenCalled();
 
     finishJoin();
     await waitFor(() => {
-      expect(mocks.showSuccessToast).toHaveBeenCalledExactlyOnceWith(
+      expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith(
         'call.link_copied',
+        { tone: 'success' },
       );
     });
     expect(copiedText).toBe(window.location.href);
@@ -216,7 +217,7 @@ describe('CallLobby', () => {
       );
       expect(window.location.search).toContain('publicRoom=');
       expect(writeText).not.toHaveBeenCalled();
-      expect(mocks.showSuccessToast).not.toHaveBeenCalled();
+      expect(mocks.showToast).not.toHaveBeenCalled();
 
       setState('idle');
       expect(window.location.search).toBe('');
@@ -302,7 +303,7 @@ describe('CallLobby', () => {
     );
     expect(window.location.search).toBe('?test=1');
     expect(writeText).not.toHaveBeenCalled();
-    expect(mocks.showSuccessToast).not.toHaveBeenCalled();
+    expect(mocks.showToast).not.toHaveBeenCalled();
     expect(getByRole('button', { name: 'call.lobby.start' }).disabled).toBe(
       false,
     );

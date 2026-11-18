@@ -2,10 +2,7 @@
 
 import { signInWithAccountSelection, getLoggedInUserId } from '@auth';
 import { reloadContacts } from '../../../stores/contacts-store.js';
-import {
-  showInfoToast,
-  showSuccessToast,
-} from '../../../components/base-legacy/toast.js';
+import { showToast } from '@components/toast';
 import {
   connectReferral,
   getUserProfileById,
@@ -15,7 +12,7 @@ import { t } from '@shared/i18n/index.js';
 
 /**
  * Store referrer ID when user arrives via referral link.
- * Shows a clickable toast and a persistent notification prompting sign-in.
+ * Shows a toast with a sign-in action and a persistent notification prompting sign-in.
  * Called on page load before authentication.
  */
 export async function captureReferral() {
@@ -35,14 +32,16 @@ export async function captureReferral() {
     const name = profile?.displayName || null;
     const photoURL = profile?.photoURL || null;
 
-    // Clickable toast (ephemeral)
     const message = name
       ? t('referral.sign_in_named', { name })
       : t('referral.sign_in_banner');
 
-    showInfoToast(message, {
+    showToast(message, {
       duration: 8000,
-      onClick: () => signInWithAccountSelection(),
+      action: {
+        label: t('auth.sign_in'),
+        run: signInWithAccountSelection,
+      },
     });
 
     dispatchCommand('cmd:app-notifications:referral:add', {
@@ -88,7 +87,9 @@ export async function processReferral() {
     );
 
     // Show success toast
-    showSuccessToast(t('referral.connected', { name: referrerName }));
+    showToast(t('referral.connected', { name: referrerName }), {
+      tone: 'success',
+    });
 
     dispatchCommand('cmd:app-notifications:referral:remove', {
       notificationId: `referral-${referrerId}`,

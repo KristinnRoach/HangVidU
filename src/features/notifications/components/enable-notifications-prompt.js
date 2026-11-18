@@ -7,11 +7,7 @@ import {
 import { inAppNotificationManager } from '../in-app-notification-manager.js';
 import { getPushNotifications } from '@push';
 import { showPushUnsupportedNotification } from './push-unsupported-notification.js';
-import {
-  showSuccessToast,
-  showWarningToast,
-  showErrorToast,
-} from '../../../components/base-legacy/toast.js';
+import { showToast } from '@components/toast';
 import { t, onLocaleChange } from '@shared/i18n/index.js';
 
 const NOTIFICATION_ID = 'enable-notifications';
@@ -87,7 +83,7 @@ export function showEnableNotificationsPrompt() {
         try {
           const pushController = getPushNotifications();
           if (!pushController) {
-            showErrorToast(t('notification.enable.unsupported'));
+            showToast(t('notification.enable.unsupported'), { tone: 'error' });
             inAppNotificationManager.remove(NOTIFICATION_ID);
             return;
           }
@@ -95,7 +91,7 @@ export function showEnableNotificationsPrompt() {
           const result = await pushController.requestPermission();
 
           if (result.state === 'granted') {
-            showSuccessToast(t('notification.enable.success'));
+            showToast(t('notification.enable.success'), { tone: 'success' });
             inAppNotificationManager.remove(NOTIFICATION_ID);
             return;
           }
@@ -107,19 +103,20 @@ export function showEnableNotificationsPrompt() {
                 '[ENABLE NOTIFICATIONS] Push setup failed:',
                 result.error || result,
               );
-              showErrorToast(
+              showToast(
                 t(
                   result.browser === 'Brave'
                     ? 'notification.enable.failed_push_setup.brave'
                     : 'notification.enable.failed_push_setup',
                 ),
+                { tone: 'error' },
               );
               btn.disabled = false;
               btn.textContent = t('shared.enable');
               return;
             }
             if (result.reason === 'permission-timeout') {
-              showErrorToast(t('notification.enable.timeout'));
+              showToast(t('notification.enable.timeout'), { tone: 'error' });
               btn.disabled = false;
               btn.textContent = t('shared.enable');
               return;
@@ -133,7 +130,9 @@ export function showEnableNotificationsPrompt() {
           }
 
           if (result.state === 'denied') {
-            showWarningToast(getBlockedMessage(result.browser, result.reason));
+            showToast(getBlockedMessage(result.browser, result.reason), {
+              tone: 'warning',
+            });
             inAppNotificationManager.remove(NOTIFICATION_ID);
             return;
           }

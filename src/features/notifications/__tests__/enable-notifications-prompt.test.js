@@ -5,10 +5,8 @@ vi.mock('../../../components/base-legacy/notification.js', () => ({
   buildTemplate: vi.fn((template) => template),
 }));
 
-vi.mock('../../../components/base-legacy/toast.js', () => ({
-  showErrorToast: vi.fn(),
-  showSuccessToast: vi.fn(),
-  showWarningToast: vi.fn(),
+vi.mock('@components/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 vi.mock('@push/index.js', () => ({
@@ -44,7 +42,7 @@ vi.mock('../../../shared/i18n/index.js', () => ({
 }));
 
 import { getPushNotifications } from '@push';
-import { showErrorToast } from '../../../components/base-legacy/toast.js';
+import { showToast } from '@components/toast';
 
 const { getBlockedMessage, showEnableNotificationsPrompt } =
   await import('../components/enable-notifications-prompt.js');
@@ -68,7 +66,9 @@ it.each(['Brave', 'Chromium'])(
       browser === 'Brave'
         ? 'notification.enable.failed_push_setup.brave'
         : 'notification.enable.failed_push_setup';
-    expect(showErrorToast).toHaveBeenLastCalledWith(fakeTranslations[key]);
+    expect(showToast).toHaveBeenLastCalledWith(fakeTranslations[key], {
+      tone: 'error',
+    });
     expect(button.disabled).toBe(false);
   },
 );

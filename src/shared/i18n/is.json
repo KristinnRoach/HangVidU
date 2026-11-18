@@ -14,6 +14,7 @@
   "shared.save": "Vista",
   "shared.saving": "Vista...",
   "shared.dismiss": "Hunsa",
+  "shared.toast_region": "Tilkynningar ({hotkey})",
   "shared.download": "Sækja",
   "shared.enable": "Virkja",
   "call.incoming": "{name} hringir...",
@@ -232,8 +233,8 @@
   "nav.privacy.short": "Persónuvernd",
   "nav.terms": "Skoða skilmála",
   "nav.terms.short": "Skilmálar",
-  "referral.sign_in_banner": "Smelltu hér til að skrá þig inn og tengjast boðanda þínum",
-  "referral.sign_in_named": "{name} býður þér - smelltu hér til að skrá þig inn og tengjast",
+  "referral.sign_in_banner": "Skráðu þig inn til að tengjast þeim sem bauð þér",
+  "referral.sign_in_named": "{name} býður þér að tengjast",
   "referral.connected": "Tengdur við {name}!",
 
   "word.or": "eða",

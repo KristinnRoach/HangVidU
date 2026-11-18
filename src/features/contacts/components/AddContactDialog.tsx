@@ -25,10 +25,7 @@ import {
 } from '../../../stores/user-profile-store.js';
 import ImportContactsSection from './ImportContactsSection';
 import { createDebouncedAsyncAction } from '../utils/createDebouncedAsyncAction';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../components/base-legacy/toast.js';
+import { showToast } from '@components/toast';
 
 type Tone = 'success' | 'error';
 type Status = { text: string; tone?: Tone };
@@ -135,8 +132,7 @@ function AddContactContent() {
   const [sharePending, setSharePending] = createSignal(false);
 
   function notify(text: string, tone?: Tone) {
-    if (tone === 'success') showSuccessToast(text);
-    if (tone === 'error') showErrorToast(text);
+    if (tone) showToast(text, { tone });
     setStatus({ text, tone });
   }
 

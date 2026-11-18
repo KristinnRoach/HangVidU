@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   roomState: vi.fn(() => 'idle'),
   remoteMemberStreams: vi.fn(() => [{}]),
   startCall: vi.fn(),
-  showSuccessToast: vi.fn(),
+  showToast: vi.fn(),
 }));
 vi.mock('@auth', () => ({
   useAuth: () => ({ user: mocks.user, isLoggingOut: () => false }),
@@ -50,8 +50,8 @@ vi.mock('@shared/p2p-context.js', () => ({
     remoteMemberStreams: mocks.remoteMemberStreams,
   }),
 }));
-vi.mock('@components/base-legacy/toast.js', () => ({
-  showSuccessToast: mocks.showSuccessToast,
+vi.mock('@components/toast', () => ({
+  showToast: mocks.showToast,
 }));
 vi.mock('./MemberStreams', () => ({ MemberStreams: () => null }));
 vi.mock('./CallControls', () => ({ ActiveCallControls: () => null }));
@@ -64,7 +64,7 @@ afterEach(() => {
   mocks.user.mockReset();
   mocks.roomState.mockReset();
   mocks.remoteMemberStreams.mockReset();
-  mocks.showSuccessToast.mockClear();
+  mocks.showToast.mockClear();
   window.history.replaceState(null, '', '/');
 });
 
@@ -184,15 +184,15 @@ it('lets a signed-in participant copy a room link after someone joins', async ()
     expect(input.readOnly).toBe(true);
     expect(input.value).toBe(window.location.href);
 
-    expect(mocks.showSuccessToast).not.toHaveBeenCalled();
+    expect(mocks.showToast).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     fireEvent.click(
       await screen.findByRole('button', { name: 'Copy invite link' }),
     );
     await waitFor(() => {
-      expect(mocks.showSuccessToast).toHaveBeenCalledExactlyOnceWith(
-        'Link copied',
-      );
+      expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith('Link copied', {
+        tone: 'success',
+      });
     });
     expect(writeText).toHaveBeenCalledWith(window.location.href);
   } finally {

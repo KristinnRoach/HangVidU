@@ -12,7 +12,7 @@ import {
 import type { AutoHideController } from '@shared/createAutoHide';
 import { useAuth } from '@auth';
 import Button from '@components/Button';
-import { showSuccessToast } from '@components/base-legacy/toast.js';
+import { showToast } from '@components/toast';
 import Dialog from '@components/dialogs/Dialog';
 import { Spinner } from '@components/Spinner';
 import TextField from '@components/TextField';
@@ -165,7 +165,7 @@ function CopyRoomLink() {
       if (active) setManualCopy(true);
       return;
     }
-    if (active) showSuccessToast(t('call.link_copied'));
+    if (active) showToast(t('call.link_copied'), { tone: 'success' });
   }
 
   return (
