@@ -28,6 +28,8 @@ type ParticipantMediaProps = {
   audioEnabled?: boolean;
   remoteAudioMuted?: boolean;
   screenShare?: boolean;
+  groupTile?: boolean;
+  fillGroupSlot?: boolean;
 };
 
 type MediaTrackStatus = 'off' | 'connecting' | 'interrupted' | 'connected';
@@ -89,8 +91,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     onCleanup(() => observer.disconnect());
   });
   const [videoAspect, setVideoAspect] = createSignal(4 / 3);
-  // Fit the preview box to the source aspect so it has no empty bands. Mirrors
-  // the .selfPreview clamps, which stay as the fallback until first measurement.
+  // Size the preview to the source aspect. CSS keeps the camera filling the box
+  // while the browser reports new dimensions after rotation or a camera switch.
   const previewSize = createMemo(() => {
     const { width, height } = bounds();
     if (!width || !height) return undefined;
@@ -101,15 +103,19 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       ? height * 0.4
       : Math.min(200, height * 0.3);
     const w = Math.min(maxWidth, width - 2 * GAP, maxHeight * videoAspect());
-    return { width: `${w}px`, height: `${w / videoAspect()}px` };
+    return {
+      '--preview-width': `${w}px`,
+      '--preview-height': `${w / videoAspect()}px`,
+    };
   });
-  // The video is always object-fit: contain, then scaled up toward a full
-  // fill. max(r, 1/r) is exactly the scale that makes contain cover the frame;
+  // Direct calls use object-fit: contain, then scale up toward a full fill.
+  // max(r, 1/r) is exactly the scale that makes contain cover the frame;
   // capping it at 1.35 (~26% source cropping) keeps the remainder letterboxed
   // instead of chopping the sides off a landscape source on a portrait screen.
   // ponytail: 1.35 is the one tuning knob, adjust from real-device feedback.
   const videoScale = createMemo(() => {
     if (
+      props.groupTile ||
       props.screenShare ||
       props.previewUncropped ||
       variant() === 'self-preview'
@@ -227,6 +233,10 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     ),
   );
 
+  // The room republishes the same local MediaStream after replacing a track.
+  // Reobserve tracks above, but keep playback attached to avoid clearing the
+  // video element while the replacement camera starts delivering frames.
+  const playbackSource = createMemo(() => props.stream);
   createEffect(() => {
     if (!video) return;
 
@@ -234,7 +244,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     // muted video track — the reserved camera slot of an audio-only call —
     // is in srcObject and produces no frames. Attach only the audio tracks
     // until usable video exists.
-    const sourceStream = props.stream;
+    const sourceStream = playbackSource();
     const audioOnly = !videoConnected();
     const stream = audioOnly
       ? new MediaStream(sourceStream.getAudioTracks())
@@ -265,13 +275,14 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
       element.defaultMuted = shouldMute;
       if (shouldMute) element.setAttribute('muted', '');
       else element.removeAttribute('muted');
-      element.autoplay = true;
       element.setAttribute('playsinline', 'true');
     };
     configureVideo(video);
 
     const attachedVideo = video;
     let disposed = false;
+    // Playback starts via play(). A native autoplay attribute makes iOS show
+    // its own controls in Low Power Mode, over the call video.
     void playback
       .attach(attachedVideo, stream, { muted: shouldMute })
       .then((started) => {
@@ -317,6 +328,8 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
         '--video-scale': videoScale(),
       }}
       classList={{
+        [styles.groupTile!]: props.groupTile,
+        [styles.fillGroupSlot!]: props.fillGroupSlot,
         [styles.selfPreview!]: variant() === 'self-preview',
         [styles.screenShare!]: props.screenShare,
         [styles.uncropped!]: props.previewUncropped,
@@ -326,7 +339,6 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
         ref={video}
         class={styles.media}
         hidden={status().video !== 'connected'}
-        autoplay
         muted={shouldMutePlayback()}
       />
 

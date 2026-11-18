@@ -20,24 +20,29 @@
   user-select: none;
 }
 
-.media,
-.selfPreview {
+.media {
   object-fit: contain;
   object-position: center center;
+  transform: scale(var(--video-scale, 1));
 }
 
-.media {
-  transform: scale(var(--video-scale, 1));
+.groupTile {
+  border-radius: 0;
+}
+
+.groupTile:not(.screenShare, .uncropped) .media,
+.selfPreview:not(.screenShare, .uncropped) .media {
+  object-fit: cover;
 }
 
 .selfPreview {
   position: absolute;
   overflow: visible;
-  top: var(--gap);
+  top: var(--preview-top, var(--gap));
   left: var(--gap);
 
-  width: clamp(120px, 25%, 300px);
-  height: clamp(120px, 20%, 200px);
+  width: var(--preview-width, clamp(120px, 25%, 300px));
+  height: var(--preview-height, clamp(120px, 20%, 200px));
 
   font-size: 12px;
   z-index: 1;
@@ -47,8 +52,8 @@
 }
 
 .selfPreview.uncropped {
-  width: min(300px, calc(100% - 2 * var(--gap)));
-  height: min(240px, 40%);
+  width: var(--preview-width, min(300px, calc(100% - 2 * var(--gap))));
+  height: var(--preview-height, min(240px, 40%));
 }
 
 .selfPreview .media {
@@ -66,7 +71,17 @@
 
 /* The top bar overlays calls. Keep the preview below it while visible. */
 :global(#top-bar[data-visible='true']) ~ :global(#main-content) .selfPreview {
-  top: calc(var(--topbar-height) + var(--gap));
+  --preview-top: calc(var(--topbar-height) + var(--gap));
+}
+
+@container call-room (aspect-ratio >= 1) {
+  .selfPreview.fillGroupSlot {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
 }
 
 .audioOnly {

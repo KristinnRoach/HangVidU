@@ -171,11 +171,15 @@ describe('ParticipantMedia', () => {
           value: height,
         });
         video.dispatchEvent(new Event('resize'));
-        expect(
-          parseFloat(surface.style.width) / parseFloat(surface.style.height),
-        ).toBeCloseTo(width / height);
-        expect(parseFloat(surface.style.width)).toBeLessThanOrEqual(120);
-        expect(parseFloat(surface.style.height)).toBeLessThanOrEqual(200);
+        const previewWidth = parseFloat(
+          surface.style.getPropertyValue('--preview-width'),
+        );
+        const previewHeight = parseFloat(
+          surface.style.getPropertyValue('--preview-height'),
+        );
+        expect(previewWidth / previewHeight).toBeCloseTo(width / height);
+        expect(previewWidth).toBeLessThanOrEqual(120);
+        expect(previewHeight).toBeLessThanOrEqual(200);
       }
     } finally {
       vi.unstubAllGlobals();
@@ -206,6 +210,30 @@ describe('ParticipantMedia', () => {
 
     expect(video.hidden).toBe(false);
     expect(video.muted).toBe(true);
+  });
+
+  it('keeps self-preview playback attached when the room replaces its camera track', () => {
+    const stream = new FakeStream([new FakeTrack('video')]);
+    const [localStream, setLocalStream] = createSignal(stream, {
+      equals: false,
+    });
+    const play = HTMLMediaElement.prototype.play;
+    const { container } = render(() => (
+      <ParticipantMedia stream={localStream()} variant='self-preview' />
+    ));
+    const video = container.querySelector('video');
+    const nextTrack = new FakeTrack('video');
+
+    // The room updates the existing MediaStream and publishes it again.
+    stream.tracks = [nextTrack];
+    setLocalStream(stream);
+
+    expect(video.srcObject).toBe(stream);
+    expect(play).toHaveBeenCalledTimes(1);
+
+    nextTrack.muted = true;
+    nextTrack.dispatchEvent(new Event('mute'));
+    expect(video.hidden).toBe(true);
   });
 
   it('reactively mutes remote playback without changing the remote stream', async () => {
@@ -295,15 +323,20 @@ describe('ParticipantMedia', () => {
     );
   });
 
-  it('shows the continue-call prompt only for autoplay-gesture rejections', async () => {
+  it('starts inline playback without native autoplay and offers a retry when blocked', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    HTMLMediaElement.prototype.play.mockRejectedValue(
+    const play = HTMLMediaElement.prototype.play;
+    play.mockRejectedValueOnce(
       Object.assign(new Error('gesture required'), {
         name: 'NotAllowedError',
       }),
     );
     const stream = new FakeStream([new FakeTrack('video')]);
     const { container } = render(() => <ParticipantMedia stream={stream} />);
+    const video = container.querySelector('video');
+    expect(video.autoplay).toBe(false);
+    expect(video.controls).toBe(false);
+    expect(video.playsInline).toBe(true);
 
     await waitFor(() => {
       expect(container.querySelector('button')?.textContent).toBe(
@@ -315,6 +348,9 @@ describe('ParticipantMedia', () => {
       name: 'NotAllowedError',
       message: 'gesture required',
     });
+
+    container.querySelector('button').click();
+    await waitFor(() => expect(container.querySelector('button')).toBeNull());
   });
 
   it('ignores transient play() rejections like AbortError', async () => {

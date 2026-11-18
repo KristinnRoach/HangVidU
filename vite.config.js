@@ -377,6 +377,11 @@ export default defineConfig(({ mode }) => {
       https: false,
       host: true,
       allowedHosts: ['dev.hangvidu.com'],
+      // The tunnel can cache sw.js, delaying discovery of a watched rebuild.
+      headers:
+        process.env.VITE_PREVIEW_WATCH === '1'
+          ? { 'Cache-Control': 'no-store' }
+          : undefined,
     },
   };
 });

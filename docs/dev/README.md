@@ -6,7 +6,7 @@ Start with [AGENTS.md](../../AGENTS.md) for conventions and the
 
 `vpr dev` starts Vite over HTTPS on port 5173 and the local API together.
 
-`vpr preview` builds the app and starts a production preview on port 4173, exposed at `https://dev.hangvidu.com` through the Cloudflare tunnel and using the production API. Use it for phone testing: it runs the built service worker, which `vpr dev` does not. `vpr preview:watch` rebuilds on source changes and checks for updates every 3 seconds, automatically reloading when the app is safe to interrupt. Use `vpr preview:local` for a preview without the tunnel.
+`vpr preview` builds the app and starts a production preview on port 4173, exposed at `https://dev.hangvidu.com` through the Cloudflare tunnel and using the production API. Use it for phone testing: it runs the built service worker, which `vpr dev` does not. `vpr preview:watch` rebuilds on source changes, serves responses with `Cache-Control: no-store`, and checks for service worker updates every 3 seconds. It requests a reload as soon as an update activates, including during test calls. The browser may still ask for confirmation before leaving a call. Use `vpr preview:local` for a preview without the tunnel.
 
 To test a group call, create a guest call and share its link. Participants can open the link or paste it into the guest lobby, including in the installed PWA. Give each participant its own account or browser profile. Tabs in one profile share a guest account, and a room admits one endpoint per account.
 
