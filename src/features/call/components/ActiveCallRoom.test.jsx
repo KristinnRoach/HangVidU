@@ -1,17 +1,52 @@
-import { cleanup, fireEvent, render } from '@solidjs/testing-library';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
 import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { createAutoHide } from '@shared/createAutoHide';
 import { ActiveCallRoom } from './ActiveCallRoom';
 
-const mocks = vi.hoisted(() => ({ capturing: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  capturing: vi.fn(),
+  inviteOutcome: () => null,
+  user: vi.fn(() => null),
+  roomState: vi.fn(() => 'idle'),
+  startCall: vi.fn(),
+}));
+vi.mock('@auth', () => ({
+  useAuth: () => ({ user: mocks.user, isLoggingOut: () => false }),
+}));
+vi.mock('@stores/contacts-store', () => ({
+  getContactsStore: () => ({
+    status: 'ready',
+    byId: {
+      cleo: { contactId: 'cleo', displayName: 'Cleo' },
+      sam: { contactId: 'sam', displayName: 'Sam' },
+      ana: { contactId: 'ana', displayName: 'Ana' },
+      alice: { contactId: 'alice', displayName: 'Alice' },
+    },
+  }),
+  getContactLabel: (contact) => contact.displayName,
+}));
 vi.mock('../call-handshake.js', () => ({
   useCallHandshake: () => ({
     reconnectStatus: () => 'connected',
+    outgoingCall: () => null,
+    inviteOutcome: () => mocks.inviteOutcome(),
+    cancelOutgoing: () => {},
+    startCall: mocks.startCall,
+    isCallDisabled: (uid) => uid === 'sam',
   }),
 }));
 vi.mock('@shared/p2p-context.js', () => ({
-  useP2PContext: () => ({ state: () => 'idle' }),
+  useP2PContext: () => ({
+    state: mocks.roomState,
+    remoteMemberStreams: () => [{}],
+  }),
 }));
 vi.mock('./MemberStreams', () => ({ MemberStreams: () => null }));
 vi.mock('./CallControls', () => ({ ActiveCallControls: () => null }));
@@ -21,6 +56,39 @@ const media = { faceMaskCapturing: () => mocks.capturing() };
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  mocks.user.mockReset();
+  mocks.roomState.mockReset();
+});
+
+it('submits the first eligible search result and closes the picker', async () => {
+  mocks.capturing.mockReturnValue(false);
+  mocks.user.mockReturnValue({ uid: 'caller' });
+  mocks.roomState.mockReturnValue('joined');
+  render(() => <ActiveCallRoom media={media} holdTopBar={() => () => {}} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add caller' }));
+  await screen.findByRole('dialog', { name: 'Add caller' });
+  expect(screen.queryByRole('button', { name: 'Sam' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Ana' })).toBeTruthy();
+  const search = screen.getByRole('textbox', { name: 'Search...' });
+  fireEvent.input(search, { target: { value: 'missing' } });
+  search.form.requestSubmit();
+  expect(mocks.startCall).not.toHaveBeenCalled();
+
+  fireEvent.input(search, { target: { value: 'A' } });
+  expect(screen.queryByRole('button', { name: 'Cleo' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Sam' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Alice' })).toBeTruthy();
+  search.form.requestSubmit();
+
+  expect(mocks.startCall).toHaveBeenCalledExactlyOnceWith({
+    calleeId: 'alice',
+    calleeName: 'Alice',
+    audioOnly: false,
+  });
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  fireEvent.click(screen.getByRole('button', { name: 'Add caller' }));
+  await screen.findByRole('button', { name: 'Cleo' });
 });
 
 it('holds the top bar hidden throughout setup and resumes after setup ends', () => {
@@ -54,4 +122,20 @@ it('releases the top-bar hold when the call room unmounts during setup', () => {
   expect(hold).toHaveBeenCalledExactlyOnceWith('hidden');
   cleanup();
   expect(release).toHaveBeenCalledOnce();
+});
+
+it('reports how an add-invite ended in the call view, not as a dialog', () => {
+  mocks.capturing.mockReturnValue(false);
+  const call = { calleeName: 'Cleo', joinRoomId: 'room' };
+  const [outcome, setOutcome] = createSignal({ call, result: 'busy' });
+  mocks.inviteOutcome = outcome;
+  const { getByRole } = render(() => (
+    <ActiveCallRoom media={media} holdTopBar={() => () => {}} />
+  ));
+  expect(getByRole('status').textContent).toBe('Cleo is busy');
+  setOutcome({ call, result: 'declined' });
+  expect(getByRole('status').textContent).toBe('Cleo declined');
+  setOutcome({ call, result: 'unanswered' });
+  expect(getByRole('status').textContent).toBe('No answer from Cleo');
+  mocks.inviteOutcome = () => null;
 });

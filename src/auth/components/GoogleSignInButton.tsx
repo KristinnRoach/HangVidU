@@ -1,7 +1,8 @@
 import { useI18n } from '@shared/i18n';
 import { signInWithAccountSelection } from '../auth-commands.js';
 import { useAuth } from '../solid-auth';
-import googleSignIn from '../assets/google-sign-in-dark.png';
+// Inline this small image to avoid stale Rolldown asset references on watch rebuilds.
+import googleSignIn from '../assets/google-sign-in-dark.png?inline';
 
 export default function GoogleSignInButton() {
   const { t } = useI18n();

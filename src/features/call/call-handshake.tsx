@@ -21,6 +21,7 @@ import {
 import { createScreenWakeLock } from '@shared/createScreenWakeLock';
 import { getLoggedInUserProfile } from '../../stores/user-profile-store.js';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
+import { ROOM_MEMBER_LIMIT } from '../../../shared/signaling/protocol';
 import {
   CallHandshakeController,
   type IncomingCallNotificationDetails,
@@ -29,6 +30,7 @@ import { createCallMedia, type CallMedia } from './call-media';
 import type {
   CallHandshakeState,
   CallReconnectStatus,
+  InviteOutcome,
   OutgoingCall,
   StartCallDetails,
 } from './call-types.js';
@@ -44,10 +46,13 @@ type CallHandshakeContextValue = {
 
   /** Local media for the active call; undefined while idle or connecting. */
   media: Accessor<CallMedia | undefined>;
-  isCalleeBusy: Accessor<boolean>;
+  inviteOutcome: Accessor<InviteOutcome | null>;
   reconnectStatus: Accessor<CallReconnectStatus>;
   incomingCall: Accessor<MailboxInvite | null>;
   outgoingCall: Accessor<OutgoingCall | null>;
+  /** Calling this contact can't work: they're in the call, an add-invite is
+   * already ringing, or the room is full. */
+  isCallDisabled: (uid: string) => boolean;
   cancelOutgoing: () => void;
   acceptIncoming: () => void;
   declineIncoming: () => void;
@@ -137,7 +142,9 @@ export function CallHandshakeProvider(props: ParentProps) {
   const auth = useAuth();
   const [handshakeState, setHandshakeState] =
     createSignal<CallHandshakeState>(null);
-  const [isCalleeBusy, setIsCalleeBusy] = createSignal(false);
+  const [inviteOutcome, setInviteOutcome] = createSignal<InviteOutcome | null>(
+    null,
+  );
   const [reconnectStatus, setReconnectStatus] =
     createSignal<CallReconnectStatus>('connected');
   let releaseReloadHold: (() => void) | undefined;
@@ -201,7 +208,7 @@ export function CallHandshakeProvider(props: ParentProps) {
       );
     },
     onStateChange: setHandshakeState,
-    onCalleeBusy: setIsCalleeBusy,
+    onInviteOutcome: setInviteOutcome,
     onReconnectStatus: setReconnectStatus,
   });
 
@@ -227,10 +234,19 @@ export function CallHandshakeProvider(props: ParentProps) {
     // Wrap so a click handler's MouseEvent can't leak in as the hangUp reason.
     hangUp: () => controller.hangUp('user'),
     media,
-    isCalleeBusy,
+    inviteOutcome,
     reconnectStatus,
     incomingCall,
     outgoingCall,
+    isCallDisabled: (uid) => {
+      const members = p2p.members();
+      // Peer IDs are `uid:uuid` endpoints (endpointPeerId).
+      if (members.some((id) => id.startsWith(`${uid}:`))) return true;
+      return (
+        p2p.state() !== 'idle' &&
+        (handshakeState() !== null || members.length >= ROOM_MEMBER_LIMIT)
+      );
+    },
     cancelOutgoing: controller.cancelOutgoing,
     acceptIncoming: controller.acceptIncoming,
     declineIncoming: controller.declineIncoming,

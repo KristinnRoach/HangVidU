@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   subscriptions: new Map(),
   user: () => null,
   p2pState: () => 'idle',
+  members: () => [],
   controllerOptions: undefined,
   disposeMedia: vi.fn(),
 }));
@@ -51,7 +52,10 @@ vi.mock('./call-handshake-controller.js', () => ({
   }),
 }));
 vi.mock('../../shared/p2p-context.js', () => ({
-  useP2PContext: () => ({ state: (...args) => mocks.p2pState(...args) }),
+  useP2PContext: () => ({
+    state: (...args) => mocks.p2pState(...args),
+    members: () => mocks.members(),
+  }),
 }));
 vi.mock('@realtime', () => ({
   createRoomSignaling: vi.fn(),
@@ -187,6 +191,37 @@ describe('CallHandshakeProvider', () => {
 
     setP2pState('idle');
     await vi.waitFor(() => expect(allowed).toHaveBeenCalledOnce());
+  });
+
+  it('disables calling contacts the active call cannot add', () => {
+    const [members, setMembers] = createSignal(['me:1', 'b:1']);
+    mocks.p2pState = () => 'joined';
+    mocks.members = members;
+    let handshake;
+    render(() => (
+      <CallHandshakeProvider>
+        {(() => {
+          handshake = useCallHandshake();
+          return null;
+        })()}
+      </CallHandshakeProvider>
+    ));
+
+    expect(handshake.isCallDisabled('b')).toBe(true);
+    expect(handshake.isCallDisabled('c')).toBe(false);
+
+    mocks.controllerOptions.onStateChange({
+      direction: 'outgoing',
+      call: { calleeId: 'c', joinRoomId: 'room' },
+    });
+    expect(handshake.isCallDisabled('d')).toBe(true);
+    mocks.controllerOptions.onStateChange(null);
+
+    setMembers(['me:1', 'b:1', 'c:1', 'd:1']);
+    expect(handshake.isCallDisabled('e')).toBe(true);
+
+    mocks.p2pState = () => 'idle';
+    mocks.members = () => [];
   });
 
   it('attaches the incoming-call listener when auth becomes authenticated after mount', async () => {

@@ -5,6 +5,7 @@
   --color-text: #dde1e9;
 
   --gap: 12px;
+  --call-overlay-top: var(--gap);
   --pad: 28px;
   --radius: 8px;
 
@@ -14,6 +15,11 @@
   height: 100%;
   position: relative;
   container: call-room / size;
+}
+
+/* The floating self-preview and call overlay share the top-bar offset. */
+:global(#top-bar[data-visible='true']) ~ :global(#main-content) .room {
+  --call-overlay-top: calc(var(--topbar-height) + var(--gap));
 }
 
 .waiting {

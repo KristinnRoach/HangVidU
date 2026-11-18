@@ -37,7 +37,7 @@ type StartCallButtonProps = {
 };
 
 export function StartCallButton(props: StartCallButtonProps) {
-  const { startCall } = useCallHandshake();
+  const { startCall, isCallDisabled } = useCallHandshake();
   const { t } = useI18n();
 
   const calleeName = () => props.calleeName || t('call.unknown_caller');
@@ -58,6 +58,7 @@ export function StartCallButton(props: StartCallButtonProps) {
       class={'contact-call-btn'}
       type='button'
       onClick={onCall}
+      disabled={isCallDisabled(props.calleeId)}
       title={title()}
       aria-label={title()}
     >

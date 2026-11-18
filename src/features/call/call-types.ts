@@ -8,7 +8,15 @@ export type OutgoingCall = {
   callerName: string;
   audioOnly: boolean;
   roomId: string;
+  /** Set when ringing a contact into the caller's live call room. */
+  joinRoomId?: string;
   startedAt: number;
+};
+
+/** How an outgoing invite ended without a join, shown briefly. */
+export type InviteOutcome = {
+  call: Pick<OutgoingCall, 'calleeName' | 'joinRoomId'>;
+  result: 'busy' | 'declined' | 'unanswered' | 'failed';
 };
 
 export type StartCallDetails = {

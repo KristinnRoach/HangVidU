@@ -30,6 +30,7 @@ import { createCallLocalTrackSlots } from './call-media.js';
 import type {
   CallHandshakeState,
   CallReconnectStatus,
+  InviteOutcome,
   OutgoingCall,
   StartCallDetails,
 } from './call-types.js';
@@ -117,7 +118,7 @@ type CallHandshakeControllerOptions = {
   createSignaling: CreateRoomSignaling;
   getCallerName: () => string;
   onStateChange: (state: CallHandshakeState) => void;
-  onCalleeBusy: (busy: boolean) => void;
+  onInviteOutcome: (outcome: InviteOutcome | null) => void;
   onReconnectStatus: (status: CallReconnectStatus) => void;
 };
 
@@ -307,7 +308,7 @@ export class CallHandshakeController {
   private readonly createSignaling: CreateRoomSignaling;
   private readonly getCallerName: () => string;
   private readonly onStateChange: (state: CallHandshakeState) => void;
-  private readonly onCalleeBusy: (busy: boolean) => void;
+  private readonly onInviteOutcome: (outcome: InviteOutcome | null) => void;
   private readonly onReconnectStatus: (status: CallReconnectStatus) => void;
 
   private _handshakeState: CallHandshakeState = null;
@@ -318,7 +319,9 @@ export class CallHandshakeController {
   private roomContextOwner: object | undefined;
   private incomingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private outgoingCallTimeoutId: ReturnType<typeof setTimeout> | undefined;
-  private calleeBusyResetTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  private inviteOutcomeResetTimeoutId:
+    | ReturnType<typeof setTimeout>
+    | undefined;
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private reconnectFailedTimeoutId: ReturnType<typeof setTimeout> | undefined;
   private connectFailedTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -334,14 +337,14 @@ export class CallHandshakeController {
     createSignaling,
     getCallerName,
     onStateChange,
-    onCalleeBusy,
+    onInviteOutcome,
     onReconnectStatus,
   }: CallHandshakeControllerOptions) {
     this.p2p = p2p;
     this.createSignaling = createSignaling;
     this.getCallerName = getCallerName;
     this.onStateChange = onStateChange;
-    this.onCalleeBusy = onCalleeBusy;
+    this.onInviteOutcome = onInviteOutcome;
     this.onReconnectStatus = onReconnectStatus;
   }
 
@@ -432,6 +435,15 @@ export class CallHandshakeController {
       !details.callerId
     )
       return;
+    // The mailbox invite is authoritative (notifications don't carry
+    // joinRoomId), so a notification copy never replaces it.
+    const current = this._handshakeState;
+    if (
+      current &&
+      current.direction !== 'outgoing' &&
+      current.call.callInviteId === details.callInviteId
+    )
+      return;
     const startedAt = details.startedAt ?? Date.now();
     const call: MailboxInvite = {
       callInviteId: details.callInviteId,
@@ -505,6 +517,15 @@ export class CallHandshakeController {
       console.warn('Cannot start outgoing call before login is ready');
       return;
     }
+    // Calling from inside a call rings the contact into the current room,
+    // reusing its media. One pending invite at a time.
+    const joinRoomId =
+      this.p2p.state() === 'idle'
+        ? undefined
+        : (this.p2p.room()?.roomId ?? undefined);
+    if (this.p2p.state() !== 'idle' && (!joinRoomId || this._handshakeState)) {
+      return;
+    }
     const svc = this.initService(localUID);
     this.stopPendingOutgoingLocalStream();
     const mediaAttempt = ++this.outgoingMediaAttempt;
@@ -515,7 +536,9 @@ export class CallHandshakeController {
     // iOS requires getUserMedia to start within the tap's transient user
     // activation — kick it off before any network awaits or it throws
     // NotAllowedError whenever the roomId resolve is slow.
-    const localStreamPromise = this.getCallLocalStream(audioOnly);
+    const localStreamPromise = joinRoomId
+      ? Promise.resolve(undefined)
+      : this.getCallLocalStream(audioOnly);
     const stopStreamWhenReady = () =>
       localStreamPromise.then(
         (stream) => this.stopMediaStream(stream),
@@ -531,10 +554,21 @@ export class CallHandshakeController {
         err,
       );
       void stopStreamWhenReady();
+      if (joinRoomId) {
+        void reportCallStartFailure('room-resolve-failed', err, {
+          roomId: joinRoomId,
+        });
+        if (mediaAttempt === this.outgoingMediaAttempt) {
+          this.showInviteOutcome({ calleeName, joinRoomId }, 'failed');
+        }
+        return;
+      }
       await reportCallStartFailure('room-resolve-failed', err);
-      this.alertCallStartFailed(
-        'Error: Failed to resolve conversationId. Try again.',
-      );
+      if (mediaAttempt === this.outgoingMediaAttempt) {
+        this.alertCallStartFailed(
+          'Error: Failed to resolve conversationId. Try again.',
+        );
+      }
       return;
     }
     if (mediaAttempt !== this.outgoingMediaAttempt) {
@@ -549,11 +583,12 @@ export class CallHandshakeController {
       callerId: localUID,
       callerName,
       roomId,
+      joinRoomId,
       audioOnly,
       startedAt: Date.now(),
     };
 
-    let localStream: MediaStream;
+    let localStream: MediaStream | undefined;
     try {
       localStream = await localStreamPromise;
       if (mediaAttempt !== this.outgoingMediaAttempt) {
@@ -573,7 +608,7 @@ export class CallHandshakeController {
     }
 
     this.setHandshakeState({ direction: 'outgoing', call: nextOutgoingCall });
-    this.onCalleeBusy(false);
+    this.onInviteOutcome(null);
     this.scheduleOutgoingCallTimeout(svc, nextOutgoingCall);
 
     let responseReceived = false;
@@ -585,6 +620,8 @@ export class CallHandshakeController {
       this.clearOutgoingCallTracking();
       try {
         if (response.responseType === 'accepted') {
+          // Added to the live room: the callee joins us, nothing to enter.
+          if (nextOutgoingCall.joinRoomId) return;
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
           }
@@ -593,7 +630,7 @@ export class CallHandshakeController {
             response.roomId,
             localUID,
             nextOutgoingCall.audioOnly,
-            () => Promise.resolve(localStream),
+            () => Promise.resolve(localStream!),
           );
         } else if (response.responseType === 'busy') {
           publish('evt:call:invite:busy', nextOutgoingCall);
@@ -601,14 +638,10 @@ export class CallHandshakeController {
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
           }
-          this.onCalleeBusy(true);
-          this.clearCalleeBusyResetTimeout();
-          this.calleeBusyResetTimeoutId = setTimeout(() => {
-            this.calleeBusyResetTimeoutId = undefined;
-            this.onCalleeBusy(false);
-          }, 2_500);
+          this.showInviteOutcome(nextOutgoingCall, 'busy');
         } else {
           publish('evt:call:invite:declined', nextOutgoingCall);
+          this.showInviteOutcome(nextOutgoingCall, 'declined');
           this.stopMediaStream(localStream);
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
@@ -641,14 +674,32 @@ export class CallHandshakeController {
         calleeId,
         callerName,
         audioOnly,
+        joinRoomId,
       });
     } catch (err) {
+      console.error('Error sending outgoing call invite:', err);
+      const reported = reportCallStartFailure('invite-send-failed', err, {
+        roomId,
+      });
+      const state = this._handshakeState;
+      if (
+        responseReceived ||
+        state?.direction !== 'outgoing' ||
+        state.call.callInviteId !== nextOutgoingCall.callInviteId
+      )
+        return;
+
       this.clearOutgoingCallTracking();
       this.stopPendingOutgoingLocalStream();
       this.setHandshakeState(null);
-      console.error('Error sending outgoing call invite:', err);
-      await reportCallStartFailure('invite-send-failed', err, { roomId });
-      this.alertCallStartFailed('Error sending call invite. Try again.');
+      if (joinRoomId) {
+        this.showInviteOutcome(nextOutgoingCall, 'failed');
+      } else {
+        await reported;
+        if (mediaAttempt === this.outgoingMediaAttempt) {
+          this.alertCallStartFailed('Error sending call invite. Try again.');
+        }
+      }
       return;
     }
 
@@ -878,8 +929,8 @@ export class CallHandshakeController {
     setCallRoomContext(undefined);
   }
 
-  private stopMediaStream(stream: MediaStream): void {
-    stream.getTracks().forEach((track) => track.stop());
+  private stopMediaStream(stream: MediaStream | undefined): void {
+    stream?.getTracks().forEach((track) => track.stop());
   }
 
   private stopPendingOutgoingLocalStream(): void {
@@ -917,6 +968,7 @@ export class CallHandshakeController {
           ),
         );
       publish('evt:call:invite:unanswered', call);
+      this.showInviteOutcome(call, 'unanswered');
     }, CALLING_TTL_MS);
   }
 
@@ -927,7 +979,7 @@ export class CallHandshakeController {
     this.clearOutgoingCallTracking();
     this.stopPendingOutgoingLocalStream();
     this.setHandshakeState(null);
-    this.onCalleeBusy(false);
+    this.onInviteOutcome(null);
     publish('evt:call:invite:unanswered', state.call);
     svc
       .cancelOutgoingCall({
@@ -984,13 +1036,10 @@ export class CallHandshakeController {
     }
     const { signal } = abortController;
     let acceptSent = false;
-    this.enterRoom(
-      state.call.roomId,
-      localUID,
-      state.call.audioOnly ?? false,
-      undefined,
-      { signal },
-    )
+    const roomId = state.call.joinRoomId ?? state.call.roomId;
+    this.enterRoom(roomId, localUID, state.call.audioOnly ?? false, undefined, {
+      signal,
+    })
       .then(() => {
         if (this.isExpired(state.call) && !signal.aborted) {
           abortController.abort(
@@ -1044,7 +1093,7 @@ export class CallHandshakeController {
         // Callee media, join and accept-response failures all land here;
         // the error name (e.g. NotAllowedError) tells them apart.
         void reportCallStartFailure('accept-failed', err, {
-          roomId: state.call.roomId,
+          roomId,
           audioOnly: state.call.audioOnly ?? false,
         }).then((permissions) => {
           if (err instanceof Error && err.name === 'NotAllowedError') {
@@ -1109,6 +1158,7 @@ export class CallHandshakeController {
   };
 
   hangUp = (reason: HangUpReason = 'user'): void => {
+    this.outgoingMediaAttempt += 1;
     // The peer's side learns this leave is intentional from the signaling
     // `leave` the room sends during dispose() — the DO tags it as a `left`
     // departure, so their `onAlone` exits immediately instead of showing
@@ -1124,6 +1174,11 @@ export class CallHandshakeController {
       memberCount: this.p2p.members().length,
       state: this.p2p.state(),
     });
+    // A contact still ringing into this room would join it empty.
+    const pending = this._handshakeState;
+    if (pending?.direction === 'outgoing' && pending.call.joinRoomId) {
+      this.cancelOutgoing();
+    }
     this.publishCompletedCall();
     this.resetReconnectState();
     this.clearRoomContext();
@@ -1249,10 +1304,22 @@ export class CallHandshakeController {
     this.outgoingCallTimeoutId = undefined;
   }
 
-  private clearCalleeBusyResetTimeout(): void {
-    if (!this.calleeBusyResetTimeoutId) return;
-    clearTimeout(this.calleeBusyResetTimeoutId);
-    this.calleeBusyResetTimeoutId = undefined;
+  private showInviteOutcome(
+    call: InviteOutcome['call'],
+    result: InviteOutcome['result'],
+  ): void {
+    this.onInviteOutcome({ call, result });
+    this.clearInviteOutcomeResetTimeout();
+    this.inviteOutcomeResetTimeoutId = setTimeout(() => {
+      this.inviteOutcomeResetTimeoutId = undefined;
+      this.onInviteOutcome(null);
+    }, 2_500);
+  }
+
+  private clearInviteOutcomeResetTimeout(): void {
+    if (!this.inviteOutcomeResetTimeoutId) return;
+    clearTimeout(this.inviteOutcomeResetTimeoutId);
+    this.inviteOutcomeResetTimeoutId = undefined;
   }
 
   private clearOutgoingCallTracking(): void {
@@ -1268,13 +1335,13 @@ export class CallHandshakeController {
     this.unsubscribeIncomingCall?.();
     this.unsubscribeIncomingCall = undefined;
     this.clearOutgoingCallTracking();
-    this.clearCalleeBusyResetTimeout();
+    this.clearInviteOutcomeResetTimeout();
     this.resetReconnectState();
     this.stopPendingOutgoingLocalStream();
     this.publishCompletedCall();
     this.clearRoomContext();
     this.setHandshakeState(null);
-    this.onCalleeBusy(false);
+    this.onInviteOutcome(null);
     void this.p2p.dispose().catch((err) => {
       console.warn('[call] p2p dispose failed on cleanup:', err);
     });

@@ -18,6 +18,11 @@
 export interface MailboxInvite {
   callInviteId: string;
   roomId: string;
+  /**
+   * The caller's live call room, set when inviting from inside a call. The
+   * invite stays keyed and authorized by `roomId`; the callee joins this room.
+   */
+  joinRoomId?: string;
   callerId: string;
   calleeId: string;
   callerName?: string;

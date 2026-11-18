@@ -63,7 +63,6 @@
   width: var(--content-width);
   background: var(--color-bg-darker);
   padding: 0.5rem 1rem;
-  border-top: 1px solid var(--color-border-primary);
 }
 
 .loading,

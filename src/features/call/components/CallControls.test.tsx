@@ -47,6 +47,7 @@ vi.mock('../call-handshake', () => ({
   useCallHandshake: () => ({
     hangUp: mocks.hangUp,
     startCall: mocks.startCall,
+    isCallDisabled: (uid: string) => uid === 'in-call',
   }),
 }));
 vi.mock('@shared/createAutoHide', () => ({
@@ -88,6 +89,15 @@ describe('StartCallButton', () => {
       calleeName: 'Bob',
       audioOnly: false,
     });
+  });
+
+  it('disables calling a contact the call cannot add', () => {
+    const { getByRole } = render(() => (
+      <StartCallButton calleeId='in-call' calleeName='Alice' />
+    ));
+    expect(
+      getByRole('button', { name: 'contact.action.call:Alice' }),
+    ).toHaveProperty('disabled', true);
   });
 });
 

@@ -38,7 +38,10 @@ export function CallDialogs() {
 
   return (
     <Switch>
-      <Match when={handshake.outgoingCall()}>
+      {/* Ringing a contact into a live call shows in the call view instead. */}
+      <Match
+        when={!handshake.outgoingCall()?.joinRoomId && handshake.outgoingCall()}
+      >
         {(call) => (
           <CallDialog
             title={t('call.calling', {
@@ -56,7 +59,12 @@ export function CallDialogs() {
           />
         )}
       </Match>
-      <Match when={handshake.isCalleeBusy()}>
+      <Match
+        when={
+          handshake.inviteOutcome()?.result === 'busy' &&
+          !handshake.inviteOutcome()?.call.joinRoomId
+        }
+      >
         <CallDialog
           title={t('call.busy')}
           ring={() => void ringtoneManager.playBusy()}
