@@ -116,12 +116,15 @@ async function reportSendQuality(room: P2PRoom): Promise<void> {
         { attributes },
       );
     }
+    const maxFramerate =
+      videoSenders(pc)[0]?.getParameters().encodings?.[0]?.maxFramerate;
     for (const report of reports) {
       if (report.type !== 'outbound-rtp' || report.kind !== 'video') continue;
       metrics.count('call.video_send_sample', 1, {
         attributes: {
           ...attributes,
           limitation: report.qualityLimitationReason ?? 'unknown',
+          max_fps: maxFramerate ?? 'none',
         },
       });
       if (report.frameHeight) {
