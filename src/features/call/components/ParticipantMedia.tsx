@@ -233,6 +233,10 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     ),
   );
 
+  // The room republishes the same local MediaStream after replacing a track.
+  // Reobserve tracks above, but keep playback attached to avoid clearing the
+  // video element while the replacement camera starts delivering frames.
+  const playbackSource = createMemo(() => props.stream);
   createEffect(() => {
     if (!video) return;
 
@@ -240,7 +244,7 @@ export function ParticipantMedia(props: ParticipantMediaProps) {
     // muted video track — the reserved camera slot of an audio-only call —
     // is in srcObject and produces no frames. Attach only the audio tracks
     // until usable video exists.
-    const sourceStream = props.stream;
+    const sourceStream = playbackSource();
     const audioOnly = !videoConnected();
     const stream = audioOnly
       ? new MediaStream(sourceStream.getAudioTracks())

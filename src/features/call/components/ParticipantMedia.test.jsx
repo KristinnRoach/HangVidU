@@ -212,6 +212,30 @@ describe('ParticipantMedia', () => {
     expect(video.muted).toBe(true);
   });
 
+  it('keeps self-preview playback attached when the room replaces its camera track', () => {
+    const stream = new FakeStream([new FakeTrack('video')]);
+    const [localStream, setLocalStream] = createSignal(stream, {
+      equals: false,
+    });
+    const play = HTMLMediaElement.prototype.play;
+    const { container } = render(() => (
+      <ParticipantMedia stream={localStream()} variant='self-preview' />
+    ));
+    const video = container.querySelector('video');
+    const nextTrack = new FakeTrack('video');
+
+    // The room updates the existing MediaStream and publishes it again.
+    stream.tracks = [nextTrack];
+    setLocalStream(stream);
+
+    expect(video.srcObject).toBe(stream);
+    expect(play).toHaveBeenCalledTimes(1);
+
+    nextTrack.muted = true;
+    nextTrack.dispatchEvent(new Event('mute'));
+    expect(video.hidden).toBe(true);
+  });
+
   it('reactively mutes remote playback without changing the remote stream', async () => {
     const stream = new FakeStream([new FakeTrack('audio')]);
     const [remoteAudioMuted, setRemoteAudioMuted] = createSignal(false);
