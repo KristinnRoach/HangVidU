@@ -120,6 +120,7 @@ function createController(p2p, overrides = {}) {
     onStateChange: vi.fn(),
     onInviteOutcome: vi.fn(),
     onReconnectStatus: vi.fn(),
+    onCallConversationChange: vi.fn(),
     ...overrides,
   });
 }
@@ -191,6 +192,96 @@ describe('CallHandshakeController', () => {
       expect(p2p.join).toHaveBeenCalledOnce();
     },
   );
+
+  it('joins a fresh room for each new contact call while retaining the conversation for history', async () => {
+    vi.stubEnv('VITE_CONTACT_CALL_ROOM_LINKS', '1');
+    const callId = 'call-12345678-1234-1234-1234-123456789abc';
+    const nextCallId = 'call-87654321-1234-1234-1234-123456789abc';
+    const inviteId = 'room-invite-88888888-1234-1234-1234-123456789abc';
+    vi.mocked(crypto.randomUUID)
+      .mockReturnValueOnce(callId.slice(5))
+      .mockReturnValueOnce(inviteId.slice('room-invite-'.length));
+    const onCallConversationChange = vi.fn();
+    const p2p = createP2PMock({
+      join: vi.fn(async ({ roomId }) => ({ roomId, members: [] })),
+    });
+    const controller = createController(p2p, { onCallConversationChange });
+    const contact = {
+      calleeId: 'callee-id',
+      calleeName: 'Callee',
+      audioOnly: false,
+    };
+
+    await controller.startCall(contact);
+    expect(mocks.sendOutgoingCallInvite).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        callInviteId: inviteId,
+        roomId: 'room-1',
+        joinRoomId: callId,
+      }),
+    );
+    await mocks.responseCallback?.({
+      callInviteId: inviteId,
+      roomId: 'room-1',
+      responseType: 'accepted',
+    });
+    const options = p2p.join.mock.calls[0][0];
+    expect(options.roomId).toBe(callId);
+    expect(onCallConversationChange).toHaveBeenLastCalledWith('room-1');
+
+    options.onDataChannelOpen();
+    controller.hangUp();
+    expect(mocks.publish).toHaveBeenCalledWith(
+      'evt:call:session:completed',
+      expect.objectContaining({ roomId: 'room-1' }),
+    );
+    expect(onCallConversationChange).toHaveBeenLastCalledWith(undefined);
+
+    vi.mocked(crypto.randomUUID).mockReturnValueOnce(nextCallId.slice(5));
+    await controller.startCall(contact);
+    expect(mocks.sendOutgoingCallInvite).toHaveBeenLastCalledWith(
+      expect.objectContaining({ roomId: 'room-1', joinRoomId: nextCallId }),
+    );
+    controller.cleanup();
+  });
+
+  it('waits for mailbox routing when a call-scoped notification opens the app', async () => {
+    const callInviteId = 'room-invite-88888888-1234-1234-1234-123456789abc';
+    const roomId = 'call-12345678-1234-1234-1234-123456789abc';
+    const invite = {
+      callInviteId,
+      roomId: 'room-1',
+      callerId: 'caller-id',
+      startedAt: Date.now(),
+    };
+    const p2p = createP2PMock({
+      join: vi.fn(async ({ roomId }) => ({ roomId, members: [] })),
+    });
+    const onStateChange = vi.fn();
+    const controller = createController(p2p, { onStateChange });
+    controller.init();
+
+    controller.showIncomingCallFromNotification(invite);
+    expect(onStateChange).not.toHaveBeenCalled();
+
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: { ...invite, joinRoomId: roomId },
+    });
+    controller.acceptIncoming();
+
+    await vi.waitFor(() =>
+      expect(mocks.respondToIncomingCallInvite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          callInviteId,
+          roomId: 'room-1',
+          responseType: 'accepted',
+        }),
+      ),
+    );
+    expect(p2p.join).toHaveBeenCalledWith(expect.objectContaining({ roomId }));
+    controller.cleanup();
+  });
 
   it('stops guest media if the room rejects the join before taking ownership', async () => {
     const error = new Error('signaling unavailable');
@@ -1451,40 +1542,69 @@ describe('CallHandshakeController', () => {
     );
   });
 
-  it('rings a contact into the live room without new media or a rejoin', async () => {
-    mocks.getLoggedInUserId.mockReturnValue('caller-id');
-    mocks.resolveDirectConversationId.mockResolvedValue('room-ac');
-    const p2p = createP2PMock({
-      state: vi.fn(() => 'joined'),
-      room: vi.fn(() => ({ roomId: 'room-ab' })),
-    });
-    const controller = createController(p2p, {
-      getCallerName: () => 'Caller',
-    });
+  it.each([
+    {
+      roomId: 'room-ab',
+      callInviteId: '87654321-1234-1234-1234-123456789abc',
+      pushedJoinRoomId: 'room-ab',
+    },
+    {
+      roomId: 'call-12345678-1234-1234-1234-123456789abc',
+      callInviteId: 'room-invite-87654321-1234-1234-1234-123456789abc',
+      pushedJoinRoomId: undefined,
+    },
+  ])(
+    'rings a contact into $roomId without new media or a rejoin',
+    async ({ roomId, callInviteId, pushedJoinRoomId }) => {
+      vi.mocked(crypto.randomUUID).mockReturnValueOnce(
+        '87654321-1234-1234-1234-123456789abc',
+      );
 
-    await controller.startCall({
-      calleeId: 'callee-c',
-      calleeName: 'C',
-      audioOnly: false,
-    });
+      mocks.getLoggedInUserId.mockReturnValue('caller-id');
+      mocks.resolveDirectConversationId.mockResolvedValue('room-ac');
+      const p2p = createP2PMock({
+        state: vi.fn(() => 'joined'),
+        room: vi.fn(() => ({ roomId })),
+      });
+      const controller = createController(p2p, {
+        getCallerName: () => 'Caller',
+      });
 
-    expect(mocks.getUserMedia).not.toHaveBeenCalled();
-    expect(mocks.sendOutgoingCallInvite).toHaveBeenCalledWith(
-      expect.objectContaining({ roomId: 'room-ac', joinRoomId: 'room-ab' }),
-    );
+      await controller.startCall({
+        calleeId: 'callee-c',
+        calleeName: 'C',
+        audioOnly: false,
+      });
 
-    const [{ callInviteId }] = mocks.sendOutgoingCallInvite.mock.calls[0];
-    await mocks.responseCallback({
-      callInviteId,
-      roomId: 'room-ac',
-      responseType: 'accepted',
-      by: 'callee-c',
-      respondedAt: Date.now(),
-    });
-    expect(mocks.ackCallResponse).toHaveBeenCalledWith('room-ac', callInviteId);
-    expect(p2p.join).not.toHaveBeenCalled();
-    expect(p2p.dispose).not.toHaveBeenCalled();
-  });
+      expect(mocks.getUserMedia).not.toHaveBeenCalled();
+      expect(mocks.sendOutgoingCallInvite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          roomId: 'room-ac',
+          joinRoomId: roomId,
+          callInviteId,
+        }),
+      );
+      const sent = mocks.publish.mock.calls.find(
+        ([event]) => event === 'evt:call:invite:sent',
+      )?.[1];
+      expect(sent).toMatchObject({ callInviteId });
+      expect(sent.joinRoomId).toBe(pushedJoinRoomId);
+
+      await mocks.responseCallback({
+        callInviteId,
+        roomId: 'room-ac',
+        responseType: 'accepted',
+        by: 'callee-c',
+        respondedAt: Date.now(),
+      });
+      expect(mocks.ackCallResponse).toHaveBeenCalledWith(
+        'room-ac',
+        callInviteId,
+      );
+      expect(p2p.join).not.toHaveBeenCalled();
+      expect(p2p.dispose).not.toHaveBeenCalled();
+    },
+  );
 
   it('joins the invite join room when accepting an add-to-call invite', async () => {
     const p2p = createP2PMock({

@@ -266,7 +266,7 @@ describe('CallLobby', () => {
     expect(getByRole('alert').textContent).toBe('call.lobby.error.link');
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
 
-    const roomId = '87654321-1234-1234-1234-123456789abc';
+    const roomId = 'call-87654321-1234-1234-1234-123456789abc';
     const link = `https://dev.hangvidu.com/?publicRoom=${roomId}`;
     fireEvent.input(input, { target: { value: ` ${link} ` } });
     expect(getByRole('button', { name: 'call.lobby.join' }).disabled).toBe(

@@ -46,6 +46,7 @@ type CallHandshakeContextValue = {
 
   /** Local media for the active call; undefined while idle or connecting. */
   media: Accessor<CallMedia | undefined>;
+  callConversationId: Accessor<string | undefined>;
   inviteOutcome: Accessor<InviteOutcome | null>;
   reconnectStatus: Accessor<CallReconnectStatus>;
   incomingCall: Accessor<MailboxInvite | null>;
@@ -150,6 +151,7 @@ export function CallHandshakeProvider(props: ParentProps) {
   );
   const [reconnectStatus, setReconnectStatus] =
     createSignal<CallReconnectStatus>('connected');
+  const [callConversationId, setCallConversationId] = createSignal<string>();
   let releaseReloadHold: (() => void) | undefined;
 
   createScreenWakeLock(
@@ -213,6 +215,7 @@ export function CallHandshakeProvider(props: ParentProps) {
     onStateChange: setHandshakeState,
     onInviteOutcome: setInviteOutcome,
     onReconnectStatus: setReconnectStatus,
+    onCallConversationChange: setCallConversationId,
   });
 
   onCleanup(
@@ -237,6 +240,7 @@ export function CallHandshakeProvider(props: ParentProps) {
     // Wrap so a click handler's MouseEvent can't leak in as the hangUp reason.
     hangUp: () => controller.hangUp('user'),
     media,
+    callConversationId,
     inviteOutcome,
     reconnectStatus,
     incomingCall,
