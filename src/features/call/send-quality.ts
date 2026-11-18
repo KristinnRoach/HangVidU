@@ -44,29 +44,11 @@ export async function capVideoSenders(
     )
       return;
 
-    const bitrateChanged = encoding.maxBitrate !== maxBitrate;
     if (maxBitrate === undefined) delete encoding.maxBitrate;
     else encoding.maxBitrate = maxBitrate;
     if (maxFramerate === undefined) delete encoding.maxFramerate;
     else encoding.maxFramerate = maxFramerate;
-    try {
-      await sender.setParameters(parameters);
-    } catch (error) {
-      // Keep the upload limit if the browser rejects the frame-rate cap.
-      if (
-        bitrateChanged &&
-        maxBitrate !== undefined &&
-        maxFramerate !== undefined
-      ) {
-        const fallback = sender.getParameters();
-        const [fallbackEncoding] = fallback.encodings;
-        if (fallbackEncoding) {
-          fallbackEncoding.maxBitrate = maxBitrate;
-          await sender.setParameters(fallback);
-        }
-      }
-      throw error;
-    }
+    await sender.setParameters(parameters);
   });
   const results = await Promise.allSettled(updates);
   for (const result of results) {

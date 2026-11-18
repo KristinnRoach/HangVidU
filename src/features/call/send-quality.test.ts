@@ -74,20 +74,4 @@ describe('capVideoSenders', () => {
     await capVideoSenders(room, false);
     expect(senders[0]?.maxFramerate()).toBe(20);
   });
-
-  it('keeps the upload limit if the frame-rate cap is rejected', async () => {
-    const sender = fakeSender();
-    sender.setParameters.mockRejectedValueOnce(new Error('Unsupported'));
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      await capVideoSenders(
-        fakeRoom([sender, fakeSender(), fakeSender()]),
-        false,
-      );
-      expect(sender.maxBitrate()).toBe(500_000);
-      expect(sender.maxFramerate()).toBeUndefined();
-    } finally {
-      warn.mockRestore();
-    }
-  });
 });
