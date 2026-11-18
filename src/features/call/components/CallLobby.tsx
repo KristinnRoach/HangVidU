@@ -1,19 +1,17 @@
-// Guest call lobby: create a room-link call or join one via ?publicRoom=<id>.
-// No account needed — signs in anonymously for the signaling token.
-import { createSignal, createEffect, on, Show } from 'solid-js';
+import { createSignal, createEffect, on, onCleanup, Show } from 'solid-js';
 
 import { useP2PContext } from '@shared/p2p-context.js';
 import { signInAsGuest } from '@auth';
 import { t } from '@shared/i18n';
-import Button from '../../../components/Button';
-import TextField from '../../../components/TextField';
+import Button from '@components/Button';
+import { showSuccessToast } from '@components/base-legacy/toast.js';
+import Dialog from '@components/dialogs/Dialog';
+import TextField from '@components/TextField';
 import {
   getAudioConstraints,
   getVideoConstraints,
 } from '../media-constraints.js';
 import { useCallHandshake } from '../call-handshake.js';
-
-const hintClass = 'px-1 text-sm text-text-secondary';
 
 function joinErrorMessage(err: unknown, kind: string | undefined): string {
   if (kind === 'room-full') return t('call.lobby.error.full');
@@ -26,12 +24,11 @@ function joinErrorMessage(err: unknown, kind: string | undefined): string {
   return t('call.lobby.error.generic');
 }
 
-// Room ids are crypto.randomUUID(); anything else in ?publicRoom= is a mangled
-// or forged link — drop it instead of attempting a join that can't work.
+// Room-link calls use UUIDs generated on the client.
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function publicRoomIdFromUrl(link = window.location.href): string | null {
+function publicRoomIdFromUrl(link: string): string | null {
   try {
     const url = new URL(link.trim());
     const raw = url.searchParams.get('publicRoom');
@@ -43,184 +40,223 @@ function publicRoomIdFromUrl(link = window.location.href): string | null {
   }
 }
 
+async function copyStartedInvite(started: Promise<string | undefined>) {
+  const clipboard = navigator.clipboard;
+  if (!clipboard) return;
+
+  try {
+    if (clipboard.write && typeof ClipboardItem !== 'undefined') {
+      // Safari needs write() during the submit gesture. Provide the link only
+      // once the call starts, so a failed start leaves the clipboard alone.
+      const text = started.then((url) => {
+        if (!url || window.location.href !== url) {
+          throw new Error('Guest call is no longer active');
+        }
+        return new Blob([url], { type: 'text/plain' });
+      });
+      // Some browsers reject the write before reading its payload.
+      void text.catch(() => {});
+      await clipboard.write([new ClipboardItem({ 'text/plain': text })]);
+    } else {
+      const url = await started;
+      if (!url || window.location.href !== url) return;
+      await clipboard.writeText(url);
+    }
+
+    if (window.location.href === (await started)) {
+      showSuccessToast(t('call.link_copied'));
+    }
+  } catch {
+    // The call toolbar still offers a manual copy action.
+  }
+}
+
 export function CallLobby() {
   const p2p = useP2PContext();
   const { joinRoomLink } = useCallHandshake();
 
-  // Set when the visitor arrived via an invite link; cleared once that
-  // call ends (the room link is single-use).
-  const [invitedRoomId, setInvitedRoomId] = createSignal<string | null>(
-    publicRoomIdFromUrl(),
+  const [invite, setInvite] = createSignal(
+    publicRoomIdFromUrl(window.location.href),
   );
-
-  const [link, setLink] = createSignal(
-    invitedRoomId() ? window.location.href : '',
-  );
-  const roomId = () => publicRoomIdFromUrl(link());
-  const [copied, setCopied] = createSignal(false);
+  const [link, setLink] = createSignal('');
   const [joining, setJoining] = createSignal(false);
   const [callEnded, setCallEnded] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
+  const [error, setError] = createSignal<string>();
+  const roomId = () => publicRoomIdFromUrl(link());
+  const isJoiningInvite = () => Boolean(link().trim());
+  const invalidLink = () => isJoiningInvite() && !roomId();
 
-  // Re-enable the join button once a call ends and the lobby returns.
-  // A finished call also means the room link is dead — clear it so a
-  // reload or retry doesn't offer a join into a stale room.
+  let pendingCapture: Promise<MediaStream> | undefined;
+  function releasePendingCapture() {
+    void pendingCapture?.then(
+      (stream) => stream.getTracks().forEach((track) => track.stop()),
+      () => {},
+    );
+    pendingCapture = undefined;
+  }
+  onCleanup(releasePendingCapture);
+
+  function clearRoomLink() {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('publicRoom')) return false;
+    url.searchParams.delete('publicRoom');
+    window.history.replaceState(window.history.state, '', url);
+    return true;
+  }
+
+  function dismissInvite() {
+    if (joining()) return;
+    clearRoomLink();
+    setInvite(null);
+    setError(undefined);
+  }
+
   createEffect(
-    on(
-      () => p2p.state(),
-      (state, prev) => {
-        if (state !== 'idle') return;
-        setJoining(false);
-        if (prev === 'joined') {
-          const url = new URL(window.location.href);
-          url.searchParams.delete('publicRoom');
-          window.history.replaceState(null, '', url);
-          setLink('');
-          setInvitedRoomId(null);
-          setCallEnded(true);
-        }
-      },
-    ),
+    on(p2p.state, (state, previous) => {
+      if (state !== 'idle' || previous !== 'joined') return;
+
+      if (invite() || !clearRoomLink()) return;
+      setLink('');
+      setCallEnded(true);
+    }),
   );
 
-  function createRoom() {
-    const id = crypto.randomUUID();
-    const url = new URL(window.location.href);
-    url.searchParams.set('publicRoom', id);
-    window.history.replaceState(null, '', url);
-    setLink(url.href);
-    setCallEnded(false);
-    void copyLink();
-  }
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(link().trim());
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
-  }
-
-  async function joinRoom() {
-    const id = roomId();
-    if (!id || joining()) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('publicRoom', id);
-    window.history.replaceState(null, '', url);
+  async function connect(invitedRoomId: string | null) {
+    const id = invitedRoomId ?? crypto.randomUUID();
     setJoining(true);
     setCallEnded(false);
-    setError(null);
-    let streamPromise: Promise<MediaStream> | undefined;
+    setError(undefined);
+
+    const previousUrl = window.location.href;
+    const url = new URL(previousUrl);
+    url.searchParams.set('publicRoom', id);
     try {
-      // iOS requires getUserMedia to start within the tap's transient user
-      // activation — start it alongside the guest sign-in, not after it.
-      streamPromise = navigator.mediaDevices.getUserMedia({
+      // iOS needs capture to start during the tap, before awaiting sign-in.
+      const capture = navigator.mediaDevices.getUserMedia({
         video: getVideoConstraints(),
         audio: getAudioConstraints(),
       });
-      const [uid, acquiredStream] = await Promise.all([
-        signInAsGuest(),
-        streamPromise,
-      ]);
-      await joinRoomLink(id, uid, acquiredStream);
+      pendingCapture = capture;
+      const [uid, stream] = await Promise.all([signInAsGuest(), capture]);
+      if (pendingCapture !== capture) return;
+
+      window.history.replaceState(null, '', url);
+      // The handshake owns the stream from this point, including failed joins.
+      pendingCapture = undefined;
+      await joinRoomLink(id, uid, stream);
+      setInvite(null);
+      return url.href;
     } catch (err) {
-      // Sign-in or signaling can fail before p2p invokes getLocalStream and
-      // assumes ownership of the tracks, possibly before capture resolves.
-      void streamPromise?.then(
-        (stream) => stream.getTracks().forEach((track) => track.stop()),
-        () => {},
-      );
+      releasePendingCapture();
       console.error('[CallLobby] Failed to join guest room:', err);
-      setError(joinErrorMessage(err, p2p.errorKind()));
-      // Failed joins can leave a watched room behind, hiding the lobby error.
+      const message = joinErrorMessage(err, p2p.errorKind());
+
+      if (window.location.href === url.href && previousUrl !== url.href) {
+        window.history.replaceState(null, '', previousUrl);
+      }
+      // Return to the lobby if the rejected room is still being watched.
       const state = p2p.state();
       if (
         (state === 'full' || state === 'error') &&
         p2p.room()?.roomId === id
       ) {
-        void p2p.dispose().catch((error: unknown) => {
+        await p2p.dispose().catch((error: unknown) => {
           console.warn('[CallLobby] Failed to dispose rejected room:', error);
         });
       }
+      setError(message);
+    } finally {
       setJoining(false);
     }
   }
 
+  function ConnectionFeedback() {
+    return (
+      <>
+        <div role='status' class='text-sm text-text-secondary empty:absolute'>
+          {joining()
+            ? t('call.lobby.permission_hint')
+            : callEnded()
+              ? t('call.lobby.ended')
+              : undefined}
+        </div>
+        <Show when={error()}>
+          <p class='text-sm text-danger' role='alert'>
+            {error()}
+          </p>
+        </Show>
+      </>
+    );
+  }
+
   return (
-    <div class='flex w-full max-w-98 flex-col gap-4 mx-auto'>
-      <div class='flex flex-wrap gap-4'>
-        <Show
-          when={link().trim()}
-          fallback={
-            <div class='flex w-full flex-col gap-4'>
-              <p class='text-base'>{t('call.lobby.ephemeral_prompt')}</p>
-              <Button variant='secondary' onClick={createRoom}>
-                {t('call.lobby.start')}
-              </Button>
-            </div>
-          }
+    <Show
+      when={!invite()}
+      fallback={
+        // The portal keeps URL invites available when the public home is hidden.
+        <Dialog
+          open
+          title={t('call.lobby.invited')}
+          hideCloseButton
+          onOpenChange={(open) => {
+            if (!open) dismissInvite();
+          }}
         >
           <Button
-            variant='primary'
-            class='flex-1'
-            onClick={joinRoom}
+            variant='success'
             loading={joining()}
-            disabled={!roomId()}
+            disabled={p2p.state() !== 'idle'}
+            onClick={() => {
+              const id = invite();
+              if (id && !joining() && p2p.state() === 'idle') void connect(id);
+            }}
           >
             {joining() ? t('call.lobby.joining') : t('call.lobby.join')}
           </Button>
-          <Button
-            variant='secondary'
-            class='flex-1'
-            onClick={copyLink}
-            disabled={joining() || !roomId()}
-          >
-            {t('call.lobby.copy_link')}
+          <Button variant='ghost' disabled={joining()} onClick={dismissInvite}>
+            {t('shared.dismiss')}
           </Button>
-        </Show>
-      </div>
-
-      <Show when={copied() && roomId()}>
-        <span class={hintClass} role='status'>
-          {t('call.lobby.link_copied')}
-        </span>
-      </Show>
-
-      <TextField
-        label={t('call.lobby.invite_label')}
-        hideLabel
-        value={link()}
-        placeholder={t('call.lobby.paste_link')}
-        disabled={joining()}
-        error={
-          link().trim() && !roomId() ? t('call.lobby.error.link') : undefined
-        }
-        onChange={(value) => {
-          setLink(value);
-          setInvitedRoomId(null);
-          setCopied(false);
-          setError(null);
+          <ConnectionFeedback />
+        </Dialog>
+      }
+    >
+      <form
+        class='mx-auto flex w-full max-w-98 flex-col gap-2'
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (joining() || invalidLink()) return;
+          const id = roomId();
+          const started = connect(id);
+          if (!id) void copyStartedInvite(started);
         }}
-        onFocus={(e) => e.currentTarget.select()}
-      />
-      <Show when={roomId() && !invitedRoomId()}>
-        <p class={hintClass}>{t('call.lobby.send_link_hint')}</p>
-      </Show>
-      <Show when={invitedRoomId() && !joining()}>
-        <p class={hintClass}>{t('call.lobby.invited')}</p>
-      </Show>
-      <Show when={joining()}>
-        <p class={hintClass}>{t('call.lobby.permission_hint')}</p>
-      </Show>
-      <Show when={callEnded() && !roomId()}>
-        <p class={hintClass}>{t('call.lobby.ended')}</p>
-      </Show>
-      <Show when={error()}>
-        <p class='text-sm text-danger' role='alert'>
-          {error()}
-        </p>
-      </Show>
-    </div>
+      >
+        <Button
+          type='submit'
+          variant={isJoiningInvite() ? 'success' : 'primary'}
+          loading={joining()}
+          disabled={invalidLink()}
+        >
+          {joining()
+            ? t('call.lobby.joining')
+            : isJoiningInvite()
+              ? t('call.lobby.join')
+              : t('call.lobby.start')}
+        </Button>
+        <TextField
+          label={t('call.lobby.invite_label')}
+          hideLabel
+          value={link()}
+          placeholder={t('call.lobby.paste_link')}
+          disabled={joining()}
+          error={invalidLink() ? t('call.lobby.error.link') : undefined}
+          onChange={(value) => {
+            setLink(value);
+            setError(undefined);
+            setCallEnded(false);
+          }}
+        />
+        <ConnectionFeedback />
+      </form>
+    </Show>
   );
 }

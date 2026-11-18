@@ -79,7 +79,7 @@ function deferred() {
 }
 
 function createMediaTrack(kind) {
-  return { kind, stop: vi.fn() };
+  return { kind, enabled: true, readyState: 'live', stop: vi.fn() };
 }
 
 function createMediaStream({ audio = true, video = false } = {}) {
@@ -164,6 +164,47 @@ describe('CallHandshakeController', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    { mode: 'dev', dev: true, preview: '', micOn: false },
+    { mode: 'preview:watch', dev: false, preview: '1', micOn: false },
+    { mode: 'production', dev: false, preview: '', micOn: true },
+  ])(
+    'sets initial microphone state before joining in $mode',
+    async ({ dev, preview, micOn }) => {
+      vi.stubEnv('DEV', dev);
+      vi.stubEnv('VITE_PREVIEW_WATCH', preview);
+      const stream = createMediaStream({ video: true });
+      const p2p = createP2PMock({
+        join: vi.fn(async (options) => {
+          expect(stream.getAudioTracks()[0].enabled).toBe(micOn);
+          expect(stream.getVideoTracks()[0].enabled).toBe(true);
+          expect(options.presenceData).toEqual({ micOn, cameraOn: true });
+          return { roomId: options.roomId, members: [] };
+        }),
+      });
+      const controller = createController(p2p);
+
+      await controller.joinRoomLink('room-1', 'guest-id', stream);
+      expect(p2p.join).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('stops guest media if the room rejects the join before taking ownership', async () => {
+    const error = new Error('signaling unavailable');
+    const p2p = createP2PMock({ join: vi.fn().mockRejectedValue(error) });
+    const controller = createController(p2p);
+    const stream = createMediaStream({ video: true });
+
+    await expect(
+      controller.joinRoomLink('room-1', 'guest-id', stream),
+    ).rejects.toBe(error);
+
+    for (const track of stream.getTracks()) {
+      expect(track.stop).toHaveBeenCalledOnce();
+    }
   });
 
   it('dismisses a matching incoming call when another device handles it', () => {

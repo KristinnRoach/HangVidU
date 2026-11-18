@@ -21,7 +21,7 @@ import type { CallMedia } from '../call-media';
 import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
 import { showErrorToast } from '../../../components/base-legacy/toast.js';
-import { onMount, Show } from 'solid-js';
+import { Show } from 'solid-js';
 
 const MEDIA_ERROR_KEYS: Record<string, string> = {
   NotAllowedError: 'blocked',
@@ -126,10 +126,6 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
       console.error('[CallMedia] Failed to change screen-share state', error);
     });
   }
-
-  onMount(() => {
-    if (import.meta.env.DEV) toggleMic(); // Mute mic by default in dev to avoid feedback
-  });
 
   return (
     <div

@@ -11,6 +11,8 @@ type DialogProps = ParentProps<{
    * actions: it then has no close button and is announced as an alert dialog.
    */
   onOpenChange?: (open: boolean) => void;
+  /** Use when the dialog provides its own visible dismiss action. */
+  hideCloseButton?: boolean;
   title: JSX.Element;
   description?: JSX.Element;
   /** Action buttons, right-aligned below the body. */
@@ -58,7 +60,7 @@ export default function Dialog(props: DialogProps) {
               <KDialog.Title class='m-0 min-w-0 wrap-anywhere text-lg font-semibold'>
                 {props.title}
               </KDialog.Title>
-              <Show when={props.onOpenChange}>
+              <Show when={props.onOpenChange && !props.hideCloseButton}>
                 <KDialog.CloseButton
                   class='shrink-0 rounded-md p-1 text-text-secondary hover:bg-bg-brighter hover:text-text-primary focus-visible:outline-2 focus-visible:outline-primary'
                   aria-label={t('shared.close')}

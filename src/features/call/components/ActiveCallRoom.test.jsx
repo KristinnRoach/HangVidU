@@ -15,7 +15,9 @@ const mocks = vi.hoisted(() => ({
   inviteOutcome: () => null,
   user: vi.fn(() => null),
   roomState: vi.fn(() => 'idle'),
+  remoteMemberStreams: vi.fn(() => [{}]),
   startCall: vi.fn(),
+  showSuccessToast: vi.fn(),
 }));
 vi.mock('@auth', () => ({
   useAuth: () => ({ user: mocks.user, isLoggingOut: () => false }),
@@ -45,8 +47,11 @@ vi.mock('../call-handshake.js', () => ({
 vi.mock('@shared/p2p-context.js', () => ({
   useP2PContext: () => ({
     state: mocks.roomState,
-    remoteMemberStreams: () => [{}],
+    remoteMemberStreams: mocks.remoteMemberStreams,
   }),
+}));
+vi.mock('@components/base-legacy/toast.js', () => ({
+  showSuccessToast: mocks.showSuccessToast,
 }));
 vi.mock('./MemberStreams', () => ({ MemberStreams: () => null }));
 vi.mock('./CallControls', () => ({ ActiveCallControls: () => null }));
@@ -58,6 +63,9 @@ afterEach(() => {
   vi.useRealTimers();
   mocks.user.mockReset();
   mocks.roomState.mockReset();
+  mocks.remoteMemberStreams.mockReset();
+  mocks.showSuccessToast.mockClear();
+  window.history.replaceState(null, '', '/');
 });
 
 it('submits the first eligible search result and closes the picker', async () => {
@@ -66,6 +74,7 @@ it('submits the first eligible search result and closes the picker', async () =>
   mocks.roomState.mockReturnValue('joined');
   render(() => <ActiveCallRoom media={media} holdTopBar={() => () => {}} />);
 
+  expect(screen.queryByRole('button', { name: 'Copy invite link' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Add caller' }));
   await screen.findByRole('dialog', { name: 'Add caller' });
   expect(screen.queryByRole('button', { name: 'Sam' })).toBeNull();
@@ -138,4 +147,56 @@ it('reports how an add-invite ended in the call view, not as a dialog', () => {
   setOutcome({ call, result: 'unanswered' });
   expect(getByRole('status').textContent).toBe('No answer from Cleo');
   mocks.inviteOutcome = () => null;
+});
+
+it('lets a signed-in participant copy a room link after someone joins', async () => {
+  mocks.user.mockReturnValue({ uid: 'signed-in-user' });
+  window.history.replaceState(
+    null,
+    '',
+    '/?publicRoom=12345678-1234-1234-1234-123456789abc',
+  );
+  mocks.roomState.mockReturnValue('joined');
+  const [streams, setStreams] = createSignal([]);
+  mocks.remoteMemberStreams.mockImplementation(streams);
+  const writeText = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('clipboard denied'))
+    .mockResolvedValueOnce(undefined);
+  const clipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  });
+
+  try {
+    render(() => <ActiveCallRoom media={media} holdTopBar={() => () => {}} />);
+    const copy = screen.getByRole('button', { name: 'Copy invite link' });
+    expect(copy.classList.contains('bg-bg-secondary')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Add caller' })).toBeTruthy();
+    setStreams([{}]);
+    expect(screen.getByRole('button', { name: 'Copy invite link' })).toBe(copy);
+    fireEvent.click(copy);
+
+    const input = await screen.findByRole('textbox', {
+      name: 'Copy this link manually',
+    });
+    expect(input.readOnly).toBe(true);
+    expect(input.value).toBe(window.location.href);
+
+    expect(mocks.showSuccessToast).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Copy invite link' }),
+    );
+    await waitFor(() => {
+      expect(mocks.showSuccessToast).toHaveBeenCalledExactlyOnceWith(
+        'Link copied',
+      );
+    });
+    expect(writeText).toHaveBeenCalledWith(window.location.href);
+  } finally {
+    if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard);
+    else delete navigator.clipboard;
+  }
 });
