@@ -21,6 +21,7 @@ import {
 import { createScreenWakeLock } from '@shared/createScreenWakeLock';
 import { getLoggedInUserProfile } from '../../stores/user-profile-store.js';
 import type { MailboxInvite } from '../../../shared/user-mailbox/protocol';
+import { ROOM_MEMBER_LIMIT } from '../../../shared/signaling/protocol';
 import {
   CallHandshakeController,
   type IncomingCallNotificationDetails,
@@ -48,8 +49,9 @@ type CallHandshakeContextValue = {
   reconnectStatus: Accessor<CallReconnectStatus>;
   incomingCall: Accessor<MailboxInvite | null>;
   outgoingCall: Accessor<OutgoingCall | null>;
-  /** Whether the account has an endpoint in the current call room. */
-  isInCall: (uid: string) => boolean;
+  /** Calling this contact can't work: they're in the call, an add-invite is
+   * already ringing, or the room is full. */
+  isCallDisabled: (uid: string) => boolean;
   cancelOutgoing: () => void;
   acceptIncoming: () => void;
   declineIncoming: () => void;
@@ -233,8 +235,15 @@ export function CallHandshakeProvider(props: ParentProps) {
     reconnectStatus,
     incomingCall,
     outgoingCall,
-    // Peer IDs are `uid:uuid` endpoints (endpointPeerId).
-    isInCall: (uid) => p2p.members().some((id) => id.startsWith(`${uid}:`)),
+    isCallDisabled: (uid) => {
+      const members = p2p.members();
+      // Peer IDs are `uid:uuid` endpoints (endpointPeerId).
+      if (members.some((id) => id.startsWith(`${uid}:`))) return true;
+      return (
+        p2p.state() !== 'idle' &&
+        (handshakeState() !== null || members.length >= ROOM_MEMBER_LIMIT)
+      );
+    },
     cancelOutgoing: controller.cancelOutgoing,
     acceptIncoming: controller.acceptIncoming,
     declineIncoming: controller.declineIncoming,

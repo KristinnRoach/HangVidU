@@ -47,7 +47,7 @@ vi.mock('../call-handshake', () => ({
   useCallHandshake: () => ({
     hangUp: mocks.hangUp,
     startCall: mocks.startCall,
-    isInCall: (uid: string) => uid === 'in-call',
+    isCallDisabled: (uid: string) => uid === 'in-call',
   }),
 }));
 vi.mock('@shared/createAutoHide', () => ({
@@ -91,7 +91,7 @@ describe('StartCallButton', () => {
     });
   });
 
-  it('disables calling a contact who is already in the call', () => {
+  it('disables calling a contact the call cannot add', () => {
     const { getByRole } = render(() => (
       <StartCallButton calleeId='in-call' calleeName='Alice' />
     ));
