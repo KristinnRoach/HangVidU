@@ -16,9 +16,11 @@ export function ActiveCallRoom(props: {
   holdTopBar: AutoHideController['hold'];
 }) {
   const p2p = useP2PContext();
-  const { reconnectStatus, outgoingCall, cancelOutgoing } = useCallHandshake();
+  const { reconnectStatus, outgoingCall, busyCall, cancelOutgoing } =
+    useCallHandshake();
   const ringingIntoRoom = () =>
     outgoingCall()?.joinRoomId ? outgoingCall() : null;
+  const busyIntoRoom = () => (busyCall()?.joinRoomId ? busyCall() : null);
   createEffect(() => {
     if (props.media.faceMaskCapturing()) onCleanup(props.holdTopBar('hidden'));
   });
@@ -47,20 +49,29 @@ export function ActiveCallRoom(props: {
         media={props.media}
       />
 
-      <Show when={ringingIntoRoom()}>
+      <Show when={ringingIntoRoom() ?? busyIntoRoom()}>
         {(call) => (
           <div
             role='status'
-            class='absolute top-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full bg-bg-darker py-1 pr-1 pl-4 text-sm text-text-primary'
+            class='absolute top-16 left-1/2 z-10 flex min-h-9 -translate-x-1/2 items-center gap-3 rounded-full bg-bg-darker py-1 pr-1 pl-4 text-sm text-text-primary'
           >
-            {t('call.calling', { name: call().calleeName })}
-            <Button
-              variant='danger'
-              class='rounded-full'
-              onClick={cancelOutgoing}
+            <Show
+              when={ringingIntoRoom()}
+              fallback={
+                <span class='pr-3'>
+                  {t('call.busy_name', { name: call().calleeName })}
+                </span>
+              }
             >
-              {t('shared.cancel')}
-            </Button>
+              {t('call.calling', { name: call().calleeName })}
+              <Button
+                variant='danger'
+                class='rounded-full'
+                onClick={cancelOutgoing}
+              >
+                {t('shared.cancel')}
+              </Button>
+            </Show>
           </div>
         )}
       </Show>

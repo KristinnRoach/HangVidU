@@ -45,7 +45,8 @@ type CallHandshakeContextValue = {
 
   /** Local media for the active call; undefined while idle or connecting. */
   media: Accessor<CallMedia | undefined>;
-  isCalleeBusy: Accessor<boolean>;
+  /** The call whose callee just answered busy, shown briefly. */
+  busyCall: Accessor<OutgoingCall | null>;
   reconnectStatus: Accessor<CallReconnectStatus>;
   incomingCall: Accessor<MailboxInvite | null>;
   outgoingCall: Accessor<OutgoingCall | null>;
@@ -141,7 +142,7 @@ export function CallHandshakeProvider(props: ParentProps) {
   const auth = useAuth();
   const [handshakeState, setHandshakeState] =
     createSignal<CallHandshakeState>(null);
-  const [isCalleeBusy, setIsCalleeBusy] = createSignal(false);
+  const [busyCall, setBusyCall] = createSignal<OutgoingCall | null>(null);
   const [reconnectStatus, setReconnectStatus] =
     createSignal<CallReconnectStatus>('connected');
   let releaseReloadHold: (() => void) | undefined;
@@ -205,7 +206,7 @@ export function CallHandshakeProvider(props: ParentProps) {
       );
     },
     onStateChange: setHandshakeState,
-    onCalleeBusy: setIsCalleeBusy,
+    onCalleeBusy: setBusyCall,
     onReconnectStatus: setReconnectStatus,
   });
 
@@ -231,7 +232,7 @@ export function CallHandshakeProvider(props: ParentProps) {
     // Wrap so a click handler's MouseEvent can't leak in as the hangUp reason.
     hangUp: () => controller.hangUp('user'),
     media,
-    isCalleeBusy,
+    busyCall,
     reconnectStatus,
     incomingCall,
     outgoingCall,

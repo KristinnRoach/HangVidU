@@ -20,6 +20,7 @@
   "call.accept": "Accept",
   "call.decline": "Decline",
   "call.busy": "Contact is busy",
+  "call.busy_name": "{name} is busy",
   "call.calling": "Calling {name}...",
   "call.waiting": "Waiting for answer...",
   "call.continue_prompt": "Continue call",

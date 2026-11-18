@@ -20,6 +20,7 @@
   "call.accept": "Svara",
   "call.decline": "Hafna",
   "call.busy": "Notandi er á tali",
+  "call.busy_name": "{name} er á tali",
   "call.calling": "Hringi í {name}...",
   "call.waiting": "Bíður svars...",
   "call.continue_prompt": "Halda áfram símtali",

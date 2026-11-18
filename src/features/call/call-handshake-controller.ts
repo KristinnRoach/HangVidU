@@ -117,7 +117,7 @@ type CallHandshakeControllerOptions = {
   createSignaling: CreateRoomSignaling;
   getCallerName: () => string;
   onStateChange: (state: CallHandshakeState) => void;
-  onCalleeBusy: (busy: boolean) => void;
+  onCalleeBusy: (call: OutgoingCall | null) => void;
   onReconnectStatus: (status: CallReconnectStatus) => void;
 };
 
@@ -307,7 +307,7 @@ export class CallHandshakeController {
   private readonly createSignaling: CreateRoomSignaling;
   private readonly getCallerName: () => string;
   private readonly onStateChange: (state: CallHandshakeState) => void;
-  private readonly onCalleeBusy: (busy: boolean) => void;
+  private readonly onCalleeBusy: (call: OutgoingCall | null) => void;
   private readonly onReconnectStatus: (status: CallReconnectStatus) => void;
 
   private _handshakeState: CallHandshakeState = null;
@@ -585,7 +585,7 @@ export class CallHandshakeController {
     }
 
     this.setHandshakeState({ direction: 'outgoing', call: nextOutgoingCall });
-    this.onCalleeBusy(false);
+    this.onCalleeBusy(null);
     this.scheduleOutgoingCallTimeout(svc, nextOutgoingCall);
 
     let responseReceived = false;
@@ -615,11 +615,11 @@ export class CallHandshakeController {
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
           }
-          this.onCalleeBusy(true);
+          this.onCalleeBusy(nextOutgoingCall);
           this.clearCalleeBusyResetTimeout();
           this.calleeBusyResetTimeoutId = setTimeout(() => {
             this.calleeBusyResetTimeoutId = undefined;
-            this.onCalleeBusy(false);
+            this.onCalleeBusy(null);
           }, 2_500);
         } else {
           publish('evt:call:invite:declined', nextOutgoingCall);
@@ -942,7 +942,7 @@ export class CallHandshakeController {
     this.clearOutgoingCallTracking();
     this.stopPendingOutgoingLocalStream();
     this.setHandshakeState(null);
-    this.onCalleeBusy(false);
+    this.onCalleeBusy(null);
     publish('evt:call:invite:unanswered', state.call);
     svc
       .cancelOutgoingCall({
@@ -1294,7 +1294,7 @@ export class CallHandshakeController {
     this.publishCompletedCall();
     this.clearRoomContext();
     this.setHandshakeState(null);
-    this.onCalleeBusy(false);
+    this.onCalleeBusy(null);
     void this.p2p.dispose().catch((err) => {
       console.warn('[call] p2p dispose failed on cleanup:', err);
     });
