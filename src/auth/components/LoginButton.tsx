@@ -1,20 +1,21 @@
 import { LogIn } from 'lucide-solid';
 import { t } from '@shared/i18n/index.js';
+import Button from '../../components/Button';
 import { openSignIn } from './SignInDialog';
 
 export default function LoginButton(props: {
-  textContent?: string;
+  showLabel?: boolean;
   class?: string;
 }) {
   return (
-    <button
-      type='button'
-      class={props.class}
+    <Button
+      variant={props.showLabel ? 'primary' : 'ghost'}
       aria-label={t('auth.sign_in')}
       title={t('auth.sign_in')}
+      class={props.class}
       onClick={openSignIn}
     >
-      {props.textContent ? props.textContent : <LogIn />}
-    </button>
+      {props.showLabel ? t('auth.sign_in') : <LogIn />}
+    </Button>
   );
 }

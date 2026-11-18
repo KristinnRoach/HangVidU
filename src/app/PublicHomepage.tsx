@@ -7,30 +7,22 @@ export default function PublicHomepage() {
   const { t } = useI18n();
 
   return (
-    <section class='flex h-full flex-col items-center overflow-y-auto px-6 pt-8 pb-16 text-center text-neutral-200'>
-      <AppReloadButton class='text-4xl font-medium text-primary decoration-primary-subtle hover:underline underline-offset-2'>
-        HangVidU
-      </AppReloadButton>
-
-      <p class='mt-3 max-w-lg text-base text-neutral-400'>
-        {t('home.description')}
-      </p>
-
-      <LoginButton
-        textContent='Log in'
-        class='mt-9 rounded-md border border-primary bg-primary/20 px-4 py-2 font-medium text-neutral-100 transition-colors hover:bg-primary/30'
-      />
-
-      <div class='mt-11 w-full max-w-md'>
-        <CallLobby />
+    <section class='flex w-full flex-1 flex-col gap-16 p-12 text-text-primary'>
+      <div class='flex flex-col items-center gap-8'>
+        <div class='flex flex-col w-full items-center gap-4'>
+          <h1 aria-label='HangVidU'>
+            <AppReloadButton class='text-3xl font-medium text-primary underline-offset-2 hover:underline'>
+              HangVidU
+            </AppReloadButton>
+          </h1>
+          <p class='text-center text-base text-text-secondary text-pretty'>
+            {t('home.description')}
+          </p>
+        </div>
+        <LoginButton showLabel class='w-full max-w-98' />
       </div>
 
-      <a
-        class='mt-13 text-sm text-neutral-400 hover:text-neutral-300 hover:underline'
-        href='mailto:kristinnroach@gmail.com?subject=HangVidU%20support'
-      >
-        {t('home.contact')}: kristinnroach@gmail.com
-      </a>
+      <CallLobby />
     </section>
   );
 }

@@ -59,7 +59,6 @@
   "call.lobby.error.media_blocked": "Camera or microphone access was blocked. Allow access in your browser and try again.",
   "call.lobby.error.generic": "Could not join the call. Please try again.",
   "home.description": "Peer-to-peer video calls and instant messaging.",
-  "home.contact": "Contact",
   "handle.claim.title": "Choose a username",
   "handle.claim.input": "Username",
   "contact.add.title": "Add Contacts",

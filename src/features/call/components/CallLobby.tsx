@@ -5,16 +5,15 @@ import { createSignal, createEffect, on, Show } from 'solid-js';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { signInAsGuest } from '@auth';
 import { t } from '@shared/i18n';
+import Button from '../../../components/Button';
+import TextField from '../../../components/TextField';
 import {
   getAudioConstraints,
   getVideoConstraints,
 } from '../media-constraints.js';
 import { useCallHandshake } from '../call-handshake.js';
 
-const buttonClass =
-  'rounded-md px-4 py-2 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60';
-const primaryButtonClass = `${buttonClass} border border-primary bg-primary/20 text-neutral-100 hover:bg-primary/30`;
-const hintClass = 'text-sm text-neutral-400';
+const hintClass = 'px-1 text-sm text-text-secondary';
 
 function joinErrorMessage(err: unknown, kind: string | undefined): string {
   if (kind === 'room-full') return t('call.lobby.error.full');
@@ -149,39 +148,36 @@ export function CallLobby() {
   }
 
   return (
-    <div class='flex w-full flex-col items-center gap-3'>
-      <div class='flex flex-wrap items-center justify-center gap-2'>
+    <div class='flex w-full max-w-98 flex-col gap-4 mx-auto'>
+      <div class='flex flex-wrap gap-4'>
         <Show
           when={link().trim()}
           fallback={
-            <div class='flex flex-col items-center gap-2'>
-              <p>{t('call.lobby.ephemeral_prompt')}</p>
-              <button
-                type='button'
-                class={primaryButtonClass}
-                onClick={createRoom}
-              >
+            <div class='flex w-full flex-col gap-4'>
+              <p class='text-base'>{t('call.lobby.ephemeral_prompt')}</p>
+              <Button variant='secondary' onClick={createRoom}>
                 {t('call.lobby.start')}
-              </button>
+              </Button>
             </div>
           }
         >
-          <button
-            type='button'
-            class={primaryButtonClass}
+          <Button
+            variant='primary'
+            class='flex-1'
             onClick={joinRoom}
-            disabled={joining() || !roomId()}
+            loading={joining()}
+            disabled={!roomId()}
           >
             {joining() ? t('call.lobby.joining') : t('call.lobby.join')}
-          </button>
-          <button
-            type='button'
-            class={`${buttonClass} border border-primary/60 text-primary hover:bg-primary/10`}
+          </Button>
+          <Button
+            variant='secondary'
+            class='flex-1'
             onClick={copyLink}
             disabled={joining() || !roomId()}
           >
             {t('call.lobby.copy_link')}
-          </button>
+          </Button>
         </Show>
       </div>
 
@@ -191,26 +187,23 @@ export function CallLobby() {
         </span>
       </Show>
 
-      <input
-        class='w-full max-w-md rounded-md border border-primary/50 bg-transparent px-2 py-2 text-center text-sm text-neutral-400'
-        type='text'
+      <TextField
+        label={t('call.lobby.invite_label')}
+        hideLabel
         value={link()}
         placeholder={t('call.lobby.paste_link')}
         disabled={joining()}
-        onInput={(event) => {
-          setLink(event.currentTarget.value);
+        error={
+          link().trim() && !roomId() ? t('call.lobby.error.link') : undefined
+        }
+        onChange={(value) => {
+          setLink(value);
           setInvitedRoomId(null);
           setCopied(false);
           setError(null);
         }}
-        aria-label={t('call.lobby.invite_label')}
         onFocus={(e) => e.currentTarget.select()}
       />
-      <Show when={link().trim() && !roomId()}>
-        <p class='text-sm text-red-400' role='alert'>
-          {t('call.lobby.error.link')}
-        </p>
-      </Show>
       <Show when={roomId() && !invitedRoomId()}>
         <p class={hintClass}>{t('call.lobby.send_link_hint')}</p>
       </Show>
@@ -224,7 +217,7 @@ export function CallLobby() {
         <p class={hintClass}>{t('call.lobby.ended')}</p>
       </Show>
       <Show when={error()}>
-        <p class='text-sm text-red-400' role='alert'>
+        <p class='text-sm text-danger' role='alert'>
           {error()}
         </p>
       </Show>
