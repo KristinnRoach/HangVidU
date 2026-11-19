@@ -213,7 +213,11 @@ export class UserMailbox extends DurableObject<Env> {
     const expiredKeys = [...stored]
       .filter(([, cancelled]) => cancelled.expiresAt <= now)
       .map(([key]) => key);
-    if (expiredKeys.length) await this.ctx.storage.delete(expiredKeys);
+    // storage.delete accepts at most 128 keys per call. Local workerd does
+    // not enforce the limit, so tests cannot catch a regression here.
+    for (let i = 0; i < expiredKeys.length; i += 128) {
+      await this.ctx.storage.delete(expiredKeys.slice(i, i + 128));
+    }
   }
 
   private async storePendingInvite(invite: MailboxInvite): Promise<void> {
