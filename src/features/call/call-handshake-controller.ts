@@ -465,6 +465,14 @@ export class CallHandshakeController {
     callService: NonNullable<ReturnType<typeof getCallService>>,
   ): void {
     if (this.isExpired(call)) return;
+    // The mailbox replays a pending invite on connect, which can arrive after
+    // the callee already accepted its notification copy.
+    const current = this._handshakeState;
+    if (
+      current?.direction === 'accepting' &&
+      current.call.callInviteId === call.callInviteId
+    )
+      return;
     if (this.isBusyForIncomingCall(call)) {
       callService
         .respondToIncomingCallInvite({

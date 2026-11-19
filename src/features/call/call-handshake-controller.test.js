@@ -763,6 +763,32 @@ describe('CallHandshakeController', () => {
     expect(p2p.join.mock.calls[0][0].roomId).toBe('live-room');
   });
 
+  it('ignores a mailbox replay of the invite it is already accepting', async () => {
+    const p2p = createP2PMock({ join: vi.fn(() => new Promise(() => {})) });
+    const controller = createController(p2p);
+    controller.init();
+    controller.showIncomingCallFromNotification({
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      callerId: 'caller-id',
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+
+    mocks.incomingCallback?.({
+      type: 'invite',
+      invite: {
+        callInviteId: CALL_INVITE_ID,
+        roomId: 'room-1',
+        callerId: 'caller-id',
+        expiresAt: Date.now() + 60_000,
+      },
+    });
+    await flushPromises();
+
+    expect(mocks.respondToIncomingCallInvite).not.toHaveBeenCalled();
+  });
+
   it('falls back to Google STUN when the TURN credential fetch hangs', async () => {
     vi.useFakeTimers();
     try {
