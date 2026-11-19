@@ -892,6 +892,53 @@ describe('call invite retention', () => {
     }
   });
 
+  it('drops an invite whose cancel arrived first', async () => {
+    const callInviteId = `invite-${crypto.randomUUID()}`;
+    const callerId = `caller-${crypto.randomUUID()}`;
+    const calleeId = `callee-${crypto.randomUUID()}`;
+    const convoId = await resolveOrCreateDirect(
+      env.DB,
+      callerId,
+      calleeId,
+      1000,
+    );
+    const callerToken = await signToken(validClaims(callerId));
+    const calleeToken = await signToken(validClaims(calleeId));
+    const live = await connectMailbox(calleeToken);
+
+    try {
+      expect(
+        (
+          await jsonPost('/calls/cancel', callerToken, {
+            callInviteId,
+            conversationId: convoId,
+            calleeId,
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await jsonPost('/calls/invite', callerToken, {
+            callInviteId,
+            conversationId: convoId,
+            calleeId,
+            expiresAt: Date.now() + 30_000,
+          })
+        ).status,
+      ).toBe(200);
+      expect(await nextOrNoMessage(live)).toBe(NO_MESSAGE);
+    } finally {
+      live.close();
+    }
+
+    const later = await connectMailbox(calleeToken);
+    try {
+      expect(await nextOrNoMessage(later)).toBe(NO_MESSAGE);
+    } finally {
+      later.close();
+    }
+  });
+
   it('does not replay a pending invite after callee response', async () => {
     const callInviteId = `invite-${crypto.randomUUID()}`;
     const callerId = `caller-${crypto.randomUUID()}`;
