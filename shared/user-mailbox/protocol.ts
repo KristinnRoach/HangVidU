@@ -47,6 +47,9 @@ export interface MailboxResponse {
  * are distinct on purpose: `cancel` is the caller withdrawing (hang-up/timeout),
  * `handled` is the callee responding on one device, fanned to their OWN other
  * devices so the dialog clears everywhere. `by` is whoever retired it.
+ *
+ * A cancel that arrives before its invite is remembered by `callInviteId` for
+ * `CALLING_TTL_MS`; the mailbox drops a later invite with that id.
  */
 export type MailboxEnvelope =
   | { t: 'invite'; invite: MailboxInvite }

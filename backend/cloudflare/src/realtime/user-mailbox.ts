@@ -1,4 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
+import { CALLING_TTL_MS } from '../../../../shared/constants';
 import type {
   MailboxEnvelope,
   MailboxInvite,
@@ -14,6 +15,15 @@ const inviteKey = (roomId: string): string => PENDING_INVITE_PREFIX + roomId;
 const PENDING_RESPONSE_PREFIX = 'response:';
 const responseKey = (roomId: string): string =>
   PENDING_RESPONSE_PREFIX + roomId;
+// A cancel can overtake its invite request. Remembering the cancelled id until
+// the invite would have expired lets deliver() drop the late invite.
+const CANCELLED_INVITE_PREFIX = 'cancelled:';
+const cancelledKey = (callInviteId: string): string =>
+  CANCELLED_INVITE_PREFIX + callInviteId;
+interface CancelledInvite {
+  callerId: string;
+  expiresAt: number;
+}
 
 /**
  * One instance per userId (keyed via getByName). Broadcast-only fan-out across
@@ -42,6 +52,7 @@ export class UserMailbox extends DurableObject<Env> {
     const client = pair[0];
     const server = pair[1];
     this.ctx.acceptWebSocket(server);
+    await this.sweepExpiredCancellations();
     for (const invite of await this.getFreshPendingInvites()) {
       server.send(
         JSON.stringify({
@@ -77,6 +88,7 @@ export class UserMailbox extends DurableObject<Env> {
   /** Fan an envelope out to every connected socket of this user. */
   async deliver(envelope: MailboxEnvelope): Promise<void> {
     if (envelope.t === 'invite') {
+      if (await this.wasCancelled(envelope.invite)) return;
       await this.storePendingInvite(envelope.invite);
     } else if (
       envelope.t === 'response' &&
@@ -122,7 +134,15 @@ export class UserMailbox extends DurableObject<Env> {
       callInviteId,
       callerId,
     );
-    if (!invite) return;
+    if (!invite) {
+      if (callInviteId != null) {
+        await this.ctx.storage.put(cancelledKey(callInviteId), {
+          callerId,
+          expiresAt: Date.now() + CALLING_TTL_MS,
+        } satisfies CancelledInvite);
+      }
+      return;
+    }
     this.broadcast({
       t: 'cancel',
       callInviteId: invite.callInviteId,
@@ -172,6 +192,28 @@ export class UserMailbox extends DurableObject<Env> {
       if (response?.callInviteId !== callInviteId) return;
       await storage.delete(key);
     });
+  }
+
+  private async wasCancelled(invite: MailboxInvite): Promise<boolean> {
+    const key = cancelledKey(invite.callInviteId);
+    const cancelled = await this.ctx.storage.get<CancelledInvite>(key);
+    if (!cancelled || cancelled.callerId !== invite.callerId) return false;
+    if (cancelled.expiresAt <= Date.now()) {
+      await this.ctx.storage.delete(key);
+      return false;
+    }
+    return true;
+  }
+
+  private async sweepExpiredCancellations(): Promise<void> {
+    const stored = await this.ctx.storage.list<CancelledInvite>({
+      prefix: CANCELLED_INVITE_PREFIX,
+    });
+    const now = Date.now();
+    const expiredKeys = [...stored]
+      .filter(([, cancelled]) => cancelled.expiresAt <= now)
+      .map(([key]) => key);
+    if (expiredKeys.length) await this.ctx.storage.delete(expiredKeys);
   }
 
   private async storePendingInvite(invite: MailboxInvite): Promise<void> {
