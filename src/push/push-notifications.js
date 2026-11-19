@@ -597,6 +597,7 @@ export class PushNotifications {
     const {
       callInviteId,
       roomId,
+      joinRoomId,
       callerId,
       callerName,
       type: rawType = 'incoming_call',
@@ -612,6 +613,7 @@ export class PushNotifications {
 
     return {
       ...(type === 'incoming_call' && callInviteId ? { callInviteId } : {}),
+      ...(type === 'incoming_call' && joinRoomId ? { joinRoomId } : {}),
       roomId,
       callerId,
       callerName: callerLabel,

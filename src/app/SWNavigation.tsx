@@ -42,6 +42,7 @@ function dispatchUrl(url: URL): boolean | Promise<boolean> {
     publish('evt:call:notification:opened', {
       callInviteId: trimmedParam(url.searchParams, 'callInviteId') ?? undefined,
       roomId: callConversationId,
+      joinRoomId: trimmedParam(url.searchParams, 'joinRoomId') ?? undefined,
       callerId: trimmedParam(url.searchParams, 'callerId') ?? undefined,
       callerName: trimmedParam(url.searchParams, 'callerName') ?? undefined,
       audioOnly: url.searchParams.get('audioOnly') === '1',

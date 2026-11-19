@@ -111,6 +111,7 @@ export const setup = createSingleFlightSetup({
       targetUserId: call.calleeId,
       callInviteId: call.callInviteId,
       roomId: call.roomId,
+      joinRoomId: call.joinRoomId,
       callerId: call.callerId,
       callerName: call.callerName,
     });
