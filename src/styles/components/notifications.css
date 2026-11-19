@@ -84,8 +84,8 @@
 
 /* =============================================
    Shared Notification Base Styles
-   Used by ALL notification types (invite, missed-call, 
-   push-unsupported, pwa-update)
+   Used by ALL notification types (invite, enable-push,
+   push-unsupported)
    ============================================= */
 
 @keyframes slideIn {
@@ -232,20 +232,6 @@
   background: #45a049;
 }
 
-/* Missed Call - orange accent */
-.missed-call-notification {
-  border-left: 3px solid #ff9800;
-}
-
-.missed-call-notification .notification-btn-primary {
-  background: #ff9800;
-  color: #fff;
-}
-
-.missed-call-notification .notification-btn-primary:hover:not(:disabled) {
-  background: #f57c00;
-}
-
 /* Push Unsupported - orange accent */
 .push-unsupported-notification {
   border-left: 3px solid #ff9800;
@@ -254,18 +240,4 @@
 .push-unsupported-notification .notification-message {
   color: #ccc;
   font-size: 0.9rem;
-}
-
-/* PWA Update - green accent (now uses standard .notification base) */
-.pwa-update-notification {
-  border-left: 3px solid #4caf50;
-}
-
-.pwa-update-notification .notification-btn-primary {
-  background: #4caf50;
-  color: #fff;
-}
-
-.pwa-update-notification .notification-btn-primary:hover:not(:disabled) {
-  background: #45a049;
 }
