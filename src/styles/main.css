@@ -26,6 +26,5 @@
 @import './components/conversations-list.css' layer(app);
 @import '../lib/reactions/reactions.css' layer(app);
 @import './components/notifications.css' layer(app);
-@import './components/toast.css' layer(app);
 
 /* Todo: Review components to minimize redundant lines of CSS, simplify, consolidate and align styles to current system */

@@ -6,6 +6,7 @@ import type { JSX } from 'solid-js';
 import { render } from 'solid-js/web';
 
 import App from './App';
+import { ToastHost } from '@components/toast';
 import { initializeAppCheckDeferred } from './infra/firebase.js';
 import { setup as setupPushNotifications } from '@push';
 import { setup as setupAuth } from '@auth';
@@ -68,6 +69,7 @@ render(
     >
       <AppSideEffects>
         <App />
+        <ToastHost />
       </AppSideEffects>
     </ErrorBoundary>
   ),

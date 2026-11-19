@@ -1,14 +1,8 @@
-import { describe, it, expect, vi } from 'vite-plus/test';
+import { within, waitFor } from '@solidjs/testing-library';
+import { afterEach, describe, it, expect, vi } from 'vite-plus/test';
 
-vi.mock('../../../components/base-legacy/notification.js', () => ({
-  createNotification: vi.fn((options) => options),
-  buildTemplate: vi.fn((template) => template),
-}));
-
-vi.mock('../../../components/base-legacy/toast.js', () => ({
-  showErrorToast: vi.fn(),
-  showSuccessToast: vi.fn(),
-  showWarningToast: vi.fn(),
+vi.mock('@components/toast', () => ({
+  showToast: vi.fn(),
 }));
 
 vi.mock('@push/index.js', () => ({
@@ -22,6 +16,7 @@ vi.mock('../in-app-notification-manager.js', () => ({
 
 // Mock i18n with a fake t() that returns known values for known keys
 const fakeTranslations = {
+  'notification.enable.timeout': 'Permission timed out. Try again.',
   'notification.enable.failed_push_setup': 'Generic push setup guidance',
   'notification.enable.failed_push_setup.brave': 'Brave push setup guidance',
   'notification.enable.blocked':
@@ -44,32 +39,42 @@ vi.mock('../../../shared/i18n/index.js', () => ({
 }));
 
 import { getPushNotifications } from '@push';
-import { showErrorToast } from '../../../components/base-legacy/toast.js';
+import { inAppNotificationManager } from '../in-app-notification-manager.js';
 
 const { getBlockedMessage, showEnableNotificationsPrompt } =
   await import('../components/enable-notifications-prompt.js');
 
-it.each(['Brave', 'Chromium'])(
-  'shows the appropriate push setup guidance for %s',
-  async (browser) => {
+let notification;
+afterEach(() => {
+  notification?.dispose();
+  notification = undefined;
+  vi.clearAllMocks();
+});
+
+it.each([
+  ['Brave', 'error', 'enable-failed', 'failed_push_setup.brave'],
+  ['Chromium', 'error', 'enable-failed', 'failed_push_setup'],
+  ['Chromium', 'error', 'permission-timeout', 'timeout'],
+  ['Chromium', 'denied', 'already-denied', 'blocked.chrome'],
+])(
+  'keeps %s %s (%s) guidance in the notification and allows retry',
+  async (browser, state, reason, messageKey) => {
     getPushNotifications.mockReturnValue({
-      requestPermission: vi.fn().mockResolvedValue({
-        state: 'error',
-        reason: 'enable-failed',
-        browser,
-      }),
+      requestPermission: vi.fn().mockResolvedValue({ state, reason, browser }),
     });
-    const notification = showEnableNotificationsPrompt();
-    const button = { disabled: false, textContent: 'Enable' };
+    notification = showEnableNotificationsPrompt();
+    document.body.append(notification);
+    const { getByRole } = within(notification);
+    const button = getByRole('button', { name: 'shared.enable' });
+    button.click();
 
-    await notification.handlers.handleEnable({ target: button });
-
-    const key =
-      browser === 'Brave'
-        ? 'notification.enable.failed_push_setup.brave'
-        : 'notification.enable.failed_push_setup';
-    expect(showErrorToast).toHaveBeenLastCalledWith(fakeTranslations[key]);
+    await waitFor(() =>
+      expect(getByRole('status').textContent).toBe(
+        fakeTranslations[`notification.enable.${messageKey}`],
+      ),
+    );
     expect(button.disabled).toBe(false);
+    expect(inAppNotificationManager.remove).not.toHaveBeenCalled();
   },
 );
 

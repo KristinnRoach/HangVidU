@@ -50,6 +50,34 @@
 
   /* Typography */
   --font-primary: 'Satoshi', 'Roboto', sans-serif;
+
+  /* Animations */
+  --animate-toast-in: toast-slide-in 250ms ease-out;
+  --animate-toast-out: toast-fade-out 100ms ease-in forwards;
+  --animate-toast-swipe-out: toast-swipe-out 100ms ease-out forwards;
+
+  @keyframes toast-slide-in {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes toast-fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes toast-swipe-out {
+    from {
+      transform: translateY(var(--kb-toast-swipe-end-y));
+    }
+    to {
+      transform: translateY(calc(var(--kb-toast-swipe-end-y) - 100%));
+      opacity: 0;
+    }
+  }
 }
 
 :root {

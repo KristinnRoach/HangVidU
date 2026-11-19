@@ -1,11 +1,9 @@
 import { getLoggedInUserId, getLoggedInUserToken } from '@auth';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../components/base-legacy/toast.js';
+import { showToast } from '@components/toast';
 import { getHangViduApiBaseUrl } from '../../../infra/hangvidu-api-url.js';
 import { subscribeToUserMailbox } from '@realtime';
 import { dispatchCommand } from '@shared/events/index.js';
+import { t } from '@shared/i18n/index.js';
 import { reloadContacts } from '../../../stores/contacts-store.js';
 import {
   acceptContactRequest,
@@ -21,7 +19,7 @@ async function showRequestNotification(request) {
   const notificationId = `invite-${fromUserId}`;
   if (pendingNotificationIds.has(notificationId)) return;
   pendingNotificationIds.add(notificationId);
-  const inviteData = { fromName: request.fromName || 'User' };
+  const inviteData = { fromName: request.fromName || t('contact.no_name') };
 
   dispatchCommand('cmd:app-notifications:invite:add', {
     notificationId,
@@ -31,13 +29,16 @@ async function showRequestNotification(request) {
       try {
         await acceptContactRequest(fromUserId);
         await reloadContacts();
-        showSuccessToast(`✅ ${inviteData.fromName} added to contacts!`);
+        showToast(
+          t('notification.invite.accepted', { name: inviteData.fromName }),
+          { tone: 'success' },
+        );
         dispatchCommand('cmd:app-notifications:invite:remove', {
           notificationId,
         });
       } catch (error) {
         console.error('[CONTACT REQUESTS] Failed to accept request:', error);
-        showErrorToast('Failed to add contact. Please try again.');
+        showToast(t('notification.invite.accept_failed'), { tone: 'error' });
       } finally {
         pendingNotificationIds.delete(notificationId);
       }

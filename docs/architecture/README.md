@@ -107,6 +107,14 @@ Add-contact contents are also keyed by the signed-in user ID, so switching
 accounts disposes pending work and starts with a fresh form. There
 are no native `<dialog>` or `popover` elements left; do not add one.
 
+**Toasts**
+
+- Call `showToast(message, { tone })` from `@components/toast` in Solid or JS. Tone defaults to `info`. Use `success` or `error` to match the feedback.
+- Use toasts for brief feedback. Keep form results and retry guidance available inline, including browser permission guidance in the notification panel. For an optional action, pass `action: { label, run }` with a localized button label.
+- The app mounts one `ToastHost` above dialogs. Kobalte owns announcements, dismissal, and the six-second default. Alt+T focuses the list. Use `duration` in milliseconds when a message needs more time.
+- Toasts rise in from below, fade out on close, and dismiss with an upward swipe. Motion uses the `toast-*` animation tokens in `theme.css` and is skipped under reduced motion. During a call, `ActiveCallControls` publishes `--call-controls-height` so the host sits above the controls.
+- Style the host and tones in [the toast module](../../src/components/toast/index.tsx). Use Tailwind utilities and shared theme tokens. Keep placement and appearance out of call sites.
+
 The add-contact flow (`features/contacts/components/AddContactDialog.tsx` and
 `ImportContactsSection.tsx`) is the reference: shared controls, layout utilities,
 and a persistent `role="status"` for pending/results/errors. Import selection is

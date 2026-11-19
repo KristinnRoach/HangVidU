@@ -20,8 +20,8 @@ import type { CallMedia } from '../call-media';
 
 import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
-import { showErrorToast } from '../../../components/base-legacy/toast.js';
-import { Show } from 'solid-js';
+import { showToast } from '@components/toast';
+import { onCleanup, Show } from 'solid-js';
 
 const MEDIA_ERROR_KEYS: Record<string, string> = {
   NotAllowedError: 'blocked',
@@ -78,6 +78,20 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
   const { visible } = createAutoHide(5000);
   const { t } = useI18n();
 
+  // Toasts render in a body portal; this lifts them above the controls for the
+  // whole call, not only while the auto-hidden controls are visible.
+  const root = document.documentElement.style;
+  const observer = new ResizeObserver(([entry]) =>
+    root.setProperty(
+      '--call-controls-height',
+      `${entry!.borderBoxSize[0]!.blockSize}px`,
+    ),
+  );
+  onCleanup(() => {
+    observer.disconnect();
+    root.removeProperty('--call-controls-height');
+  });
+
   function reportMediaError(
     device: 'microphone' | 'camera',
     label: string,
@@ -88,7 +102,7 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
     const reason = Object.hasOwn(MEDIA_ERROR_KEYS, name)
       ? MEDIA_ERROR_KEYS[name]
       : 'generic';
-    showErrorToast(t(`call.media_error.${device}.${reason}`));
+    showToast(t(`call.media_error.${device}.${reason}`), { tone: 'error' });
   }
 
   const micAction = () =>
@@ -129,6 +143,7 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
 
   return (
     <div
+      ref={(el) => observer.observe(el)}
       class={styles.callControls}
       classList={{
         [styles.hidden!]: !visible(),

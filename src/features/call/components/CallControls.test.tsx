@@ -7,7 +7,7 @@ import { ActiveCallControls, StartCallButton } from './CallControls';
 
 const mocks = vi.hoisted(() => ({
   hangUp: vi.fn(),
-  showErrorToast: vi.fn(),
+  showToast: vi.fn(),
   startCall: vi.fn(),
   media: {
     faceMaskSupported: () => false,
@@ -63,9 +63,17 @@ vi.mock('../../../shared/i18n', () => ({
   }),
 }));
 
-vi.mock('../../../components/base-legacy/toast.js', () => ({
-  showErrorToast: mocks.showErrorToast,
+vi.mock('@components/toast', () => ({
+  showToast: mocks.showToast,
 }));
+
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    disconnect() {}
+  },
+);
 
 afterEach(() => {
   cleanup();
@@ -235,8 +243,9 @@ describe('ActiveCallControls', () => {
       fireEvent.click(getByRole('button', { name: button }));
 
       await vi.waitFor(() =>
-        expect(mocks.showErrorToast).toHaveBeenCalledExactlyOnceWith(
+        expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith(
           `call.media_error.${device}.${reason}`,
+          { tone: 'error' },
         ),
       );
       if (method !== 'switchCamera')
