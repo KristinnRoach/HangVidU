@@ -140,7 +140,9 @@ describe('conversation-store', () => {
   it('persists the selected conversation id for direct opens', async () => {
     const store = await import('./conversation-store.js');
 
-    await store.openDirectConversation('contact-1', { displayUI: false });
+    await expect(
+      store.openDirectConversation('contact-1', { displayUI: false }),
+    ).resolves.toBe(true);
 
     expect(store.loadSelectedConversationId()).toBe('conversation-1');
     expect(repo.watchRecentMessages).toHaveBeenCalledWith(
@@ -500,7 +502,7 @@ describe('conversation-store', () => {
     const pending = store.openDirectConversation('contact-2');
     store.openConversation('conversation-1');
     resolving.resolve('conversation-2');
-    await pending;
+    await expect(pending).resolves.toBe(false);
 
     expect(store.selection().conversationId).toBe('conversation-1');
     expect(store.getConversationState().conversationId).toBe('conversation-1');
