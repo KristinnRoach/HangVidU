@@ -99,6 +99,7 @@ function incomingCallNotificationDetailsFromParams(
     callInviteId,
     roomId,
     callerId,
+    joinRoomId: params.get('joinRoomId') || undefined,
     callerName: params.get('callerName') || undefined,
     audioOnly: params.get('audioOnly') === '1',
     startedAt: optionalTimestamp(params),
@@ -129,6 +130,8 @@ function incomingCallNotificationDetailsFromPayload(
     callInviteId,
     roomId,
     callerId,
+    joinRoomId:
+      typeof payload.joinRoomId === 'string' ? payload.joinRoomId : undefined,
     callerName:
       typeof payload.callerName === 'string' ? payload.callerName : undefined,
     audioOnly: payload.audioOnly === true,

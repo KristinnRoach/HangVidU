@@ -54,6 +54,9 @@ function buildCallPayload(callData = {}) {
       ...(type === 'incoming_call' && callData.callInviteId
         ? { callInviteId: callData.callInviteId }
         : {}),
+      ...(type === 'incoming_call' && callData.joinRoomId
+        ? { joinRoomId: callData.joinRoomId }
+        : {}),
       roomId: callData.roomId || '',
       callerId: callData.callerId || '',
       callerName: callData.callerName || 'Unknown caller',

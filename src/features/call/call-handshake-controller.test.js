@@ -743,6 +743,26 @@ describe('CallHandshakeController', () => {
     );
   });
 
+  it('joins the live call room for an add-to-call invite opened from a notification', async () => {
+    const p2p = createP2PMock({
+      join: vi.fn(async () => ({
+        roomId: 'live-room',
+        members: ['callee-id'],
+      })),
+    });
+    const controller = createController(p2p);
+    controller.showIncomingCallFromNotification({
+      callInviteId: CALL_INVITE_ID,
+      roomId: 'room-1',
+      joinRoomId: 'live-room',
+      callerId: 'caller-id',
+    });
+    controller.acceptIncoming();
+    await flushPromises();
+
+    expect(p2p.join.mock.calls[0][0].roomId).toBe('live-room');
+  });
+
   it('falls back to Google STUN when the TURN credential fetch hangs', async () => {
     vi.useFakeTimers();
     try {

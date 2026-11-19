@@ -8,6 +8,7 @@ export function getNotificationNavigationPath(data, action) {
     type,
     callInviteId,
     roomId,
+    joinRoomId,
     senderId,
     callerId,
     callerName,
@@ -23,6 +24,7 @@ export function getNotificationNavigationPath(data, action) {
     // conversationId just opens the conversation UI.
     const params = new URLSearchParams({ call: '1', conversationId: roomId });
     if (callInviteId) params.set('callInviteId', callInviteId);
+    if (joinRoomId) params.set('joinRoomId', joinRoomId);
     if (callerId) params.set('callerId', callerId);
     if (callerName) params.set('callerName', callerName);
     if (audioOnly === true || audioOnly === 'true')

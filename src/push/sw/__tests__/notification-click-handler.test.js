@@ -20,6 +20,22 @@ describe('notification click routing', () => {
     ).toBe('/?call=1&conversationId=room-123&callInviteId=call-invite-123');
   });
 
+  it('carries the live call room for add-to-call invites', () => {
+    expect(
+      getNotificationNavigationPath(
+        {
+          type: 'incoming_call',
+          callInviteId: 'call-invite-123',
+          roomId: 'room-123',
+          joinRoomId: 'live-room',
+        },
+        undefined,
+      ),
+    ).toBe(
+      '/?call=1&conversationId=room-123&callInviteId=call-invite-123&joinRoomId=live-room',
+    );
+  });
+
   it('marks the incoming-call path for auto-accept on the explicit accept action', () => {
     expect(
       getNotificationNavigationPath(

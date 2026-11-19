@@ -144,6 +144,7 @@ const CONNECT_FAILED_DISPLAY_MS = 4_000;
 export type IncomingCallNotificationDetails = {
   callInviteId: string;
   roomId: string;
+  joinRoomId?: string;
   callerId: string;
   callerName?: string;
   audioOnly?: boolean;
@@ -435,8 +436,7 @@ export class CallHandshakeController {
       !details.callerId
     )
       return;
-    // The mailbox invite is authoritative (notifications don't carry
-    // joinRoomId), so a notification copy never replaces it.
+    // A notification copy never replaces the authoritative mailbox invite.
     const current = this._handshakeState;
     if (
       current &&
@@ -448,6 +448,7 @@ export class CallHandshakeController {
     const call: MailboxInvite = {
       callInviteId: details.callInviteId,
       roomId: details.roomId,
+      joinRoomId: details.joinRoomId,
       callerId: details.callerId,
       calleeId: localUID,
       callerName: details.callerName,
