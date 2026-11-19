@@ -66,6 +66,9 @@ Screen sharing keeps the same upload budget and uses the browser's frame-rate co
 Persistent messages combine HTTP writes/history with live conversation-channel
 updates. The selected conversation store also owns drafts and optimistic send
 state. Private messaging is not implemented by that persistence-oriented path.
+Message notification clicks send a navigation message to a running app or put
+the conversation target in the launch URL. `SWNavigation` handles both once the
+user is signed in and contacts have loaded.
 Use the [events API reference](../../src/shared/events/README.md) only when working
 with the bus; direct calls remain the default for actions.
 

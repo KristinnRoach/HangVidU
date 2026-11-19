@@ -1,4 +1,5 @@
-import { createEffect, onCleanup, onMount } from 'solid-js';
+import { createEffect, on, onCleanup, onMount } from 'solid-js';
+import { useAuth } from '@auth';
 import { getContactsIsHydrated } from '../stores/contacts-store';
 import {
   openConversation as openSelectedConversation,
@@ -66,37 +67,42 @@ function dispatchUrl(url: URL): void {
   void openDirectConversation(contactId, { displayUI: true });
 }
 
-function dispatchPath(path: string): void {
-  dispatchUrl(new URL(path, window.location.origin));
-}
-
 /**
- * Listens for SW NAVIGATE messages (posted by the SW notification-click
- * handler when the user taps a push notification) and opens the resolved
- * conversation. Queues until contacts are hydrated so contact lookups succeed.
- *
- * Renders nothing.
+ * Routes conversation notifications from the launch URL or an SW NAVIGATE
+ * message. Waits for sign-in and contacts so contact lookups succeed.
  */
 export default function SWNavigation(props: Props = {}) {
+  const { isLoggedIn, isLoggingOut } = useAuth();
+  const canOpenConversation = () =>
+    isLoggedIn() && !isLoggingOut() && getContactsIsHydrated();
   const queueLimit = props.queueLimit ?? DEFAULT_QUEUE_LIMIT;
-  const pending: string[] = [];
+  const pending: URL[] = [];
 
-  const flushPending = () => {
-    while (pending.length > 0) {
-      const path = pending.shift();
-      if (path) dispatchPath(path);
-    }
-  };
+  createEffect(
+    on(canOpenConversation, (ready) => {
+      if (!ready) return;
 
-  // Flush queued paths once contacts have hydrated.
-  createEffect(() => {
-    if (getContactsIsHydrated()) flushPending();
-  });
+      // The call provider handles incoming-call launch URLs separately.
+      const launchUrl = new URL(window.location.href);
+      if (
+        !isCallUrl(launchUrl) &&
+        (trimmedParam(launchUrl.searchParams, 'conversationId') ||
+          trimmedParam(launchUrl.searchParams, 'contact'))
+      ) {
+        dispatchUrl(launchUrl);
+        for (const name of ['conversationId', 'contact', 'kind']) {
+          launchUrl.searchParams.delete(name);
+        }
+        window.history.replaceState(window.history.state, '', launchUrl);
+      }
+
+      for (const url of pending) dispatchUrl(url);
+      pending.length = 0;
+    }),
+  );
 
   onMount(() => {
     if (!('serviceWorker' in navigator)) return;
-
-    navigator.serviceWorker.startMessages?.();
 
     const handler = (event: MessageEvent) => {
       const data = event.data || {};
@@ -108,8 +114,8 @@ export default function SWNavigation(props: Props = {}) {
         return;
       }
 
-      if (!getContactsIsHydrated()) {
-        pending.push(data.path);
+      if (!canOpenConversation()) {
+        pending.push(url);
         if (pending.length > queueLimit) pending.shift();
         return;
       }
@@ -118,6 +124,7 @@ export default function SWNavigation(props: Props = {}) {
     };
 
     navigator.serviceWorker.addEventListener('message', handler);
+    navigator.serviceWorker.startMessages?.();
 
     onCleanup(() => {
       navigator.serviceWorker.removeEventListener('message', handler);

@@ -12,15 +12,16 @@ import { createSignal } from 'solid-js';
 import SWNavigation from './SWNavigation';
 
 const mocks = vi.hoisted(() => ({
-  getContactById: vi.fn(),
+  useAuth: vi.fn(),
   getContactsIsHydrated: vi.fn(),
   openSelectedConversation: vi.fn(),
   openDirectConversation: vi.fn(),
   publish: vi.fn(),
 }));
 
+vi.mock('@auth', () => ({ useAuth: mocks.useAuth }));
+
 vi.mock('../stores/contacts-store', () => ({
-  getContactById: mocks.getContactById,
   getContactsIsHydrated: mocks.getContactsIsHydrated,
 }));
 
@@ -37,6 +38,7 @@ vi.mock('@shared/events/index.js', () => ({
 describe('SWNavigation', () => {
   let restoreServiceWorker;
   let setHydrated;
+  let setLoggedIn;
   let messageListener;
 
   beforeEach(() => {
@@ -46,8 +48,10 @@ describe('SWNavigation', () => {
 
     const [isHydrated, updateHydrated] = createSignal(false);
     setHydrated = updateHydrated;
+    const [isLoggedIn, updateLoggedIn] = createSignal(true);
+    setLoggedIn = updateLoggedIn;
+    mocks.useAuth.mockReturnValue({ isLoggedIn, isLoggingOut: () => false });
     mocks.getContactsIsHydrated.mockImplementation(() => isHydrated());
-    mocks.getContactById.mockReturnValue({ nickname: 'Sender' });
 
     const descriptor = Object.getOwnPropertyDescriptor(
       globalThis.navigator,
@@ -84,6 +88,41 @@ describe('SWNavigation', () => {
   afterEach(() => {
     cleanup();
     restoreServiceWorker?.();
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('opens the notification launch URL once sign-in and contacts are ready', () => {
+    const path =
+      '/?contact=sender-1&conversationId=conversation-1&kind=direct&keep=yes#top';
+    window.history.replaceState(null, '', path);
+    setLoggedIn(false);
+    render(() => <SWNavigation />);
+
+    setHydrated(true);
+    expect(mocks.openSelectedConversation).not.toHaveBeenCalled();
+    expect(window.location.search).toContain('conversationId=conversation-1');
+
+    setLoggedIn(true);
+    expect(mocks.openSelectedConversation).toHaveBeenCalledWith(
+      'conversation-1',
+      { displayUI: true },
+    );
+    expect(mocks.openDirectConversation).not.toHaveBeenCalled();
+    expect(window.location.search + window.location.hash).toBe('?keep=yes#top');
+
+    setHydrated(false);
+    setHydrated(true);
+    expect(mocks.openSelectedConversation).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the incoming-call launch URL to the call provider', () => {
+    window.history.replaceState(null, '', '/?call=1&conversationId=room-1');
+    setHydrated(true);
+    render(() => <SWNavigation />);
+
+    expect(mocks.publish).not.toHaveBeenCalled();
+    expect(mocks.openSelectedConversation).not.toHaveBeenCalled();
+    expect(window.location.search).toBe('?call=1&conversationId=room-1');
   });
 
   it('queues NAVIGATE messages until contacts hydrate, then opens the conversation', async () => {
