@@ -34,7 +34,7 @@ function isCallUrl(url: URL): boolean {
   return url.searchParams.get('call') === '1';
 }
 
-function dispatchUrl(url: URL): void {
+function dispatchUrl(url: URL): boolean | Promise<boolean> {
   const callConversationId = isCallUrl(url)
     ? trimmedParam(url.searchParams, 'conversationId')
     : null;
@@ -48,7 +48,7 @@ function dispatchUrl(url: URL): void {
       startedAt: optionalTimestamp(url.searchParams),
       accept: url.searchParams.get('accept') === '1',
     });
-    return;
+    return false;
   }
 
   const conversationId = trimmedParam(url.searchParams, 'conversationId');
@@ -57,14 +57,14 @@ function dispatchUrl(url: URL): void {
   // Links may carry an opaque conversationId directly; open it as-is.
   if (conversationId) {
     openSelectedConversation(conversationId, { displayUI: true });
-    return;
+    return true;
   }
 
-  if (!contactId) return;
+  if (!contactId) return false;
 
   // Contact-only links resolve-or-create the opaque id through the registry,
   // the same path the in-app open flow uses.
-  void openDirectConversation(contactId, { displayUI: true });
+  return openDirectConversation(contactId, { displayUI: true });
 }
 
 /**
@@ -89,14 +89,21 @@ export default function SWNavigation(props: Props = {}) {
         (trimmedParam(launchUrl.searchParams, 'conversationId') ||
           trimmedParam(launchUrl.searchParams, 'contact'))
       ) {
-        dispatchUrl(launchUrl);
-        for (const name of ['conversationId', 'contact', 'kind']) {
-          launchUrl.searchParams.delete(name);
-        }
-        window.history.replaceState(window.history.state, '', launchUrl);
+        let active = true;
+        onCleanup(() => {
+          active = false;
+        });
+        void Promise.resolve(dispatchUrl(launchUrl)).then((opened) => {
+          if (!opened || !active || window.location.href !== launchUrl.href)
+            return;
+          for (const name of ['conversationId', 'contact', 'kind']) {
+            launchUrl.searchParams.delete(name);
+          }
+          window.history.replaceState(window.history.state, '', launchUrl);
+        });
       }
 
-      for (const url of pending) dispatchUrl(url);
+      for (const url of pending) void dispatchUrl(url);
       pending.length = 0;
     }),
   );
@@ -110,7 +117,7 @@ export default function SWNavigation(props: Props = {}) {
       const url = new URL(data.path, window.location.origin);
 
       if (isCallUrl(url)) {
-        dispatchUrl(url);
+        void dispatchUrl(url);
         return;
       }
 
@@ -120,7 +127,7 @@ export default function SWNavigation(props: Props = {}) {
         return;
       }
 
-      dispatchUrl(url);
+      void dispatchUrl(url);
     };
 
     navigator.serviceWorker.addEventListener('message', handler);

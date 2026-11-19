@@ -91,7 +91,7 @@ describe('SWNavigation', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('opens the notification launch URL once sign-in and contacts are ready', () => {
+  it('opens the notification launch URL once sign-in and contacts are ready', async () => {
     const path =
       '/?contact=sender-1&conversationId=conversation-1&kind=direct&keep=yes#top';
     window.history.replaceState(null, '', path);
@@ -108,12 +108,44 @@ describe('SWNavigation', () => {
       { displayUI: true },
     );
     expect(mocks.openDirectConversation).not.toHaveBeenCalled();
-    expect(window.location.search + window.location.hash).toBe('?keep=yes#top');
+    await waitFor(() => {
+      expect(window.location.search + window.location.hash).toBe(
+        '?keep=yes#top',
+      );
+    });
 
     setHydrated(false);
     setHydrated(true);
     expect(mocks.openSelectedConversation).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    [true, ''],
+    [false, '?contact=sender-1'],
+  ])(
+    'consumes a contact launch URL only if opening succeeds (%s)',
+    async (opened, expectedSearch) => {
+      const search = '?contact=sender-1';
+      window.history.replaceState(null, '', `/${search}`);
+      let finishOpen;
+      mocks.openDirectConversation.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishOpen = resolve;
+        }),
+      );
+      setHydrated(true);
+      render(() => <SWNavigation />);
+
+      expect(mocks.openDirectConversation).toHaveBeenCalledWith('sender-1', {
+        displayUI: true,
+      });
+      expect(window.location.search).toBe(search);
+
+      finishOpen(opened);
+      await Promise.resolve();
+      expect(window.location.search).toBe(expectedSearch);
+    },
+  );
 
   it('leaves the incoming-call launch URL to the call provider', () => {
     window.history.replaceState(null, '', '/?call=1&conversationId=room-1');

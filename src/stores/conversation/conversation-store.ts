@@ -524,12 +524,12 @@ export function openConversation(
  *
  * The conversationId is normally already on the contact record (minted at
  * invite-accept time); resolveDirectConversationId() is only a fallback for
- * contacts saved before that existed.
+ * contacts saved before that existed. Returns whether the conversation opened.
  */
 export async function openDirectConversation(
   contactId: string,
   opts?: { displayUI?: boolean; forceResolve?: boolean },
-): Promise<void> {
+): Promise<boolean> {
   const request = ++openRequest;
   const contact = getContactById(contactId);
   let conversationId: string | null = contact?.conversationId ?? null;
@@ -540,14 +540,14 @@ export async function openDirectConversation(
       // here to keep failures on the warn-and-return path instead of an
       // unhandled rejection.
       conversationId = await resolveDirectConversationId(contactId);
-      if (request !== openRequest) return;
+      if (request !== openRequest) return false;
       void cacheContactConversationId(contactId, conversationId);
     } catch (error) {
       console.warn('[conversation] failed to resolve conversation id', {
         contactId,
         error,
       });
-      if (request !== openRequest) return;
+      if (request !== openRequest) return false;
     }
   }
 
@@ -555,7 +555,7 @@ export async function openDirectConversation(
     console.warn('[conversation] could not resolve conversation id', {
       contactId,
     });
-    return;
+    return false;
   }
 
   ensureDirectConversationListed(conversationId, {
@@ -565,6 +565,7 @@ export async function openDirectConversation(
     last_read_at: 0,
   });
   openConversation(conversationId, { displayUI: opts?.displayUI });
+  return selection()?.conversationId === conversationId;
 }
 
 /** Release the active conversation and all its state. Called on logout. */
