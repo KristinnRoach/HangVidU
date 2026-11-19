@@ -1,8 +1,4 @@
 import { onClickOutside } from '@shared/utils/ui-utils/clickOutside.js';
-import {
-  createNotification,
-  buildTemplate,
-} from '../../components/base-legacy/notification.js';
 
 /**
  * Centralized in-app notification manager.
@@ -118,14 +114,6 @@ class InAppNotificationManager {
   }
 
   /**
-   * Check if list is visible
-   * @returns {boolean}
-   */
-  isListVisible() {
-    return this.container && this.container.style.display !== 'none';
-  }
-
-  /**
    * Add a notification to the manager (prepends to list)
    * @param {string} id - Unique identifier for the notification
    * @param {HTMLElement} notificationElement - The notification component
@@ -205,17 +193,6 @@ class InAppNotificationManager {
   }
 
   /**
-   * Clear all notifications
-   */
-  clear() {
-    this.notifications.forEach((notification) => {
-      if (notification.dispose) notification.dispose();
-    });
-    this.notifications.clear();
-    this.updateToggle();
-  }
-
-  /**
    * Update the toggle badge count and disabled state
    * @private
    */
@@ -223,31 +200,6 @@ class InAppNotificationManager {
     if (this.toggle) {
       this.toggle.setCount(this.getCount());
     }
-  }
-
-  /**
-   * Add a dummy notification for testing (dev only)
-   * @private
-   */
-  addDummy() {
-    const notificationNumber = this.getCount() + 1;
-    const id = `dummy-notification-${Date.now()}`;
-
-    const notification = createNotification({
-      template: buildTemplate({
-        body: `<p class="notification-message">Dummy Notification #[[number]]</p>`,
-        actions: `<button class="notification-btn notification-btn-secondary" onclick="handleDismiss">Dismiss</button>`,
-      }),
-      handlers: {
-        handleDismiss: () => {
-          this.remove(id);
-        },
-      },
-      initialProps: { number: notificationNumber },
-      className: 'notification',
-    });
-
-    this.add(id, notification);
   }
 }
 
