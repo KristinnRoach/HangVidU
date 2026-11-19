@@ -25,7 +25,6 @@ import {
 } from '../../../stores/user-profile-store.js';
 import ImportContactsSection from './ImportContactsSection';
 import { createDebouncedAsyncAction } from '../utils/createDebouncedAsyncAction';
-import { showToast } from '@components/toast';
 
 type Tone = 'success' | 'error';
 type Status = { text: string; tone?: Tone };
@@ -131,11 +130,6 @@ function AddContactContent() {
   const [status, setStatus] = createSignal<Status>({ text: '' });
   const [sharePending, setSharePending] = createSignal(false);
 
-  function notify(text: string, tone?: Tone) {
-    if (tone) showToast(text, { tone });
-    setStatus({ text, tone });
-  }
-
   // Unlisted results (including copy_failed) fall back to the copy error.
   const share = createDebouncedAsyncAction(
     async (
@@ -151,11 +145,14 @@ function AddContactContent() {
           t('contact.invite.share.copy_failed'),
           'error',
         ];
-        notify(text, tone);
+        setStatus({ text, tone });
       } catch (error) {
         if (!isCurrent()) return;
         console.error('[AddContactDialog] Share error:', error);
-        notify(t('contact.invite.share.copy_failed'), 'error');
+        setStatus({
+          text: t('contact.invite.share.copy_failed'),
+          tone: 'error',
+        });
       }
     },
     {
@@ -288,7 +285,7 @@ function AddContactContent() {
         ...statuses,
         [user.uid]: 'sent',
       }));
-      notify(`✓ ${t('contact.invite.sent_one')}`, 'success');
+      setStatus({ text: t('contact.invite.sent_one'), tone: 'success' });
     } catch (error) {
       if (!isCurrent()) return;
       console.error('[AddContactDialog] Contact request error:', error);

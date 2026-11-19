@@ -29,6 +29,7 @@ vi.mock('../../../shared/events/index.js', () => ({
 vi.mock('../referrals/referral-handler.js', () => ({
   captureReferral: mocks.captureReferral,
   processReferral: mocks.processReferral,
+  hasPendingReferral: () => false,
 }));
 vi.mock('../invites/invite-listener.js', () => ({
   setupInviteListener: mocks.setupInviteListener,

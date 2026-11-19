@@ -84,7 +84,7 @@
 
 /* =============================================
    Shared Notification Base Styles
-   Used by ALL notification types (invite, referral, missed-call, 
+   Used by ALL notification types (invite, missed-call, 
    push-unsupported, pwa-update)
    ============================================= */
 
@@ -230,20 +230,6 @@
 
 .invite-notification .notification-btn-accept:hover:not(:disabled) {
   background: #45a049;
-}
-
-/* Referral - blue accent */
-.referral-notification {
-  border-left: 3px solid #2196f3;
-}
-
-.referral-notification .notification-btn-accept {
-  background: #2196f3;
-  color: #fff;
-}
-
-.referral-notification .notification-btn-accept:hover:not(:disabled) {
-  background: #1976d2;
 }
 
 /* Missed Call - orange accent */

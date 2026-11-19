@@ -3,7 +3,6 @@ import { createSingleFlightSetup } from '@shared/utils/create-single-flight-setu
 import { inAppNotificationManager } from './in-app-notification-manager.js';
 import { showEnableNotificationsPrompt } from './components/enable-notifications-prompt.js';
 import { createInviteNotification } from './components/invite-notification.js';
-import { createReferralNotification } from './components/referral-notification.js';
 
 export { inAppNotificationManager } from './in-app-notification-manager.js';
 export {
@@ -18,7 +17,6 @@ export { showPushUnsupportedNotification } from './components/push-unsupported-n
 export { showUpdateNotification } from './components/update-notification.js';
 export { createInviteNotification } from './components/invite-notification.js';
 export { createMissedCallNotification } from './components/missed-call-notification.js';
-export { createReferralNotification } from './components/referral-notification.js';
 export { NotificationsToggle } from './components/NotificationsToggle.jsx';
 
 /**
@@ -51,35 +49,6 @@ export const setup = createSingleFlightSetup({
 
     handleCommand(
       'cmd:app-notifications:invite:remove',
-      ({ notificationId }) => {
-        if (!notificationId) {
-          return;
-        }
-        inAppNotificationManager.remove(notificationId);
-      },
-      { signal },
-    );
-
-    handleCommand(
-      'cmd:app-notifications:referral:add',
-      ({ notificationId, referrerName, referrerPhotoURL, onSignIn }) => {
-        if (!notificationId) {
-          return;
-        }
-
-        const notification = createReferralNotification({
-          referrerName,
-          referrerPhotoURL,
-          onSignIn,
-        });
-
-        inAppNotificationManager.add(notificationId, notification);
-      },
-      { signal },
-    );
-
-    handleCommand(
-      'cmd:app-notifications:referral:remove',
       ({ notificationId }) => {
         if (!notificationId) {
           return;

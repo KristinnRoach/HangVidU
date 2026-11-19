@@ -1,6 +1,8 @@
+import { Show } from 'solid-js';
 import { useI18n } from '@shared/i18n';
 import { LoginButton } from '@auth';
 import { CallLobby } from '@features/call';
+import { hasPendingReferral } from '@features/contacts';
 import AppReloadButton from '../components/AppReloadButton';
 
 export default function PublicHomepage() {
@@ -19,7 +21,14 @@ export default function PublicHomepage() {
             {t('home.description')}
           </p>
         </div>
-        <LoginButton showLabel class='w-full max-w-98' />
+        <div class='flex w-full flex-col items-center gap-3'>
+          <Show when={hasPendingReferral()}>
+            <p role='status' class='text-center text-base text-text-primary'>
+              {t('referral.sign_in_banner')}
+            </p>
+          </Show>
+          <LoginButton showLabel class='w-full max-w-98' />
+        </div>
       </div>
 
       <CallLobby />

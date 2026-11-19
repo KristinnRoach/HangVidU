@@ -1,18 +1,22 @@
 // referral-handler.js - Handle referral links and auto-add contacts
 
-import { signInWithAccountSelection, getLoggedInUserId } from '@auth';
+import { createSignal } from 'solid-js';
+import { getLoggedInUserId } from '@auth';
 import { reloadContacts } from '../../../stores/contacts-store.js';
 import { showToast } from '@components/toast';
 import {
   connectReferral,
   getUserProfileById,
 } from '../../../stores/user-profile-store.js';
-import { dispatchCommand } from '@shared/events/index.js';
 import { t } from '@shared/i18n/index.js';
+
+const [hasPendingReferral, setHasPendingReferral] = createSignal(false);
+
+/** Whether this visit came from a referral link, for the public homepage. */
+export { hasPendingReferral };
 
 /**
  * Store referrer ID when user arrives via referral link.
- * Shows a toast with a sign-in action and a persistent notification prompting sign-in.
  * Called on page load before authentication.
  */
 export async function captureReferral() {
@@ -28,28 +32,8 @@ export async function captureReferral() {
     url.searchParams.delete('ref');
     window.history.replaceState({}, '', url.toString());
 
-    const profile = await getUserProfileById(referrerId);
-    const name = profile?.displayName || null;
-    const photoURL = profile?.photoURL || null;
-
-    const message = name
-      ? t('referral.sign_in_named', { name })
-      : t('referral.sign_in_banner');
-
-    showToast(message, {
-      duration: 8000,
-      action: {
-        label: t('auth.sign_in'),
-        run: signInWithAccountSelection,
-      },
-    });
-
-    dispatchCommand('cmd:app-notifications:referral:add', {
-      notificationId: `referral-${referrerId}`,
-      referrerName: name,
-      referrerPhotoURL: photoURL,
-      onSignIn: () => signInWithAccountSelection(),
-    });
+    // The inviter's name is unavailable: profile lookups require sign-in.
+    setHasPendingReferral(true);
   }
 }
 
@@ -70,6 +54,7 @@ export async function processReferral() {
   if (referrerId === myUserId) {
     console.log('[REFERRAL] Self-referral detected, skipping');
     localStorage.removeItem('referredBy');
+    setHasPendingReferral(false);
     return;
   }
 
@@ -91,22 +76,10 @@ export async function processReferral() {
       tone: 'success',
     });
 
-    dispatchCommand('cmd:app-notifications:referral:remove', {
-      notificationId: `referral-${referrerId}`,
-    });
-
-    // Clean up
     localStorage.removeItem('referredBy');
+    setHasPendingReferral(false);
   } catch (error) {
     console.error('[REFERRAL] Failed to process referral:', error);
     // Don't remove from localStorage on error - might retry later
   }
-}
-
-/**
- * Check if there's a pending referral to process.
- * Useful for checking before showing onboarding.
- */
-export function hasPendingReferral() {
-  return !!localStorage.getItem('referredBy');
 }
