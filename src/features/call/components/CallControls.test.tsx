@@ -67,6 +67,14 @@ vi.mock('@components/toast', () => ({
   showToast: mocks.showToast,
 }));
 
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    disconnect() {}
+  },
+);
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();

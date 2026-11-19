@@ -112,6 +112,7 @@ are no native `<dialog>` or `popover` elements left; do not add one.
 - Call `showToast(message, { tone })` from `@components/toast` in Solid or JS. Tone defaults to `info`. Use `success` or `error` to match the feedback.
 - Use toasts for brief feedback. Keep form results and retry guidance available inline, including browser permission guidance in the notification panel. For an optional action, pass `action: { label, run }` with a localized button label.
 - The app mounts one `ToastHost` above dialogs. Kobalte owns announcements, dismissal, and the six-second default. Alt+T focuses the list. Use `duration` in milliseconds when a message needs more time.
+- Toasts rise in from below, fade out on close, and dismiss with an upward swipe. Motion uses the `toast-*` animation tokens in `theme.css` and is skipped under reduced motion. During a call, `ActiveCallControls` publishes `--call-controls-height` so the host sits above the controls.
 - Style the host and tones in [the toast module](../../src/components/toast/index.tsx). Use Tailwind utilities and shared theme tokens. Keep placement and appearance out of call sites.
 
 The add-contact flow (`features/contacts/components/AddContactDialog.tsx` and

@@ -41,7 +41,7 @@ export function showToast(
       duration={duration}
       priority={tone === 'error' ? 'high' : 'low'}
       onEscapeKeyDown={(event) => event.stopPropagation()}
-      class='flex items-start gap-2 rounded-lg border border-border-primary bg-bg-secondary p-3 text-sm text-text-primary shadow-md focus-visible:outline-2 focus-visible:outline-primary'
+      class='flex items-start gap-2 rounded-lg border border-border-primary bg-bg-secondary p-3 text-sm text-text-primary shadow-md motion-safe:data-opened:animate-toast-in motion-safe:data-closed:not-data-[swipe=end]:animate-toast-out data-[swipe=move]:translate-y-(--kb-toast-swipe-move-y) data-[swipe=move]:select-none data-[swipe=cancel]:transition-[translate] motion-safe:data-[swipe=end]:animate-toast-swipe-out focus-visible:outline-2 focus-visible:outline-primary'
     >
       <Dynamic
         component={icon}
@@ -79,9 +79,10 @@ export function ToastHost() {
     <Portal>
       <Toast.Region
         topLayer
+        swipeDirection='up'
         duration={6000}
         aria-label={t('shared.toast_region')}
-        class='fixed inset-x-4 bottom-[max(2rem,env(safe-area-inset-bottom))] z-[calc(var(--z-modal)+1)] mx-auto max-w-sm'
+        class='fixed inset-x-4 bottom-[calc(max(2rem,env(safe-area-inset-bottom))+var(--call-controls-height,0px))] z-[calc(var(--z-modal)+1)] mx-auto max-w-sm'
       >
         <Toast.List class='m-0 flex list-none flex-col gap-2 p-0 empty:hidden' />
       </Toast.Region>

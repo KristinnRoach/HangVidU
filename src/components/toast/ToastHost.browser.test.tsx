@@ -38,19 +38,19 @@ it('announces and handles keyboard actions and dismissal while a dialog is open'
   expect(document.activeElement).toBe(action);
   await userEvent.keyboard('{Enter}');
   expect(run).toHaveBeenCalledOnce();
-  expect(screen.queryByRole('status')).toBeNull();
+  await vi.waitFor(() => expect(screen.queryByRole('status')).toBeNull());
 
   showToast('Camera unavailable', { tone: 'error' });
   const error = screen.getByRole('status', { name: 'Camera unavailable' });
   expect(error.getAttribute('aria-live')).toBe('assertive');
   screen.getByRole('button', { name: 'Dismiss' }).focus();
   await userEvent.keyboard('{Space}');
-  expect(screen.queryByRole('status')).toBeNull();
+  await vi.waitFor(() => expect(screen.queryByRole('status')).toBeNull());
 
   showToast('Invite sent', { tone: 'success' });
   screen.getByRole('status', { name: 'Invite sent' }).focus();
   await userEvent.keyboard('{Escape}');
-  expect(screen.queryByRole('status')).toBeNull();
+  await vi.waitFor(() => expect(screen.queryByRole('status')).toBeNull());
   expect(screen.getByRole('dialog')).toBe(dialog);
   expect(onOpenChange).not.toHaveBeenCalled();
 });
@@ -62,7 +62,7 @@ it('expires toasts and clears visible and queued feedback when the host unmounts
   showToast('Link copied');
   expect(screen.getByRole('status', { name: 'Link copied' })).toBeTruthy();
   await vi.advanceTimersByTimeAsync(6000);
-  expect(screen.queryByText('Link copied')).toBeNull();
+  await vi.waitFor(() => expect(screen.queryByText('Link copied')).toBeNull());
 
   for (const message of ['First', 'Second', 'Third', 'Queued']) {
     showToast(message);

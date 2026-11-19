@@ -21,7 +21,7 @@ import type { CallMedia } from '../call-media';
 import styles from './CallControls.module.css';
 import { useI18n } from '@shared/i18n';
 import { showToast } from '@components/toast';
-import { Show } from 'solid-js';
+import { onCleanup, Show } from 'solid-js';
 
 const MEDIA_ERROR_KEYS: Record<string, string> = {
   NotAllowedError: 'blocked',
@@ -78,6 +78,20 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
   const { visible } = createAutoHide(5000);
   const { t } = useI18n();
 
+  // Toasts render in a body portal; this lifts them above the controls for the
+  // whole call, not only while the auto-hidden controls are visible.
+  const root = document.documentElement.style;
+  const observer = new ResizeObserver(([entry]) =>
+    root.setProperty(
+      '--call-controls-height',
+      `${entry!.borderBoxSize[0]!.blockSize}px`,
+    ),
+  );
+  onCleanup(() => {
+    observer.disconnect();
+    root.removeProperty('--call-controls-height');
+  });
+
   function reportMediaError(
     device: 'microphone' | 'camera',
     label: string,
@@ -129,6 +143,7 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
 
   return (
     <div
+      ref={(el) => observer.observe(el)}
       class={styles.callControls}
       classList={{
         [styles.hidden!]: !visible(),
