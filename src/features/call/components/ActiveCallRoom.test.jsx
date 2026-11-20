@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   inviteOutcome: () => null,
   user: vi.fn(() => null),
   roomState: vi.fn(() => 'idle'),
+  room: vi.fn(),
+  callConversationId: vi.fn(),
   remoteMemberStreams: vi.fn(() => [{}]),
   startCall: vi.fn(),
   showToast: vi.fn(),
@@ -37,6 +39,7 @@ vi.mock('@stores/contacts-store', () => ({
 vi.mock('../call-handshake.js', () => ({
   useCallHandshake: () => ({
     reconnectStatus: () => 'connected',
+    callConversationId: mocks.callConversationId,
     outgoingCall: () => null,
     inviteOutcome: () => mocks.inviteOutcome(),
     cancelOutgoing: () => {},
@@ -47,6 +50,7 @@ vi.mock('../call-handshake.js', () => ({
 vi.mock('@shared/p2p-context.js', () => ({
   useP2PContext: () => ({
     state: mocks.roomState,
+    room: mocks.room,
     remoteMemberStreams: mocks.remoteMemberStreams,
   }),
 }));
@@ -63,6 +67,8 @@ afterEach(() => {
   vi.useRealTimers();
   mocks.user.mockReset();
   mocks.roomState.mockReset();
+  mocks.room.mockReset();
+  mocks.callConversationId.mockReset();
   mocks.remoteMemberStreams.mockReset();
   mocks.showToast.mockClear();
   window.history.replaceState(null, '', '/');
@@ -72,6 +78,9 @@ it('submits the first eligible search result and closes the picker', async () =>
   mocks.capturing.mockReturnValue(false);
   mocks.user.mockReturnValue({ uid: 'caller' });
   mocks.roomState.mockReturnValue('joined');
+  const conversationId = '12345678-1234-1234-1234-123456789abc';
+  mocks.room.mockReturnValue({ roomId: conversationId });
+  mocks.callConversationId.mockReturnValue(conversationId);
   render(() => <ActiveCallRoom media={media} holdTopBar={() => () => {}} />);
 
   expect(screen.queryByRole('button', { name: 'Copy invite link' })).toBeNull();
@@ -149,54 +158,72 @@ it('reports how an add-invite ended in the call view, not as a dialog', () => {
   mocks.inviteOutcome = () => null;
 });
 
-it('lets a signed-in participant copy a room link after someone joins', async () => {
-  mocks.user.mockReturnValue({ uid: 'signed-in-user' });
-  window.history.replaceState(
-    null,
-    '',
-    '/?publicRoom=12345678-1234-1234-1234-123456789abc',
-  );
-  mocks.roomState.mockReturnValue('joined');
-  const [streams, setStreams] = createSignal([]);
-  mocks.remoteMemberStreams.mockImplementation(streams);
-  const writeText = vi
-    .fn()
-    .mockRejectedValueOnce(new Error('clipboard denied'))
-    .mockResolvedValueOnce(undefined);
-  const clipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
-  Object.defineProperty(navigator, 'clipboard', {
-    configurable: true,
-    value: { writeText },
-  });
-
-  try {
-    render(() => <ActiveCallRoom media={media} holdTopBar={() => () => {}} />);
-    const copy = screen.getByRole('button', { name: 'Copy invite link' });
-    expect(copy.classList.contains('bg-bg-secondary')).toBe(true);
-    expect(screen.getByRole('button', { name: 'Add caller' })).toBeTruthy();
-    setStreams([{}]);
-    expect(screen.getByRole('button', { name: 'Copy invite link' })).toBe(copy);
-    fireEvent.click(copy);
-
-    const input = await screen.findByRole('textbox', {
-      name: 'Copy this link manually',
+it.each([
+  {
+    callKind: 'room-link call',
+    path: '/?publicRoom=12345678-1234-1234-1234-123456789abc',
+    roomId: '12345678-1234-1234-1234-123456789abc',
+  },
+  {
+    callKind: 'contact call',
+    path: '/?conversationId=private-id',
+    roomId: 'call-12345678-1234-1234-1234-123456789abc',
+  },
+])(
+  'lets a signed-in participant copy the $callKind after someone joins',
+  async ({ callKind, path, roomId }) => {
+    mocks.user.mockReturnValue({ uid: 'signed-in-user' });
+    window.history.replaceState(null, '', path);
+    mocks.room.mockReturnValue({ roomId });
+    if (callKind === 'contact call')
+      mocks.callConversationId.mockReturnValue('private-id');
+    const expectedLink = `${window.location.origin}/?publicRoom=${roomId}`;
+    mocks.roomState.mockReturnValue('joined');
+    const [streams, setStreams] = createSignal([]);
+    mocks.remoteMemberStreams.mockImplementation(streams);
+    const writeText = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('clipboard denied'))
+      .mockResolvedValueOnce(undefined);
+    const clipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
     });
-    expect(input.readOnly).toBe(true);
-    expect(input.value).toBe(window.location.href);
 
-    expect(mocks.showToast).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Copy invite link' }),
-    );
-    await waitFor(() => {
-      expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith('Link copied', {
-        tone: 'success',
+    try {
+      render(() => (
+        <ActiveCallRoom media={media} holdTopBar={() => () => {}} />
+      ));
+      const copy = screen.getByRole('button', { name: 'Copy invite link' });
+      expect(copy.classList.contains('bg-bg-secondary')).toBe(true);
+      expect(screen.getByRole('button', { name: 'Add caller' })).toBeTruthy();
+      setStreams([{}]);
+      expect(screen.getByRole('button', { name: 'Copy invite link' })).toBe(
+        copy,
+      );
+      fireEvent.click(copy);
+
+      const input = await screen.findByRole('textbox', {
+        name: 'Copy this link manually',
       });
-    });
-    expect(writeText).toHaveBeenCalledWith(window.location.href);
-  } finally {
-    if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard);
-    else delete navigator.clipboard;
-  }
-});
+      expect(input.readOnly).toBe(true);
+      expect(input.value).toBe(expectedLink);
+
+      expect(mocks.showToast).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Copy invite link' }),
+      );
+      await waitFor(() => {
+        expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith('Link copied', {
+          tone: 'success',
+        });
+      });
+      expect(writeText).toHaveBeenCalledWith(expectedLink);
+    } finally {
+      if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard);
+      else delete navigator.clipboard;
+    }
+  },
+);

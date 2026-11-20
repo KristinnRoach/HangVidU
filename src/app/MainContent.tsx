@@ -221,14 +221,11 @@ interface TopBarProps {
 function TopBar(props: TopBarProps) {
   const { user } = useAuth();
   const { t } = useI18n();
-  const p2p = useP2PContext();
+  const { callConversationId } = useCallHandshake();
 
-  // The call room handle IS the conversationId (see resolveCallRoomId), so
-  // the active call's conversation is a lookup, not extra state. Null for
-  // guest room-link calls whose room isn't in the user's conversation list.
   const callConversation = createMemo(() => {
-    const roomId = p2p.room()?.roomId;
-    return roomId ? (conversationListState().get(roomId) ?? null) : null;
+    const id = callConversationId();
+    return id ? (conversationListState().get(id) ?? null) : null;
   });
 
   const calleeId = createMemo(() => {

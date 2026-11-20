@@ -27,6 +27,12 @@ import {
   getVideoConstraints,
 } from './media-constraints.js';
 import { createCallLocalTrackSlots } from './call-media.js';
+import {
+  createCallScopedRoomId,
+  isCallScopedRoomId,
+  createRoomRoutedInviteId,
+  isRoomRoutedInviteId,
+} from './room-links';
 import type {
   CallHandshakeState,
   CallReconnectStatus,
@@ -120,6 +126,7 @@ type CallHandshakeControllerOptions = {
   onStateChange: (state: CallHandshakeState) => void;
   onInviteOutcome: (outcome: InviteOutcome | null) => void;
   onReconnectStatus: (status: CallReconnectStatus) => void;
+  onCallConversationChange: (conversationId: string | undefined) => void;
 };
 
 /**
@@ -154,9 +161,11 @@ export type IncomingCallNotificationDetails = {
 type EnterRoomOptions = {
   autoExitOnEmpty?: boolean;
   signal?: AbortSignal;
+  conversationId?: string;
 };
 
 type ActiveOutgoingCall = OutgoingCall & {
+  signalingRoomId: string;
   connectedAt?: number;
   disconnectedAt?: number;
 };
@@ -311,6 +320,7 @@ export class CallHandshakeController {
   private readonly onStateChange: (state: CallHandshakeState) => void;
   private readonly onInviteOutcome: (outcome: InviteOutcome | null) => void;
   private readonly onReconnectStatus: (status: CallReconnectStatus) => void;
+  private readonly onCallConversationChange: CallHandshakeControllerOptions['onCallConversationChange'];
 
   private _handshakeState: CallHandshakeState = null;
   private incomingAcceptanceAbortController: AbortController | undefined;
@@ -340,6 +350,7 @@ export class CallHandshakeController {
     onStateChange,
     onInviteOutcome,
     onReconnectStatus,
+    onCallConversationChange,
   }: CallHandshakeControllerOptions) {
     this.p2p = p2p;
     this.createSignaling = createSignaling;
@@ -347,6 +358,7 @@ export class CallHandshakeController {
     this.onStateChange = onStateChange;
     this.onInviteOutcome = onInviteOutcome;
     this.onReconnectStatus = onReconnectStatus;
+    this.onCallConversationChange = onCallConversationChange;
   }
 
   private setHandshakeState(state: CallHandshakeState): void {
@@ -436,6 +448,9 @@ export class CallHandshakeController {
       !details.callerId
     )
       return;
+    // Call-scoped invitations require the mailbox's joinRoomId. The stored
+    // invite is replayed on connect after a notification opens the app.
+    if (isRoomRoutedInviteId(details.callInviteId)) return;
     // A notification copy never replaces the authoritative mailbox invite.
     const current = this._handshakeState;
     if (
@@ -585,8 +600,17 @@ export class CallHandshakeController {
       return;
     }
 
+    const inviteRoomId =
+      joinRoomId ??
+      (import.meta.env.VITE_CONTACT_CALL_ROOM_LINKS === '1'
+        ? createCallScopedRoomId()
+        : undefined);
+    const callInviteId = isCallScopedRoomId(inviteRoomId)
+      ? createRoomRoutedInviteId()
+      : crypto.randomUUID();
+    const signalingRoomId = inviteRoomId ?? roomId;
     const nextOutgoingCall: OutgoingCall = {
-      callInviteId: crypto.randomUUID(),
+      callInviteId,
       calleeId,
       calleeName,
       callerId: localUID,
@@ -634,12 +658,13 @@ export class CallHandshakeController {
           if (this.pendingOutgoingLocalStream === localStream) {
             this.pendingOutgoingLocalStream = undefined;
           }
-          this.activeOutgoingCall = { ...nextOutgoingCall };
+          this.activeOutgoingCall = { ...nextOutgoingCall, signalingRoomId };
           await this.enterRoom(
-            response.roomId,
+            signalingRoomId,
             localUID,
             nextOutgoingCall.audioOnly,
             () => Promise.resolve(localStream!),
+            { conversationId: roomId },
           );
         } else if (response.responseType === 'busy') {
           publish('evt:call:invite:busy', nextOutgoingCall);
@@ -683,7 +708,7 @@ export class CallHandshakeController {
         calleeId,
         callerName,
         audioOnly,
-        joinRoomId,
+        joinRoomId: inviteRoomId,
       });
     } catch (err) {
       console.error('Error sending outgoing call invite:', err);
@@ -719,7 +744,15 @@ export class CallHandshakeController {
       state.direction === 'outgoing' &&
       state.call.callInviteId === nextOutgoingCall.callInviteId
     ) {
-      publish('evt:call:invite:sent', nextOutgoingCall);
+      // Call-scoped room IDs are joinable links, so they stay out of push.
+      // The callee gets them from the mailbox (see
+      // showIncomingCallFromNotification).
+      publish(
+        'evt:call:invite:sent',
+        isRoomRoutedInviteId(callInviteId)
+          ? { ...nextOutgoingCall, joinRoomId: undefined }
+          : nextOutgoingCall,
+      );
     }
     if (import.meta.env.DEV) {
       console.debug('Initiated outgoing call invite, command details:', {
@@ -729,10 +762,8 @@ export class CallHandshakeController {
   };
 
   /**
-   * The call room handle is the opaque conversationId from the D1 registry,
-   * so every interaction between the same participants shares one id.
-   * The data worker authorizes call mailbox writes against that conversation's
-   * D1 membership, so there is no valid random-room fallback.
+   * Mailbox operations and call history use the stable D1 conversation ID.
+   * The signaling room may be a separate ID shared in the invite.
    *
    * Normally already on the contact record (minted at invite-accept time);
    * resolveDirectConversationId() is only a fallback for contacts saved
@@ -762,7 +793,7 @@ export class CallHandshakeController {
     localUID: string,
     audioOnly = false,
     getLocalStream?: () => Promise<MediaStream>,
-    { autoExitOnEmpty = true, signal }: EnterRoomOptions = {},
+    { autoExitOnEmpty = true, signal, conversationId }: EnterRoomOptions = {},
   ) {
     const localStream = await (
       getLocalStream ?? (() => this.getCallLocalStream(audioOnly, signal))
@@ -778,6 +809,7 @@ export class CallHandshakeController {
     // Searchable on every event/log/metric until the call ends.
     this.roomContextOwner = signal ?? {};
     setCallRoomContext(roomId);
+    this.onCallConversationChange(conversationId);
     // Starts after media acquisition: the caller's media is acquired before
     // ringing, so this keeps both sides measuring connection setup only.
     const joinStartedAt = Date.now();
@@ -864,14 +896,14 @@ export class CallHandshakeController {
             );
           }
           const call = this.activeOutgoingCall;
-          if (!call || call.roomId !== roomId) return;
+          if (!call || call.signalingRoomId !== roomId) return;
           call.connectedAt ??= Date.now();
           call.disconnectedAt = undefined;
         },
         onAlone: (detail) => {
           if (import.meta.env.DEV) console.debug('Room is alone:', { detail });
           if (!autoExitOnEmpty) return;
-          if (this.activeOutgoingCall?.roomId === roomId) {
+          if (this.activeOutgoingCall?.signalingRoomId === roomId) {
             this.activeOutgoingCall.disconnectedAt = Date.now();
           }
           // `left` = every departure that emptied the room was an explicit
@@ -939,6 +971,7 @@ export class CallHandshakeController {
   private clearRoomContext(): void {
     this.roomContextOwner = undefined;
     setCallRoomContext(undefined);
+    this.onCallConversationChange(undefined);
   }
 
   private stopMediaStream(stream: MediaStream | undefined): void {
@@ -1051,6 +1084,7 @@ export class CallHandshakeController {
     const roomId = state.call.joinRoomId ?? state.call.roomId;
     this.enterRoom(roomId, localUID, state.call.audioOnly ?? false, undefined, {
       signal,
+      conversationId: state.call.roomId,
     })
       .then(() => {
         if (this.isExpired(state.call) && !signal.aborted) {
@@ -1266,7 +1300,7 @@ export class CallHandshakeController {
       this.reconnectTimeoutId = undefined;
       this.onReconnectStatus('failed');
       reportCallFailure('reconnect-timeout', {
-        roomId: this.activeOutgoingCall?.roomId,
+        roomId: this.activeOutgoingCall?.signalingRoomId,
         memberCount: this.p2p.members().length,
       });
       this.reconnectFailedTimeoutId = setTimeout(() => {

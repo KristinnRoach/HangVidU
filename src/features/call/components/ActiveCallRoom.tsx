@@ -26,6 +26,11 @@ import {
 import { MemberStreams } from './MemberStreams';
 import { ActiveCallControls } from './CallControls';
 import { useCallHandshake } from '../call-handshake.js';
+import {
+  isCallScopedRoomId,
+  publicRoomIdFromUrl,
+  roomInviteUrl,
+} from '../room-links';
 import type { CallMedia } from '../call-media';
 import { useP2PContext } from '@shared/p2p-context.js';
 import { getLocale, t } from '@shared/i18n';
@@ -38,8 +43,13 @@ export function ActiveCallRoom(props: {
 }) {
   const p2p = useP2PContext();
   const { user, isLoggingOut } = useAuth();
-  const { reconnectStatus, outgoingCall, inviteOutcome, cancelOutgoing } =
-    useCallHandshake();
+  const {
+    callConversationId,
+    reconnectStatus,
+    outgoingCall,
+    inviteOutcome,
+    cancelOutgoing,
+  } = useCallHandshake();
   const invitePickerOwner = () =>
     p2p.state() === 'joined' &&
     !isLoggingOut() &&
@@ -58,11 +68,21 @@ export function ActiveCallRoom(props: {
     if (props.media.faceMaskCapturing()) onCleanup(props.holdTopBar('hidden'));
   });
 
-  // Room-link calls use a fresh ID. Contact calls reuse a conversation ID
-  // across calls, so exposing it in an invite would also expose future calls.
-  const isRoomLinkCall = new URLSearchParams(window.location.search).has(
-    'publicRoom',
-  );
+  const openedRoomId = publicRoomIdFromUrl(window.location.href);
+  const isRoomLinkCall = () =>
+    !callConversationId() &&
+    openedRoomId !== null &&
+    openedRoomId === p2p.room()?.roomId;
+  const copyableRoomId = () => {
+    if (
+      p2p.state() !== 'joined' ||
+      isLoggingOut() ||
+      props.media.faceMaskCapturing()
+    )
+      return;
+    const id = p2p.room()?.roomId;
+    if (id && (isRoomLinkCall() || isCallScopedRoomId(id))) return id;
+  };
   const [remoteAudioMuted, setRemoteAudioMuted] = createSignal(false);
 
   return (
@@ -74,14 +94,8 @@ export function ActiveCallRoom(props: {
 
       <div class='pointer-events-none absolute inset-x-(--gap) top-(--call-overlay-top) z-10 grid grid-cols-[minmax(2.75rem,1fr)_minmax(0,max-content)_minmax(2.75rem,1fr)] items-start gap-2 transition-[top] duration-(--duration-default) ease-(--easing-default) motion-reduce:transition-none'>
         <div class='col-start-3 row-start-1 flex justify-end gap-2'>
-          <Show
-            when={
-              isRoomLinkCall &&
-              p2p.state() === 'joined' &&
-              !props.media.faceMaskCapturing()
-            }
-          >
-            <CopyRoomLink />
+          <Show when={copyableRoomId()} keyed>
+            {(id) => <CopyRoomLink link={roomInviteUrl(id)} />}
           </Show>
           <Show when={invitePickerOwner()} keyed>
             <InviteCaller />
@@ -134,7 +148,7 @@ export function ActiveCallRoom(props: {
       >
         <div class={styles.waiting}>
           <p>
-            {isRoomLinkCall ? t('call.room_empty') : t('call.waiting_peer')}
+            {isRoomLinkCall() ? t('call.room_empty') : t('call.waiting_peer')}
           </p>
         </div>
       </Show>
@@ -150,8 +164,7 @@ export function ActiveCallRoom(props: {
   );
 }
 
-function CopyRoomLink() {
-  const link = window.location.href;
+function CopyRoomLink(props: { link: string }) {
   const [manualCopy, setManualCopy] = createSignal(false);
   let active = true;
   onCleanup(() => {
@@ -160,7 +173,7 @@ function CopyRoomLink() {
 
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(props.link);
     } catch {
       if (active) setManualCopy(true);
       return;
@@ -186,7 +199,7 @@ function CopyRoomLink() {
       >
         <TextField
           label={t('call.copy_invite_manually')}
-          value={link}
+          value={props.link}
           onChange={() => {}}
           onFocus={(event) => event.currentTarget.select()}
           readOnly

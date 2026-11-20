@@ -58,8 +58,18 @@ The room's Durable Object is the only admission authority: at most
 `memberCapacity`, because the client check would count an endpoint that is
 about to be replaced as another member. Peer IDs identify endpoints (`uid:uuid`), so a
 newer window or device replaces the account's previous endpoint, ending its call, instead of
-taking another slot. An endpoint that reconnects after such a takeover yields to it. A contact invite is keyed and authorized by the caller–callee conversation (`roomId`); one sent from inside a call also carries `joinRoomId`, the live room the callee joins. Calls are a P2P mesh, so each sender splits a fixed camera
-upload budget across its peers and samples outbound video and connection stats to Sentry.
+taking another slot. An endpoint that reconnects after such a takeover yields to it.
+A contact invite is keyed and authorized by the caller–callee conversation
+(`roomId`). A call started with contact-call links enabled reserves a fresh signaling room and
+carries it in `joinRoomId`. Invites sent from inside a call use the same field
+to carry the existing signaling room. The conversation ID still drives call
+history and mailbox responses. Clients display the copy action for these
+per-call rooms and for guest rooms opened from an invite URL. A copied link
+can be reused for its original room, including after it empties. Later contact
+calls get a different room ID.
+
+Calls are a P2P mesh, so each sender splits a fixed camera upload budget across
+its peers and samples outbound video and connection stats to Sentry.
 At four participants, outgoing camera video is capped at 20 fps to reduce encoder load.
 Screen sharing keeps the same upload budget and uses the browser's frame-rate control.
 

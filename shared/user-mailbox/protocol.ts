@@ -10,17 +10,17 @@
  * fans the envelope to every connected socket for that user. Clients receive
  * only; they send invites/responses/cancels over REST.
  *
- * `roomId` is the opaque conversationId — the room to join on accept. All
- * envelopes are addressed by delivery (which user's mailbox), so they carry no
- * recipient field.
+ * `roomId` is the opaque conversationId used for mailbox authorization. On
+ * accept, join `joinRoomId` when present, falling back to `roomId` for legacy
+ * direct calls. Envelopes are addressed by delivery into a user's mailbox.
  */
 
 export interface MailboxInvite {
   callInviteId: string;
   roomId: string;
   /**
-   * The caller's live call room, set when inviting from inside a call. The
-   * invite stays keyed and authorized by `roomId`; the callee joins this room.
+   * The signaling room for this call, reserved for a new shareable call or
+   * reused when inviting another participant into a live call.
    */
   joinRoomId?: string;
   callerId: string;
