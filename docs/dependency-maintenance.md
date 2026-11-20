@@ -8,10 +8,9 @@ uses its separate npm lockfile. GitHub Actions versions are tracked too.
 Patch/minor Dependabot PRs queue for squash merge. The required `Verify` check
 runs formatting, lint, types, Node and Worker tests, a clean Functions install
 and module load, and the production build. Chromium/Firefox/WebKit compatibility
-runs only on manual CI dispatch and through existing frontend deployment scripts.
-Automatic dependency merges use the fast required check and do not wait for the
-manual browser guard; for manually merged PRs, follow the final pre-merge guard
-in [AGENTS.md](../AGENTS.md).
+runs after merge, not on PRs. Automatic merges don't trigger push runs, so the
+daily scheduled CI run on `main` covers them and opens an issue if browser tests
+fail. Existing frontend deployment scripts also run the compatibility suite.
 Major upgrades stay open for review. Failed checks leave the PR open; GitHub's
 workflow notifications report failures. Passing tests cannot guarantee that every
 production behavior is covered.

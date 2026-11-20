@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Merges made with GITHUB_TOKEN (Dependabot, toolchain) don't trigger push runs.
+  schedule:
+    - cron: '0 6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -46,7 +49,7 @@ jobs:
         run: node -e "const f = require('./backend/firebase'); if (Object.keys(f).length !== 5) process.exit(1)"
       - run: vp build
 
-  # Runs after merge so PRs stay fast; a failure on main opens an issue.
+  # Runs after merge and daily so PRs stay fast; a failure on main opens an issue.
   compat:
     name: Browser compatibility
     if: github.event_name != 'pull_request'
@@ -87,7 +90,7 @@ jobs:
   report-compat:
     name: Report browser compatibility failure
     needs: compat
-    if: ${{ !cancelled() && github.event_name == 'push' && needs.compat.result != 'success' }}
+    if: ${{ !cancelled() && (github.event_name == 'push' || github.event_name == 'schedule') && needs.compat.result != 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

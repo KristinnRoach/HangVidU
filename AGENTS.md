@@ -23,7 +23,7 @@ old documentation nor nearby legacy code is automatically the desired pattern.
 - Use Tailwind for new UI and shared tokens for recurring visual roles. Migrate existing styling one complete component at a time, removing replaced rules. Reuse accessible controls; preserve keyboard, focus, and reduced-motion behaviour.
 - Add focused regression tests for meaningful behaviour changes. Keep browser workarounds and ownership rationale documented; avoid comments that narrate code or prescribe speculative future implementations.
 - Update the authoritative doc when behaviour or a convention changes. Keep plans in the roadmap or issues, not new scattered TODO/specification files. Do not turn deferred roadmap items into work without a task requesting them.
-- PR CI skips the browser compatibility suite; it runs after merge to `main` and opens an issue if it fails. When a change touches browser-specific behaviour, run `vpr test:compat` locally or dispatch **CI** on the PR branch before merging. Use focused checks while iterating.
+- PR CI skips the browser compatibility suite; it runs after merge to `main` and daily, and opens an issue if it fails. When a change touches browser-specific behaviour, run `vpr test:compat` locally or dispatch **CI** on the PR branch before merging. Use focused checks while iterating.
 - Create PR titles without prefixes such as `[codex]` unless requested. Leave merging to the user unless explicitly asked to merge.
 
 ## Usage and delegation
