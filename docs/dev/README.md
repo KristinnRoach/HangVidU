@@ -60,9 +60,10 @@ and browser setup are described in [tests/README.md](../../tests/README.md).
 CI's **Verify** job runs on every PR and push to `main`: checks, Node and Worker
 tests, the Firebase Functions install/module-load smoke check, and the
 production build. The **Browser compatibility** job runs Chromium, Firefox, and
-WebKit browser tests in parallel on pushes to `main` and manual dispatch, not on
-PRs. A failure on a push to `main` opens (or comments on) a "Browser
-compatibility failing on main" issue. To check a browser-sensitive PR before merging, run
+WebKit browser tests in parallel on pushes to `main`, daily on `main`, and on
+manual dispatch, not on PRs. The daily run covers merges made by workflows,
+which don't trigger push runs. A failure on a push or daily run opens (or
+comments on) a "Browser compatibility failing on main" issue. To check a browser-sensitive PR before merging, run
 `vpr test:compat` locally or dispatch **CI** on the PR branch. Existing frontend
 deployment scripts still run `test:compat`.
 
