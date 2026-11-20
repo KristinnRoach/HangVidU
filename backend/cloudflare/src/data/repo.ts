@@ -329,7 +329,7 @@ export interface NewContact {
  * Returns the id only if a conversation with that id exists AND its dm_key is the
  * caller↔contact pair — otherwise null. Without this, a caller could write any
  * conversation_id (incl. one they are not in) onto their contact and route their
- * chat into another pair's conversation. Mirrors the backfill's membership guard.
+ * chat into another pair's conversation.
  */
 async function memberConversationId(
   db: D1Database,
