@@ -13,21 +13,22 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  VITE_HANGVIDU_API_URL: https://api.hangvidu.com
+  VITE_FIREBASE_API_KEY: dummy
+  VITE_FIREBASE_AUTH_DOMAIN: test.firebaseapp.com
+  VITE_FIREBASE_PROJECT_ID: test
+  VITE_FIREBASE_DATABASE_URL: https://test.firebaseio.com
+  VITE_APP_GOOGLE_CLIENT_ID: dummy
+  VITE_FIREBASE_APP_ID: 1:123:web:test
+  VITE_RECAPTCHA_ENTERPRISE_SITE_KEY: dummy
+  VITE_PUSH_VAPID_KEY: BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
 jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      VITE_HANGVIDU_API_URL: https://api.hangvidu.com
-      VITE_FIREBASE_API_KEY: dummy
-      VITE_FIREBASE_AUTH_DOMAIN: test.firebaseapp.com
-      VITE_FIREBASE_PROJECT_ID: test
-      VITE_FIREBASE_DATABASE_URL: https://test.firebaseio.com
-      VITE_APP_GOOGLE_CLIENT_ID: dummy
-      VITE_FIREBASE_APP_ID: 1:123:web:test
-      VITE_RECAPTCHA_ENTERPRISE_SITE_KEY: dummy
-      VITE_PUSH_VAPID_KEY: BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -38,24 +39,64 @@ jobs:
           cache: true
       - run: vp check
       - run: vp test --project node
-      # Full browser compatibility is an explicit final pre-merge guard.
-      - name: Install compatibility browsers
-        if: github.event_name == 'workflow_dispatch'
-        run: vp exec playwright install --with-deps chromium firefox webkit
-      - name: Provide audio output for Firefox WebRTC tests
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          sudo apt-get install -y pulseaudio
-          pulseaudio --start --exit-idle-time=-1
-          pactl load-module module-null-sink sink_name=ci
-          pactl set-default-sink ci
-      # One worker avoids the browser interception race seen with concurrent engines.
-      - name: Test browser compatibility
-        if: github.event_name == 'workflow_dispatch'
-        run: COMPAT=true vp test --project browser --maxWorkers 1
       - run: vp run lint:cf
       - run: vp run test:cf
       - run: npm ci --prefix backend/firebase
       - name: Load Firebase Functions
         run: node -e "const f = require('./backend/firebase'); if (Object.keys(f).length !== 5) process.exit(1)"
       - run: vp build
+
+  # Runs after merge so PRs stay fast; a failure on main opens an issue.
+  compat:
+    name: Browser compatibility
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          node-version: '22'
+          cache: true
+      - name: Read Playwright version
+        id: playwright
+        run: echo "version=$(vp exec playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - run: vp exec playwright install chromium firefox webkit
+      # apt has hung here for 20 minutes; fail fast instead.
+      - name: Install browser system dependencies
+        timeout-minutes: 5
+        run: |
+          vp exec playwright install-deps chromium firefox webkit
+          sudo apt-get install -y pulseaudio
+      - name: Provide audio output for Firefox WebRTC tests
+        run: |
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=ci
+          pactl set-default-sink ci
+      # One worker avoids the browser interception race seen with concurrent engines.
+      - name: Test browser compatibility
+        run: COMPAT=true vp test --project browser --maxWorkers 1
+      - name: Report failure on main
+        if: failure() && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TITLE: Browser compatibility failing on main
+        run: |
+          body="Failed on ${GITHUB_SHA::7}: $RUN_URL"
+          issue=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "$body"
+          else
+            gh issue create --title "$TITLE" --body "$body"
+          fi
