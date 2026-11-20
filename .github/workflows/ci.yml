@@ -71,9 +71,9 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - run: vp exec playwright install chromium firefox webkit
-      # apt has hung here for 20 minutes; fail fast instead.
+      # apt usually takes 1-4 minutes but has hung for 20; fail fast instead.
       - name: Install browser system dependencies
-        timeout-minutes: 5
+        timeout-minutes: 8
         run: |
           vp exec playwright install-deps chromium firefox webkit
           sudo apt-get install -y pulseaudio
