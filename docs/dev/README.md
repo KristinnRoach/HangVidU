@@ -57,13 +57,14 @@ Run `vp check` and focused tests while iterating; `vpr test:node` runs the fast 
 
 For Worker changes, also run `vpr lint:cf` and `vpr test:cf`. The test runner split
 and browser setup are described in [tests/README.md](../../tests/README.md).
-Routine PR and main-push CI runs checks, Node and Worker tests, the Firebase
-Functions install/module-load smoke check, and the production build. Browser
-setup and compatibility tests run only on manual CI dispatch. Once a PR is final
-and the decision to merge is made, dispatch **CI** from GitHub Actions using the
-PR branch and confirm success before merging, as required by `AGENTS.md`. Repeat
-that guard if the branch changes afterward; avoid full-suite runs for trivial
-edits. Existing frontend deployment scripts still run `test:compat`.
+CI's **Verify** job runs on every PR and push to `main`: checks, Node and Worker
+tests, the Firebase Functions install/module-load smoke check, and the
+production build. The **Browser compatibility** job runs Chromium, Firefox, and
+WebKit browser tests in parallel on pushes to `main` and manual dispatch, not on
+PRs. A failure on a push to `main` opens (or comments on) a "Browser
+compatibility failing on main" issue. To check a browser-sensitive PR before merging, run
+`vpr test:compat` locally or dispatch **CI** on the PR branch. Existing frontend
+deployment scripts still run `test:compat`.
 
 Dependency automation is documented in
 [Dependency maintenance](../dependency-maintenance.md).

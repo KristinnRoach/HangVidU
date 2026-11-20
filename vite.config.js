@@ -265,7 +265,11 @@ export default defineConfig(({ mode }) => {
             sequence: { groupOrder: 1 },
             browser: {
               enabled: true,
-              provider: playwright(),
+              // Kobalte keeps closing elements until animationend, which
+              // Linux WebKit fires late; tests assert behaviour, not motion.
+              provider: playwright({
+                contextOptions: { reducedMotion: 'reduce' },
+              }),
               headless: true,
               // COMPAT=true runs all engines.
               instances: (process.env.COMPAT === 'true'
