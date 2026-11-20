@@ -52,9 +52,6 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions:
-      contents: read
-      issues: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -85,8 +82,18 @@ jobs:
       # One worker avoids the browser interception race seen with concurrent engines.
       - name: Test browser compatibility
         run: COMPAT=true vp test --project browser --maxWorkers 1
-      - name: Report failure on main
-        if: failure() && github.event_name == 'push'
+
+  # Separate job so a timed-out compat run (result: cancelled) still reports.
+  report-compat:
+    name: Report browser compatibility failure
+    needs: compat
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.compat.result != 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update issue
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
