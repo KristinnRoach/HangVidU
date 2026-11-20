@@ -63,7 +63,8 @@ production build. The **Browser compatibility** job runs Chromium, Firefox, and
 WebKit browser tests in parallel on pushes to `main`, daily on `main`, and on
 manual dispatch, not on PRs. The daily run covers merges made by workflows,
 which don't trigger push runs. A failure on a push or daily run opens (or
-comments on) a "Browser compatibility failing on main" issue. To check a browser-sensitive PR before merging, run
+comments on) a "Browser compatibility failing on main" issue, except when only
+the apt system-dependency install failed; that leaves a run warning instead. To check a browser-sensitive PR before merging, run
 `vpr test:compat` locally or dispatch **CI** on the PR branch. Existing frontend
 deployment scripts still run `test:compat`.
 

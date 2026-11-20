@@ -94,6 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      actions: read
       issues: write
     steps:
       - name: Open or update issue
@@ -103,6 +104,17 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TITLE: Browser compatibility failing on main
         run: |
+          # A slow Ubuntu apt mirror is a runner problem, not a compatibility failure.
+          # The job timeout cancels a stalled install instead of failing it.
+          deps='Install browser system dependencies'
+          failed=$(gh run view "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --json jobs \
+            --jq ".jobs[] | select(.name == \"Browser compatibility\") | .steps[]
+              | select(.conclusion == \"failure\" or (.name == \"$deps\" and .conclusion == \"cancelled\")) | .name") \
+            || failed=''
+          if [ "$failed" = "$deps" ]; then
+            echo "::warning::Browser system dependency install failed; not opening an issue."
+            exit 0
+          fi
           body="Failed on ${GITHUB_SHA::7}: $RUN_URL"
           issue=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
           if [ -n "$issue" ]; then

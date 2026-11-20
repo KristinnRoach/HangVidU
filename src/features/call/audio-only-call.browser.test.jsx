@@ -111,8 +111,11 @@ function createHub() {
 
 function createAudioTrack(ctx) {
   const osc = ctx.createOscillator();
+  // Silent input keeps local runs quiet; without Opus DTX, RTP still flows.
+  const silence = ctx.createGain();
+  silence.gain.value = 0;
   const dest = ctx.createMediaStreamDestination();
-  osc.connect(dest);
+  osc.connect(silence).connect(dest);
   osc.start();
   return dest.stream.getAudioTracks()[0];
 }
