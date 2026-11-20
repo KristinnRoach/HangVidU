@@ -23,7 +23,6 @@ for relative_path in \
   .env.development \
   .env.development.local \
   .env.production \
-  .env.r2.local \
   .env.sentry-build-plugin \
   .env.sentry-issues.local \
   backend/cloudflare/.dev.vars \
