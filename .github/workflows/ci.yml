@@ -105,9 +105,13 @@ jobs:
           TITLE: Browser compatibility failing on main
         run: |
           # A slow Ubuntu apt mirror is a runner problem, not a compatibility failure.
+          # The job timeout cancels a stalled install instead of failing it.
+          deps='Install browser system dependencies'
           failed=$(gh run view "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --json jobs \
-            --jq '.jobs[] | select(.name == "Browser compatibility") | .steps[] | select(.conclusion == "failure") | .name')
-          if [ "$failed" = "Install browser system dependencies" ]; then
+            --jq ".jobs[] | select(.name == \"Browser compatibility\") | .steps[]
+              | select(.conclusion == \"failure\" or (.name == \"$deps\" and .conclusion == \"cancelled\")) | .name") \
+            || failed=''
+          if [ "$failed" = "$deps" ]; then
             echo "::warning::Browser system dependency install failed; not opening an issue."
             exit 0
           fi
