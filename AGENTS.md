@@ -26,16 +26,6 @@ old documentation nor nearby legacy code is automatically the desired pattern.
 - PR CI skips the browser compatibility suite; it runs after merge to `main` and daily, and opens an issue if it fails. When a change touches browser-specific behaviour, run `vpr test:compat` locally or dispatch **CI** on the PR branch before merging. Use focused checks while iterating.
 - Create PR titles without prefixes such as `[codex]` unless requested. Leave merging to the user unless explicitly asked to merge.
 
-## Usage and delegation
-
-Use the smallest workflow that fully completes the task. Keep exploration, output, and validation proportionate to the change, while preserving correctness and required checks.
-
-Work in the current agent by default. Ask for explicit approval before involving additional agents or starting independent AI review or repeated AI review/fix cycles. General requests to implement, fix, test, or review do not authorize delegation. Explain the expected benefit and scope before asking; once approved, proceed within that scope without asking again.
-
-Before starting a costly or lengthy investigation, check whether a focused question or a quick manual check by me would resolve the uncertainty. If so, ask first and explain exactly what information or action would help. Handle routine, inexpensive work yourself.
-
-Avoid redundant searches, repeated checks without new evidence, and unnecessary artifacts. Do not switch to a more expensive model or paid service without explicit approval.
-
 ## Toolchain
 
 This project uses [Vite+](https://viteplus.dev/guide/) (`vp`). Commands and validation steps are in the [development guide](docs/dev/README.md).
