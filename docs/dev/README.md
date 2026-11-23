@@ -13,7 +13,6 @@ To test a group call, select **Start guest call**, which copies the invite link 
 Local HTTPS needs a trusted certificate. Install [mkcert](https://github.com/FiloSottile/mkcert#installation), then run once from the repository root:
 
 ```bash
-mkdir -p .certs
 vpr setup:dev-certs
 ```
 
