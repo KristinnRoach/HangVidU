@@ -33,7 +33,6 @@ jobs:
           version: latest
           node-version: '22'
       - run: vp run update:toolchain
-      - run: vp env pin pnpm@latest --force --no-install && vp install
       - name: Classify version change
         id: change
         env:

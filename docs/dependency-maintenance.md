@@ -41,6 +41,28 @@ vp build
 coordinated toolchain. For an ordinary dependency, use `vp update <package>`;
 add `--latest` to cross the declared version range. Review major changes.
 
+## Manual maintenance
+
+These items are intentionally not automated:
+
+- **pnpm version (`packageManager` in `package.json`):** Neither Dependabot nor
+  the Monday Vite+ workflow updates `packageManager`. Keep it pinned to an exact
+  version so Vite+, pnpm, CI, and Dependabot stay aligned (`12.21.0` currently
+  splits `backend/cloudflare`'s Vitest across two `@opentelemetry/api` peers and
+  breaks `vpr test:cf`).
+  - **When to check:** Quarterly, on a pnpm security advisory, or after major
+    Vite+/Vitest/Cloudflare upgrades.
+  - **How to bump:** Run `vp env pin pnpm@latest --force --no-install && vp install`,
+    then verify with `vp check`, `vpr test:node`, `vpr test:cf`, and `vp build`.
+- **Workflow approval on toolchain PRs:** Click **Approve and run** when the
+  Monday Vite+ PR opens so CI runs and eligible updates auto-merge.
+- **Major upgrades:** Review and merge Dependabot `majors` PRs and major
+  Vite+/Vitest toolchain PRs manually.
+- **Node.js LTS upgrades:** Update `engines.node` in `package.json` and
+  `node-version` in `.github/workflows/*.yml` when adopting a new LTS.
+- **Production deploys and remote D1 migrations:** Always run manually via the
+  deploy/migration scripts in [Operations](dev/OPERATIONS.md).
+
 ## Reuse in another repository
 
 Copy `.github/dependabot.yml`, the three workflows, and the `update:toolchain`
