@@ -46,7 +46,7 @@ For Firebase Hosting deploys, use your local production env values when running 
 
 ### Tooling and validation
 
-Install Vite+ once using the [official setup instructions](https://viteplus.dev/guide/). Vite+ manages Node.js and downloads pnpm within the 12.x range declared in `package.json`; no separate pnpm installation or patch-version pin is needed. On a fresh checkout, or after pulling dependency changes, run `vp install --frozen-lockfile`. Use `vp install` when intentionally updating dependencies, then commit the lockfile.
+Install Vite+ once using the [official setup instructions](https://viteplus.dev/guide/). Vite+ manages Node.js and downloads the exact pnpm version pinned in `package.json`'s `packageManager` field; no separate pnpm installation is needed. On a fresh checkout, or after pulling dependency changes, run `vp install --frozen-lockfile`. Use `vp install` when intentionally updating dependencies, then commit the lockfile.
 
 Use `vpr <script>` for every `package.json` script (`vpr` is shorthand for `vp run`). Use `vp` for built-in operations such as `vp install`, `vp add`, `vp update`, and `vp check`. Existing `pnpm` script and package commands still work.
 

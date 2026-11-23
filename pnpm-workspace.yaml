@@ -25,19 +25,6 @@ overrides:
 # First-party scope — our own packages, exempt from the release-age cooldown.
 minimumReleaseAgeExclude:
   - '@kidlib/*'
-  - miniflare@4.20260617.0 || 5.20261006.2-beta
-  - wrangler@4.102.0 || 4.150.0
-  - '@cloudflare/vitest-plugin@1.4.1'
-  - '@voidzero-dev/vite-plus-core@1.5.0 || 1.5.1'
-  - '@voidzero-dev/vite-plus-darwin-arm64@1.5.0 || 1.5.1'
-  - '@voidzero-dev/vite-plus-darwin-x64@1.5.0 || 1.5.1'
-  - '@voidzero-dev/vite-plus-linux-arm64-gnu@1.5.0 || 1.5.1'
-  - '@voidzero-dev/vite-plus-linux-arm64-musl@1.5.0 || 1.5.1'
-  - '@voidzero-dev/vite-plus-linux-x64-gnu@1.5.0 || 1.5.1'
-  - '@voidzero-dev/vite-plus-linux-x64-musl@1.5.0 || 1.5.1'
-  - '@voidzero-dev/vite-plus-win32-arm64-msvc@1.5.0 || 1.5.1'
-  - '@voidzero-dev/vite-plus-win32-x64-msvc@1.5.0 || 1.5.1'
-  - vite-plus@1.5.0 || 1.5.1
 catalog:
   vite: npm:@voidzero-dev/vite-plus-core@8.3.8000
   vitest: 5.1.0

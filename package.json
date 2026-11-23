@@ -120,14 +120,8 @@
     "workbox-routing": "^7.4.1",
     "workbox-strategies": "^7.4.1"
   },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^12.4.2",
-      "onFail": "download"
-    }
-  },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
-  }
+  },
+  "packageManager": "pnpm@12.4.2"
 }

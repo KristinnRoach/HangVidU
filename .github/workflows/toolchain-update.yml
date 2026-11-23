@@ -32,7 +32,6 @@ jobs:
         with:
           version: latest
           node-version: '22'
-          run-install: false
       - run: vp run update:toolchain
       - name: Classify version change
         id: change
