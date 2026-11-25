@@ -19,7 +19,7 @@ import type { SolidP2PRoom } from '@kidlib/p2p/solid';
 import {
   FaceMaskInitializationError,
   type createFaceMask,
-} from '../experimental/face-mask';
+} from './face-mask/face-mask';
 import type { Mock } from 'vite-plus/test';
 
 type FaceMaskOptions = Parameters<typeof createFaceMask>[2];
@@ -30,8 +30,8 @@ const maskMocks = vi.hoisted(() => ({
   preloadFaceMask: vi.fn(async () => {}),
 }));
 vi.mock('./send-quality', () => ({ trackSendQuality: () => {} }));
-vi.mock('../experimental/face-mask', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../experimental/face-mask')>()),
+vi.mock('./face-mask/face-mask', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./face-mask/face-mask')>()),
   isFaceMaskSupported: maskMocks.isFaceMaskSupported,
   createFaceMask: maskMocks.createFaceMask,
   preloadFaceMask: maskMocks.preloadFaceMask,
@@ -858,7 +858,7 @@ describe('call media', () => {
   });
 });
 
-describe('experimental face mask lifecycle', () => {
+describe('face mask lifecycle', () => {
   afterEach(() => vi.unstubAllGlobals());
   async function toggleAndApply(media: CallMedia) {
     const pending = media.toggleFaceMask();

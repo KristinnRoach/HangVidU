@@ -1,4 +1,4 @@
-# Experimental face mask
+# Face mask
 
 The face-mask button appears on browsers with canvas capture and WebGL APIs. It stays disabled until a call data channel is open, the local camera is live, and remote media has arrived. Once media is flowing, the p5 renderer and TensorFlow.js face detector load in parallel. The detector code is excluded from the service worker's precache. It uses WebGL because WebGPU video uploads have failed on iOS Safari. A failed backend initialization hides the button for the current call.
 
@@ -20,9 +20,9 @@ For browser and physical-device review, try both sources and modes, Retake, Canc
 
 Relevant code:
 
-- `call/call-media.ts`: setup session, capture attempts, private preview, Apply, and camera restoration.
-- `call/components/MemberStreams.tsx` and its stylesheet: the stable toolbar, preview, and manual guide. `ParticipantMedia` handles playback and the expanded setup preview.
-- `experimental/face-mask.ts`: detection, capture, animation, and renderer cleanup. `capture-template.ts` holds the manual guide geometry.
+- [Call media](../call-media.ts) manages setup, capture attempts, private preview, applying the mask, and camera restoration.
+- [Member streams](../components/MemberStreams.tsx) and its stylesheet handle the toolbar, preview, and manual guide. [Participant media](../components/ParticipantMedia.tsx) handles playback and the expanded setup preview.
+- [Face mask](./face-mask.ts) handles detection, capture, animation, and renderer cleanup. [Capture template](./capture-template.ts) holds the manual guide geometry.
 
 ### Region styling
 
