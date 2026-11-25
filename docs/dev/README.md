@@ -10,6 +10,14 @@ Start with [AGENTS.md](../../AGENTS.md) for conventions and the
 
 To test a group call, select **Start guest call**, which copies the invite link when the room connects. The **Copy invite link** button in the call toolbar lets you copy it again. Opening the link prompts both signed-in users and guests to join. Guests can also paste it into the public lobby, including in the installed PWA. Give each participant its own account or browser profile. Tabs in one profile share a guest account, and a room admits one endpoint per account.
 
+To test contact-call links, run `VITE_CONTACT_CALL_ROOM_LINKS=1 vpr preview:watch`
+for the caller and use the current branch on both signed-in devices. Start a
+call from Contacts and use **Copy invite link** to bring in a guest from a
+separate browser profile. The flag defaults to off. Current clients route
+notification-opened calls with per-call rooms through the mailbox. Test cold
+notification opens on supported PWA versions before enabling the flag in
+production.
+
 Local HTTPS needs a trusted certificate. Install [mkcert](https://github.com/FiloSottile/mkcert#installation), then run once from the repository root:
 
 ```bash

@@ -12,6 +12,7 @@ import {
   getVideoConstraints,
 } from '../media-constraints.js';
 import { useCallHandshake } from '../call-handshake.js';
+import { publicRoomIdFromUrl } from '../room-links';
 
 function joinErrorMessage(err: unknown, kind: string | undefined): string {
   if (kind === 'room-full') return t('call.lobby.error.full');
@@ -22,22 +23,6 @@ function joinErrorMessage(err: unknown, kind: string | undefined): string {
     return t('call.lobby.error.media_blocked');
   }
   return t('call.lobby.error.generic');
-}
-
-// Room-link calls use UUIDs generated on the client.
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function publicRoomIdFromUrl(link: string): string | null {
-  try {
-    const url = new URL(link.trim());
-    const raw = url.searchParams.get('publicRoom');
-    return /^https?:$/.test(url.protocol) && raw && UUID_RE.test(raw)
-      ? raw
-      : null;
-  } catch {
-    return null;
-  }
 }
 
 async function copyStartedInvite(started: Promise<string | undefined>) {
