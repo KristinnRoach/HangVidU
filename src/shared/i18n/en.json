@@ -142,6 +142,7 @@
   "contact.action.edit": "Edit contact",
   "contact.action.delete": "Delete contact",
   "conversation.load_error": "Failed to load messages.",
+  "conversation.retry": "Try again",
   "conversation.empty": "No messages yet. Say hi!",
   "conversation.not_found": "Conversation not found",
   "conversation.attach_file": "Attach file",

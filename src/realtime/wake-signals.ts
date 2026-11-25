@@ -1,3 +1,8 @@
+/** True only when the browser explicitly reports itself offline. */
+export function isBrowserOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
 // Wake signals for reconnecting sockets. On iOS PWA resume the network stack
 // is briefly down, so early reconnect attempts fail and exponential backoff
 // stretches the next try — potentially past a call invite's TTL. Foreground

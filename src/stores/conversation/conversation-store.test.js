@@ -618,6 +618,33 @@ describe('conversation-store', () => {
     expect(store.getConversationState().preparingFile).toBe(true);
   });
 
+  it('clears historyError when a subsequent snapshot recovers after an initial load error', async () => {
+    const store = await import('./conversation-store.js');
+    store.openConversation('conversation-1');
+
+    watch.error(new TypeError('Failed to fetch'));
+    expect(store.getConversationState().history).toBe('error');
+    expect(store.getConversationState().historyError).toBeInstanceOf(TypeError);
+
+    watch.emit([envelope({ messageId: 'msg-1', sentAt: 1 })]);
+    expect(store.getConversationState().history).toBe('ready');
+    expect(store.getConversationState().historyError).toBeNull();
+    expect(store.getConversationState().messages).toHaveLength(1);
+  });
+
+  it('retryLoadMessages resets error state and restarts the active watch', async () => {
+    const store = await import('./conversation-store.js');
+    store.openConversation('conversation-1');
+    watch.error(new TypeError('Failed to fetch'));
+
+    store.retryLoadMessages();
+
+    expect(watch.unsubscribed).toBe(true);
+    expect(repo.watchRecentMessages).toHaveBeenCalledTimes(2);
+    expect(store.getConversationState().history).toBe('loading');
+    expect(store.getConversationState().historyError).toBeNull();
+  });
+
   it('reset stops the watch and clears all conversation state', async () => {
     const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');

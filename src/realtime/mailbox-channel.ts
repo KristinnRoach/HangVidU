@@ -10,7 +10,7 @@ import {
   type MailboxEnvelope,
 } from '../../shared/user-mailbox/protocol';
 import { buildHangViduWebSocketUrl } from '../infra/hangvidu-api-url';
-import { subscribeToWakeSignals } from './wake-signals';
+import { isBrowserOffline, subscribeToWakeSignals } from './wake-signals';
 
 export interface MailboxChannelOptions {
   /** Data worker base URL, e.g. https://localhost:8788 (http(s) → ws(s)). */
@@ -38,11 +38,17 @@ export function createMailboxChannel(
 
   let ws: WebSocket | null = null;
   let closed = false;
+  let waitingForOnline = false;
   let backoff = 500;
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
   async function connect(): Promise<void> {
     if (closed) return;
+    if (isBrowserOffline()) {
+      waitingForOnline = true;
+      return;
+    }
+    waitingForOnline = false;
     let token: string | null = null;
     try {
       token = await options.getToken();
@@ -89,6 +95,11 @@ export function createMailboxChannel(
 
   function scheduleReconnect(): void {
     if (closed || reconnectTimer) return;
+    if (isBrowserOffline()) {
+      waitingForOnline = true;
+      return;
+    }
+    waitingForOnline = false;
     reconnectTimer = setTimeout(() => {
       reconnectTimer = undefined;
       void connect();
@@ -96,13 +107,17 @@ export function createMailboxChannel(
     backoff = Math.min(backoff * 2, maxBackoff);
   }
 
-  // Foreground/online: if we're sitting out a backoff wait, reconnect now.
-  // Only fires mid-wait — an existing socket (even a dying one) is left alone;
-  // its close event re-enters scheduleReconnect with the reset backoff.
+  // Foreground/online: if we're sitting out a backoff wait (or paused while
+  // offline), reconnect now. Only fires mid-wait — an existing socket (even a
+  // dying one) is left alone; its close event re-enters scheduleReconnect.
   const unsubscribeWake = subscribeToWakeSignals(() => {
-    if (closed || !reconnectTimer) return;
-    clearTimeout(reconnectTimer);
-    reconnectTimer = undefined;
+    if (closed || (!reconnectTimer && !waitingForOnline) || isBrowserOffline())
+      return;
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+    }
+    waitingForOnline = false;
     backoff = 500;
     void connect();
   });

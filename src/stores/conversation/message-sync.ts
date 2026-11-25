@@ -155,9 +155,13 @@ export function createMessageSyncRepository(
           applyPendingEvents();
         } catch (error) {
           if (stopped) return;
-          snapshotLoaded = true;
-          applyPendingEvents();
-          if (reportError) onError?.(error);
+          if (snapshotLoaded) {
+            if (pendingEvents.length) {
+              for (const event of pendingEvents.splice(0)) applyEvent(event);
+            }
+          } else if (reportError) {
+            onError?.(error);
+          }
         } finally {
           refreshInFlight = false;
           if (refreshRequested && !stopped) {
