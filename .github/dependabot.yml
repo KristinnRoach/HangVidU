@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 5
-    # toolchain-update.yml runs vp migrate to keep these versions aligned.
+    # vp migrate keeps these versions aligned.
     ignore:
       - dependency-name: 'vite-plus'
         update-types:

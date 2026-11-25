@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
-  # Merges made with GITHUB_TOKEN (Dependabot, toolchain) don't trigger push runs.
+  # Merges made with GITHUB_TOKEN (Dependabot) don't trigger push runs.
   schedule:
     - cron: '17 6 * * *'
   workflow_dispatch:
