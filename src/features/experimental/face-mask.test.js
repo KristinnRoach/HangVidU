@@ -543,12 +543,22 @@ it.each(['abort', 'source', 'manual'])(
       env.useOutline();
       env.sketch.draw();
     }
-    const rejected = expect(env.pending).rejects.toThrow('Face mask cancelled');
-    if (change === 'abort') env.controller.abort();
+    if (change === 'abort') {
+      const rejected = expect(env.pending).rejects.toThrow(
+        'Face mask cancelled',
+      );
+      env.controller.abort();
+      await rejected;
+    }
     await vi.advanceTimersByTimeAsync(3000);
     expect(env.drawImage).not.toHaveBeenCalled();
-    if (change !== 'abort') env.controller.abort();
-    await rejected;
+    if (change !== 'abort') {
+      const rejected = expect(env.pending).rejects.toThrow(
+        'Face mask cancelled',
+      );
+      env.controller.abort();
+      await rejected;
+    }
   },
 );
 
@@ -609,17 +619,13 @@ it('times out when the captured mask is never published', async () => {
   const env = await setupFaceMask();
   await waitForCapture(env);
   vi.useFakeTimers();
-  try {
-    const rejected = expect(env.pending).rejects.toThrow('Face mask timed out');
-    env.capture();
-    await vi.advanceTimersByTimeAsync(30000);
-    await rejected;
-    expect(env.mesh.detectStop).toHaveBeenCalledOnce();
-    expect(env.sketch.remove).toHaveBeenCalledOnce();
-    expect(env.capture).toBeUndefined();
-  } finally {
-    vi.useRealTimers();
-  }
+  env.capture();
+  const rejected = expect(env.pending).rejects.toThrow('Face mask timed out');
+  vi.advanceTimersByTime(30000);
+  await rejected;
+  expect(env.mesh.detectStop).toHaveBeenCalledOnce();
+  expect(env.sketch.remove).toHaveBeenCalledOnce();
+  expect(env.capture).toBeUndefined();
 });
 
 it('cleans up when canvas capture fails before publishing', async () => {
@@ -681,17 +687,19 @@ it.each([false, true])(
   async (preview) => {
     const env = await setupFaceMask();
     await waitForCapture(env);
-    let rejected;
     if (preview) {
       env.capture();
       env.sketch.draw();
       await env.pending;
+      env.outputCanvas.dispatchEvent(new Event('webglcontextlost'));
+      expect(env.onError).toHaveBeenCalledOnce();
     } else {
-      rejected = expect(env.pending).rejects.toThrow('rendering context lost');
+      const rejected = expect(env.pending).rejects.toThrow(
+        'rendering context lost',
+      );
+      env.outputCanvas.dispatchEvent(new Event('webglcontextlost'));
+      await rejected;
     }
-    env.outputCanvas.dispatchEvent(new Event('webglcontextlost'));
-    if (rejected) await rejected;
-    else expect(env.onError).toHaveBeenCalledOnce();
     expect(env.sketch.remove).toHaveBeenCalledOnce();
     env.outputCanvas.dispatchEvent(new Event('webglcontextlost'));
     expect(env.sketch.remove).toHaveBeenCalledOnce();

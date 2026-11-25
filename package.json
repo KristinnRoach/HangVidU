@@ -74,8 +74,7 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
-    "prepare": "vp config",
-    "update:toolchain": "vp migrate --no-interactive --no-agent --no-editor --no-hooks"
+    "prepare": "vp config"
   },
   "dependencies": {
     "@kidlib/create-component": "^0.1.5",
@@ -123,5 +122,5 @@
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
   },
-  "packageManager": "pnpm@12.4.2"
+  "packageManager": "pnpm@12.23.0"
 }
