@@ -297,6 +297,48 @@ describe('message sync reactions', () => {
     unsubscribe();
   });
 
+  it('delivers peer read receipts immediately even when the initial load fails', async () => {
+    let onEvent;
+    let rejectFirst;
+    const client = {
+      getUserId: () => 'me',
+      loadMessages: vi.fn(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectFirst = reject;
+          }),
+      ),
+      sendMessage: vi.fn(),
+      setMyReaction: vi.fn(),
+      subscribe: vi.fn((_conversationId, handler) => {
+        onEvent = handler;
+        return () => {};
+      }),
+    };
+    const repository = createMessageSyncRepository(client);
+    const onMessages = vi.fn();
+    const onError = vi.fn();
+    const onPeerRead = vi.fn();
+
+    const watching = repository.watchRecentMessages(
+      'c1',
+      onMessages,
+      onError,
+      onPeerRead,
+    );
+    onEvent({ t: 'read', userId: 'other', lastReadAt: 5 });
+    rejectFirst(new TypeError('Failed to fetch'));
+    const unsubscribe = await watching;
+
+    onEvent({ t: 'read', userId: 'other', lastReadAt: 9 });
+
+    expect(onPeerRead).toHaveBeenNthCalledWith(1, 'other', 5);
+    expect(onPeerRead).toHaveBeenNthCalledWith(2, 'other', 9);
+    expect(onMessages).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
   it('discards stale events buffered before a failed load so they cannot overwrite a newer snapshot', async () => {
     let onEvent;
     let rejectFirst;

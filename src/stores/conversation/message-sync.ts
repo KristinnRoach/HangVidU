@@ -176,10 +176,15 @@ export function createMessageSyncRepository(
       };
 
       const unsubscribe = client.subscribe(conversationId, (event) => {
-        if (!snapshotLoaded || refreshInFlight) {
+        if (event.t === 'read') {
+          onPeerRead?.(event.userId, event.lastReadAt);
+          return;
+        }
+        if (refreshInFlight) {
           pendingEvents.push(event);
           return;
         }
+        if (!snapshotLoaded) return;
         applyEvent(event);
       });
 
