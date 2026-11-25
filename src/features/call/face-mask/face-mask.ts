@@ -25,7 +25,7 @@ type Face = { keypoints: { x: number; y: number }[] };
 type Mesh = Awaited<
   ReturnType<typeof import('./face-mask-model').createFaceMesh>
 >;
-// Only the small p5 surface used by this experiment.
+// Only the p5 APIs used by the face mask.
 type Sketch = {
   setup: () => void;
   draw: () => void;

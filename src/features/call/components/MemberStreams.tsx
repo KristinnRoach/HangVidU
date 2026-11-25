@@ -1,7 +1,7 @@
 import {
   captureOutline,
   captureFeatureContours,
-} from '../../experimental/capture-template';
+} from '../face-mask/capture-template';
 import { For, Show } from 'solid-js';
 import { Camera, Check, Frame, RotateCcw, SwitchCamera, X } from 'lucide-solid';
 import { useP2PContext } from '@shared/p2p-context.js';
@@ -81,8 +81,6 @@ export function MemberStreams(props: MemberStreamsProps) {
     </div>
   );
 }
-
-// Face mask capture UI (experimental). Kept here until the feature settles.
 
 // Whether the mask is capturing from `stream`; omit `stream` for the local camera.
 function capturingFrom(media: CallMedia, stream?: MediaStream) {

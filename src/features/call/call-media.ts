@@ -9,7 +9,7 @@ import {
   FaceMaskInitializationError,
   type FaceMask,
   type FaceMaskCaptureStatus,
-} from '../experimental/face-mask';
+} from './face-mask/face-mask';
 
 import {
   getAudioConstraints,
