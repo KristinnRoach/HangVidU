@@ -14,9 +14,9 @@
 ## Manual maintenance
 
 - **Vite+ and pnpm:** Run the commands below, then `vp check`, `vpr test:node`,
-  `vpr test:cf`, and `vp build`. `vp migrate` pins the version of the global CLI,
-  so `vp upgrade` must come first. If `test:cf` fails with "Vitest failed to find
-  the runner", run `pnpm dedupe`.
+  `vpr lint:cf`, `vpr test:cf`, and `vp build`. `vp migrate` pins the version of
+  the global CLI, so `vp upgrade` must come first. If `test:cf` fails with
+  "Vitest failed to find the runner", run `pnpm dedupe` and rerun the checks.
 
   ```sh
   vp upgrade
