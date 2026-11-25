@@ -520,8 +520,17 @@ export function openConversation(
 /** Re-run the active conversation's history load after a failure. */
 export function retryLoadMessages(): void {
   const sel = selection();
-  if (!sel) return;
-  activate(sel);
+  const { conversationId, myUserId } = state;
+  if (
+    !sel ||
+    !conversationId ||
+    !myUserId ||
+    sel.conversationId !== conversationId
+  )
+    return;
+  stopWatch?.();
+  setState({ history: 'loading', historyError: null });
+  startWatch(conversationId, myUserId, sel.displayUI);
 }
 
 /**

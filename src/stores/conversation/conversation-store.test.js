@@ -632,17 +632,30 @@ describe('conversation-store', () => {
     expect(store.getConversationState().messages).toHaveLength(1);
   });
 
-  it('retryLoadMessages resets error state and restarts the active watch', async () => {
+  it('retryLoadMessages resets error state and restarts the active watch without cancelling an in-flight upload', async () => {
     const store = await import('./conversation-store.js');
+    const uploading = deferred();
+    mocks.uploadConversationFile.mockReturnValue(uploading.promise);
+    mocks.deleteConversationFile.mockResolvedValue(undefined);
+
     store.openConversation('conversation-1');
     watch.error(new TypeError('Failed to fetch'));
 
+    const upload = store.sendFileMessage(
+      new File(['x'], 'note.txt', { type: 'text/plain' }),
+    );
     store.retryLoadMessages();
 
     expect(watch.unsubscribed).toBe(true);
     expect(repo.watchRecentMessages).toHaveBeenCalledTimes(2);
     expect(store.getConversationState().history).toBe('loading');
     expect(store.getConversationState().historyError).toBeNull();
+
+    const storage = { key: 'file-1' };
+    uploading.resolve(storage);
+    expect(await upload).toBe('sent');
+    expect(mocks.deleteConversationFile).not.toHaveBeenCalled();
+    expect(repo.send).toHaveBeenCalledTimes(1);
   });
 
   it('reset stops the watch and clears all conversation state', async () => {

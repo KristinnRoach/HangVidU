@@ -56,6 +56,10 @@ export function createMailboxChannel(
       console.warn('[mailbox-channel] token resolve failed:', error);
     }
     if (closed) return;
+    if (isBrowserOffline()) {
+      waitingForOnline = true;
+      return;
+    }
     if (!token) {
       scheduleReconnect();
       return;

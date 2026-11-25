@@ -30,6 +30,25 @@ describe('createConversationsClient GET retry', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('stops after one GET retry and propagates the second error', async () => {
+    const firstError = new TypeError('First failure');
+    const secondError = new TypeError('Second failure');
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(firstError)
+      .mockRejectedValueOnce(secondError);
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('navigator', { onLine: true });
+
+    const client = createConversationsClient({
+      baseUrl: 'https://api.example.com',
+      getToken: async () => 'tok',
+    });
+
+    await expect(client.loadMessages('c1')).rejects.toBe(secondError);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('does not retry a GET when the browser reports offline', async () => {
     const fetchMock = vi
       .fn()

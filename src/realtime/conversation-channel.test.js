@@ -81,4 +81,32 @@ describe('createConversationChannel offline pause', () => {
 
     channel.close();
   });
+
+  it('aborts socket creation if the browser goes offline while awaiting a token', async () => {
+    let resolveToken;
+    const getToken = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveToken = resolve;
+        }),
+    );
+    const channel = createConversationChannel({
+      baseUrl: 'https://api.example.com',
+      conversationId: 'c1',
+      getToken,
+    });
+
+    online = false;
+    resolveToken('tok');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(FakeWebSocket.instances).toHaveLength(0);
+
+    online = true;
+    getToken.mockResolvedValueOnce('tok-2');
+    window.dispatchEvent(new Event('online'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(FakeWebSocket.instances).toHaveLength(1);
+
+    channel.close();
+  });
 });

@@ -59,6 +59,10 @@ export function createConversationChannel(
       console.warn('[conversation-channel] token resolve failed:', error);
     }
     if (closed) return;
+    if (isBrowserOffline()) {
+      waitingForOnline = true;
+      return;
+    }
     if (!token) {
       scheduleReconnect();
       return;

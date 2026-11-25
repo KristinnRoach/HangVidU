@@ -65,6 +65,10 @@ export function createSignalingSocket(
       return;
     }
     if (closed) return;
+    if (isBrowserOffline()) {
+      waitingForOnline = true;
+      return;
+    }
 
     const socket = new WebSocket(options.url, protocols);
     ws = socket;
