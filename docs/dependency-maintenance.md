@@ -13,9 +13,18 @@
 
 ## Manual maintenance
 
-- **Vite+ and pnpm:** Upgraded by hand with `vp migrate` and `pnpm self-update`,
-  then `vp check`, `vpr test:node`, `vpr test:cf`, and `vp build`. If `test:cf`
-  fails with "Vitest failed to find the runner", run `pnpm dedupe`.
+- **Vite+ and pnpm:** Run the commands below, then `vp check`, `vpr test:node`,
+  `vpr test:cf`, and `vp build`. `vp migrate` pins the version of the global CLI,
+  so `vp upgrade` must come first. If `test:cf` fails with "Vitest failed to find
+  the runner", run `pnpm dedupe`.
+
+  ```sh
+  vp upgrade
+  vp migrate --no-interactive --no-agent --no-editor --no-hooks
+  pnpm self-update
+  vp install
+  ```
+
 - **Major upgrades:** Review and merge Dependabot `majors` PRs.
 - **Node.js LTS:** Update `engines.node` in `package.json` and `node-version` in
   `.github/workflows/*.yml` when adopting a new LTS.
