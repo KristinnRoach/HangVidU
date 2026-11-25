@@ -415,7 +415,7 @@ function startWatch(
         messages.map(envelopeToChatMessage).filter(isChatMessage),
       );
       mergeLoadedMessages(loadedMessages);
-      setState({ history: 'ready' });
+      setState({ history: 'ready', historyError: null });
 
       const latest = loadedMessages.at(-1);
       if (latest) {
@@ -515,6 +515,22 @@ export function openConversation(
     void refreshConversationListState();
   }
   activate({ conversationId, displayUI: opts?.displayUI ?? true });
+}
+
+/** Re-run the active conversation's history load after a failure. */
+export function retryLoadMessages(): void {
+  const sel = selection();
+  const { conversationId, myUserId } = state;
+  if (
+    !sel ||
+    !conversationId ||
+    !myUserId ||
+    sel.conversationId !== conversationId
+  )
+    return;
+  stopWatch?.();
+  setState({ history: 'loading', historyError: null });
+  startWatch(conversationId, myUserId, sel.displayUI);
 }
 
 /**

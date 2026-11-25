@@ -3,7 +3,7 @@ import {
   type ClientMessage,
   type ServerMessage,
 } from './protocol';
-import { subscribeToWakeSignals } from './wake-signals';
+import { isBrowserOffline, subscribeToWakeSignals } from './wake-signals';
 
 /**
  * Thin reconnecting WebSocket client to the signaling worker. Transport only —
@@ -45,11 +45,17 @@ export function createSignalingSocket(
 
   let ws: WebSocket | null = null;
   let closed = false;
+  let waitingForOnline = false;
   let backoff = 500;
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
   async function connect(): Promise<void> {
     if (closed) return;
+    if (isBrowserOffline()) {
+      waitingForOnline = true;
+      return;
+    }
+    waitingForOnline = false;
     let protocols: string[] = [];
     try {
       protocols = (await options.getProtocols?.()) ?? [];
@@ -59,6 +65,10 @@ export function createSignalingSocket(
       return;
     }
     if (closed) return;
+    if (isBrowserOffline()) {
+      waitingForOnline = true;
+      return;
+    }
 
     const socket = new WebSocket(options.url, protocols);
     ws = socket;
@@ -92,6 +102,11 @@ export function createSignalingSocket(
 
   function scheduleReconnect(): void {
     if (closed || reconnectTimer) return;
+    if (isBrowserOffline()) {
+      waitingForOnline = true;
+      return;
+    }
+    waitingForOnline = false;
     reconnectTimer = setTimeout(() => {
       reconnectTimer = undefined;
       void connect();
@@ -99,13 +114,17 @@ export function createSignalingSocket(
     backoff = Math.min(backoff * 2, maxBackoff);
   }
 
-  // Foreground/online: if we're sitting out a backoff wait, reconnect now.
-  // Only fires mid-wait — an existing socket (even a dying one) is left alone;
-  // its close event re-enters scheduleReconnect with the reset backoff.
+  // Foreground/online: if we're sitting out a backoff wait (or paused while
+  // offline), reconnect now. Only fires mid-wait — an existing socket (even a
+  // dying one) is left alone; its close event re-enters scheduleReconnect.
   const unsubscribeWake = subscribeToWakeSignals(() => {
-    if (closed || !reconnectTimer) return;
-    clearTimeout(reconnectTimer);
-    reconnectTimer = undefined;
+    if (closed || (!reconnectTimer && !waitingForOnline) || isBrowserOffline())
+      return;
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+    }
+    waitingForOnline = false;
     backoff = 500;
     void connect();
   });

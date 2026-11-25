@@ -618,6 +618,46 @@ describe('conversation-store', () => {
     expect(store.getConversationState().preparingFile).toBe(true);
   });
 
+  it('clears historyError when a subsequent snapshot recovers after an initial load error', async () => {
+    const store = await import('./conversation-store.js');
+    store.openConversation('conversation-1');
+
+    watch.error(new TypeError('Failed to fetch'));
+    expect(store.getConversationState().history).toBe('error');
+    expect(store.getConversationState().historyError).toBeInstanceOf(TypeError);
+
+    watch.emit([envelope({ messageId: 'msg-1', sentAt: 1 })]);
+    expect(store.getConversationState().history).toBe('ready');
+    expect(store.getConversationState().historyError).toBeNull();
+    expect(store.getConversationState().messages).toHaveLength(1);
+  });
+
+  it('retryLoadMessages resets error state and restarts the active watch without cancelling an in-flight upload', async () => {
+    const store = await import('./conversation-store.js');
+    const uploading = deferred();
+    mocks.uploadConversationFile.mockReturnValue(uploading.promise);
+    mocks.deleteConversationFile.mockResolvedValue(undefined);
+
+    store.openConversation('conversation-1');
+    watch.error(new TypeError('Failed to fetch'));
+
+    const upload = store.sendFileMessage(
+      new File(['x'], 'note.txt', { type: 'text/plain' }),
+    );
+    store.retryLoadMessages();
+
+    expect(watch.unsubscribed).toBe(true);
+    expect(repo.watchRecentMessages).toHaveBeenCalledTimes(2);
+    expect(store.getConversationState().history).toBe('loading');
+    expect(store.getConversationState().historyError).toBeNull();
+
+    const storage = { key: 'file-1' };
+    uploading.resolve(storage);
+    expect(await upload).toBe('sent');
+    expect(mocks.deleteConversationFile).not.toHaveBeenCalled();
+    expect(repo.send).toHaveBeenCalledTimes(1);
+  });
+
   it('reset stops the watch and clears all conversation state', async () => {
     const store = await import('./conversation-store.js');
     await store.openDirectConversation('contact-1');

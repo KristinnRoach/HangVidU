@@ -5,11 +5,13 @@ import {
 } from '@shared/utils/ui-utils/onFilePaste.js';
 import { useI18n } from '@shared/i18n';
 import { LoadBoundary } from '../../../components/LoadBoundary';
+import Button from '../../../components/Button';
 // eslint-disable-next-line no-unused-vars -- consumed by the Solid `use:fileDrop` directive
 import { fileDrop } from '@shared/utils/ui-utils/fileDrop/onFileDrop.solid.js';
 import {
   getConversationState,
   markActiveConversationRead,
+  retryLoadMessages,
   sendFileMessage,
 } from '../../../stores/conversation/conversation-store';
 import { MessageList } from './MessageList';
@@ -52,6 +54,7 @@ export function ConversationPanel(props: ConversationPanelProps) {
 
   let panelEl: HTMLDivElement | undefined;
   let inputEl: HTMLTextAreaElement | undefined;
+  let retryButtonEl: HTMLButtonElement | undefined;
 
   onMount(() => {
     onCleanup(
@@ -75,13 +78,16 @@ export function ConversationPanel(props: ConversationPanelProps) {
     markActiveConversationRead();
   });
 
-  // Focus the composer once a conversation's history first loads.
+  // Focus the composer once history loads, or the Retry button if a load fails
+  // (also preserves keyboard focus across a failed retry).
   createEffect(
     on(
       () => state.history,
       (status, prev) => {
         if (status === 'ready' && prev === 'loading') {
           queueMicrotask(() => inputEl?.focus());
+        } else if (status === 'error' && prev === 'loading') {
+          queueMicrotask(() => retryButtonEl?.focus());
         }
       },
     ),
@@ -130,8 +136,15 @@ export function ConversationPanel(props: ConversationPanelProps) {
           fallback={<MessageHistorySkeleton />}
           error={state.historyError}
           errorFallback={
-            <div class={styles.messagesEmpty}>
-              {t('conversation.load_error')}
+            <div class={`${styles.messagesEmpty} flex-col gap-3`} role='alert'>
+              <span>{t('conversation.load_error')}</span>
+              <Button
+                ref={retryButtonEl}
+                variant='secondary'
+                onClick={retryLoadMessages}
+              >
+                {t('conversation.retry')}
+              </Button>
             </div>
           }
         >

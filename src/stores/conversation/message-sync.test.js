@@ -220,6 +220,174 @@ describe('message sync reactions', () => {
     unsubscribe();
   });
 
+  it('does not emit an empty snapshot on failed initial load and recovers on wake', async () => {
+    const client = {
+      getUserId: () => 'me',
+      loadMessages: vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockRejectedValueOnce(new TypeError('Still offline'))
+        .mockResolvedValueOnce([wireMessage()]),
+      sendMessage: vi.fn(),
+      setMyReaction: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+    };
+    const repository = createMessageSyncRepository(client);
+    const onMessages = vi.fn();
+    const onError = vi.fn();
+
+    const unsubscribe = await repository.watchRecentMessages(
+      'c1',
+      onMessages,
+      onError,
+    );
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onMessages).not.toHaveBeenCalled();
+
+    // A second failed wake refresh must not emit an empty list.
+    window.dispatchEvent(new Event('online'));
+    await vi.waitFor(() =>
+      expect(client.loadMessages).toHaveBeenCalledTimes(2),
+    );
+    expect(onMessages).not.toHaveBeenCalled();
+
+    // Once connectivity returns, wake loads history and emits it.
+    window.dispatchEvent(new Event('online'));
+    await vi.waitFor(() => expect(onMessages).toHaveBeenCalledTimes(1));
+    expect(onMessages.mock.calls[0][0].map((m) => m.messageId)).toEqual(['m1']);
+
+    unsubscribe();
+  });
+
+  it('emits snapshot even when only a read receipt arrives during fetch', async () => {
+    let onEvent;
+    let resolveLoad;
+    const client = {
+      getUserId: () => 'me',
+      loadMessages: vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveLoad = resolve;
+          }),
+      ),
+      sendMessage: vi.fn(),
+      setMyReaction: vi.fn(),
+      subscribe: vi.fn((_conversationId, handler) => {
+        onEvent = handler;
+        return () => {};
+      }),
+    };
+    const repository = createMessageSyncRepository(client);
+    const onMessages = vi.fn();
+    const onPeerRead = vi.fn();
+
+    const watching = repository.watchRecentMessages(
+      'c1',
+      onMessages,
+      undefined,
+      onPeerRead,
+    );
+    onEvent({ t: 'read', userId: 'other', lastReadAt: 5 });
+    resolveLoad([wireMessage()]);
+    const unsubscribe = await watching;
+
+    expect(onPeerRead).toHaveBeenCalledWith('other', 5);
+    expect(onMessages).toHaveBeenCalledTimes(1);
+    expect(onMessages.mock.calls[0][0].map((m) => m.messageId)).toEqual(['m1']);
+    unsubscribe();
+  });
+
+  it('delivers peer read receipts immediately even when the initial load fails', async () => {
+    let onEvent;
+    let rejectFirst;
+    const client = {
+      getUserId: () => 'me',
+      loadMessages: vi.fn(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectFirst = reject;
+          }),
+      ),
+      sendMessage: vi.fn(),
+      setMyReaction: vi.fn(),
+      subscribe: vi.fn((_conversationId, handler) => {
+        onEvent = handler;
+        return () => {};
+      }),
+    };
+    const repository = createMessageSyncRepository(client);
+    const onMessages = vi.fn();
+    const onError = vi.fn();
+    const onPeerRead = vi.fn();
+
+    const watching = repository.watchRecentMessages(
+      'c1',
+      onMessages,
+      onError,
+      onPeerRead,
+    );
+    onEvent({ t: 'read', userId: 'other', lastReadAt: 5 });
+    rejectFirst(new TypeError('Failed to fetch'));
+    const unsubscribe = await watching;
+
+    onEvent({ t: 'read', userId: 'other', lastReadAt: 9 });
+
+    expect(onPeerRead).toHaveBeenNthCalledWith(1, 'other', 5);
+    expect(onPeerRead).toHaveBeenNthCalledWith(2, 'other', 9);
+    expect(onMessages).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it('discards stale events buffered before a failed load so they cannot overwrite a newer snapshot', async () => {
+    let onEvent;
+    let rejectFirst;
+    const client = {
+      getUserId: () => 'me',
+      loadMessages: vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise((_resolve, reject) => {
+              rejectFirst = reject;
+            }),
+        )
+        .mockResolvedValueOnce([
+          wireMessage([{ key: 'laugh', count: 1, reactedByMe: false }]),
+        ]),
+      sendMessage: vi.fn(),
+      setMyReaction: vi.fn(),
+      subscribe: vi.fn((_conversationId, handler) => {
+        onEvent = handler;
+        return () => {};
+      }),
+    };
+    const repository = createMessageSyncRepository(client);
+    const onMessages = vi.fn();
+    const onError = vi.fn();
+
+    const watching = repository.watchRecentMessages('c1', onMessages, onError);
+    // Stale reaction arrives before the failed initial fetch settles.
+    onEvent({
+      t: 'reaction',
+      messageId: 'm1',
+      actorUserId: 'other',
+      actorReactionKey: 'heart',
+      reactions: [{ key: 'heart', count: 1 }],
+    });
+    rejectFirst(new TypeError('Failed to fetch'));
+    const unsubscribe = await watching;
+    expect(onError).toHaveBeenCalledTimes(1);
+
+    // Later wake fetch returns the newer server state; stale reaction must not clobber it.
+    window.dispatchEvent(new Event('online'));
+    await vi.waitFor(() => expect(onMessages).toHaveBeenCalledTimes(1));
+    expect(onMessages.mock.calls[0][0][0].reactions).toEqual([
+      { key: 'laugh', count: 1, reactedByMe: false },
+    ]);
+    unsubscribe();
+  });
+
   it('persists the desired reaction key without sending user identity', async () => {
     const client = {
       getUserId: () => 'me',

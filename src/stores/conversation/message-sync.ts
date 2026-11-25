@@ -98,12 +98,15 @@ export function createMessageSyncRepository(
         }
         onMessages(ordered);
       };
-      const applyEvent = (event: ConversationServerEvent) => {
+      const applyEvent = (
+        event: ConversationServerEvent,
+        shouldEmit = true,
+      ) => {
         if (event.t === 'message') {
           const incoming = toIncomingMessage(event.message);
           if (!incoming) return;
           window.set(incoming.messageId, incoming);
-          emit();
+          if (shouldEmit) emit();
           return;
         }
 
@@ -127,15 +130,12 @@ export function createMessageSyncRepository(
                   ?.reactedByMe ?? false),
           })),
         });
-        emit();
+        if (shouldEmit) emit();
       };
 
       const applyPendingEvents = () => {
-        if (pendingEvents.length) {
-          for (const event of pendingEvents.splice(0)) applyEvent(event);
-        } else {
-          emit();
-        }
+        for (const event of pendingEvents.splice(0)) applyEvent(event, false);
+        emit();
       };
 
       const reconcileSnapshot = async (reportError: boolean) => {
@@ -145,6 +145,9 @@ export function createMessageSyncRepository(
           return;
         }
         refreshInFlight = true;
+        // Scope buffered events to this fetch so stale events from before a
+        // failed load cannot overwrite newer history returned by a later fetch.
+        pendingEvents.length = 0;
         try {
           const messages = await snapshot(conversationId);
           if (stopped) return;
@@ -155,9 +158,14 @@ export function createMessageSyncRepository(
           applyPendingEvents();
         } catch (error) {
           if (stopped) return;
-          snapshotLoaded = true;
-          applyPendingEvents();
-          if (reportError) onError?.(error);
+          if (snapshotLoaded) {
+            if (pendingEvents.length) {
+              for (const event of pendingEvents.splice(0)) applyEvent(event);
+            }
+          } else {
+            pendingEvents.length = 0;
+            if (reportError) onError?.(error);
+          }
         } finally {
           refreshInFlight = false;
           if (refreshRequested && !stopped) {
@@ -168,10 +176,15 @@ export function createMessageSyncRepository(
       };
 
       const unsubscribe = client.subscribe(conversationId, (event) => {
-        if (!snapshotLoaded || refreshInFlight) {
+        if (event.t === 'read') {
+          onPeerRead?.(event.userId, event.lastReadAt);
+          return;
+        }
+        if (refreshInFlight) {
           pendingEvents.push(event);
           return;
         }
+        if (!snapshotLoaded) return;
         applyEvent(event);
       });
 

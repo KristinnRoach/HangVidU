@@ -111,15 +111,31 @@ export function createConversationsClient(
     const token = await options.getToken();
     if (!token) throw new Error('not authenticated');
 
-    const res = await fetch(`${base}${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
+    const doFetch = () =>
+      fetch(`${base}${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+
+    let res: Response;
+    try {
+      res = await doFetch();
+    } catch (error) {
+      // Retry idempotent GETs once on a network TypeError (e.g. Chromium
+      // ERR_QUIC_PROTOCOL_ERROR before HTTP/2 fallback on network switches).
+      const online =
+        typeof navigator === 'undefined' || navigator.onLine !== false;
+      if (method === 'GET' && error instanceof TypeError && online) {
+        res = await doFetch();
+      } else {
+        throw error;
+      }
+    }
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
