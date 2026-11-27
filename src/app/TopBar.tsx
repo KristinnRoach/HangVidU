@@ -19,6 +19,7 @@ import {
   type Conversation,
 } from '../stores/conversation/conversation-list-state';
 
+import SettingsButton from './SettingsButton';
 import topbarStyles from './TopBar.module.css';
 
 export type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
@@ -198,6 +199,7 @@ export default function TopBar(props: TopBarProps) {
       <div class={topbarStyles.stickyRight}>
         <InstallButton />
         <NotificationsToggle />
+        <SettingsButton />
       </div>
     </header>
   );

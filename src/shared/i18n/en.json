@@ -1,6 +1,8 @@
 {
   "share": "Share",
   "shared.cancel": "Cancel",
+  "settings.title": "Settings",
+  "settings.language": "Language",
   "shared.close": "Close",
   "nav.contacts": "Contacts",
   "nav.messages": "Messages",
