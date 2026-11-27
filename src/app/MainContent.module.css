@@ -58,9 +58,8 @@
   width: var(--content-width);
   margin-inline: auto;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  width: var(--content-width);
   background: var(--color-bg-darker);
   padding: 0.5rem 1rem;
 }

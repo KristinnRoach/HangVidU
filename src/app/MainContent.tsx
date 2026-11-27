@@ -5,7 +5,6 @@ import { useP2PContext } from '@shared/p2p-context.js';
 import { useAuth } from '@auth';
 
 import LegalFooter from '../components/LegalFooter';
-import LocaleToggle from '../components/LocaleToggle';
 
 import PublicHomepage from './PublicHomepage';
 import TopBar, { type ViewMode } from './TopBar';
@@ -183,7 +182,6 @@ export default function MainContent() {
 
         <Show when={activeView() === 'home' || activeView() === 'contacts'}>
           <div class={mainStyles.footer}>
-            <LocaleToggle />
             <LegalFooter />
           </div>
         </Show>

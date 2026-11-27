@@ -9,6 +9,7 @@ Keep HangVidU straightforward to maintain as features are added.
 - **Current:** Step 2 complete. Keep Solid, Kobalte, and Tailwind. The add-contact flow is the reference for shared controls, theme tokens, selection, status feedback, and dialog-scoped async work.
 - **UI migration:** Contacts import and toasts use Solid and Tailwind. Continue component by component as features need them ([#775](https://github.com/KristinnRoach/HangVidU/issues/775)).
 - **Group calls:** Four-person room admission is implemented. Validate calls at capacity on representative devices and networks, including when someone leaves or reconnects.
+- **User settings:** The top-bar Settings dialog holds the language choice, stored on the device.
 
 Update this block in the same PR when progress or the next step changes. Keep it
 concise and concrete, with no history. Link to a GitHub issue or PR when the

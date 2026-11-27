@@ -1,6 +1,8 @@
 {
   "share": "Deila",
   "shared.cancel": "Hætta við",
+  "settings.title": "Stillingar",
+  "settings.language": "Tungumál",
   "shared.close": "Loka",
   "nav.contacts": "Tengiliðir",
   "nav.messages": "Skilaboð",
