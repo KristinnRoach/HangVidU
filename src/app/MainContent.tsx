@@ -1,42 +1,27 @@
 import { createSignal, createMemo, createEffect, on, Show } from 'solid-js';
 import { createAutoHide } from '@shared/createAutoHide';
 
-import { User, PhoneCall, Mail, ChevronLeft } from 'lucide-solid';
 import { useP2PContext } from '@shared/p2p-context.js';
-import { AuthControls, useAuth } from '@auth';
-import { useI18n } from '@shared/i18n';
+import { useAuth } from '@auth';
 
-import AppLogo from '../components/AppLogo';
-import { getLoggedInUserProfile } from '../stores/user-profile-store.js';
-import { AddContactButton } from '@features/contacts';
-import { NotificationsToggle } from '@features/notifications';
-import InstallButton from '../components/InstallButton';
 import LegalFooter from '../components/LegalFooter';
 import LocaleToggle from '../components/LocaleToggle';
 
 import PublicHomepage from './PublicHomepage';
-import {
-  ActiveCallRoom,
-  CallDialogs,
-  StartCallButton,
-  useCallHandshake,
-} from '@features/call';
+import TopBar, { type ViewMode } from './TopBar';
+import { ActiveCallRoom, CallDialogs, useCallHandshake } from '@features/call';
 import ConversationsList from './ConversationsList';
 import { ConversationPanel } from '@features/conversations';
 
 import { LoadBoundary } from '../components/LoadBoundary';
 import { Spinner } from '../components/Spinner';
-import IdentityBadge from '../components/IdentityBadge';
 import {
-  conversationLabel,
   conversationListSeeded,
   conversationListState,
-  conversationPeers,
   type Conversation,
 } from '../stores/conversation/conversation-list-state';
 
 import mainStyles from './MainContent.module.css';
-import topbarStyles from './TopBar.module.css';
 
 import {
   loadSelectedConversationId,
@@ -44,8 +29,6 @@ import {
   selectedConversation,
   selection,
 } from '../stores/conversation/conversation-store';
-
-type ViewMode = 'home' | 'call' | 'contacts' | 'conversations';
 
 export default function MainContent() {
   const p2p = useP2PContext();
@@ -94,7 +77,7 @@ export default function MainContent() {
   // proper Loading UI.
   const activeView = createMemo<ViewMode>(() => {
     if (isLoggingOut()) return 'home';
-    // Guests can be in a call (room-link calls from the WIP homepage).
+    // Guests can join room-link calls.
     if (!isLoggedIn() && !isLoggingIn()) {
       return p2p.state() !== 'idle' ? 'call' : 'home';
     }
@@ -206,194 +189,5 @@ export default function MainContent() {
         </Show>
       </LoadBoundary>
     </div>
-  );
-}
-
-interface TopBarProps {
-  activeView: ViewMode;
-  setActiveView: (view: ViewMode) => void;
-  selectedConversation?: Conversation;
-  isInCall: boolean;
-  showAuthenticatedUi: boolean;
-  visible: boolean;
-}
-
-function TopBar(props: TopBarProps) {
-  const { user } = useAuth();
-  const { t } = useI18n();
-  const p2p = useP2PContext();
-
-  // The call room handle IS the conversationId (see resolveCallRoomId), so
-  // the active call's conversation is a lookup, not extra state. Null for
-  // guest room-link calls whose room isn't in the user's conversation list.
-  const callConversation = createMemo(() => {
-    const roomId = p2p.room()?.roomId;
-    return roomId ? (conversationListState().get(roomId) ?? null) : null;
-  });
-
-  const calleeId = createMemo(() => {
-    const conversation = props.selectedConversation;
-    if (conversation?.kind !== 'direct') return null;
-    return conversationPeers(conversation)[0] ?? null;
-  });
-
-  const selectedLabel = () =>
-    props.selectedConversation
-      ? conversationLabel(props.selectedConversation)
-      : null;
-
-  // Whose identity the top bar shows: the active call's conversation in the
-  // call view, the selected conversation's in the conversations view, the
-  // local user otherwise.
-  const identity = createMemo(() => {
-    const conversation =
-      props.activeView === 'call'
-        ? callConversation()
-        : props.activeView === 'conversations'
-          ? (props.selectedConversation ?? null)
-          : null;
-    if (conversation) {
-      return { name: conversationLabel(conversation), photoUrl: null };
-    }
-    const profile = getLoggedInUserProfile();
-    return {
-      name:
-        profile?.displayName ||
-        profile?.username ||
-        profile?.email ||
-        t('auth.guest_user'),
-      photoUrl: profile?.photoURL,
-    };
-  });
-
-  const isViewSelected = (view: ViewMode) => props.activeView === view;
-  const getNavItemClass = (view: ViewMode) => {
-    if (!isViewSelected(view)) return topbarStyles.navItem;
-    return `${topbarStyles.navItem} ${topbarStyles.selected}`;
-  };
-
-  return (
-    <header
-      id='top-bar'
-      data-visible={props.visible}
-      class={topbarStyles.topBar}
-      classList={{
-        [topbarStyles.hidden!]: !props.visible,
-        [topbarStyles.overlay!]: props.isInCall,
-      }}
-    >
-      <div id='top-bar-left' class={`${topbarStyles.stickyLeft} animated-flex`}>
-        <AppLogo />
-        {/* keyed: remount on name change so the badge's entry
-            animation replays when the shown identity swaps */}
-        <Show when={props.showAuthenticatedUi && identity().name} keyed>
-          {(name) => (
-            <IdentityBadge name={name} photoUrl={identity().photoUrl} />
-          )}
-        </Show>
-        {/* Collapsed instead of unmounted (Show) so the parent's
-            animated-flex transition applies; hidden outside contacts/home
-            to avoid accidental logout. */}
-        <div
-          class='max-w-60 shrink-0 overflow-hidden'
-          classList={{
-            'invisible max-w-0 opacity-0': !(
-              isViewSelected('contacts') || isViewSelected('home')
-            ),
-          }}
-        >
-          <AuthControls />
-        </div>
-      </div>
-
-      {/* Temp Navigation/Test buttons to demonstrate switching */}
-      <nav class={topbarStyles.topNav}>
-        {/* <button onClick={() => props.setActiveView?.('home')}>Home</button> */}
-
-        <Show when={props.showAuthenticatedUi && user()?.uid}>
-          <div class={getNavItemClass('contacts')}>
-            <button
-              type='button'
-              class={
-                props.activeView === 'contacts'
-                  ? topbarStyles.navBtnSelected
-                  : topbarStyles.navBtn
-              }
-              title={t('nav.contacts')}
-              aria-label={t('nav.contacts')}
-              onClick={() => props.setActiveView('contacts')}
-            >
-              {props.activeView === 'conversations' ? (
-                <ChevronLeft />
-              ) : (
-                <User />
-              )}
-            </button>
-            <div
-              class={topbarStyles.toolbar}
-              hidden={props.activeView !== 'contacts'}
-            >
-              <AddContactButton />
-            </div>
-          </div>
-
-          <div class={getNavItemClass('conversations')}>
-            <button
-              type='button'
-              class={
-                props.activeView === 'conversations'
-                  ? topbarStyles.navBtnSelected
-                  : topbarStyles.navBtn
-              }
-              title={t('nav.messages')}
-              aria-label={t('nav.messages')}
-              onClick={() => props.setActiveView('conversations')}
-            >
-              <Mail />
-            </button>
-
-            <div
-              class={topbarStyles.toolbar}
-              hidden={props.activeView !== 'conversations'}
-            >
-              <Show when={!props.isInCall && calleeId()}>
-                {(resolvedCalleeId) => (
-                  <>
-                    <StartCallButton
-                      audioOnly={false}
-                      calleeId={resolvedCalleeId()}
-                      calleeName={selectedLabel() || undefined}
-                    />
-                  </>
-                )}
-              </Show>
-            </div>
-          </div>
-        </Show>
-
-        <Show when={props.isInCall}>
-          <button
-            type='button'
-            class={
-              props.activeView === 'call'
-                ? topbarStyles.navBtnSelected
-                : topbarStyles.navBtn
-            }
-            title={t('nav.active_call')}
-            aria-label={t('nav.active_call')}
-            onClick={() => props.setActiveView('call')}
-          >
-            <PhoneCall />
-          </button>
-        </Show>
-      </nav>
-
-      {/* <YouTubeSearchControls /> */}
-
-      <div class={topbarStyles.stickyRight}>
-        <InstallButton />
-        <NotificationsToggle />
-      </div>
-    </header>
   );
 }

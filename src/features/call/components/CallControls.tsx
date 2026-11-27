@@ -107,10 +107,30 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
 
   const micAction = () =>
     media.micRecoveryPending()
-      ? 'Cancel microphone recovery'
+      ? t('call.controls.mic_cancel_recovery')
       : media.micOn()
-        ? 'Mute mic'
-        : 'Unmute mic';
+        ? t('call.controls.mic_mute')
+        : t('call.controls.mic_unmute');
+
+  const cameraAction = () =>
+    media.cameraOn()
+      ? t('call.controls.camera_off')
+      : t('call.controls.camera_on');
+
+  const remoteAudioAction = () =>
+    props.remoteAudioMuted
+      ? t('call.controls.remote_audio_unmute')
+      : t('call.controls.remote_audio_mute');
+
+  const screenShareAction = () =>
+    media.screenSharing()
+      ? t('call.controls.stop_sharing_screen')
+      : t('call.controls.share_screen');
+
+  const faceMaskAction = () =>
+    media.faceMaskOn()
+      ? t('call.controls.remove_mask')
+      : t('call.controls.face_mask');
 
   function toggleMic() {
     void Promise.resolve(
@@ -154,8 +174,8 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
         onClick={toggleCam}
         disabled={media.cameraPending() || media.screenSharing()}
         classList={{ [styles.off!]: !media.cameraOn() }}
-        title={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
-        aria-label={media.cameraOn() ? 'Turn camera off' : 'Turn camera on'}
+        title={cameraAction()}
+        aria-label={cameraAction()}
       >
         {media.cameraOn() ? <Video /> : <VideoOff />}
       </button>
@@ -170,19 +190,15 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
           when={media.micRecoveryPending()}
           fallback={media.micOn() ? <Mic /> : <MicOff />}
         >
-          <Spinner label='Recovering microphone' />
+          <Spinner label={t('call.controls.mic_recovering')} />
         </Show>
       </button>
       <button
         type='button'
         onClick={() => props.onRemoteAudioMutedChange(!props.remoteAudioMuted)}
         classList={{ [styles.off!]: props.remoteAudioMuted }}
-        title={
-          props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
-        }
-        aria-label={
-          props.remoteAudioMuted ? 'Unmute remote audio' : 'Mute remote audio'
-        }
+        title={remoteAudioAction()}
+        aria-label={remoteAudioAction()}
       >
         {props.remoteAudioMuted ? <VolumeX /> : <Volume2 />}
       </button>
@@ -193,8 +209,8 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
           disabled={
             media.cameraPending() || media.screenSharing() || !media.cameraOn()
           }
-          title='Switch camera'
-          aria-label='Switch camera'
+          title={t('call.controls.switch_camera')}
+          aria-label={t('call.controls.switch_camera')}
         >
           <SwitchCamera />
         </button>
@@ -205,10 +221,8 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
           onClick={toggleScreenShare}
           disabled={media.cameraPending()}
           classList={{ [styles.off!]: !media.screenSharing() }}
-          title={media.screenSharing() ? 'Stop sharing screen' : 'Share screen'}
-          aria-label={
-            media.screenSharing() ? 'Stop sharing screen' : 'Share screen'
-          }
+          title={screenShareAction()}
+          aria-label={screenShareAction()}
         >
           {media.screenSharing() ? <ScreenShareOff /> : <ScreenShare />}
         </button>
@@ -225,8 +239,8 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
             !media.cameraOn()
           }
           aria-pressed={media.faceMaskOn()}
-          title={media.faceMaskOn() ? 'Remove mask' : 'Face mask'}
-          aria-label={media.faceMaskOn() ? 'Remove mask' : 'Face mask'}
+          title={faceMaskAction()}
+          aria-label={faceMaskAction()}
           classList={{ [styles.active!]: media.faceMaskOn() }}
         >
           <ScanFace />
@@ -240,14 +254,15 @@ export function ActiveCallControls(props: ActiveCallControlsProps) {
 
 function EndCallButton() {
   const { hangUp } = useCallHandshake();
+  const { t } = useI18n();
 
   return (
     <button
       type='button'
       class={styles.hangup}
       onClick={hangUp}
-      title={'End Call'}
-      aria-label={'End Call'}
+      title={t('call.controls.end_call')}
+      aria-label={t('call.controls.end_call')}
     >
       <PhoneOff />
     </button>

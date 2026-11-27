@@ -174,6 +174,31 @@ describe('SignalingRoom', () => {
     expect(memberIds(await returning.next())).toEqual(owners);
   });
 
+  it('admits a new account after a member explicitly leaves a full room', async () => {
+    const roomId = 'leave-at-capacity';
+    const remaining = Array.from(
+      { length: ROOM_MEMBER_LIMIT - 1 },
+      (_, i) => `member-${i}`,
+    );
+    await joinAll(roomId, remaining);
+    const leaving = await connect(roomId, 'leaving');
+    await leaving.next();
+    leaving.send({ t: 'join', peerId: 'leaving' });
+    const full = ['leaving', ...remaining];
+    expect(memberIds(await leaving.next())).toEqual(full);
+
+    const newcomer = await connect(roomId, 'newcomer');
+    expect(memberIds(await newcomer.next())).toEqual(full);
+    leaving.send({ t: 'leave' });
+    expect(memberIds(await newcomer.next())).toEqual(remaining);
+
+    newcomer.send({ t: 'join', peerId: 'newcomer' });
+    expect(memberIds(await newcomer.next())).toEqual([
+      ...remaining,
+      'newcomer',
+    ]);
+  });
+
   it('requires a trusted owner on upgrade', async () => {
     const response = await env.SIGNALING_ROOM.getByName('missing-owner').fetch(
       new Request('https://do/rooms/missing-owner/signal', {
@@ -561,7 +586,6 @@ describe('SignalingRoom', () => {
     });
   });
 
-  // Three members, so neither socket order nor its reverse matches join order.
   async function joinAll(roomId: string, peerIds: string[]) {
     for (const peerId of peerIds) {
       const peer = await connect(roomId, peerId);
