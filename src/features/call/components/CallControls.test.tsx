@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render } from '@solidjs/testing-library';
 import { createSignal } from 'solid-js';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { CallMedia } from '../call-media';
-import type { MessageParams } from '@shared/i18n';
+import { setLocale, t } from '@shared/i18n';
 import { ActiveCallControls, StartCallButton } from './CallControls';
 
 const mocks = vi.hoisted(() => ({
@@ -53,16 +53,6 @@ vi.mock('../call-handshake', () => ({
 vi.mock('@shared/createAutoHide', () => ({
   createAutoHide: () => ({ visible: () => true }),
 }));
-vi.mock('../../../shared/i18n', () => ({
-  useI18n: () => ({
-    t: (key: string, params?: MessageParams) => {
-      if (key === 'call.unknown_caller') return 'Unknown Caller';
-      if (params?.name) return `${key}:${params.name}`;
-      return key;
-    },
-  }),
-}));
-
 vi.mock('@components/toast', () => ({
   showToast: mocks.showToast,
 }));
@@ -77,6 +67,7 @@ vi.stubGlobal(
 
 afterEach(() => {
   cleanup();
+  setLocale('en');
   vi.clearAllMocks();
 });
 
@@ -90,7 +81,7 @@ describe('StartCallButton', () => {
 
     setCalleeId('contact-2');
     setCalleeName('Bob');
-    fireEvent.click(getByRole('button', { name: 'contact.action.call:Bob' }));
+    fireEvent.click(getByRole('button', { name: 'Call Bob' }));
 
     expect(mocks.startCall).toHaveBeenCalledWith({
       calleeId: 'contact-2',
@@ -103,13 +94,31 @@ describe('StartCallButton', () => {
     const { getByRole } = render(() => (
       <StartCallButton calleeId='in-call' calleeName='Alice' />
     ));
-    expect(
-      getByRole('button', { name: 'contact.action.call:Alice' }),
-    ).toHaveProperty('disabled', true);
+    expect(getByRole('button', { name: 'Call Alice' })).toHaveProperty(
+      'disabled',
+      true,
+    );
   });
 });
 
 describe('ActiveCallControls', () => {
+  it('updates tooltips and accessible names when the locale changes', () => {
+    const { getByRole } = render(() => (
+      <ActiveCallControls
+        media={mocks.media}
+        remoteAudioMuted={false}
+        onRemoteAudioMutedChange={() => {}}
+      />
+    ));
+    const camera = getByRole('button', { name: 'Turn camera off' });
+
+    setLocale('is');
+
+    expect(getByRole('button', { name: 'Slökkva á myndavél' })).toBe(camera);
+    expect(camera.title).toBe('Slökkva á myndavél');
+    expect(getByRole('button', { name: 'Ljúka símtali' })).toBeTruthy();
+  });
+
   it('keeps the face mask disabled until the call is ready', () => {
     const toggleFaceMask = vi.fn<CallMedia['toggleFaceMask']>(async () => {});
     const [ready, setReady] = createSignal(false);
@@ -244,7 +253,7 @@ describe('ActiveCallControls', () => {
 
       await vi.waitFor(() =>
         expect(mocks.showToast).toHaveBeenCalledExactlyOnceWith(
-          `call.media_error.${device}.${reason}`,
+          t(`call.media_error.${device}.${reason}`),
           { tone: 'error' },
         ),
       );
